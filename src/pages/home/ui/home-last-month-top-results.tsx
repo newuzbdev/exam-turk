@@ -21,9 +21,11 @@ const HomeLastMonthTopResults = () => {
             <div className="bg-white/70 backdrop-blur-sm p-5 rounded-2xl border border-gray-100/50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
-                  <div className="bg-gradient-to-br from-red-500 to-red-600 text-white w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-xl">
-                    1
-                  </div>
+                  <img
+                    src="https://randomuser.me/api/portraits/men/1.jpg"
+                    alt="Mustafa Yıldırım"
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
 
                   <div>
                     <p className="text-gray-900 font-semibold text-lg">
@@ -46,9 +48,11 @@ const HomeLastMonthTopResults = () => {
             <div className="bg-white/70 backdrop-blur-sm p-5 rounded-2xl border border-gray-100/50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
-                  <div className="bg-gradient-to-br from-red-500 to-red-600 text-white w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-xl">
-                    2
-                  </div>
+                  <img
+                    src="https://randomuser.me/api/portraits/men/2.jpg"
+                    alt="Ali Kaya"
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
 
                   <div>
                     <p className="text-gray-900 font-semibold text-lg">
@@ -71,9 +75,11 @@ const HomeLastMonthTopResults = () => {
             <div className="bg-white/70 backdrop-blur-sm p-5 rounded-2xl border border-gray-100/50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
-                  <div className="bg-gradient-to-br from-red-500 to-red-600 text-white w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-xl">
-                    3
-                  </div>
+                  <img
+                    src="https://randomuser.me/api/portraits/women/1.jpg"
+                    alt="Ayşe Demir"
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
 
                   <div>
                     <p className="text-gray-900 font-semibold text-lg">
@@ -96,9 +102,11 @@ const HomeLastMonthTopResults = () => {
             <div className="bg-white/70 backdrop-blur-sm p-5 rounded-2xl border border-gray-100/50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
-                  <div className="bg-gradient-to-br from-red-500 to-red-600 text-white w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-xl">
-                    4
-                  </div>
+                  <img
+                    src="https://randomuser.me/api/portraits/women/2.jpg"
+                    alt="Zeynep Şahin"
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
 
                   <div>
                     <p className="text-gray-900 font-semibold text-lg">
@@ -121,9 +129,11 @@ const HomeLastMonthTopResults = () => {
             <div className="bg-white/70 backdrop-blur-sm p-5 rounded-2xl border border-gray-100/50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
-                  <div className="bg-gradient-to-br from-red-500 to-red-600 text-white w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-xl">
-                    5
-                  </div>
+                  <img
+                    src="https://randomuser.me/api/portraits/men/3.jpg"
+                    alt="Mehmet Öztürk"
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
 
                   <div>
                     <p className="text-gray-900 font-semibold text-lg">

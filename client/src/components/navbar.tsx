@@ -138,13 +138,13 @@ const Navbar = () => {
               to="/profile"
               className="flex items-center space-x-2 cursor-pointer"
             >
-              <Avatar className="h-8 w-8 sm:h-10 sm:w-10 rounded-full overflow-hidden">
-                <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=JO" />
+              <Avatar className="h-8 w-8 sm:h-8 sm:w-8 rounded-full overflow-hidden">
+                <AvatarImage src="" />
                 <AvatarFallback>
                   <img
-                    src="https://api.dicebear.com/7.x/bottts/svg?seed=JO"
+                    src="https://api.dicebear.com/7.x/bo"
                     alt="Avatar"
-                    className="w-full h-full object-cover rounded-full"
+                    className="w-full h-full object-cover rounded-full bg-red-700"
                   />
                 </AvatarFallback>
               </Avatar>
@@ -153,15 +153,21 @@ const Navbar = () => {
               </span>
             </NavLink>
             <div className="hidden sm:flex space-x-2">
-              <img
-                src="https://cdn-icons-png.flaticon.com/512/2111/2111646.png"
-                alt="Telegram"
-                className="w-6 h-6 sm:w-8 sm:h-8"
-              />
+              <a
+                href="https://t.me/new_uzb_dev"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <img
+                  src="https://cdn-icons-png.flaticon.com/512/2111/2111646.png"
+                  alt="Telegram"
+                  className="w-6 h-6 sm:w-8 sm:h-8 cursor-pointer"
+                />
+              </a>
               <img
                 src="https://cdn-icons-png.flaticon.com/512/3955/3955024.png"
                 alt="Instagram"
-                className="w-6 h-6 sm:w-8 sm:h-8"
+                className="w-6 h-6 sm:w-8 sm:h-8 cursor-pointer"
               />
             </div>
 
@@ -181,12 +187,17 @@ const Navbar = () => {
                     <SheetTitle>Menu</SheetTitle>
                   </SheetHeader>
                   <div className="flex flex-col space-y-3 mt-6">
-                    <NavLink
-                      to="/grammar"
-                      className="text-gray-600 hover:text-red-600 px-3 py-2 text-sm font-medium transition-colors duration-200 cursor-pointer"
-                    >
-                      Gramer
-                    </NavLink>
+                    <div className="space-y-3">
+                      {grammarLevels.map((level) => (
+                        <NavLink
+                          key={level.title}
+                          to={level.href}
+                          className="text-gray-600 hover:text-red-600 px-3 py-2 text-sm font-medium transition-colors duration-200 cursor-pointer block"
+                        >
+                          {level.title}
+                        </NavLink>
+                      ))}
+                    </div>
                     <NavLink
                       to="/test"
                       className="text-gray-600 hover:text-red-600 px-3 py-2 text-sm font-medium transition-colors duration-200 cursor-pointer"
@@ -212,11 +223,29 @@ const Navbar = () => {
                       İletişim
                     </NavLink>
                     <NavLink
-                      to="/pricing"
+                      to="/price"
                       className="text-gray-600 hover:text-red-600 px-3 py-2 text-sm font-medium transition-colors duration-200 cursor-pointer"
                     >
                       Fiyatlar
                     </NavLink>
+                    <div className="flex space-x-4 px-3 py-2">
+                      <a
+                        href="https://t.me/new_uzb_dev"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <img
+                          src="https://cdn-icons-png.flaticon.com/512/2111/2111646.png"
+                          alt="Telegram"
+                          className="w-6 h-6 cursor-pointer"
+                        />
+                      </a>
+                      <img
+                        src="https://cdn-icons-png.flaticon.com/512/3955/3955024.png"
+                        alt="Instagram"
+                        className="w-6 h-6 cursor-pointer"
+                      />
+                    </div>
                   </div>
                 </SheetContent>
               </Sheet>

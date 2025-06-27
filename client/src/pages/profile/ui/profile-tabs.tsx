@@ -1,13 +1,10 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, Eye } from "lucide-react";
-import { Progress } from "@radix-ui/react-progress";
 import { Badge } from "@/components/ui/badge";
 
 const recentTests = [
   {
     type: "Dinleme Sınavı",
-    score: 85,
     level: "A2",
     date: "20 Aralık 2024",
     questions: 50,
@@ -15,7 +12,6 @@ const recentTests = [
   },
   {
     type: "Okuma Sınavı",
-    score: 78,
     level: "A2",
     date: "17 Aralık 2024",
     questions: 40,
@@ -23,7 +19,6 @@ const recentTests = [
   },
   {
     type: "Türkçe Yeterlilik Sınavı",
-    score: 82,
     level: "A2",
     date: "15 Aralık 2024",
     questions: 100,
@@ -33,55 +28,58 @@ const recentTests = [
 
 const ProfileTabs = () => {
   return (
-    <div>
-      <Card className="border-red-100 hover:border-red-200  transition-all duration-300">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-red-600" />
-            Son Sınav Performansı
+    <div className="max-w-7xl mx-auto">
+      <div className="bg-white shadow-lg rounded-xl border-0 ">
+        <CardHeader className="bg-gradient-to-r from-red-50 to-red-100 rounded-t-xl">
+          <CardTitle className="flex items-center gap-3 text-xl">
+            <TrendingUp className="w-6 h-6 text-red-500" />
+            <span className="text-gray-800 py-2">Son Sınav Performansı</span>
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
+
+        <CardContent className="p-6">
+          <div className="space-y-6">
             {recentTests.map((test, index) => (
               <div
                 key={index}
-                className="p-4 border border-red-100 rounded-lg hover:shadow-md transition-all duration-300 group"
+                className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300"
               >
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-1 group-hover:text-red-700 transition-colors">
-                      {test.type}
-                    </h4>
-                    <div className="flex items-center gap-4 text-sm text-gray-600">
-                      <span>{test.date}</span>
-                      <span>•</span>
-                      <span>{test.questions} soru</span>
-                      <span>•</span>
-                      <span>{test.duration}</span>
+                <div className="p-5">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-2">
+                      <h4 className="text-lg font-semibold text-gray-800 hover:text-red-600 transition-colors">
+                        {test.type}
+                      </h4>
+                      <div className="flex items-center gap-3 text-sm text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <span>📅</span> {test.date}
+                        </span>
+                        <span>•</span>
+                        <span className="flex items-center gap-1">
+                          <span>❓</span> {test.questions} soru
+                        </span>
+                        <span>•</span>
+                        <span className="flex items-center gap-1">
+                          <span>⏱️</span> {test.duration}
+                        </span>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-gray-900 mb-1">
-                      {test.score}
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Badge className="bg-red-100 text-red-800 border border-red-200">
-                        {test.level}
-                      </Badge>
-                      <div className="w-px h-4 bg-gray-300"></div>
-                      <Eye className="w-4 h-4 text-gray-500 cursor-pointer hover:text-red-600" />
+                    <div className="text-right flex flex-col items-end gap-2">
+                      <div className="flex items-center gap-3">
+                        <Badge className="bg-red-50 text-red-700 px-3 py-1 text-sm font-medium rounded-full">
+                          {test.level}
+                        </Badge>
+                        <Eye className="w-5 h-5 text-gray-400 hover:text-red-500 cursor-pointer transition-colors" />
+                      </div>
                     </div>
                   </div>
                 </div>
-                <Progress value={test.score} className="h-2" />
               </div>
             ))}
           </div>
         </CardContent>
-      </Card>
+      </div>
     </div>
   );
 };

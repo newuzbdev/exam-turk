@@ -48,7 +48,7 @@ const ProfileFriendList = () => {
   return (
     <div className="w-full h-fit">
       <Card
-        className="border-red-100 hover:border-red-200 transition-all duration-300"
+        className="border-red-100 hover:border-red-200 transition-all duration-300 mx-4"
         title="Friends"
       >
         <CardContent className="p-4">

@@ -1,5 +1,4 @@
 import ProfileHeader from "./ui/profile-header";
-import ProfileProgressOverview from "./ui/profile-progress-overview";
 import ProfileLevelProgression from "./ui/profile-level-progression";
 // import ProfileAchievements from "./ui/profile-achievements";
 import ProfileTabs from "./ui/profile-tabs";
@@ -13,7 +12,6 @@ export default function Component() {
         <ProfileHeader />
 
         {/* Progress Overview */}
-        <ProfileProgressOverview />
 
         {/* Level Progression */}
         <ProfileLevelProgression />

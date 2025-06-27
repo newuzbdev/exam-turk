@@ -1,5 +1,5 @@
 import Layout from "@/components/layout";
-import Home from "@/pages/Home";
+import Home from "@/pages/home/Home";
 import Price from "@/pages/price/price";
 import Profile from "@/pages/profile/profile";
 import { createBrowserRouter } from "react-router";

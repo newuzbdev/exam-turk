@@ -36,7 +36,7 @@ export default function Price() {
         </div>
 
         {/* Test Pricing Overview */}
-        <div className=" rounded-xl p-6 mb-12">
+        <div className="rounded-xl p-6 mb-12">
           <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">
             Bireysel Test Ücretleri
           </h3>
@@ -67,14 +67,15 @@ export default function Price() {
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Free Trial */}
-          <Card className="relative border-2 border-gray-200 hover:border-red-300 transition-colors flex flex-col">
-            <CardHeader className="text-center pb-4">
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+
+          <Card className="relative border-2 border-gray-200 hover:border-red-300 transition-colors">
+            <CardHeader className="text-center">
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto">
                 <CheckCircle className="w-6 h-6 text-green-600" />
               </div>
-              <CardTitle className="text-xl font-bold">
+              <CardTitle className="text-xl font-bold mt-4">
                 Başlangıç Deneme
               </CardTitle>
               <CardDescription className="text-sm">
@@ -82,20 +83,21 @@ export default function Price() {
                 mükemmel
               </CardDescription>
             </CardHeader>
-            <CardContent className="text-center flex-grow">
-              <div className="mb-4">
-                <span className="text-sm text-gray-600">Birim dahil: </span>
+
+            <CardContent className="text-center">
+              <div className="flex justify-center items-center gap-2">
+                <span className="text-sm text-gray-600">Birim dahil:</span>
                 <span className="text-lg font-bold text-yellow-600">8U</span>
               </div>
-              <div className="text-3xl font-bold text-gray-900 mb-2">
+              <div className="text-3xl font-bold text-gray-900 mt-4">
                 Ücretsiz
               </div>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 mt-2">
                 İlk kayıt olduğunuzda bonus birimler kazanın
               </p>
             </CardContent>
 
-            <CardFooter className="mt-auto">
+            <CardFooter>
               <Button className="bg-red-600 hover:bg-red-700 text-white w-full">
                 Ücretsiz Bonusu Al
               </Button>
@@ -103,32 +105,34 @@ export default function Price() {
           </Card>
 
           {/* One Shot */}
-          <Card className="relative border-2 border-gray-200 hover:border-red-300 transition-colors flex flex-col">
-            <CardHeader className="text-center pb-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+
+          <Card className="relative border-2 border-gray-200 hover:border-red-300 transition-colors">
+            <CardHeader className="text-center">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
                 <Target className="w-6 h-6 text-blue-600" />
               </div>
-              <CardTitle className="text-xl font-bold">
+              <CardTitle className="text-xl font-bold mt-4">
                 Hızlı Değerlendirme
               </CardTitle>
               <CardDescription className="text-sm">
                 Hedefli pratik testlerle tahmini puanınızı alın
               </CardDescription>
             </CardHeader>
-            <CardContent className="text-center flex-grow">
-              <div className="mb-4">
-                <span className="text-sm text-gray-600">Birim dahil: </span>
+
+            <CardContent className="text-center">
+              <div className="flex justify-center items-center gap-2">
+                <span className="text-sm text-gray-600">Birim dahil:</span>
                 <span className="text-lg font-bold text-yellow-600">15U</span>
               </div>
-              <div className="text-3xl font-bold text-gray-900 mb-2">
+              <div className="text-3xl font-bold text-gray-900 mt-4">
                 25.000 TL
               </div>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 mt-2">
                 Bir kapsamlı sınav veya birden fazla odaklı bölüm için ideal
               </p>
             </CardContent>
 
-            <CardFooter className="mt-auto">
+            <CardFooter>
               <Button className="bg-red-600 hover:bg-red-700 text-white w-full">
                 15U Paketi Satın Al
               </Button>
@@ -136,35 +140,37 @@ export default function Price() {
           </Card>
 
           {/* Quick Preparation */}
-          <Card className="relative border-2 border-red-300 hover:border-red-400 transition-colors flex flex-col">
+          <Card className="relative border-2 border-red-300 hover:border-red-400 transition-colors">
             <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-red-600 text-white">
               En Popüler
             </Badge>
-            <CardHeader className="text-center pb-4 pt-6">
-              <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-3">
+
+            <CardHeader className="text-center">
+              <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mx-auto">
                 <Zap className="w-6 h-6 text-yellow-600" />
               </div>
-              <CardTitle className="text-xl font-bold">
+              <CardTitle className="text-xl font-bold mt-4">
                 Yoğun Hazırlık ⚡
               </CardTitle>
               <CardDescription className="text-sm">
                 6-8 tam sınav veya odaklı beceri pratiği için mükemmel
               </CardDescription>
             </CardHeader>
-            <CardContent className="text-center flex-grow">
-              <div className="mb-4">
-                <span className="text-sm text-gray-600">Birim dahil: </span>
+
+            <CardContent className="text-center">
+              <div className="flex justify-center items-center gap-2">
+                <span className="text-sm text-gray-600">Birim dahil:</span>
                 <span className="text-lg font-bold text-yellow-600">50U</span>
               </div>
-              <div className="text-3xl font-bold text-gray-900 mb-2">
+              <div className="text-3xl font-bold text-gray-900 mt-4">
                 75.000 TL
               </div>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 mt-2">
                 Ciddi sınav adayları için kapsamlı hazırlık
               </p>
             </CardContent>
 
-            <CardFooter className="mt-auto">
+            <CardFooter>
               <Button className="bg-red-600 hover:bg-red-700 text-white w-full">
                 50U Paketi Satın Al
               </Button>
@@ -172,32 +178,34 @@ export default function Price() {
           </Card>
 
           {/* Full Practice */}
-          <Card className="relative border-2 border-gray-200 hover:border-red-300 transition-colors flex flex-col">
-            <CardHeader className="text-center pb-4">
-              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
+
+          <Card className="relative border-2 border-gray-200 hover:border-red-300 transition-colors">
+            <CardHeader className="text-center">
+              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto">
                 <Trophy className="w-6 h-6 text-purple-600" />
               </div>
-              <CardTitle className="text-xl font-bold">
+              <CardTitle className="text-xl font-bold mt-4">
                 Uzman Paketi ✨
               </CardTitle>
               <CardDescription className="text-sm">
                 Sınırsız pratik fırsatlarıyla nihai hazırlık
               </CardDescription>
             </CardHeader>
-            <CardContent className="text-center flex-grow">
-              <div className="mb-4">
-                <span className="text-sm text-gray-600">Birim dahil: </span>
+
+            <CardContent className="text-center">
+              <div className="flex justify-center items-center gap-2">
+                <span className="text-sm text-gray-600">Birim dahil:</span>
                 <span className="text-lg font-bold text-yellow-600">120U</span>
               </div>
-              <div className="text-3xl font-bold text-gray-900 mb-2">
+              <div className="text-3xl font-bold text-gray-900 mt-4">
                 150.000 TL
               </div>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 mt-2">
                 Maksimum puan artışı için tam hakimiyet paketi
               </p>
             </CardContent>
 
-            <CardFooter className="mt-auto">
+            <CardFooter>
               <Button className="bg-red-600 hover:bg-red-700 text-white w-full">
                 120U Paketi Satın Al
               </Button>

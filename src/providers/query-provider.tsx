@@ -1,39 +1,38 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
-import type { PropsWithChildren } from "react";
-import { persistQueryClient } from "@tanstack/react-query-persist-client";
+import { useState, type ReactNode } from "react";
 
-const localStoragePersister = createSyncStoragePersister({
-  storage: window.localStorage,
-});
+interface QueryProviderProps {
+  children: ReactNode;
+}
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 5,
-      gcTime: 1000 * 5,
-      refetchOnWindowFocus: true,
-      refetchOnReconnect: true,
-      refetchInterval: 1000 * 45,
-      refetchIntervalInBackground: true,
-      retry: 2,
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-    },
-    mutations: {
-      retry: 2,
-      retryDelay: 1000,
-    },
-  },
-});
+export const QueryProvider = ({ children }: QueryProviderProps) => {
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 60 * 1000, // 1 minute
+            gcTime: 5 * 60 * 1000, // 5 minutes
+            retry: (failureCount, error: any) => {
+              // Don't retry on 401/403 errors
+              if (error?.status === 401 || error?.status === 403) {
+                return false;
+              }
+              return failureCount < 3;
+            },
+          },
+          mutations: {
+            retry: false,
+          },
+        },
+      })
+  );
 
-persistQueryClient({
-  queryClient,
-  persister: localStoragePersister,
-  maxAge: 1000 * 60 * 60 * 24,
-});
-
-export const QueryProvider = ({ children }: PropsWithChildren) => {
   return (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      {children}
+      {process.env.NODE_ENV === "development" && null}
+    </QueryClientProvider>
   );
 };

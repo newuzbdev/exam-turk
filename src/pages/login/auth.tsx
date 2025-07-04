@@ -9,18 +9,10 @@ const AuthCallback = () => {
 
   useEffect(() => {
     const authStatus = searchParams.get("auth");
-
     if (authStatus === "success") {
-      // Invalidate and refetch user data
       queryClient.invalidateQueries({ queryKey: ["currentUser"] });
-
-      // Show success message (optional)
-      console.log("Authentication successful!");
-
-      // Redirect to home or dashboard
       navigate("/", { replace: true });
     } else if (authStatus === "error") {
-      // Handle authentication error
       console.error("Authentication failed");
       navigate("/", { replace: true });
     }

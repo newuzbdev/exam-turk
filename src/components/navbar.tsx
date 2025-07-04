@@ -7,9 +7,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-
 import { Menu } from "lucide-react";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -18,6 +16,7 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
+import { useCurrentUser } from "@/config/query/user";
 
 const grammarLevels = [
   {
@@ -47,20 +46,19 @@ const grammarLevels = [
   },
 ];
 
+const loginWithGoogle = () => {
+  window.location.href = `${import.meta.env.VITE_API_URL}/api/auth/google`;
+};
+
 const Navbar = () => {
+  const { data: user } = useCurrentUser();
+
   return (
     <nav className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50 shadow-sm w-full">
       <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
         <div className="flex justify-between items-center h-16 sm:h-20">
           <div className="flex items-center">
-            {/* <NavLink
-              to="/"
-              className="text-2xl sm:text-3xl font-bold text-red-600"
-            >
-              TürkTest
-            </NavLink> */}
-
-            <img src="/turk-test.png" alt="logo" className="h-14 w-auto" />
+            {/* <img src="/turk-test.png" alt="logo" className="h-14 w-auto" /> */}
           </div>
 
           <div className="hidden lg:block">
@@ -135,25 +133,14 @@ const Navbar = () => {
               <span className="text-gray-600">Bakiye: </span>
               <span className="font-semibold text-yellow-600">15U</span>
             </div>
+            {user ? (
+              "Loading..."
+            ) : user ? (
+              <div>Hello, {user.displayName}</div>
+            ) : (
+              <Button onClick={loginWithGoogle}>Login with Google</Button>
+            )}
 
-            <NavLink
-              to="/profile"
-              className="flex items-center space-x-2 cursor-pointer"
-            >
-              <Avatar className="h-8 w-8 sm:h-8 sm:w-8 rounded-full overflow-hidden">
-                <AvatarImage src="" />
-                <AvatarFallback>
-                  <img
-                    src="https://api.dicebear.com/7.x/bo"
-                    alt="Avatar"
-                    className="w-full h-full object-cover rounded-full bg-red-700"
-                  />
-                </AvatarFallback>
-              </Avatar>
-              <span className="text-xs sm:text-sm font-medium text-gray-700 hidden sm:block">
-                JAXONGIRMIRZO OCHILOV
-              </span>
-            </NavLink>
             <div className="hidden sm:flex space-x-2">
               <a
                 href="https://t.me/new_uzb_dev"

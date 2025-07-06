@@ -16,7 +16,6 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
-import { useCurrentUser } from "@/config/query/user";
 
 const grammarLevels = [
   {
@@ -46,19 +45,13 @@ const grammarLevels = [
   },
 ];
 
-const loginWithGoogle = () => {
-  window.location.href = `${import.meta.env.VITE_API_URL}/api/auth/google`;
-};
-
 const Navbar = () => {
-  const { data: user } = useCurrentUser();
-
   return (
     <nav className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50 shadow-sm w-full">
       <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
         <div className="flex justify-between items-center h-16 sm:h-20">
           <div className="flex items-center">
-            {/* <img src="/turk-test.png" alt="logo" className="h-14 w-auto" /> */}
+            <img src="/turk-test.png" alt="logo" className="h-14 w-auto" />
           </div>
 
           <div className="hidden lg:block">
@@ -133,13 +126,6 @@ const Navbar = () => {
               <span className="text-gray-600">Bakiye: </span>
               <span className="font-semibold text-yellow-600">15U</span>
             </div>
-            {user ? (
-              "Loading..."
-            ) : user ? (
-              <div>Hello, {user.displayName}</div>
-            ) : (
-              <Button onClick={loginWithGoogle}>Login with Google</Button>
-            )}
 
             <div className="hidden sm:flex space-x-2">
               <a

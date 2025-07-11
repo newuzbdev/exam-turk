@@ -7,9 +7,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-
 import { Menu } from "lucide-react";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -53,12 +51,7 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
         <div className="flex justify-between items-center h-16 sm:h-20">
           <div className="flex items-center">
-            <NavLink
-              to="/"
-              className="text-2xl sm:text-3xl font-bold text-red-600"
-            >
-              TürkTest
-            </NavLink>
+            <img src="/turk-test.png" alt="logo" className="h-14 w-auto" />
           </div>
 
           <div className="hidden lg:block">
@@ -134,24 +127,6 @@ const Navbar = () => {
               <span className="font-semibold text-yellow-600">15U</span>
             </div>
 
-            <NavLink
-              to="/profile"
-              className="flex items-center space-x-2 cursor-pointer"
-            >
-              <Avatar className="h-8 w-8 sm:h-8 sm:w-8 rounded-full overflow-hidden">
-                <AvatarImage src="" />
-                <AvatarFallback>
-                  <img
-                    src="https://api.dicebear.com/7.x/bo"
-                    alt="Avatar"
-                    className="w-full h-full object-cover rounded-full bg-red-700"
-                  />
-                </AvatarFallback>
-              </Avatar>
-              <span className="text-xs sm:text-sm font-medium text-gray-700 hidden sm:block">
-                JAXONGIRMIRZO OCHILOV
-              </span>
-            </NavLink>
             <div className="hidden sm:flex space-x-2">
               <a
                 href="https://t.me/new_uzb_dev"

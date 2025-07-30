@@ -7,7 +7,9 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Menu } from "lucide-react";
+import { Menu, User, LogOut } from "lucide-react";
+import { useState, useEffect } from "react";
+import axiosPrivate from "@/config/api";
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -46,6 +48,38 @@ const grammarLevels = [
 ];
 
 const Navbar = () => {
+  const [user, setUser] = useState<{ userName: string; name: string } | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = localStorage.getItem("accessToken");
+      if (token) {
+        try {
+          const response = await axiosPrivate.get("/api/auth/me");
+          if (response.data) {
+            setUser(response.data);
+            setIsAuthenticated(true);
+          }
+        } catch (error) {
+          // Token is invalid, remove it
+          localStorage.removeItem("accessToken");
+          setIsAuthenticated(false);
+          setUser(null);
+        }
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem("accessToken");
+    setIsAuthenticated(false);
+    setUser(null);
+    window.location.href = "/";
+  };
+
   return (
     <nav className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50 shadow-sm w-full">
       <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
@@ -122,6 +156,38 @@ const Navbar = () => {
           </div>
 
           <div className="flex items-center space-x-2 sm:space-x-4">
+            {/* Authentication buttons or user info */}
+            {isAuthenticated && user ? (
+              <div className="hidden sm:flex items-center space-x-2">
+                <div className="flex items-center space-x-2 text-sm">
+                  <User className="h-4 w-4 text-gray-600" />
+                  <span className="text-gray-900 font-medium">@{user.userName}</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleLogout}
+                  className="text-gray-600 hover:text-red-600"
+                >
+                  <LogOut className="h-4 w-4 mr-1" />
+                  Çıkış
+                </Button>
+              </div>
+            ) : (
+              <div className="hidden sm:flex space-x-2">
+                <NavLink to="/login">
+                  <Button variant="ghost" className="text-gray-600 hover:text-red-600">
+                    Giriş Yap
+                  </Button>
+                </NavLink>
+                <NavLink to="/signup">
+                  <Button className="bg-red-600 hover:bg-red-700 text-white">
+                    Kayıt Ol
+                  </Button>
+                </NavLink>
+              </div>
+            )}
+
             <div className="text-xs sm:text-sm hidden sm:block">
               <span className="text-gray-600">Bakiye: </span>
               <span className="font-semibold text-yellow-600">15U</span>
@@ -162,6 +228,37 @@ const Navbar = () => {
                     <SheetTitle>Menu</SheetTitle>
                   </SheetHeader>
                   <div className="flex flex-col space-y-3 mt-6">
+                    {/* Mobile Authentication */}
+                    {isAuthenticated && user ? (
+                      <div className="px-3 py-2 border-b">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <User className="h-4 w-4 text-gray-600" />
+                          <span className="text-gray-900 font-medium">@{user.userName}</span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          onClick={handleLogout}
+                          className="w-full text-gray-600 hover:text-red-600"
+                        >
+                          <LogOut className="h-4 w-4 mr-2" />
+                          Çıkış Yap
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex space-x-2 px-3 py-2">
+                        <NavLink to="/login" className="flex-1">
+                          <Button variant="ghost" className="w-full text-gray-600 hover:text-red-600">
+                            Giriş Yap
+                          </Button>
+                        </NavLink>
+                        <NavLink to="/signup" className="flex-1">
+                          <Button className="w-full bg-red-600 hover:bg-red-700 text-white">
+                            Kayıt Ol
+                          </Button>
+                        </NavLink>
+                      </div>
+                    )}
+
                     <div className="space-y-3">
                       {grammarLevels.map((level) => (
                         <NavLink

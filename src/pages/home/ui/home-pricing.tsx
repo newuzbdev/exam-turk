@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -37,10 +36,10 @@ const HomePricing = () => {
                 <CardTitle className="text-xl font-bold">
                   Başlangıç Deneme
                 </CardTitle>
-                <CardDescription className="text-sm">
+                <div className="text-sm">
                   Platformumuzu deneyimlemek isteyen yeni kullanıcılar için
                   mükemmel
-                </CardDescription>
+                </div>
               </CardHeader>
 
               <CardContent className="text-center flex-1 flex flex-col justify-between">
@@ -75,9 +74,9 @@ const HomePricing = () => {
                 <CardTitle className="text-xl font-bold">
                   Hızlı Değerlendirme
                 </CardTitle>
-                <CardDescription className="text-sm">
+                <div className="text-sm">
                   Hedefli pratik testlerle tahmini puanınızı alın
-                </CardDescription>
+                </div>
               </CardHeader>
 
               <CardContent className="text-center flex-1 flex flex-col justify-between">
@@ -115,9 +114,9 @@ const HomePricing = () => {
                 <CardTitle className="text-xl font-bold">
                   Yoğun Hazırlık ⚡
                 </CardTitle>
-                <CardDescription className="text-sm">
+                <div className="text-sm">
                   6-8 tam sınav veya odaklı beceri pratiği için mükemmel
-                </CardDescription>
+                </div>
               </CardHeader>
 
               <CardContent className="flex-1 flex flex-col justify-between">

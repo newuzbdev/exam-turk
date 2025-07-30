@@ -175,14 +175,14 @@ const SignUp = () => {
 
       <div className="w-full max-w-sm relative z-10">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">
+          <h1 className="text-4xl font-bold text-white mb-2">
             {step === "form"
               ? "Kayıt Ol"
               : step === "otp"
               ? "Kodu Girin"
               : "Hesabınızı Tamamlayın"}
           </h1>
-          <p className="text-white text-base">
+          <p className="text-white text-2xl">
             {step === "form"
               ? "Hızlı ve kolay hesap oluşturun"
               : step === "otp"

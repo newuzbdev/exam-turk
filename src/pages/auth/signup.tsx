@@ -1,11 +1,13 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
 import { REGEXP_ONLY_DIGITS_AND_CHARS } from "input-otp";
-import { Label } from "@/components/ui/label";
-import { Phone, User, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { NavLink } from "react-router";
 import axiosPrivate from "@/config/api";
 import { toast } from "sonner";
@@ -47,7 +49,7 @@ const SignUp = () => {
   }, [timer]);
 
   const startTimer = () => {
-    setTimer(60); // 1 minute
+    setTimer(60);
     setCanResend(false);
   };
 
@@ -56,27 +58,24 @@ const SignUp = () => {
     setLoading(true);
 
     try {
-      // Ensure phone number has 998 prefix (without +)
       let phoneWithPrefix = formData.phone.trim();
       if (phoneWithPrefix.startsWith("+998")) {
-        // Remove + and keep 998 prefix
         phoneWithPrefix = phoneWithPrefix.substring(1);
       } else if (phoneWithPrefix.startsWith("998")) {
-        // Already has 998 prefix
         phoneWithPrefix = phoneWithPrefix;
       } else {
-        // No prefix at all
         phoneWithPrefix = `998${phoneWithPrefix}`;
       }
 
       await axiosPrivate.post("/api/otp/send", {
         phone: phoneWithPrefix,
-        name: formData.name
+        name: formData.name,
       });
       toast.success("OTP kodu gönderildi");
       setStep("otp");
-      startTimer(); // Start the 1-minute timer
+      startTimer();
     } catch (error: any) {
+      console.error("OTP send error:", error);
       toast.error(error.response?.data?.message || "OTP gönderilemedi");
     } finally {
       setLoading(false);
@@ -88,16 +87,12 @@ const SignUp = () => {
     setLoading(true);
 
     try {
-      // Ensure phone number has 998 prefix (without +) and ensure code is string
       let phoneWithPrefix = formData.phone.trim();
       if (phoneWithPrefix.startsWith("+998")) {
-        // Remove + and keep 998 prefix
         phoneWithPrefix = phoneWithPrefix.substring(1);
       } else if (phoneWithPrefix.startsWith("998")) {
-        // Already has 998 prefix
         phoneWithPrefix = phoneWithPrefix;
       } else {
-        // No prefix at all
         phoneWithPrefix = `998${phoneWithPrefix}`;
       }
 
@@ -105,35 +100,23 @@ const SignUp = () => {
         phoneNumber: phoneWithPrefix,
         code: otp.toString(),
         name: formData.name,
-        isSignUp: true
+        isSignUp: true,
       });
 
-      console.log("OTP Verify Response:", response); // Debug log
-      console.log("Response status:", response.status); // Debug log
-      console.log("Response data:", response.data); // Debug log
-
-      // Check if OTP verification was successful
-      if (response.data.message === "Kod muvaffaqiyatli tasdiqlandi" ||
-          response.data.message?.includes("tasdiqlandi") ||
-          response.status === 200 ||
-          response.status === 201) {
-        // OTP verified successfully, move to registration step
-        console.log("OTP verification successful, moving to register step");
+      if (
+        response.data.message === "Kod muvaffaqiyatli tasdiqlandi" ||
+        response.data.message?.includes("tasdiqlandi") ||
+        response.status === 200 ||
+        response.status === 201
+      ) {
         setRegistrationData({
           ...registrationData,
           name: formData.name,
           phoneNumber: phoneWithPrefix,
         });
         toast.success("OTP doğrulandı");
-        console.log("Setting step to register"); // Debug log
-        console.log("Registration data will be:", {
-          ...registrationData,
-          name: formData.name,
-          phoneNumber: phoneWithPrefix,
-        });
         setStep("register");
       } else {
-        console.log("OTP verification failed or unexpected response");
         toast.error("OTP doğrulanamadı");
       }
     } catch (error: any) {
@@ -148,14 +131,29 @@ const SignUp = () => {
     setLoading(true);
 
     try {
-      const response = await axiosPrivate.post("/api/user/register", registrationData);
+      const registrationPayload = {
+        name: registrationData.name,
+        password: registrationData.password,
+        phoneNumber: registrationData.phoneNumber,
+        userName: registrationData.userName,
+        avatarUrl: registrationData.avatarUrl || "",
+      };
+
+      const response = await axiosPrivate.post(
+        "/api/user/register",
+        registrationPayload
+      );
 
       if (response.data.accessToken) {
         localStorage.setItem("accessToken", response.data.accessToken);
         toast.success("Kayıt başarılı");
         window.location.href = "/";
+      } else if (response.status === 200 || response.status === 201) {
+        toast.success("Kayıt başarılı");
+        window.location.href = "/login";
       }
     } catch (error: any) {
+      console.error("Registration error:", error);
       toast.error(error.response?.data?.message || "Kayıt başarısız");
     } finally {
       setLoading(false);
@@ -163,88 +161,71 @@ const SignUp = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md bg-white rounded-lg border p-6">
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            {step === "form" ? "Kayıt Ol" : step === "otp" ? "OTP Doğrulama" : "Kullanıcı Bilgileri"}
-          </h1>
-          <p className="text-gray-600">
+    <div
+      className="min-h-screen flex items-center justify-center px-4 relative"
+      style={{
+        backgroundImage: `url('https://images.unsplash.com/photo-1524231757912-21f4fe3a7200?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0')`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}
+    >
+      {/* Overlay */}
+      <div className="absolute inset-0 bg-black/25"></div>
+
+      <div className="w-full max-w-sm relative z-10">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-white mb-2">
             {step === "form"
-              ? "Hesap oluşturmak için bilgilerinizi girin"
+              ? "Kayıt Ol"
               : step === "otp"
-              ? "Size gönderilen 4 haneli kodu girin"
-              : "Hesabınızı tamamlamak için bilgilerinizi girin"
-            }
+              ? "Kodu Girin"
+              : "Hesabınızı Tamamlayın"}
+          </h1>
+          <p className="text-white text-base">
+            {step === "form"
+              ? "Hızlı ve kolay hesap oluşturun"
+              : step === "otp"
+              ? "Telefon numaranıza gönderilen kodu girin"
+              : "Son adım! Hesabınızı tamamlayın"}
           </p>
-          {/* Debug info */}
-          <p className="text-xs text-gray-400 mt-2">Current step: {step}</p>
-          <p className="text-xs text-gray-400">Registration data: {JSON.stringify(registrationData)}</p>
-          {/* Debug buttons */}
-          <div className="flex gap-2 justify-center mt-2">
-            {step === "otp" && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  console.log("Manual step change to register");
-                  setStep("register");
-                }}
-                className="text-xs"
-              >
-                Debug: Go to Register
-              </Button>
-            )}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => console.log("Current step:", step, "Registration data:", registrationData)}
-              className="text-xs"
-            >
-              Debug: Log State
-            </Button>
-          </div>
         </div>
 
-        <div>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
           {step === "form" ? (
             <form onSubmit={handleFormSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="name">Ad Soyad</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="name"
-                    type="text"
-                    placeholder="Adınız Soyadınız"
-                    value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    className="pl-10"
-                    required
-                  />
-                </div>
+                <Input
+                  type="text"
+                  placeholder="Ad Soyad"
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
+                  className="h-11 border-gray-200 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                  required
+                />
               </div>
-              
+
               <div>
-                <Label htmlFor="phone">Telefon Numarası</Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="+998901234567"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                    className="pl-10"
-                    required
-                  />
-                </div>
+                <Input
+                  type="tel"
+                  placeholder="Telefon numarası"
+                  value={formData.phone}
+                  onChange={(e) =>
+                    setFormData({ ...formData, phone: e.target.value })
+                  }
+                  className="h-11 border-gray-200 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                  required
+                />
               </div>
-              
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Gönderiliyor..." : "OTP Gönder"}
+
+              <Button
+                type="submit"
+                className="w-full h-11 bg-red-600 hover:bg-red-700 text-white font-medium"
+                disabled={loading}
+              >
+                {loading ? "Gönderiliyor..." : "Devam Et"}
               </Button>
             </form>
           ) : step === "otp" ? (
@@ -253,48 +234,70 @@ const SignUp = () => {
                 type="button"
                 variant="ghost"
                 onClick={() => setStep("form")}
-                className="mb-4"
+                className="mb-4 p-0 h-auto text-gray-600 hover:text-red-600"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Geri Dön
               </Button>
 
-              <div className="space-y-2">
-                <Label className="text-center block">OTP Kodu</Label>
-                <div className="flex justify-center">
+              <div className="text-center">
+                <p className="text-sm text-gray-600 mb-6">
+                  {formData.phone.startsWith("+")
+                    ? formData.phone
+                    : formData.phone.startsWith("998")
+                    ? `+${formData.phone}`
+                    : `+998${formData.phone}`}{" "}
+                  numarasına gönderilen kodu girin
+                </p>
+
+                <div className="flex justify-center mb-6">
                   <InputOTP
                     maxLength={4}
                     pattern={REGEXP_ONLY_DIGITS_AND_CHARS}
                     value={otp}
                     onChange={(value) => setOtp(value)}
                   >
-                    <InputOTPGroup>
-                      <InputOTPSlot index={0} />
-                      <InputOTPSlot index={1} />
-                      <InputOTPSlot index={2} />
-                      <InputOTPSlot index={3} />
+                    <InputOTPGroup className="gap-2">
+                      <InputOTPSlot
+                        index={0}
+                        className="w-12 h-12 text-lg font-semibold border-gray-200 focus:border-red-500"
+                      />
+                      <InputOTPSlot
+                        index={1}
+                        className="w-12 h-12 text-lg font-semibold border-gray-200 focus:border-red-500"
+                      />
+                      <InputOTPSlot
+                        index={2}
+                        className="w-12 h-12 text-lg font-semibold border-gray-200 focus:border-red-500"
+                      />
+                      <InputOTPSlot
+                        index={3}
+                        className="w-12 h-12 text-lg font-semibold border-gray-200 focus:border-red-500"
+                      />
                     </InputOTPGroup>
                   </InputOTP>
                 </div>
-                <p className="text-sm text-gray-500 text-center">
-                  {formData.phone.startsWith("+") ? formData.phone : formData.phone.startsWith("998") ? `+${formData.phone}` : `+998${formData.phone}`} numarasına gönderilen 4 haneli kodu girin
-                </p>
               </div>
 
-              <Button type="submit" className="w-full" disabled={loading || otp.length !== 4}>
+              <Button
+                type="submit"
+                className="w-full h-11 bg-red-600 hover:bg-red-700 text-white font-medium"
+                disabled={loading || otp.length !== 4}
+              >
                 {loading ? "Doğrulanıyor..." : "Doğrula"}
               </Button>
 
               <div className="text-center">
                 {timer > 0 ? (
                   <p className="text-sm text-gray-500">
-                    Tekrar gönder: {Math.floor(timer / 60)}:{(timer % 60).toString().padStart(2, '0')}
+                    Tekrar gönder: {Math.floor(timer / 60)}:
+                    {(timer % 60).toString().padStart(2, "0")}
                   </p>
                 ) : (
                   <Button
                     type="button"
-                    variant="outline"
-                    className="w-full"
+                    variant="ghost"
+                    className="text-red-600 hover:text-red-700 p-0 h-auto"
                     onClick={() => handleFormSubmit()}
                     disabled={loading || !canResend}
                   >
@@ -309,113 +312,92 @@ const SignUp = () => {
                 type="button"
                 variant="ghost"
                 onClick={() => setStep("otp")}
-                className="mb-4"
+                className="mb-4 p-0 h-auto text-gray-600 hover:text-red-600"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Geri Dön
               </Button>
 
-              {/* Name field */}
               <div>
-                <Label htmlFor="regName">Ad Soyad</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="regName"
-                    type="text"
-                    placeholder="Adınız Soyadınız"
-                    value={registrationData.name}
-                    onChange={(e) => setRegistrationData({...registrationData, name: e.target.value})}
-                    className="pl-10"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Username field */}
-              <div>
-                <Label htmlFor="userName">Kullanıcı Adı</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="userName"
-                    type="text"
-                    placeholder="kullaniciadi"
-                    value={registrationData.userName}
-                    onChange={(e) => setRegistrationData({...registrationData, userName: e.target.value})}
-                    className="pl-10"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Phone Number field (readonly) */}
-              <div>
-                <Label htmlFor="phoneNumber">Telefon Numarası</Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="phoneNumber"
-                    type="tel"
-                    placeholder="998901234567"
-                    value={registrationData.phoneNumber}
-                    onChange={(e) => setRegistrationData({...registrationData, phoneNumber: e.target.value})}
-                    className="pl-10"
-                    required
-                    readOnly
-                  />
-                </div>
-              </div>
-
-              {/* Password field */}
-              <div>
-                <Label htmlFor="password">Şifre</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Şifrenizi girin"
-                    value={registrationData.password}
-                    onChange={(e) => setRegistrationData({...registrationData, password: e.target.value})}
-                    className="pr-10"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3 h-4 w-4 text-gray-400"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Avatar URL field */}
-              <div>
-                <Label htmlFor="avatarUrl">Avatar URL (İsteğe bağlı)</Label>
                 <Input
-                  id="avatarUrl"
-                  type="url"
-                  placeholder="https://example.com/avatar.jpg"
-                  value={registrationData.avatarUrl}
-                  onChange={(e) => setRegistrationData({...registrationData, avatarUrl: e.target.value})}
+                  type="text"
+                  placeholder="Ad Soyad"
+                  value={registrationData.name}
+                  onChange={(e) =>
+                    setRegistrationData({
+                      ...registrationData,
+                      name: e.target.value,
+                    })
+                  }
+                  className="h-11 border-gray-200 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                  required
                 />
               </div>
 
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Kayıt Oluşturuluyor..." : "Hesap Oluştur"}
+              <div>
+                <Input
+                  type="text"
+                  placeholder="Kullanıcı adı"
+                  value={registrationData.userName}
+                  onChange={(e) =>
+                    setRegistrationData({
+                      ...registrationData,
+                      userName: e.target.value,
+                    })
+                  }
+                  className="h-11 border-gray-200 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                  required
+                />
+              </div>
+
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Şifre"
+                  value={registrationData.password}
+                  onChange={(e) =>
+                    setRegistrationData({
+                      ...registrationData,
+                      password: e.target.value,
+                    })
+                  }
+                  className="h-11 border-gray-200 focus:border-red-500 focus:ring-1 focus:ring-red-500 pr-10"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full h-11 bg-red-600 hover:bg-red-700 text-white font-medium"
+                disabled={loading}
+              >
+                {loading ? "Hesap Oluşturuluyor..." : "Hesap Oluştur"}
               </Button>
             </form>
           )}
-          
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              Zaten hesabınız var mı?{" "}
-              <NavLink to="/login" className="text-red-600 hover:underline">
-                Giriş Yap
-              </NavLink>
-            </p>
-          </div>
+        </div>
+
+        <div className="mt-6 text-center">
+          <p className="text-sm text-white">
+            Zaten hesabınız var mı?{" "}
+            <NavLink
+              to="/login"
+              className="text-red-600 hover:text-red-700 font-medium"
+            >
+              Giriş Yap
+            </NavLink>
+          </p>
         </div>
       </div>
     </div>

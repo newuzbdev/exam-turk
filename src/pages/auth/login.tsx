@@ -7,7 +7,7 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp";
 import { REGEXP_ONLY_DIGITS_AND_CHARS } from "input-otp";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { NavLink, useNavigate } from "react-router";
 import axiosPrivate from "@/config/api";
 import { toast } from "sonner";
@@ -15,12 +15,17 @@ import { toast } from "sonner";
 
 const Login = () => {
   const navigate = useNavigate();
-  const [step, setStep] = useState<"options" | "phone" | "otp">("options");
+  const [step, setStep] = useState<"options" | "phone" | "otp" | "login">("options");
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [timer, setTimer] = useState(0);
   const [canResend, setCanResend] = useState(false);
+  const [loginData, setLoginData] = useState({
+    name: "",
+    password: "",
+  });
+  const [showPassword, setShowPassword] = useState(false);
 
   // Phone number formatting function
   const formatPhoneNumber = (value: string) => {
@@ -168,6 +173,33 @@ const Login = () => {
     window.location.href = `${baseUrl}/api/auth/google/redirect?callback=${encodeURIComponent(callbackUrl)}`;
   };
 
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const response = await axiosPrivate.post("/api/user/login", {
+        name: loginData.name,
+        password: loginData.password,
+      });
+
+      if (response.data.accessToken) {
+        localStorage.setItem("accessToken", response.data.accessToken);
+        if (response.data.refreshToken) {
+          localStorage.setItem("refreshToken", response.data.refreshToken);
+        }
+        toast.success("Giriş başarılı");
+        navigate("/", { replace: true });
+      } else {
+        toast.error("Giriş başarısız");
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Giriş başarısız");
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
 
   const getTitle = () => {
@@ -178,6 +210,8 @@ const Login = () => {
         return "Telefon Numarası";
       case "otp":
         return "Kodu Girin";
+      case "login":
+        return "Giriş Yap";
       default:
         return "Giriş Yap";
     }
@@ -191,6 +225,8 @@ const Login = () => {
         return "Telefon numaranızı girin";
       case "otp":
         return "Size gönderilen kodu girin";
+      case "login":
+        return "Adınız ve şifreniz ile giriş yapın";
       default:
         return "";
     }
@@ -247,10 +283,31 @@ const Login = () => {
                 </div>
               </div>
 
+              {/* Login Form Button */}
+              <Button
+                onClick={() => setStep("login")}
+                className="w-full h-14 sm:h-16 lg:h-18 xl:h-20 bg-red-600 hover:bg-red-700 text-white font-medium text-sm sm:text-base lg:text-lg xl:text-xl"
+                disabled={loading}
+              >
+                {loading ? "Yükleniyor..." : "Ad ve Şifre ile Giriş Yap"}
+              </Button>
+
+              {/* Divider */}
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-gray-200" />
+                </div>
+                <div className="relative flex justify-center text-xs sm:text-sm lg:text-base uppercase">
+                  <span className="bg-white px-4 text-gray-500 font-medium">
+                    veya
+                  </span>
+                </div>
+              </div>
+
               {/* Phone Login Button */}
               <Button
                 onClick={() => setStep("phone")}
-                className="w-full h-14 sm:h-16 lg:h-18 xl:h-20 bg-red-600 hover:bg-red-700 text-white font-medium text-sm sm:text-base lg:text-lg xl:text-xl"
+                className="w-full h-14 sm:h-16 lg:h-18 xl:h-20 bg-gray-600 hover:bg-gray-700 text-white font-medium text-sm sm:text-base lg:text-lg xl:text-xl"
                 disabled={loading}
               >
                 {loading ? "Yükleniyor..." : "Telefon ile Giriş Yap"}
@@ -287,7 +344,7 @@ const Login = () => {
                 {loading ? "Gönderiliyor..." : "Devam Et"}
               </Button>
             </form>
-          ) : (
+          ) : step === "otp" ? (
             <form onSubmit={handleVerifyOtp} className="space-y-6 lg:space-y-8">
               <Button
                 type="button"
@@ -361,7 +418,64 @@ const Login = () => {
                 )}
               </div>
             </form>
-          )}
+          ) : step === "login" ? (
+            <form onSubmit={handleLogin} className="space-y-4 lg:space-y-6">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setStep("options")}
+                className="mb-4 p-0 h-auto text-gray-600 hover:text-red-600 text-sm sm:text-base lg:text-lg"
+              >
+                <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 mr-2" />
+                Geri Dön
+              </Button>
+
+              <div>
+                <Input
+                  type="text"
+                  placeholder="Adınız"
+                  value={loginData.name}
+                  onChange={(e) =>
+                    setLoginData({ ...loginData, name: e.target.value })
+                  }
+                  className="h-11 sm:h-12 lg:h-14 xl:h-16 border-gray-200 focus:border-red-500 focus:ring-1 focus:ring-red-500 text-sm sm:text-base lg:text-lg xl:text-xl"
+                  required
+                />
+              </div>
+
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Şifreniz"
+                  value={loginData.password}
+                  onChange={(e) =>
+                    setLoginData({ ...loginData, password: e.target.value })
+                  }
+                  className="h-11 sm:h-12 lg:h-14 xl:h-16 border-gray-200 focus:border-red-500 focus:ring-1 focus:ring-red-500 pr-10 sm:pr-12 lg:pr-14 text-sm sm:text-base lg:text-lg xl:text-xl"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 sm:right-4 lg:right-5 top-3 sm:top-3.5 lg:top-4 xl:top-5 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5 sm:h-6 sm:w-6 lg:h-7 lg:w-7" />
+                  ) : (
+                    <Eye className="h-5 w-5 sm:h-6 sm:w-6 lg:h-7 lg:w-7" />
+                  )}
+                </button>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full h-11 sm:h-12 lg:h-14 xl:h-16 bg-red-600 hover:bg-red-700 text-white font-medium text-sm sm:text-base lg:text-lg xl:text-xl"
+                disabled={loading}
+              >
+                {loading ? "Giriş yapılıyor..." : "Giriş Yap"}
+              </Button>
+            </form>
+          ) : null}
         </div>
 
         <div className="mt-6 lg:mt-8 text-center">

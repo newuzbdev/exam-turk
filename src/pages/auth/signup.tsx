@@ -159,8 +159,18 @@ const SignUp = () => {
       if (response.data.accessToken) {
         // User already exists, log them in directly
         localStorage.setItem("accessToken", response.data.accessToken);
+        if (response.data.refreshToken) {
+          localStorage.setItem("refreshToken", response.data.refreshToken);
+        }
         toast.success("Giriş başarılı! Kullanıcı zaten mevcut.");
         navigate("/", { replace: true });
+        return;
+      }
+
+      // Check if user exists but needs login (different response structure)
+      if (response.data.userExists || response.data.message?.includes("kullanıcı mevcut")) {
+        toast.info("Bu telefon numarası kayıtlı. Giriş sayfasına yönlendiriliyorsunuz.");
+        navigate("/login", { replace: true });
         return;
       }
 

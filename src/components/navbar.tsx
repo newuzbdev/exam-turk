@@ -1,4 +1,4 @@
-import { NavLink } from "react-router";
+import { NavLink, useNavigate } from "react-router";
 import { Button } from "./ui/button";
 import {
   Sheet,
@@ -18,6 +18,23 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const grammarLevels = [
   {
@@ -48,12 +65,15 @@ const grammarLevels = [
 ];
 
 const Navbar = () => {
+  const navigate = useNavigate();
   const [user, setUser] = useState<{ userName: string; name: string } | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem("accessToken");
+
       if (token) {
         try {
           const response = await axiosPrivate.get("/api/auth/me");
@@ -64,20 +84,34 @@ const Navbar = () => {
         } catch (error) {
           // Token is invalid, remove it
           localStorage.removeItem("accessToken");
+          localStorage.removeItem("refreshToken");
           setIsAuthenticated(false);
           setUser(null);
         }
+      } else {
+        setIsAuthenticated(false);
+        setUser(null);
       }
     };
 
     checkAuth();
   }, []);
 
-  const handleLogout = () => {
+  const handleLogoutClick = () => {
+    setShowLogoutDialog(true);
+  };
+
+  const handleLogoutConfirm = () => {
     localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
     setIsAuthenticated(false);
     setUser(null);
-    window.location.href = "/";
+    setShowLogoutDialog(false);
+    navigate("/", { replace: true });
+  };
+
+  const handleLogoutCancel = () => {
+    setShowLogoutDialog(false);
   };
 
   return (
@@ -159,19 +193,27 @@ const Navbar = () => {
             {/* Authentication buttons or user info */}
             {isAuthenticated && user ? (
               <div className="hidden sm:flex items-center space-x-2">
-                <div className="flex items-center space-x-2 text-sm">
-                  <User className="h-4 w-4 text-gray-600" />
-                  <span className="text-gray-900 font-medium">@{user.userName}</span>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleLogout}
-                  className="text-gray-600 hover:text-red-600"
-                >
-                  <LogOut className="h-4 w-4 mr-1" />
-                  Çıkış
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="flex items-center space-x-2 text-sm hover:bg-gray-100 cursor-pointer bg-white">
+                      <User className="h-4 w-4 text-gray-600" />
+                      <span className="text-gray-900 font-medium cursor-pointer">{user.name}</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem asChild>
+                      <NavLink to="/profile" className="flex items-center w-full cursor-pointer">
+                        <User className="h-4 w-4 mr-2" />
+                        Profil
+                      </NavLink>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogoutClick} className="text-red-600 focus:text-red-600 cursor-pointer">
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Çıkış
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             ) : (
               <div className="hidden sm:flex space-x-2">
@@ -231,18 +273,24 @@ const Navbar = () => {
                     {/* Mobile Authentication */}
                     {isAuthenticated && user ? (
                       <div className="px-3 py-2 border-b">
-                        <div className="flex items-center space-x-2 mb-2">
+                        <div className="flex items-center space-x-2 mb-3">
                           <User className="h-4 w-4 text-gray-600" />
-                          <span className="text-gray-900 font-medium">@{user.userName}</span>
+                          <span className="text-gray-900 font-medium">{user.name}</span>
                         </div>
-                        <Button
-                          variant="ghost"
-                          onClick={handleLogout}
-                          className="w-full text-gray-600 hover:text-red-600"
-                        >
-                          <LogOut className="h-4 w-4 mr-2" />
-                          Çıkış Yap
-                        </Button>
+                        <div className="space-y-2">
+                          <NavLink to="/profile" className="flex items-center w-full px-2 py-2 text-sm text-gray-600 hover:text-red-600 hover:bg-gray-50 rounded cursor-pointer">
+                            <User className="h-4 w-4 mr-2" />
+                            Profil
+                          </NavLink>
+                          <Button
+                            variant="ghost"
+                            onClick={handleLogoutClick}
+                            className="w-full text-left justify-start text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer"
+                          >
+                            <LogOut className="h-4 w-4 mr-2" />
+                            Çıkış Yap
+                          </Button>
+                        </div>
                       </div>
                     ) : (
                       <div className="flex space-x-2 px-3 py-2">
@@ -325,6 +373,24 @@ const Navbar = () => {
           </div>
         </div>
       </div>
+
+      {/* Logout Confirmation Dialog */}
+      <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <AlertDialogContent className="bg-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-gray-900">Çıkış Yap</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-600">
+              Çıkış yapmak istediğinizden emin misiniz? Bu işlem sizi ana sayfaya yönlendirecektir.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleLogoutCancel} className="bg-white border-gray-300 text-gray-700 hover:bg-gray-50 cursor-pointer">İptal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleLogoutConfirm} className="bg-red-600 hover:bg-red-700 text-white cursor-pointer">
+              Çıkış Yap
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </nav>
   );
 };

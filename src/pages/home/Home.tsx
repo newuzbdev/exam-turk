@@ -1,5 +1,7 @@
 import { Button } from "@/components/ui/button";
-
+import { useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router";
+import { toast } from "sonner";
 import { ArrowRight } from "lucide-react";
 import { NavLink } from "react-router";
 import StatsSection from "@/pages/home/stats-section";
@@ -11,6 +13,40 @@ import HomeTestimonials from "./ui/home-testimonials";
 import HomePricing from "./ui/home-pricing";
 
 export default function Home() {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  // Handle OAuth tokens if they exist in URL parameters
+  useEffect(() => {
+    const accessToken = searchParams.get('accessToken');
+    const refreshToken = searchParams.get('refreshToken');
+    const error = searchParams.get('error');
+
+    if (error) {
+      toast.error("Google ile giriş başarısız: " + error);
+      // Clean URL
+      navigate("/", { replace: true });
+      return;
+    }
+
+    if (accessToken) {
+      // Store the tokens
+      localStorage.setItem("accessToken", accessToken);
+      if (refreshToken) {
+        localStorage.setItem("refreshToken", refreshToken);
+      }
+
+      toast.success("Google ile giriş başarılı!");
+
+      // Clean URL by removing query parameters
+      navigate("/", { replace: true });
+
+      // Force page reload to update navbar and fetch user data
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
+    }
+  }, [searchParams, navigate]);
   return (
     <div className=" bg-white">
       <HeroSection />

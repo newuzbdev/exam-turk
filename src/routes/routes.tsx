@@ -4,6 +4,7 @@ import Price from "@/pages/price/price";
 import Profile from "@/pages/profile/profile";
 import Login from "@/pages/auth/login";
 import SignUp from "@/pages/auth/signup";
+import OAuthCallback from "@/pages/auth/oauth-callback";
 import { createBrowserRouter } from "react-router";
 
 export const router = createBrowserRouter([
@@ -14,6 +15,10 @@ export const router = createBrowserRouter([
   {
     path: "/signup",
     element: <SignUp />,
+  },
+  {
+    path: "/oauth-callback",
+    element: <OAuthCallback />,
   },
   {
     path: "/",

@@ -8,6 +8,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Menu, User, LogOut } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useState, useEffect } from "react";
 import axiosPrivate from "@/config/api";
 import {
@@ -66,7 +67,9 @@ const grammarLevels = [
 
 const Navbar = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<{ userName: string; name: string } | null>(null);
+  const [user, setUser] = useState<{ userName: string; name: string } | null>(
+    null
+  );
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
@@ -195,20 +198,42 @@ const Navbar = () => {
               <div className="hidden sm:flex items-center space-x-2">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="flex items-center space-x-2 text-sm hover:bg-gray-100 cursor-pointer bg-white">
-                      <User className="h-4 w-4 text-gray-600" />
-                      <span className="text-gray-900 font-medium cursor-pointer">{user.name}</span>
+                    <Button
+                      variant="ghost"
+                      className="flex items-center space-x-2 text-sm hover:bg-gray-100 cursor-pointer bg-white"
+                    >
+                      <Avatar className="w-8 h-8">
+                        <AvatarImage
+                          src={user.avatarUrl || user.avatar}
+                          alt={user.name}
+                        />
+                        <AvatarFallback className="text-xs font-semibold text-red-700">
+                          {user.name
+                            .split(" ")
+                            .map((n: string) => n[0])
+                            .join("")}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-gray-900 font-medium cursor-pointer">
+                        {user.name}
+                      </span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
                     <DropdownMenuItem asChild>
-                      <NavLink to="/profile" className="flex items-center w-full cursor-pointer">
+                      <NavLink
+                        to="/profile"
+                        className="flex items-center w-full cursor-pointer"
+                      >
                         <User className="h-4 w-4 mr-2" />
                         Profil
                       </NavLink>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogoutClick} className="text-red-600 focus:text-red-600 cursor-pointer">
+                    <DropdownMenuItem
+                      onClick={handleLogoutClick}
+                      className="text-red-600 focus:text-red-600 cursor-pointer"
+                    >
                       <LogOut className="h-4 w-4 mr-2" />
                       Çıkış
                     </DropdownMenuItem>
@@ -218,7 +243,10 @@ const Navbar = () => {
             ) : (
               <div className="hidden sm:flex space-x-2">
                 <NavLink to="/login">
-                  <Button variant="ghost" className="text-gray-600 hover:text-red-600">
+                  <Button
+                    variant="ghost"
+                    className="text-gray-600 hover:text-red-600"
+                  >
                     Giriş Yap
                   </Button>
                 </NavLink>
@@ -274,11 +302,27 @@ const Navbar = () => {
                     {isAuthenticated && user ? (
                       <div className="px-3 py-2 border-b">
                         <div className="flex items-center space-x-2 mb-3">
-                          <User className="h-4 w-4 text-gray-600" />
-                          <span className="text-gray-900 font-medium">{user.name}</span>
+                          <Avatar className="w-8 h-8">
+                            <AvatarImage
+                              src={user.avatarUrl || user.avatar}
+                              alt={user.name}
+                            />
+                            <AvatarFallback className="text-xs font-semibold text-red-700">
+                              {user.name
+                                .split(" ")
+                                .map((n: string) => n[0])
+                                .join("")}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-gray-900 font-medium">
+                            {user.name}
+                          </span>
                         </div>
                         <div className="space-y-2">
-                          <NavLink to="/profile" className="flex items-center w-full px-2 py-2 text-sm text-gray-600 hover:text-red-600 hover:bg-gray-50 rounded cursor-pointer">
+                          <NavLink
+                            to="/profile"
+                            className="flex items-center w-full px-2 py-2 text-sm text-gray-600 hover:text-red-600 hover:bg-gray-50 rounded cursor-pointer"
+                          >
                             <User className="h-4 w-4 mr-2" />
                             Profil
                           </NavLink>
@@ -295,7 +339,10 @@ const Navbar = () => {
                     ) : (
                       <div className="flex space-x-2 px-3 py-2">
                         <NavLink to="/login" className="flex-1">
-                          <Button variant="ghost" className="w-full text-gray-600 hover:text-red-600">
+                          <Button
+                            variant="ghost"
+                            className="w-full text-gray-600 hover:text-red-600"
+                          >
                             Giriş Yap
                           </Button>
                         </NavLink>
@@ -378,14 +425,25 @@ const Navbar = () => {
       <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
         <AlertDialogContent className="bg-white">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-gray-900">Çıkış Yap</AlertDialogTitle>
+            <AlertDialogTitle className="text-gray-900">
+              Çıkış Yap
+            </AlertDialogTitle>
             <AlertDialogDescription className="text-gray-600">
-              Çıkış yapmak istediğinizden emin misiniz? Bu işlem sizi ana sayfaya yönlendirecektir.
+              Çıkış yapmak istediğinizden emin misiniz? Bu işlem sizi ana
+              sayfaya yönlendirecektir.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleLogoutCancel} className="bg-white border-gray-300 text-gray-700 hover:bg-gray-50 cursor-pointer">İptal</AlertDialogCancel>
-            <AlertDialogAction onClick={handleLogoutConfirm} className="bg-red-600 hover:bg-red-700 text-white cursor-pointer">
+            <AlertDialogCancel
+              onClick={handleLogoutCancel}
+              className="bg-white border-gray-300 text-gray-700 hover:bg-gray-50 cursor-pointer"
+            >
+              İptal
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLogoutConfirm}
+              className="bg-red-600 hover:bg-red-700 text-white cursor-pointer"
+            >
               Çıkış Yap
             </AlertDialogAction>
           </AlertDialogFooter>

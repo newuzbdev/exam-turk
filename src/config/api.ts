@@ -8,19 +8,43 @@ const axiosPrivate = axios.create({
 
 axiosPrivate.interceptors.request.use(
   (config) => {
+    console.log(
+      `🚀 Making request to: ${config.method?.toUpperCase()} ${config.baseURL}${
+        config.url
+      }`
+    );
     const token = localStorage.getItem("accessToken");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log("🔑 Token attached to request");
+    } else {
+      console.log("❌ No token found");
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    console.error("❌ Request interceptor error:", error);
+    return Promise.reject(error);
+  }
 );
 
 axiosPrivate.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log(
+      `✅ Response received from: ${response.config.method?.toUpperCase()} ${
+        response.config.url
+      } - Status: ${response.status}`
+    );
+    return response;
+  },
 
   async (error) => {
+    console.error(
+      `❌ Request failed: ${error.config?.method?.toUpperCase()} ${
+        error.config?.url
+      } - Status: ${error.response?.status}`,
+      error.message
+    );
     const originalRequest = error.config;
 
     if (
@@ -32,7 +56,7 @@ axiosPrivate.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const refreshResponse = await axiosPrivate.get("/user/auth/refresh");
+        const refreshResponse = await axiosPrivate.post("/api/user/refresh");
         console.log("refreshResponse:", refreshResponse);
 
         if (refreshResponse?.data?.accessToken) {

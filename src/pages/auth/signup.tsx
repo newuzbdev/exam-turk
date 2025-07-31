@@ -9,8 +9,7 @@ import {
 import { REGEXP_ONLY_DIGITS_AND_CHARS } from "input-otp";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { NavLink, useNavigate } from "react-router";
-import axiosPrivate from "@/config/api";
-import { toast } from "sonner";
+import { authService } from "@/services/auth.service";
 
 const SignUp = () => {
   const navigate = useNavigate();
@@ -105,151 +104,56 @@ const SignUp = () => {
     if (e) e.preventDefault();
     setLoading(true);
 
-    try {
-      // Remove spaces and + sign, format phone number
-      const cleanPhone = phone.replace(/[\s+]/g, "");
-      let phoneWithPrefix = cleanPhone;
-
-      if (phoneWithPrefix.startsWith("+998")) {
-        phoneWithPrefix = phoneWithPrefix.substring(1);
-      } else if (phoneWithPrefix.startsWith("998")) {
-        phoneWithPrefix = phoneWithPrefix;
-      } else {
-        phoneWithPrefix = `998${phoneWithPrefix}`;
-      }
-
-      await axiosPrivate.post("/api/otp/send", {
-        phone: phoneWithPrefix,
-      });
-      toast.success("OTP kodu gönderildi");
+    const result = await authService.sendOtpRequest(phone);
+    if (result.success) {
       setStep("otp");
       startTimer();
-    } catch (error: any) {
-      console.error("OTP send error:", error);
-      toast.error(error.response?.data?.message || "OTP gönderilemedi");
-    } finally {
-      setLoading(false);
     }
+
+    setLoading(false);
   };
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    try {
-      // Remove spaces and + sign, format phone number
-      const cleanPhone = phone.replace(/[\s+]/g, "");
-      let phoneWithPrefix = cleanPhone;
+    const result = await authService.verifyOtpForSignup(
+      phone,
+      otp.toString(),
+      navigate
+    );
 
-      if (phoneWithPrefix.startsWith("+998")) {
-        phoneWithPrefix = phoneWithPrefix.substring(1);
-      } else if (phoneWithPrefix.startsWith("998")) {
-        phoneWithPrefix = phoneWithPrefix;
-      } else {
-        phoneWithPrefix = `998${phoneWithPrefix}`;
-      }
-
-      const response = await axiosPrivate.post("/api/otp/verify", {
-        phoneNumber: phoneWithPrefix,
-        code: otp.toString(),
-        isSignUp: true,
+    if (
+      result.success &&
+      result.phoneNumber &&
+      !result.shouldNavigate &&
+      !result.shouldRedirectToLogin
+    ) {
+      // OTP verified, proceed to registration
+      setRegistrationData({
+        ...registrationData,
+        phoneNumber: result.phoneNumber,
       });
-
-      console.log("OTP verification response:", response.data);
-
-      // Check if the response contains an access token (user already exists)
-      if (response.data.accessToken) {
-        // User already exists, log them in directly
-        localStorage.setItem("accessToken", response.data.accessToken);
-        if (response.data.refreshToken) {
-          localStorage.setItem("refreshToken", response.data.refreshToken);
-        }
-        toast.success("Giriş başarılı! Kullanıcı zaten mevcut.");
-        navigate("/", { replace: true });
-        return;
-      }
-
-      // Check if user exists but needs login (different response structure)
-      if (
-        response.data.userExists ||
-        response.data.message?.includes("kullanıcı mevcut")
-      ) {
-        toast.info(
-          "Bu telefon numarası kayıtlı. Giriş sayfasına yönlendiriliyorsunuz."
-        );
-        navigate("/login", { replace: true });
-        return;
-      }
-
-      // OTP verified but user doesn't exist, proceed to registration
-      if (
-        response.data.message === "Kod muvaffaqiyatli tasdiqlandi" ||
-        response.data.message?.includes("tasdiqlandi") ||
-        response.status === 200 ||
-        response.status === 201
-      ) {
-        setRegistrationData({
-          ...registrationData,
-          phoneNumber: phoneWithPrefix,
-        });
-        toast.success("OTP doğrulandı - Kayıt formunu doldurun");
-        setStep("register");
-      } else {
-        toast.error("OTP doğrulanamadı");
-      }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "OTP doğrulanamadı");
-    } finally {
-      setLoading(false);
+      setStep("register");
     }
+
+    setLoading(false);
   };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    try {
-      const registrationPayload = {
-        name: registrationData.name,
-        password: registrationData.password,
-        phoneNumber: registrationData.phoneNumber,
-        userName: registrationData.userName,
-        avatarUrl: registrationData.avatarUrl || "",
-      };
+    const registrationPayload = {
+      name: registrationData.name,
+      password: registrationData.password,
+      phoneNumber: registrationData.phoneNumber,
+      userName: registrationData.userName,
+      avatarUrl: registrationData.avatarUrl || "",
+    };
 
-      const response = await axiosPrivate.post(
-        "/api/user/register",
-        registrationPayload
-      );
-
-      if (response.data.accessToken) {
-        localStorage.setItem("accessToken", response.data.accessToken);
-
-        // Get user data from /api/auth/me after successful registration
-        try {
-          const userResponse = await axiosPrivate.get("/api/auth/me");
-          if (userResponse.data) {
-            toast.success(
-              `Kayıt başarılı! Hoş geldiniz ${userResponse.data.name}!`
-            );
-            // Navigate to home page
-            navigate("/", { replace: true });
-          }
-        } catch (userError) {
-          // If getting user data fails, still redirect but with generic message
-          toast.success("Kayıt başarılı! Hoş geldiniz!");
-          navigate("/", { replace: true });
-        }
-      } else if (response.status === 200 || response.status === 201) {
-        toast.success("Kayıt başarılı");
-        navigate("/", { replace: true });
-      }
-    } catch (error: any) {
-      console.error("Registration error:", error);
-      toast.error(error.response?.data?.message || "Kayıt başarısız");
-    } finally {
-      setLoading(false);
-    }
+    await authService.registerUser(registrationPayload, navigate);
+    setLoading(false);
   };
 
   const handleGoogleLogin = () => {

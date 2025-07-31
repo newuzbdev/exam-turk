@@ -9,8 +9,7 @@ import {
 import { REGEXP_ONLY_DIGITS_AND_CHARS } from "input-otp";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { NavLink, useNavigate } from "react-router";
-import axiosPrivate from "@/config/api";
-import { toast } from "sonner";
+import { authService } from "@/services/auth.service";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -100,93 +99,36 @@ const Login = () => {
     if (e) e.preventDefault();
     setLoading(true);
 
-    try {
-      // Remove spaces and + sign, format phone number
-      const cleanPhone = phone.replace(/[\s+]/g, "");
-      let phoneWithPrefix = cleanPhone;
-
-      if (phoneWithPrefix.startsWith("+998")) {
-        phoneWithPrefix = phoneWithPrefix.substring(1);
-      } else if (phoneWithPrefix.startsWith("998")) {
-        phoneWithPrefix = phoneWithPrefix;
-      } else {
-        phoneWithPrefix = `998${phoneWithPrefix}`;
-      }
-
-      await axiosPrivate.post("/api/otp/send", { phone: phoneWithPrefix });
-      toast.success("OTP kodu gönderildi");
+    const result = await authService.sendOtpRequest(phone);
+    if (result.success) {
       setStep("otp");
       startTimer();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "OTP gönderilemedi");
-    } finally {
-      setLoading(false);
     }
+
+    setLoading(false);
   };
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    try {
-      // Remove spaces and + sign, format phone number
-      const cleanPhone = phone.replace(/[\s+]/g, "");
-      let phoneWithPrefix = cleanPhone;
-
-      if (phoneWithPrefix.startsWith("+998")) {
-        phoneWithPrefix = phoneWithPrefix.substring(1);
-      } else if (phoneWithPrefix.startsWith("998")) {
-        phoneWithPrefix = phoneWithPrefix;
-      } else {
-        phoneWithPrefix = `998${phoneWithPrefix}`;
-      }
-
-      const response = await axiosPrivate.post("/api/otp/verify", {
-        phoneNumber: phoneWithPrefix,
-        code: otp.toString(),
-      });
-
-      if (response.data.accessToken) {
-        localStorage.setItem("accessToken", response.data.accessToken);
-
-        toast.success("Giriş başarılı");
-        navigate("/", { replace: true });
-      } else if (response.data.message || response.status === 200) {
-        toast.success("Giriş başarılı");
-        navigate("/", { replace: true });
-      }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "OTP doğrulanamadı");
-    } finally {
-      setLoading(false);
-    }
+    await authService.verifyOtpForLogin(phone, otp.toString(), navigate);
+    setLoading(false);
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    try {
-      const response = await axiosPrivate.post("/api/user/login", {
+    await authService.loginWithCredentials(
+      {
         name: loginData.name,
         password: loginData.password,
-      });
+      },
+      navigate
+    );
 
-      if (response.data.accessToken) {
-        localStorage.setItem("accessToken", response.data.accessToken);
-        if (response.data.refreshToken) {
-          localStorage.setItem("refreshToken", response.data.refreshToken);
-        }
-        toast.success("Giriş başarılı");
-        navigate("/", { replace: true });
-      } else {
-        toast.error("Giriş başarısız");
-      }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Giriş başarısız");
-    } finally {
-      setLoading(false);
-    }
+    setLoading(false);
   };
 
   const getTitle = () => {

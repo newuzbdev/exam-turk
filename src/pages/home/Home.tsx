@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router";
-import { toast } from "sonner";
+import { toast } from "@/utils/toast";
 import { ArrowRight } from "lucide-react";
 import { NavLink } from "react-router";
 import StatsSection from "@/pages/home/stats-section";
@@ -18,9 +18,9 @@ export default function Home() {
 
   // Handle OAuth tokens if they exist in URL parameters
   useEffect(() => {
-    const accessToken = searchParams.get('accessToken');
-    const refreshToken = searchParams.get('refreshToken');
-    const error = searchParams.get('error');
+    const accessToken = searchParams.get("accessToken");
+    const refreshToken = searchParams.get("refreshToken");
+    const error = searchParams.get("error");
 
     if (error) {
       toast.error("Google ile giriş başarısız: " + error);

@@ -10,7 +10,7 @@ import {
 import { Menu, User, LogOut } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useState, useEffect } from "react";
-import axiosPrivate from "@/config/api";
+import { authService } from "@/services/auth.service";
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -67,9 +67,12 @@ const grammarLevels = [
 
 const Navbar = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<{ userName: string; name: string } | null>(
-    null
-  );
+  const [user, setUser] = useState<{
+    userName?: string;
+    name: string;
+    avatarUrl?: string;
+    avatar?: string;
+  } | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
@@ -79,15 +82,18 @@ const Navbar = () => {
 
       if (token) {
         try {
-          const response = await axiosPrivate.get("/api/auth/me");
-          if (response.data) {
-            setUser(response.data);
+          const userData = await authService.getCurrentUser();
+          console.log("Navbar - User data received:", userData);
+          if (userData) {
+            setUser(userData);
             setIsAuthenticated(true);
           }
         } catch (error) {
+          console.error("Navbar - Error fetching user data:", error);
           // Token is invalid, remove it
           localStorage.removeItem("accessToken");
           localStorage.removeItem("refreshToken");
+          localStorage.removeItem("userId");
           setIsAuthenticated(false);
           setUser(null);
         }
@@ -200,7 +206,7 @@ const Navbar = () => {
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
-                      className="flex items-center space-x-2 text-sm hover:bg-gray-100 cursor-pointer bg-white"
+                      className="flex items-center space-x-2 text-sm   cursor-pointer bg-white"
                     >
                       <Avatar className="w-8 h-8">
                         <AvatarImage

@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserPlus, Calendar, Star, Pencil } from "lucide-react";
 import { useState, useEffect } from "react";
-import axiosPrivate from "@/config/api";
+import { authService } from "@/services/auth.service";
 
 const ProfileHeader = () => {
   const [isFollowing, setIsFollowing] = useState(false);
@@ -13,22 +13,25 @@ const ProfileHeader = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const response = await axiosPrivate.get("/api/auth/me");
-        if (response.data) {
+        const userData = await authService.getCurrentUser();
+        console.log("Profile - User data received:", userData);
+        if (userData) {
           setUser({
-            ...response.data,
+            ...userData,
             followers: 0, // Default values for now
             following: 0,
-            joinDate: new Date(response.data.createdAt).toLocaleDateString('tr-TR', {
-              year: 'numeric',
-              month: 'long'
-            }),
+            joinDate: userData.createdAt
+              ? new Date(userData.createdAt).toLocaleDateString("tr-TR", {
+                  year: "numeric",
+                  month: "long",
+                })
+              : "Bilinmiyor",
             totalPoints: 0,
             bio: "Türkçe dil ve kültürünü öğrenmeye tutkulu.",
           });
         }
       } catch (error) {
-        console.error("Error fetching user data:", error);
+        console.error("Profile - Error fetching user data:", error);
       } finally {
         setLoading(false);
       }
@@ -74,7 +77,10 @@ const ProfileHeader = () => {
           <div className="flex flex-col md:flex-row gap-8">
             <div className="flex flex-col items-center md:items-start">
               <Avatar className="w-32 h-32 border-4 border-white shadow-lg">
-                <AvatarImage src={user.avatarUrl || user.avatar} alt={user.name} />
+                <AvatarImage
+                  src={user.avatarUrl || user.avatar}
+                  alt={user.name}
+                />
                 <AvatarFallback className="text-2xl font-semibold text-red-700">
                   {user.name
                     .split(" ")
@@ -91,11 +97,16 @@ const ProfileHeader = () => {
                     {user.name}
                   </h1>
                   <p className="text-lg text-gray-600 mb-3">
-                    {user.username ? `@${user.username}` : user.email || 'Kullanıcı'}
+                    {user.username
+                      ? `@${user.username}`
+                      : user.email || "Kullanıcı"}
                   </p>
                   <p className="text-gray-700 leading-relaxed">{user.bio}</p>
                 </div>
-                <Button variant="outline" className="bg-red-500 text-white hover:bg-red-600">
+                <Button
+                  variant="outline"
+                  className="bg-red-500 text-white hover:bg-red-600"
+                >
                   <Pencil className="w-4 h-4 mr-2" />
                   Profili Düzenle
                 </Button>

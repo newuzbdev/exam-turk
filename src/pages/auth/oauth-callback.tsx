@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { toast } from "sonner";
+import { toast } from "@/utils/toast";
 
 const OAuthCallback = () => {
   const navigate = useNavigate();
@@ -10,9 +10,9 @@ const OAuthCallback = () => {
     const handleCallback = async () => {
       try {
         // Get URL parameters - backend sends 'accessToken' not 'token'
-        const accessToken = searchParams.get('accessToken');
-        const refreshToken = searchParams.get('refreshToken');
-        const error = searchParams.get('error');
+        const accessToken = searchParams.get("accessToken");
+        const refreshToken = searchParams.get("refreshToken");
+        const error = searchParams.get("error");
 
         if (error) {
           toast.error("Google ile giriş başarısız: " + error);

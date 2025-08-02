@@ -6,6 +6,7 @@ import Login from "@/pages/auth/login";
 import SignUp from "@/pages/auth/signup";
 import OAuthCallback from "@/pages/auth/oauth-callback";
 import { createBrowserRouter } from "react-router";
+import TestPage from "@/pages/test/test";
 
 export const router = createBrowserRouter([
   {
@@ -35,6 +36,10 @@ export const router = createBrowserRouter([
       {
         path: "/price",
         element: <Price />,
+      },
+       {
+        path: "/test",
+        element: <TestPage />,
       },
     ],
   },

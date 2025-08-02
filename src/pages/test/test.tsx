@@ -64,13 +64,14 @@ interface TurkishTestResponse {
   readingTests: ReadingTest[];
 }
 
-type TestType = 'all' | 'listening' | 'speaking' | 'reading' | 'writing';
+type TestType = "all" | "listening" | "speaking" | "reading" | "writing";
 
 const TestPage = () => {
-  const [turkishTestData, setTurkishTestData] = useState<TurkishTestResponse | null>(null);
+  const [turkishTestData, setTurkishTestData] =
+    useState<TurkishTestResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedTest, setSelectedTest] = useState<TurkishTest | null>(null);
-  const [selectedTestType, setSelectedTestType] = useState<TestType>('all');
+  const [selectedTestType, setSelectedTestType] = useState<TestType>("all");
 
   useEffect(() => {
     const fetchTurkishTestData = async () => {
@@ -95,17 +96,17 @@ const TestPage = () => {
 
   const getTestTypeImage = (testType: string) => {
     switch (testType.toLowerCase()) {
-      case 'listening':
+      case "listening":
         // Headphones only - no people, perfect for listening tests
         return "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=250&fit=crop&auto=format";
-      case 'speaking':
+      case "speaking":
         // Modern workspace with laptop - no people, perfect for speaking tests
         return "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=250&fit=crop&auto=format";
-      case 'reading':
+      case "reading":
         // Clean study desk with books - no people, perfect for reading tests
         return "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=400&h=250&fit=crop&auto=format";
-      case 'writing':
-      case 'academic':
+      case "writing":
+      case "academic":
         // Pen and paper only - no people, perfect for writing tests
         return "https://images.unsplash.com/photo-1471107340929-a87cd0f5b5f3?w=400&h=250&fit=crop&auto=format";
       default:
@@ -115,13 +116,18 @@ const TestPage = () => {
   };
 
   const getAvailableTestTypes = (testId: string) => {
-    if (!turkishTestData) return { writing: [], speaking: [], listening: [], reading: [] };
+    if (!turkishTestData)
+      return { writing: [], speaking: [], listening: [], reading: [] };
 
     return {
-      writing: turkishTestData.writingTests.filter(t => t.ieltsId === testId),
-      speaking: turkishTestData.speakingTests.filter(t => t.ieltsId === testId),
-      listening: turkishTestData.listeningTests.filter(t => t.ieltsId === testId),
-      reading: turkishTestData.readingTests.filter(t => t.ieltsId === testId),
+      writing: turkishTestData.writingTests.filter((t) => t.ieltsId === testId),
+      speaking: turkishTestData.speakingTests.filter(
+        (t) => t.ieltsId === testId
+      ),
+      listening: turkishTestData.listeningTests.filter(
+        (t) => t.ieltsId === testId
+      ),
+      reading: turkishTestData.readingTests.filter((t) => t.ieltsId === testId),
     };
   };
 
@@ -129,32 +135,46 @@ const TestPage = () => {
     if (!selectedTest || !turkishTestData) return [];
 
     switch (selectedTestType) {
-      case 'listening':
-        return turkishTestData.listeningTests.filter(t => t.ieltsId === selectedTest.id);
-      case 'speaking':
-        return turkishTestData.speakingTests.filter(t => t.ieltsId === selectedTest.id);
-      case 'reading':
-        return turkishTestData.readingTests.filter(t => t.ieltsId === selectedTest.id);
-      case 'writing':
-        return turkishTestData.writingTests.filter(t => t.ieltsId === selectedTest.id);
-      case 'all':
+      case "listening":
+        return turkishTestData.listeningTests.filter(
+          (t) => t.ieltsId === selectedTest.id
+        );
+      case "speaking":
+        return turkishTestData.speakingTests.filter(
+          (t) => t.ieltsId === selectedTest.id
+        );
+      case "reading":
+        return turkishTestData.readingTests.filter(
+          (t) => t.ieltsId === selectedTest.id
+        );
+      case "writing":
+        return turkishTestData.writingTests.filter(
+          (t) => t.ieltsId === selectedTest.id
+        );
+      case "all":
       default:
         return [
-          ...turkishTestData.writingTests.filter(t => t.ieltsId === selectedTest.id),
-          ...turkishTestData.speakingTests.filter(t => t.ieltsId === selectedTest.id),
-          ...turkishTestData.listeningTests.filter(t => t.ieltsId === selectedTest.id),
-          ...turkishTestData.readingTests.filter(t => t.ieltsId === selectedTest.id),
+          ...turkishTestData.writingTests.filter(
+            (t) => t.ieltsId === selectedTest.id
+          ),
+          ...turkishTestData.speakingTests.filter(
+            (t) => t.ieltsId === selectedTest.id
+          ),
+          ...turkishTestData.listeningTests.filter(
+            (t) => t.ieltsId === selectedTest.id
+          ),
+          ...turkishTestData.readingTests.filter(
+            (t) => t.ieltsId === selectedTest.id
+          ),
         ];
     }
   };
 
-
-
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('tr-TR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+    return new Date(dateString).toLocaleDateString("tr-TR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   };
 
@@ -181,10 +201,12 @@ const TestPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Türkçe Testleri</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Türkçe Testleri
+          </h1>
           <p className="text-gray-600">
             Toplam {turkishTestData?.total || 0} test bulundu
           </p>
@@ -193,8 +215,11 @@ const TestPage = () => {
         {/* Step 1: Main Test Selection */}
         {!selectedTest ? (
           <div>
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Test Seçin</h2>
-            {turkishTestData?.ieltsData && turkishTestData.ieltsData.length > 0 ? (
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">
+              Test Seçin
+            </h2>
+            {turkishTestData?.ieltsData &&
+            turkishTestData.ieltsData.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {turkishTestData.ieltsData.map((test) => (
                   <MainTestCard
@@ -217,12 +242,17 @@ const TestPage = () => {
             <div className="mb-6">
               <Button
                 variant="outline"
-                onClick={() => {setSelectedTest(null); setSelectedTestType('all');}}
+                onClick={() => {
+                  setSelectedTest(null);
+                  setSelectedTestType("all");
+                }}
                 className="mb-4"
               >
                 ← Geri Dön
               </Button>
-              <h2 className="text-2xl font-semibold text-gray-800 mb-2">{selectedTest.title}</h2>
+              <h2 className="text-2xl font-semibold text-gray-800 mb-2">
+                {selectedTest.title}
+              </h2>
               <p className="text-gray-600">Test türünü seçin ve başlayın</p>
             </div>
 
@@ -234,7 +264,7 @@ const TestPage = () => {
 
             {/* Sub-tests Grid */}
             {getFilteredSubTests().length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {getFilteredSubTests().map((subTest) => (
                   <SubTestCard
                     key={subTest.id}

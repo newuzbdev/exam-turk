@@ -9,8 +9,8 @@ import {
 } from "@/components/ui/sheet";
 import { Menu, User, LogOut } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { useState, useEffect } from "react";
-import { authService } from "@/services/auth.service";
+import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -67,54 +67,15 @@ const grammarLevels = [
 
 const Navbar = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<{
-    userName?: string;
-    name: string;
-    avatarUrl?: string;
-    avatar?: string;
-  } | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { user, isAuthenticated, logout } = useAuth();
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      const token = localStorage.getItem("accessToken");
-
-      if (token) {
-        try {
-          const userData = await authService.getCurrentUser();
-          console.log("Navbar - User data received:", userData);
-          if (userData) {
-            setUser(userData);
-            setIsAuthenticated(true);
-          }
-        } catch (error) {
-          console.error("Navbar - Error fetching user data:", error);
-          // Token is invalid, remove it
-          localStorage.removeItem("accessToken");
-          localStorage.removeItem("refreshToken");
-          localStorage.removeItem("userId");
-          setIsAuthenticated(false);
-          setUser(null);
-        }
-      } else {
-        setIsAuthenticated(false);
-        setUser(null);
-      }
-    };
-
-    checkAuth();
-  }, []);
 
   const handleLogoutClick = () => {
     setShowLogoutDialog(true);
   };
 
   const handleLogoutConfirm = () => {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    setIsAuthenticated(false);
-    setUser(null);
+    logout();
     setShowLogoutDialog(false);
     navigate("/", { replace: true });
   };

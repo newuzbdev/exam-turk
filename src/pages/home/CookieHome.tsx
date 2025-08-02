@@ -1,9 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { NavLink, useSearchParams, useNavigate } from "react-router";
-import { useEffect, useRef, useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useEffect, useState } from "react";
 import { toast } from "@/utils/toast";
+import { cookieAuthService } from "@/services/cookieAuth.service";
 import StatsSection from "@/pages/home/stats-section";
 import FeaturedSection from "@/pages/home/featured-section";
 import HomeLastMonthTopResults from "./ui/home-last-month-top-results";
@@ -12,79 +12,62 @@ import HowItWorks from "./ui/how-it-works";
 import HomeTestimonials from "./ui/home-testimonials";
 import HomePricing from "./ui/home-pricing";
 
-export default function Home() {
+export default function CookieHome() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { login } = useAuth();
 
-  // Prevent multiple OAuth login attempts
+  // Handle OAuth callback without client-side token storage
   const [isProcessingOAuth, setIsProcessingOAuth] = useState(false);
-  const processedTokenRef = useRef<string | null>(null);
 
-  // Handle OAuth tokens if they appear in home URL (backend issue workaround)
   useEffect(() => {
-    const accessToken = searchParams.get("accessToken");
-    const refreshToken = searchParams.get("refreshToken");
-    const error = searchParams.get("error");
+    const handleOAuthCallback = async () => {
+      // Check if this is an OAuth callback (tokens in URL means backend redirect)
+      const accessToken = searchParams.get("accessToken");
+      const refreshToken = searchParams.get("refreshToken");
+      const error = searchParams.get("error");
 
-    // Handle error case
-    if (error && !isProcessingOAuth) {
-      toast.error("Google ile giriş başarısız: " + error);
-      // Clean URL
-      navigate("/", { replace: true });
-      return;
-    }
+      // Handle error case
+      if (error && !isProcessingOAuth) {
+        toast.error("Google ile giriş başarısız: " + error);
+        navigate("/", { replace: true });
+        return;
+      }
 
-    // Handle successful OAuth login
-    if (
-      accessToken &&
-      !isProcessingOAuth &&
-      processedTokenRef.current !== accessToken
-    ) {
-      setIsProcessingOAuth(true);
-      processedTokenRef.current = accessToken;
+      // If tokens are in URL, it means backend hasn't implemented HttpOnly cookies yet
+      // In this case, we'll handle the OAuth success and clean the URL
+      if ((accessToken || refreshToken) && !isProcessingOAuth) {
+        setIsProcessingOAuth(true);
 
-      // Handle login using auth context
-      const handleOAuthLogin = async () => {
         try {
-          console.log(
-            "Processing OAuth login with token:",
-            accessToken.substring(0, 10) + "..."
-          );
-          await login(accessToken, refreshToken || undefined);
-          toast.success("Google ile giriş başarılı!");
+          console.log("OAuth callback detected, verifying authentication...");
+
+          // Instead of storing tokens, just verify authentication
+          // Backend should have already set HttpOnly cookies
+          await cookieAuthService.handleGoogleOAuth(navigate);
+
           // Clean URL by removing query parameters
           navigate("/", { replace: true });
         } catch (error) {
-          console.error("OAuth login error:", error);
+          console.error("OAuth callback error:", error);
           toast.error("Giriş sırasında bir hata oluştu");
           navigate("/", { replace: true });
         } finally {
           setIsProcessingOAuth(false);
         }
-      };
+      }
+    };
 
-      handleOAuthLogin();
-    }
-  }, [searchParams, navigate, login, isProcessingOAuth]);
+    handleOAuthCallback();
+  }, [searchParams, navigate, isProcessingOAuth]);
+
   return (
-    <div className=" bg-white">
+    <div className="bg-white">
       <HeroSection />
-
       <StatsSection />
-
       <FeaturedSection />
-
-      {/* How it Works */}
       <HowItWorks />
-
-      {/* Testimonials */}
       <HomeTestimonials />
-
-      {/* Last 30 Days Results */}
       <HomeLastMonthTopResults />
-
-      {/* Pricing */}
       <HomePricing />
 
       {/* CTA Section */}
@@ -108,8 +91,6 @@ export default function Home() {
           </NavLink>
         </div>
       </section>
-
-      {/* Footer */}
     </div>
   );
 }

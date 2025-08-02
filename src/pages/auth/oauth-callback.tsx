@@ -1,10 +1,12 @@
 import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { toast } from "@/utils/toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 const OAuthCallback = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { login } = useAuth();
 
   useEffect(() => {
     const handleCallback = async () => {
@@ -21,15 +23,12 @@ const OAuthCallback = () => {
         }
 
         if (accessToken) {
-          // Store the tokens
-          localStorage.setItem("accessToken", accessToken);
-          if (refreshToken) {
-            localStorage.setItem("refreshToken", refreshToken);
-          }
+          // Use the auth context to handle login
+          await login(accessToken, refreshToken || undefined);
 
           toast.success("Google ile giriş başarılı!");
 
-          // Navigate to home page - user data will be fetched by navbar
+          // Navigate to home page
           navigate("/", { replace: true });
         } else {
           toast.error("Giriş başarısız: Token bulunamadı");

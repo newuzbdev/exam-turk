@@ -19,29 +19,62 @@ interface SubTestCardProps {
 
 const getTypeInfo = (type: string) => {
   switch (type.toLowerCase()) {
-    case 'listening':
-      return { label: 'Dinleme', icon: Headphones };
-    case 'speaking':
-      return { label: 'Konuşma', icon: Mic };
-    case 'reading':
-      return { label: 'Okuma', icon: BookOpen };
-    case 'writing':
-    case 'academic':
-      return { label: 'Yazma', icon: PenTool };
+    case "listening":
+      return {
+        label: "Dinleme",
+        icon: Headphones,
+        backgroundImage:
+          "https://images.unsplash.com/photo-1583394838336-acd97773b5o=format&q=80",
+        altText: "Listening Test - Dinleme Testi",
+      };
+    case "speaking":
+      return {
+        label: "Konuşma",
+        icon: Mic,
+        backgroundImage:
+          "https://images.unsplash.com/photo-1516280440614-37939bbacd250&fit=crop&auto=format&q=80",
+        altText: "Speaking Test - Konuşma Testi",
+      };
+    case "reading":
+      return {
+        label: "Okuma",
+        icon: BookOpen,
+        backgroundImage:
+          "https://images.unsplash.com/photo-1481627834876-bw=400&h=250&fit=crop&auto=format&q=80",
+        altText: "Reading Test - Okuma Testi",
+      };
+    case "writing":
+    case "academic":
+      return {
+        label: "Yazma",
+        icon: PenTool,
+        backgroundImage:
+          "https://images.unsplash.com/photo-1455390582262-044cdeadh=250&fit=crop&auto=format&q=80",
+        altText: "Writing Test - Yazma Testi",
+      };
     default:
-      return { label: type, icon: BookOpen };
+      return {
+        label: type,
+        icon: BookOpen,
+        backgroundImage:
+          "https://images.unsplash.com/photo-14816278348760?w=400&h=250&fit=crop&auto=format&q=80",
+        altText: "Test",
+      };
   }
 };
 
-const SubTestCard = ({ subTest, getTestTypeImage,  }: SubTestCardProps) => {
+const SubTestCard = ({ subTest }: SubTestCardProps) => {
   const typeInfo = getTypeInfo(subTest.type);
 
   return (
-    <Card key={subTest.id} className="overflow-hidden hover:shadow-lg transition-shadow duration-300 border-red-100 hover:border-red-200 cursor-pointer">
-      <div className="relative">
+    <Card
+      key={subTest.id}
+      className="overflow-hidden hover:shadow-lg transition-shadow duration-300 border-red-100 hover:border-red-200 h-[320px] flex flex-col"
+    >
+      <div className="relative flex-shrink-0">
         <img
-          src={getTestTypeImage(subTest.type)}
-          alt={subTest.title}
+          src={typeInfo.backgroundImage}
+          alt={typeInfo.altText}
           className="w-full h-48 object-cover"
         />
         <div className="absolute top-4 right-4">
@@ -51,8 +84,8 @@ const SubTestCard = ({ subTest, getTestTypeImage,  }: SubTestCardProps) => {
           </Badge>
         </div>
       </div>
-      
-      <CardContent className="p-6">
+
+      <CardContent className="p-6 flex-1 flex flex-col">
         <div className="flex items-center gap-3 mb-4">
           <typeInfo.icon className="h-6 w-6 text-red-600" />
           <h3 className="text-xl font-semibold text-gray-900">
@@ -60,9 +93,12 @@ const SubTestCard = ({ subTest, getTestTypeImage,  }: SubTestCardProps) => {
           </h3>
         </div>
 
-        <Button className="w-full bg-red-600 hover:bg-red-700 text-white">
-          Teste Başla
-        </Button>
+        {/* Button Section - Always at bottom */}
+        <div className="mt-auto">
+          <Button className="w-full bg-red-600 hover:bg-red-700 text-white cursor-pointer">
+            Teste Başla
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

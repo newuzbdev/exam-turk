@@ -6,4 +6,5 @@ export const authEndPoint = {
   otpSend: "/api/otp/send",
   otpVerify: "/api/otp/verify",
   user: "/api/user", // For getting user by ID: /api/user/{id}
+  logout: "/api/auth/logout",
 };

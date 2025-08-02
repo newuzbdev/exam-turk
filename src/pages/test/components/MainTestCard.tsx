@@ -51,35 +51,43 @@ interface MainTestCardProps {
   };
 }
 
-const MainTestCard = ({ test, onSelect, getTestImage, availableTestTypes }: MainTestCardProps) => {
+const MainTestCard = ({
+  test,
+  onSelect,
+  getTestImage,
+  availableTestTypes,
+}: MainTestCardProps) => {
   const getAvailableTypes = () => {
     const types = [];
     if (availableTestTypes.listening.length > 0) {
-      types.push({ name: 'Dinleme', icon: Headphones, color: 'text-purple-600' });
+      types.push({
+        name: "Dinleme",
+        icon: Headphones,
+        color: "text-purple-600",
+      });
     }
     if (availableTestTypes.speaking.length > 0) {
-      types.push({ name: 'Konuşma', icon: Mic, color: 'text-green-600' });
+      types.push({ name: "Konuşma", icon: Mic, color: "text-green-600" });
     }
     if (availableTestTypes.reading.length > 0) {
-      types.push({ name: 'Okuma', icon: BookOpen, color: 'text-blue-600' });
+      types.push({ name: "Okuma", icon: BookOpen, color: "text-blue-600" });
     }
     if (availableTestTypes.writing.length > 0) {
-      types.push({ name: 'Yazma', icon: PenTool, color: 'text-red-600' });
+      types.push({ name: "Yazma", icon: PenTool, color: "text-red-600" });
     }
     return types;
   };
 
   const availableTypes = getAvailableTypes();
   return (
-    <Card 
-      key={test.id} 
-      className="overflow-hidden hover:shadow-lg transition-shadow duration-300 border-red-100 hover:border-red-200 cursor-pointer"
-      onClick={() => onSelect(test)}
+    <Card
+      key={test.id}
+      className="overflow-hidden hover:shadow-lg transition-shadow duration-300 border-red-100 hover:border-red-200 h-[420px] flex flex-col"
     >
-      <div className="relative">
+      <div className="relative flex-shrink-1">
         <img
           src={getTestImage()}
-          alt={test.title}
+          alt="IELTS Test - Türkçe Yeterlilik Testi"
           className="w-full h-48 object-cover"
         />
         <div className="absolute top-4 right-4">
@@ -89,25 +97,34 @@ const MainTestCard = ({ test, onSelect, getTestImage, availableTestTypes }: Main
           </Badge>
         </div>
       </div>
-      
-      <CardContent className="p-6">
-        <h3 className="text-xl font-semibold text-gray-900 mb-2">
+
+      <CardContent className="p-6 flex-1 flex flex-col">
+        <h3 className="text-xl font-semibold text-gray-900 mb-4">
           {test.title}
         </h3>
-        
-        <div className="flex flex-wrap gap-3 mb-4">
-          {availableTypes.map((type, index) => {
-            const IconComponent = type.icon;
-            return (
-              <div key={index} className="flex items-center gap-2 text-base">
-                <IconComponent className={`h-5 w-5 ${type.color}`} />
-                <span className={`font-medium ${type.color}`}>{type.name}</span>
-              </div>
-            );
-          })}
+
+        {/* Fixed height container for test types */}
+        <div className="flex-1 mb-6">
+          <div className="flex flex-wrap gap-3">
+            {availableTypes.map((type, index) => {
+              const IconComponent = type.icon;
+              return (
+                <div key={index} className="flex items-center gap-2 text-base">
+                  <IconComponent className={`h-5 w-5 ${type.color}`} />
+                  <span className={`font-medium ${type.color}`}>
+                    {type.name}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
-        <Button className="w-full bg-red-600 hover:bg-red-700 text-white">
+        {/* Button always at bottom */}
+        <Button
+          className="w-full bg-red-600 hover:bg-red-700 text-white cursor-pointer mt-auto"
+          onClick={() => onSelect(test)}
+        >
           Test Türlerini Gör
         </Button>
       </CardContent>

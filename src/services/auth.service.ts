@@ -1,6 +1,7 @@
 import axiosPrivate from "@/config/api";
 import { authEndPoint } from "@/config/endpoint";
 import { toast } from "@/utils/toast";
+import { SecureStorage } from "@/utils/secureStorage";
 
 export interface LoginCredentials {
   name: string;
@@ -40,6 +41,9 @@ export interface AuthResult {
   message?: string;
 }
 
+// Global variable to track ongoing user fetch requests
+let currentUserRequest: Promise<any> | null = null;
+
 export const authService = {
   // Helper function to format phone number
   formatPhoneNumber: (phone: string): string => {
@@ -58,48 +62,93 @@ export const authService = {
     return phoneWithPrefix;
   },
 
-  // Helper function to store tokens
+  // Helper function to store tokens securely
   storeTokens: (accessToken: string, refreshToken?: string): void => {
-    localStorage.setItem("accessToken", accessToken);
+    // Store tokens in sessionStorage instead of localStorage for better security
+    // They will be cleared when browser/tab is closed
+    SecureStorage.setSessionItem("accessToken", accessToken);
     if (refreshToken) {
-      localStorage.setItem("refreshToken", refreshToken);
+      SecureStorage.setSessionItem("refreshToken", refreshToken);
     }
+
+    // Alternative: Use encrypted storage (still not as secure as httpOnly cookies)
+    // SecureStorage.setEncryptedItem("accessToken", accessToken);
+    // if (refreshToken) {
+    //   SecureStorage.setEncryptedItem("refreshToken", refreshToken);
+    // }
   },
 
-  // Helper function to get current user data
+  // Helper function to get stored tokens
+  getStoredTokens: (): {
+    accessToken: string | null;
+    refreshToken: string | null;
+  } => {
+    return {
+      accessToken: SecureStorage.getSessionItem("accessToken"),
+      refreshToken: SecureStorage.getSessionItem("refreshToken"),
+    };
+  },
+
+  // Helper function to clear stored tokens
+  clearStoredTokens: (): void => {
+    SecureStorage.removeSessionItem("accessToken");
+    SecureStorage.removeSessionItem("refreshToken");
+    SecureStorage.removeSessionItem("userId");
+  },
+
+  // Helper function to get current user data (with request deduplication)
   getCurrentUser: async (): Promise<any> => {
-    try {
-      // First try the /api/auth/me endpoint
-      console.log("Trying to fetch user data from /api/auth/me...");
-      const response = await axiosPrivate.get(authEndPoint.me);
-      console.log("User data from /api/auth/me:", response.data);
-
-      if (response.data) {
-        return response.data;
-      }
-
-      throw new Error("No user data returned from /api/auth/me");
-    } catch (error: any) {
-      console.error("Error fetching user from /api/auth/me:", error);
-
-      // If /api/auth/me fails, try to use /api/user/{id} if we have a stored user ID
-      const userId = localStorage.getItem("userId");
-      if (userId) {
-        try {
-          console.log(`Trying to fetch user data from /api/user/${userId}...`);
-          const userResponse = await axiosPrivate.get(
-            `${authEndPoint.user}/${userId}`
-          );
-          console.log("User data from /api/user/{id}:", userResponse.data);
-          return userResponse.data;
-        } catch (userError) {
-          console.error("Error fetching user from /api/user/{id}:", userError);
-        }
-      }
-
-      // If both methods fail, throw the original error
-      throw error;
+    // If there's already a request in progress, return that promise
+    if (currentUserRequest) {
+      console.log("Reusing existing user data request...");
+      return currentUserRequest;
     }
+
+    // Create new request
+    currentUserRequest = (async () => {
+      try {
+        // First try the /api/auth/me endpoint
+        console.log("Trying to fetch user data from /api/auth/me...");
+        const response = await axiosPrivate.get(authEndPoint.me);
+        console.log("User data from /api/auth/me:", response.data);
+
+        if (response.data) {
+          return response.data;
+        }
+
+        throw new Error("No user data returned from /api/auth/me");
+      } catch (error: any) {
+        console.error("Error fetching user from /api/auth/me:", error);
+
+        // If /api/auth/me fails, try to use /api/user/{id} if we have a stored user ID
+        const userId = SecureStorage.getSessionItem("userId");
+        if (userId) {
+          try {
+            console.log(
+              `Trying to fetch user data from /api/user/${userId}...`
+            );
+            const userResponse = await axiosPrivate.get(
+              `${authEndPoint.user}/${userId}`
+            );
+            console.log("User data from /api/user/{id}:", userResponse.data);
+            return userResponse.data;
+          } catch (userError) {
+            console.error(
+              "Error fetching user from /api/user/{id}:",
+              userError
+            );
+          }
+        }
+
+        // If both methods fail, throw the original error
+        throw error;
+      } finally {
+        // Clear the request when done
+        currentUserRequest = null;
+      }
+    })();
+
+    return currentUserRequest;
   },
 
   // Send OTP to phone number
@@ -130,11 +179,6 @@ export const authService = {
         );
         toast.success("Giriş başarılı");
         navigate("/", { replace: true });
-
-        // Force page reload to update navbar and fetch user data
-        setTimeout(() => {
-          window.location.reload();
-        }, 100);
 
         return { success: true, shouldNavigate: true };
       } else {
@@ -168,20 +212,10 @@ export const authService = {
         toast.success("Giriş başarılı");
         navigate("/", { replace: true });
 
-        // Force page reload to update navbar and fetch user data
-        setTimeout(() => {
-          window.location.reload();
-        }, 100);
-
         return { success: true, shouldNavigate: true };
       } else if (response.data.message || response.status === 200) {
         toast.success("Giriş başarılı");
         navigate("/", { replace: true });
-
-        // Force page reload to update navbar and fetch user data
-        setTimeout(() => {
-          window.location.reload();
-        }, 100);
 
         return { success: true, shouldNavigate: true };
       }
@@ -214,11 +248,6 @@ export const authService = {
         );
         toast.success("Giriş başarılı! Kullanıcı zaten mevcut.");
         navigate("/", { replace: true });
-
-        // Force page reload to update navbar and fetch user data
-        setTimeout(() => {
-          window.location.reload();
-        }, 100);
 
         return { success: true, shouldNavigate: true };
       }
@@ -269,10 +298,10 @@ export const authService = {
 
         // Store user ID if returned in registration response
         if (response.data.user && response.data.user.id) {
-          localStorage.setItem("userId", response.data.user.id);
+          SecureStorage.setSessionItem("userId", response.data.user.id);
           console.log("Stored user ID:", response.data.user.id);
         } else if (response.data.id) {
-          localStorage.setItem("userId", response.data.id);
+          SecureStorage.setSessionItem("userId", response.data.id);
           console.log("Stored user ID from root:", response.data.id);
         } else {
           console.log("No user ID found in registration response");
@@ -285,11 +314,6 @@ export const authService = {
             toast.success(`Kayıt başarılı! Hoş geldiniz ${userResponse.name}!`);
             navigate("/", { replace: true });
 
-            // Force page reload to update navbar and fetch user data
-            setTimeout(() => {
-              window.location.reload();
-            }, 100);
-
             return { success: true, shouldNavigate: true };
           }
         } catch (userError) {
@@ -300,11 +324,6 @@ export const authService = {
           // If getting user data fails, still redirect but with generic message
           toast.success("Kayıt başarılı! Hoş geldiniz!");
           navigate("/", { replace: true });
-
-          // Force page reload to update navbar
-          setTimeout(() => {
-            window.location.reload();
-          }, 100);
 
           return { success: true, shouldNavigate: true };
         }

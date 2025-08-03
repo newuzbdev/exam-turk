@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Headphones, Mic, BookOpen, PenTool } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface SubTest {
   id: string;
@@ -64,7 +65,17 @@ const getTypeInfo = (type: string) => {
 };
 
 const SubTestCard = ({ subTest }: SubTestCardProps) => {
+  const navigate = useNavigate();
   const typeInfo = getTypeInfo(subTest.type);
+
+  const handleStartTest = () => {
+    if (subTest.type.toLowerCase() === "speaking") {
+      navigate(`/speaking-test/${subTest.id}`);
+    } else {
+      // Handle other test types here in the future
+      console.log(`Starting ${subTest.type} test with ID: ${subTest.id}`);
+    }
+  };
 
   return (
     <Card
@@ -95,7 +106,10 @@ const SubTestCard = ({ subTest }: SubTestCardProps) => {
 
         {/* Button Section - Always at bottom */}
         <div className="mt-auto">
-          <Button className="w-full bg-red-600 hover:bg-red-700 text-white cursor-pointer">
+          <Button
+            onClick={handleStartTest}
+            className="w-full bg-red-600 hover:bg-red-700 text-white cursor-pointer"
+          >
             Teste Başla
           </Button>
         </div>

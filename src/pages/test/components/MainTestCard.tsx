@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Headphones, Mic, BookOpen, PenTool } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface TurkishTest {
   id: string;
@@ -57,44 +58,71 @@ const MainTestCard = ({
   getTestImage,
   availableTestTypes,
 }: MainTestCardProps) => {
+  const navigate = useNavigate();
+
   const getAvailableTypes = () => {
     const types = [];
     if (availableTestTypes.listening.length > 0) {
       types.push({
         name: "Dinleme",
         icon: Headphones,
-        color: "text-purple-600",
+        type: "listening",
       });
     }
     if (availableTestTypes.speaking.length > 0) {
-      types.push({ name: "Konuşma", icon: Mic, color: "text-green-600" });
+      types.push({ name: "Konuşma", icon: Mic, type: "speaking" });
     }
     if (availableTestTypes.reading.length > 0) {
-      types.push({ name: "Okuma", icon: BookOpen, color: "text-blue-600" });
+      types.push({ name: "Okuma", icon: BookOpen, type: "reading" });
     }
     if (availableTestTypes.writing.length > 0) {
-      types.push({ name: "Yazma", icon: PenTool, color: "text-red-600" });
+      types.push({ name: "Yazma", icon: PenTool, type: "writing" });
     }
     return types;
+  };
+
+  const handleTestTypeClick = (testType: string) => {
+    // Navigate to the test page with the specific test type selected
+    // Use state instead of URL parameters to avoid showing IDs
+    navigate('/test', { 
+      state: { 
+        selectedTestId: test.id, 
+        selectedTestType: testType 
+      } 
+    });
   };
 
   const availableTypes = getAvailableTypes();
   return (
     <Card
       key={test.id}
-      className="overflow-hidden hover:shadow-lg transition-shadow duration-300 border-red-100 hover:border-red-200 h-[420px] flex flex-col"
+      className="overflow-hidden h-[420px] flex flex-col"
     >
       <div className="relative flex-shrink-1">
-        <img
-          src={getTestImage()}
-          alt="IELTS Test - Türkçe Yeterlilik Testi"
-          className="w-full h-48 object-cover"
-        />
-        <div className="absolute top-4 right-4">
-          <Badge variant="secondary" className="bg-white/90 text-gray-700">
-            <Clock className="h-3 w-3 mr-1" />
-            {availableTypes.length} Tür
-          </Badge>
+        <div className="w-full h-48 bg-white flex flex-col items-center justify-center cursor-pointer">
+          <div className="flex items-center gap-3 mb-2">
+            {availableTypes.map((type, index) => {
+              const IconComponent = type.icon;
+              return (
+                <div 
+                  key={index} 
+                  className="flex flex-col items-center cursor-pointer"
+                  onClick={() => handleTestTypeClick(type.type)}
+                >
+                  <IconComponent className="h-12 w-12 text-red-600" />
+                  <span className="text-sm font-medium text-red-600 mt-1">
+                    {type.name}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="absolute top-4 right-4">
+            <Badge variant="secondary" className="bg-white/90 text-gray-700">
+              <Clock className="h-3 w-3 mr-1" />
+              {availableTypes.length} Tür
+            </Badge>
+          </div>
         </div>
       </div>
 
@@ -109,9 +137,13 @@ const MainTestCard = ({
             {availableTypes.map((type, index) => {
               const IconComponent = type.icon;
               return (
-                <div key={index} className="flex items-center gap-2 text-base">
-                  <IconComponent className={`h-5 w-5 ${type.color}`} />
-                  <span className={`font-medium ${type.color}`}>
+                <div 
+                  key={index} 
+                  className="flex items-center gap-2 text-base cursor-pointer hover:text-red-600"
+                  onClick={() => handleTestTypeClick(type.type)}
+                >
+                  <IconComponent className="h-5 w-5 text-red-600" />
+                  <span className="font-medium text-gray-700">
                     {type.name}
                   </span>
                 </div>

@@ -17,57 +17,57 @@ const TestTypeSelector = ({
       id: "all",
       name: "Tüm Testler",
       icon: BookOpen,
-      color: "bg-gray-100 text-gray-700",
+      color: "text-black",
       bgColor: "bg-gray-50",
     },
     {
       id: "listening",
       name: "Dinleme",
       icon: Headphones,
-      color: "bg-purple-100 text-purple-700",
-      bgColor: "bg-purple-50",
+      color: "text-black",
+      bgColor: "bg-white-50",
     },
     {
       id: "speaking",
       name: "Konuşma",
       icon: Mic,
-      color: "bg-green-100 text-green-700",
-      bgColor: "bg-green-50",
+      color: "text-black",
+      bgColor: "",
     },
     {
       id: "reading",
       name: "Okuma",
       icon: BookOpen,
-      color: "bg-blue-100 text-blue-700",
-      bgColor: "bg-blue-50",
+      color: "text-black",
+      bgColor: "bg-white",
     },
     {
       id: "writing",
       name: "Yazma",
       icon: PenTool,
-      color: "bg-red-100 text-red-700",
+      color: "text-black",
       bgColor: "bg-red-50",
     },
   ];
 
   return (
     <div className="mb-8">
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
         {testTypes.map((type) => {
           const IconComponent = type.icon;
           return (
             <Button
               key={type.id}
               variant={selectedTestType === type.id ? "default" : "outline"}
-              className={`h-20 flex flex-col items-center justify-center gap-2 ${
+              className={`h-32 flex flex-col items-center justify-center gap-4 ${
                 selectedTestType === type.id
                   ? "bg-red-600 hover:bg-red-700 text-white"
-                  : "hover:bg-gray-50"
+                  : "hover:bg-gray-50 text-red-600 border-red-200"
               }`}
               onClick={() => setSelectedTestType(type.id as TestType)}
             >
-              <IconComponent className="h-6 w-6" />
-              <span className="text-sm font-medium">{type.name}</span>
+              <IconComponent className="h-16 w-16" />
+              <span className="text-xl font-bold">{type.name}</span>
             </Button>
           );
         })}

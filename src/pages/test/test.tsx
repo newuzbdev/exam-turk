@@ -6,6 +6,8 @@ import TestTypeSelector from "./components/TestTypeSelector";
 import MainTestCard from "./components/MainTestCard";
 import SubTestCard from "./components/SubTestCard";
 import EmptyState from "./components/EmptyState";
+import { BookOpen, Headphones, Mic, PenTool } from "lucide-react";
+import { useLocation } from "react-router-dom";
 
 interface TurkishTest {
   id: string;
@@ -72,12 +74,26 @@ const TestPage = () => {
   const [loading, setLoading] = useState(true);
   const [selectedTest, setSelectedTest] = useState<TurkishTest | null>(null);
   const [selectedTestType, setSelectedTestType] = useState<TestType>("all");
+  const location = useLocation();
 
   useEffect(() => {
     const fetchTurkishTestData = async () => {
       try {
         const response = await axiosPrivate.get("/api/ielts");
         setTurkishTestData(response.data);
+        
+        // Handle navigation state for direct navigation
+        if (location.state) {
+          const { selectedTestId, selectedTestType: navTestType } = location.state;
+          
+          if (selectedTestId && navTestType && response.data) {
+            const test = response.data.ieltsData.find((t: TurkishTest) => t.id === selectedTestId);
+            if (test) {
+              setSelectedTest(test);
+              setSelectedTestType(navTestType as TestType);
+            }
+          }
+        }
       } catch (error: any) {
         console.error("Error fetching Turkish test data:", error);
         toast.error("Türkçe testleri yüklenemedi");
@@ -87,7 +103,7 @@ const TestPage = () => {
     };
 
     fetchTurkishTestData();
-  }, []);
+  }, [location.state]);
 
   const getTestImage = () => {
     // Default image for main tests - Modern digital learning
@@ -97,20 +113,20 @@ const TestPage = () => {
   const getTestTypeImage = (testType: string) => {
     switch (testType.toLowerCase()) {
       case "listening":
-        // Headphones only - no people, perfect for listening tests
+        // Professional headphones for listening tests
         return "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=250&fit=crop&auto=format";
       case "speaking":
-        // Modern workspace with laptop - no people, perfect for speaking tests
-        return "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=250&fit=crop&auto=format";
+        // Modern microphone setup for speaking tests
+        return "https://images.unsplash.com/photo-1556761175-b413da4baf72?w=400&h=250&fit=crop&auto=format";
       case "reading":
-        // Clean study desk with books - no people, perfect for reading tests
-        return "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=400&h=250&fit=crop&auto=format";
+        // Academic books and reading materials
+        return "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400&h=250&fit=crop&auto=format";
       case "writing":
       case "academic":
-        // Pen and paper only - no people, perfect for writing tests
-        return "https://images.unsplash.com/photo-1471107340929-a87cd0f5b5f3?w=400&h=250&fit=crop&auto=format";
+        // Professional writing setup with pen and notebook
+        return "https://images.unsplash.com/photo-1455390582262-044cdead277a?w=400&h=250&fit=crop&auto=format";
       default:
-        // Default fallback image
+        // Modern learning environment
         return "https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=400&h=250&fit=crop&auto=format";
     }
   };
@@ -262,8 +278,40 @@ const TestPage = () => {
               setSelectedTestType={setSelectedTestType}
             />
 
-            {/* Sub-tests Grid */}
-            {getFilteredSubTests().length > 0 ? (
+            {/* Work All Tests Card - Only show for "all" test type */}
+            {selectedTestType === "all" && (
+              <div className="mb-8">
+                <div className="bg-gradient-to-br from-red-500 via-red-600 to-red-700 rounded-xl p-8 shadow-xl border-0 hover:shadow-2xl transition-all duration-300 cursor-pointer">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="bg-white/20 rounded-full p-3">
+                        <BookOpen className="h-10 w-10 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-bold text-white mb-1">
+                          Tüm Testleri Çöz
+                        </h3>
+                        <p className="text-red-100 text-lg">
+                          Full Test Deneyimi
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      className="bg-white text-red-700 hover:bg-red-50 px-8 py-3 font-bold text-lg rounded-lg shadow-lg"
+                      onClick={() => {
+                        // Handle work all tests functionality
+                        console.log("Work all tests clicked");
+                      }}
+                    >
+                      Başla
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Sub-tests Grid - Only show when NOT "all" */}
+            {selectedTestType !== "all" && getFilteredSubTests().length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {getFilteredSubTests().map((subTest) => (
                   <SubTestCard
@@ -274,7 +322,10 @@ const TestPage = () => {
                   />
                 ))}
               </div>
-            ) : (
+            )}
+            
+            {/* Empty state - Only show when NOT "all" */}
+            {selectedTestType !== "all" && getFilteredSubTests().length === 0 && (
               <EmptyState selectedTestType={selectedTestType} />
             )}
           </div>

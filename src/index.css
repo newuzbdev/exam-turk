@@ -1,2 +1,33 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+
+/* Clean white backgrounds with red icons for test type cards */
+.listening-card {
+  background: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.speaking-card {
+  background: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.reading-card {
+  background: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.writing-card {
+  background: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.default-card {
+  background: white;
+  position: relative;
+  overflow: hidden;
+}

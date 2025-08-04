@@ -24,24 +24,21 @@ const getTypeInfo = (type: string) => {
       return {
         label: "Dinleme",
         icon: Headphones,
-        backgroundImage:
-          "https://images.unsplash.com/photo-1583394838336-acd97773b5o=format&q=80",
+        backgroundClass: "listening-card",
         altText: "Listening Test - Dinleme Testi",
       };
     case "speaking":
       return {
         label: "Konuşma",
         icon: Mic,
-        backgroundImage:
-          "https://images.unsplash.com/photo-1516280440614-37939bbacd250&fit=crop&auto=format&q=80",
+        backgroundClass: "speaking-card",
         altText: "Speaking Test - Konuşma Testi",
       };
     case "reading":
       return {
         label: "Okuma",
         icon: BookOpen,
-        backgroundImage:
-          "https://images.unsplash.com/photo-1481627834876-bw=400&h=250&fit=crop&auto=format&q=80",
+        backgroundClass: "reading-card",
         altText: "Reading Test - Okuma Testi",
       };
     case "writing":
@@ -49,16 +46,14 @@ const getTypeInfo = (type: string) => {
       return {
         label: "Yazma",
         icon: PenTool,
-        backgroundImage:
-          "https://images.unsplash.com/photo-1455390582262-044cdeadh=250&fit=crop&auto=format&q=80",
+        backgroundClass: "writing-card",
         altText: "Writing Test - Yazma Testi",
       };
     default:
       return {
         label: type,
         icon: BookOpen,
-        backgroundImage:
-          "https://images.unsplash.com/photo-14816278348760?w=400&h=250&fit=crop&auto=format&q=80",
+        backgroundClass: "default-card",
         altText: "Test",
       };
   }
@@ -77,22 +72,27 @@ const SubTestCard = ({ subTest }: SubTestCardProps) => {
     }
   };
 
+  const handleCardClick = () => {
+    // Navigate back to the main test menu
+    navigate('/test');
+  };
+
   return (
     <Card
       key={subTest.id}
-      className="overflow-hidden hover:shadow-lg transition-shadow duration-300 border-red-100 hover:border-red-200 h-[320px] flex flex-col"
+      className="overflow-hidden hover:shadow-lg transition-shadow duration-300 border-red-100 hover:border-red-200 h-[320px] flex flex-col cursor-pointer"
+      onClick={handleCardClick}
     >
       <div className="relative flex-shrink-0">
-        <img
-          src={typeInfo.backgroundImage}
-          alt={typeInfo.altText}
-          className="w-full h-48 object-cover"
-        />
-        <div className="absolute top-4 right-4">
-          <Badge variant="secondary" className="bg-white/90 text-gray-700">
-            <Clock className="h-3 w-3 mr-1" />
-            {typeInfo.label}
-          </Badge>
+        <div className={`w-full h-48 object-cover ${typeInfo.backgroundClass} flex flex-col items-center justify-center`}>
+          <typeInfo.icon className="h-16 w-16 text-red-600 mb-2" />
+          <span className="text-xl font-bold text-red-600">{typeInfo.label}</span>
+          <div className="absolute top-4 right-4">
+            <Badge variant="secondary" className="bg-white/90 text-gray-700">
+              <Clock className="h-3 w-3 mr-1" />
+              {typeInfo.label}
+            </Badge>
+          </div>
         </div>
       </div>
 
@@ -107,7 +107,10 @@ const SubTestCard = ({ subTest }: SubTestCardProps) => {
         {/* Button Section - Always at bottom */}
         <div className="mt-auto">
           <Button
-            onClick={handleStartTest}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleStartTest();
+            }}
             className="w-full bg-red-600 hover:bg-red-700 text-white cursor-pointer"
           >
             Teste Başla

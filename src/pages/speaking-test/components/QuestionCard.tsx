@@ -142,7 +142,7 @@ const QuestionCard = ({
         </div>
 
         <div className="flex justify-center gap-4 mb-6">
-          {!hasRecording && !isRecording && (
+          {!isRecording && !hasRecording && (
             <Button
               onClick={onRecord}
               className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 text-lg flex items-center gap-3 rounded-xl shadow-md hover:shadow-lg transition-all"
@@ -166,7 +166,7 @@ const QuestionCard = ({
                 className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 text-lg flex items-center gap-3 rounded-xl shadow-md hover:shadow-lg transition-all"
               >
                 <Square className="h-6 w-6" />
-                Durdur
+                Durdur ve Gönder
               </Button>
             </>
           )}
@@ -185,19 +185,30 @@ const QuestionCard = ({
                 className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 text-lg flex items-center gap-3 rounded-xl shadow-md hover:shadow-lg transition-all"
               >
                 <Square className="h-6 w-6" />
-                Durdur
+                Durdur ve Gönder
               </Button>
             </>
           )}
 
           {hasRecording && !isRecording && (
-            <Button
-              onClick={onRecord}
-              className="bg-green-600 hover:bg-green-700 text-white px-8 py-4 text-lg flex items-center gap-3 rounded-xl shadow-md hover:shadow-lg transition-all"
-            >
-              <Mic className="h-6 w-6" />
-              Tekrar Kaydet
-            </Button>
+            <div className="flex flex-col items-center gap-3">
+              <Button
+                onClick={onRecord}
+                className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 text-lg flex items-center gap-3 rounded-xl shadow-md hover:shadow-lg transition-all"
+              >
+                <Mic className="h-6 w-6" />
+                Yeni Kayıt
+              </Button>
+              <Button
+                onClick={onNext}
+                className="bg-green-600 hover:bg-green-700 text-white px-8 py-4 text-lg flex items-center gap-3 rounded-xl shadow-md hover:shadow-lg transition-all"
+              >
+                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                Gönder
+              </Button>
+            </div>
           )}
         </div>
 

@@ -110,11 +110,15 @@ const Part1Section = ({
   };
 
   // Handle countdown completion
-  const handleCountdownComplete = () => {
+  const handleCountdownComplete = async () => {
     setShowCountdown(false);
     const currentQuestion = getCurrentQuestion();
     if (currentQuestion) {
-      onRecord(currentQuestion.id);
+      try {
+        await onRecord(currentQuestion.id);
+      } catch (error) {
+        console.error("Error starting recording after countdown:", error);
+      }
     }
   };
 

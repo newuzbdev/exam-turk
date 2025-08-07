@@ -29,10 +29,10 @@ export const speechToTextService = {
         timeout: 30000, // 30 second timeout for speech processing
       });
 
-      if (response.data && response.data.text) {
+      if (response.data && response.data.text !== undefined) {
         return {
           success: true,
-          text: response.data.text
+          text: response.data.text || '' // Return empty string if text is null/undefined
         };
       } else {
         return {

@@ -108,10 +108,11 @@ export const Footer = () => {
             </div>
           </div>
 
-          <div className="border-t border-gray-200 mt-12 pt-8 text-center text-gray-500">
+          <div className="border-t border-gray-200 mt-12 pt-8 text-center text-gray-500 flex items-center justify-between flex-col sm:flex-row">
             <p>
               &copy; {new Date().getFullYear()} TürkTest. Tüm hakları saklıdır.
             </p>
+            <p>Created and designed by Ochilov Jaxongirmirzo</p>
           </div>
         </div>
       </footer>

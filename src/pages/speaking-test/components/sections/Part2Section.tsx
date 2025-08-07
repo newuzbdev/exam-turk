@@ -75,7 +75,7 @@ const Part2Section = ({
   };
 
   // Handle countdown complete
-  const handleCountdownComplete = () => {
+  const handleCountdownComplete = async () => {
     setShowCountdown(false);
     setCurrentPhase("speaking");
     setTimeLeft(120); // 2 minutes
@@ -84,7 +84,11 @@ const Part2Section = ({
     // Start recording
     const question = getQuestion();
     if (question) {
-      onRecord(question.id);
+      try {
+        await onRecord(question.id);
+      } catch (error) {
+        console.error("Error starting recording after countdown:", error);
+      }
     }
   };
 

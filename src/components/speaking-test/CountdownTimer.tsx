@@ -27,6 +27,9 @@ export const CountdownTimer = ({
     return () => clearTimeout(timer);
   }, [timeLeft, onComplete]);
 
+  // Calculate progress percentage
+  const progressPercentage = ((seconds - timeLeft) / seconds) * 100;
+
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-gray-900/90 to-black/95 flex items-center justify-center z-50 backdrop-blur-sm">
       <div className="bg-gradient-to-br from-white to-gray-100 rounded-3xl p-8 text-center shadow-2xl border border-gray-200 max-w-md w-full mx-4">
@@ -58,7 +61,7 @@ export const CountdownTimer = ({
         <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
           <div
             className="bg-red-500 h-2 rounded-full transition-all duration-1000 ease-linear"
-            style={{ width: `${((5 - timeLeft) / 5) * 100}%` }}
+            style={{ width: `${progressPercentage}%` }}
           ></div>
         </div>
 

@@ -112,73 +112,36 @@ export const Timer = ({
 
   return (
     <div
-      className={`p-6 rounded-2xl border-2 ${getBackgroundColor()} transition-all duration-300 shadow-lg`}
+      className={`p-5 rounded-lg border ${getBackgroundColor()} transition-all duration-300 max-w-md mx-auto`}
     >
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-4">
-          <div
-            className={`w-12 h-12 rounded-full flex items-center justify-center ${
-              type === "preparation"
-                ? timeLeft <= 10
-                  ? "bg-orange-500"
-                  : "bg-blue-500"
-                : timeLeft <= 10
-                ? "bg-red-500"
-                : "bg-green-500"
-            }`}
-          >
-            <Clock className="h-6 w-6 text-white" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-700 mb-1">
-              {type === "preparation" ? "Hazırlanma Süresi" : "Cevap Süresi"}
-            </p>
-            <p className={`text-3xl font-bold ${getTimerColor()} font-mono`}>
-              {formatTime(timeLeft)}
-            </p>
-          </div>
+      <div className="flex flex-col items-center justify-center mb-4">
+        <div
+          className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${
+            type === "preparation"
+              ? timeLeft <= 10
+                ? "bg-orange-500"
+                : "bg-blue-500"
+              : timeLeft <= 10
+              ? "bg-red-500"
+              : "bg-green-500"
+          }`}
+        >
+          <Clock className="h-6 w-6 text-white" />
         </div>
-
-        {showControls && (
-          <div className="flex gap-2">
-            {!isRunning ? (
-              <Button
-                onClick={startTimer}
-                size="sm"
-                variant="outline"
-                className="flex items-center gap-2"
-                disabled={!isActive}
-              >
-                <Play className="h-4 w-4" />
-                Başlat
-              </Button>
-            ) : (
-              <Button
-                onClick={pauseTimer}
-                size="sm"
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <Pause className="h-4 w-4" />
-                Duraklat
-              </Button>
-            )}
-            <Button
-              onClick={resetTimer}
-              size="sm"
-              variant="outline"
-              disabled={!isActive}
-            >
-              Sıfırla
-            </Button>
-          </div>
-        )}
+        <div className="text-center">
+          <p className="text-xs font-medium text-gray-700 mb-1">
+            {type === "preparation" ? "Hazırlanma Süresi" : "Cevap Süresi"}
+          </p>
+          <p className={`text-3xl font-bold ${getTimerColor()} font-mono`}>
+            {formatTime(timeLeft)}
+          </p>
+        </div>
       </div>
 
       {/* Progress Bar */}
       <div className="w-full bg-white/50 rounded-full h-2 mb-4 overflow-hidden">
         <div
-          className={`h-full rounded-full transition-all duration-300 ${
+          className={`h-full rounded-full transition-all duration-500 ${
             type === "preparation"
               ? timeLeft <= 10
                 ? "bg-orange-500"
@@ -191,19 +154,50 @@ export const Timer = ({
         ></div>
       </div>
 
+      {showControls && (
+        <div className="flex justify-center gap-2 mb-4">
+          {!isRunning ? (
+            <Button
+              onClick={startTimer}
+              className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 text-sm"
+              disabled={!isActive}
+            >
+              <Play className="h-3.5 w-3.5" />
+              Başlat
+            </Button>
+          ) : (
+            <Button
+              onClick={pauseTimer}
+              className="flex items-center gap-1.5 bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 text-sm"
+            >
+              <Pause className="h-3.5 w-3.5" />
+              Duraklat
+            </Button>
+          )}
+          <Button
+            onClick={resetTimer}
+            variant="outline"
+            className="px-3 py-1.5 text-sm border-gray-300"
+            disabled={!isActive}
+          >
+            Sıfırla
+          </Button>
+        </div>
+      )}
+
       {timeLeft <= 10 && timeLeft > 0 && (
-        <div className="flex items-center gap-2 p-3 bg-white/70 rounded-xl border border-orange-200">
-          <AlertTriangle className="h-5 w-5 text-orange-600 animate-pulse" />
-          <p className="text-sm font-semibold text-orange-700">
+        <div className="flex items-center justify-center gap-1.5 p-2.5 bg-white/70 rounded-lg border border-orange-200">
+          <AlertTriangle className="h-4 w-4 text-orange-600 animate-pulse" />
+          <p className="text-xs font-semibold text-orange-700 text-center">
             Süre bitiyor! Son {timeLeft} saniye
           </p>
         </div>
       )}
 
       {timeLeft === 0 && (
-        <div className="flex items-center gap-2 p-3 bg-white/70 rounded-xl border border-red-200">
-          <Clock className="h-5 w-5 text-red-600" />
-          <p className="text-sm font-semibold text-red-700">Süre doldu!</p>
+        <div className="flex items-center justify-center gap-1.5 p-2.5 bg-white/70 rounded-lg border border-red-200">
+          <Clock className="h-4 w-4 text-red-600" />
+          <p className="text-xs font-semibold text-red-700">Süre doldu!</p>
         </div>
       )}
     </div>

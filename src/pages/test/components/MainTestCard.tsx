@@ -55,7 +55,6 @@ interface MainTestCardProps {
 const MainTestCard = ({
   test,
   onSelect,
-  getTestImage,
   availableTestTypes,
 }: MainTestCardProps) => {
   const navigate = useNavigate();

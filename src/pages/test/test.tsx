@@ -6,7 +6,7 @@ import TestTypeSelector from "./components/TestTypeSelector";
 import MainTestCard from "./components/MainTestCard";
 import SubTestCard from "./components/SubTestCard";
 import EmptyState from "./components/EmptyState";
-import { BookOpen, Headphones, Mic, PenTool } from "lucide-react";
+import { BookOpen, } from "lucide-react";
 import { useLocation } from "react-router-dom";
 
 interface TurkishTest {

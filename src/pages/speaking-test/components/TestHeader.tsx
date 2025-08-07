@@ -10,26 +10,28 @@ interface TestHeaderProps {
 
 const TestHeader = ({ testTitle, currentQuestion, totalQuestions, onBack }: TestHeaderProps) => {
   return (
-    <div className="mb-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            onClick={onBack}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Geri Dön
-          </Button>
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">
-              {testTitle}
-            </h1>
-            <p className="text-gray-600 text-sm">Konuşma Testi</p>
+    <div className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-40 shadow-sm w-full">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
+        <div className="flex flex-wrap items-center justify-between gap-4 py-3 sm:py-4">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              onClick={onBack}
+              className="flex items-center gap-2 text-gray-600 hover:text-red-600"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Geri Dön
+            </Button>
+            <div>
+              <h1 className="text-lg sm:text-xl font-bold text-gray-900">
+                {testTitle}
+              </h1>
+              <p className="text-gray-600 text-xs sm:text-sm">Konuşma Testi</p>
+            </div>
           </div>
-        </div>
-        <div className="text-sm text-gray-600">
-          {currentQuestion} / {totalQuestions}
+          <div className="bg-red-50 text-red-700 px-3 py-1.5 rounded-full text-sm font-semibold">
+            Soru {currentQuestion} / {totalQuestions}
+          </div>
         </div>
       </div>
     </div>

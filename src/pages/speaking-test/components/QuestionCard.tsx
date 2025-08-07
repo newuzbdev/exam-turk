@@ -1,22 +1,28 @@
 import { Button } from "@/components/ui/button";
 import { Mic, Square, Pause, Play } from "lucide-react";
+import { useState, } from "react";
 
+// Add CSS for animation
 interface QuestionCardProps {
   question: {
     id: string;
     questionText: string;
     sectionTitle: string;
+    sectionDescription?: string;
     subPartLabel?: string;
   };
   isRecording: boolean;
   isPaused: boolean;
   hasRecording: boolean;
+  recordingDuration: number; // Add this prop to track recording duration
   onRecord: () => void;
   onPause: () => void;
   onResume: () => void;
   onStop: () => void;
   onNext: () => void;
   showNextButton: boolean;
+  showCountdownAfterStop?: boolean;
+  showCountdownAfterNext?: boolean;
 }
 
 const QuestionCard = ({
@@ -24,34 +30,124 @@ const QuestionCard = ({
   isRecording,
   isPaused,
   hasRecording,
+  recordingDuration,
   onRecord,
   onPause,
   onResume,
   onStop,
   onNext,
-  showNextButton
+  showNextButton,
+  showCountdownAfterStop = false,
+  showCountdownAfterNext = false
 }: QuestionCardProps) => {
+  // Wrapper function for onStop that triggers countdown
+  const handleStop = () => {
+    onStop();
+    if (showCountdownAfterStop) {
+      setShowCountdownTimer(true);
+      setCountdown(5);
+      
+      const countdownTimer = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(countdownTimer);
+            setShowCountdownTimer(false);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+  };
+
+  // Wrapper function for onNext that triggers countdown
+  const handleNext = () => {
+    onNext();
+    if (showCountdownAfterNext) {
+      setShowCountdownTimer(true);
+      setCountdown(5);
+      
+      const countdownTimer = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(countdownTimer);
+            setShowCountdownTimer(false);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+  };
+  const [countdown, setCountdown] = useState(5);
+  const [showCountdownTimer, setShowCountdownTimer] = useState(false);
+
+
   return (
-    <div className="bg-gray-50 rounded-lg p-6">
-      <div className="mb-4">
-        <div className="text-sm text-gray-500 mb-2">
+    <div className="bg-white rounded-xl border border-gray-200 shadow-md overflow-hidden">
+      <div className="bg-gradient-to-r from-red-50 to-red-100 p-4 sm:p-5 border-b border-red-200">
+        <div className="text-base sm:text-lg text-red-800 font-semibold flex items-center gap-2">
+          <svg className="h-5 w-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+          </svg>
           {question.sectionTitle}
           {question.subPartLabel && ` - ${question.subPartLabel}`}
         </div>
       </div>
+      
+      <div className="p-6">
+        <div className="flex justify-center mb-6">
+          <div className="relative">
+            <div className={`w-32 h-32 rounded-full flex items-center justify-center transition-all duration-300 ${
+              isRecording
+                ? isPaused
+                  ? "bg-yellow-100 ring-4 ring-yellow-300"
+                  : "bg-red-100 ring-4 ring-red-300 animate-pulse"
+                : hasRecording
+                  ? "bg-green-100 ring-4 ring-green-300"
+                  : "bg-gray-100 ring-4 ring-gray-300"
+            }`}>
+              {isRecording ? (
+                isPaused ? (
+                  <Pause className="h-12 w-12 text-yellow-600" />
+                ) : (
+                  <Mic className="h-12 w-12 text-red-600 animate-pulse" />
+                )
+              ) : hasRecording ? (
+                <svg className="h-12 w-12 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              ) : (
+                <Mic className="h-12 w-12 text-gray-600" />
+              )}
+            </div>
+            
+            {isRecording && (
+              <div className="absolute -top-2 -right-2">
+                <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
+                  <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        <div className="bg-gray-50 rounded-lg p-4 mb-6">
+          <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2 text-center">
+            {question.questionText}
+          </h3>
+          <div className="text-center text-sm text-gray-600 mt-2">
+            Net ve anlaşılır bir şekilde cevap verin
+          </div>
+        </div>
 
-      <div className="bg-white rounded-lg p-6 mb-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-6">
-          {question.questionText}
-        </h3>
-
-        <div className="flex justify-center gap-3 mb-4">
+        <div className="flex justify-center gap-4 mb-6">
           {!hasRecording && !isRecording && (
             <Button
               onClick={onRecord}
-              className="bg-red-600 hover:bg-red-700 text-white px-6 py-3"
+              className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 text-lg flex items-center gap-3 rounded-xl shadow-md hover:shadow-lg transition-all"
             >
-              <Mic className="h-4 w-4 mr-2" />
+              <Mic className="h-6 w-6" />
               Kaydet
             </Button>
           )}
@@ -60,16 +156,16 @@ const QuestionCard = ({
             <>
               <Button
                 onClick={onPause}
-                className="bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-3"
+                className="bg-yellow-500 hover:bg-yellow-600 text-white px-8 py-4 text-lg flex items-center gap-3 rounded-xl shadow-md hover:shadow-lg transition-all"
               >
-                <Pause className="h-4 w-4 mr-2" />
+                <Pause className="h-6 w-6" />
                 Duraklat
               </Button>
               <Button
-                onClick={onStop}
-                className="bg-red-600 hover:bg-red-700 text-white px-6 py-3"
+                onClick={handleStop}
+                className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 text-lg flex items-center gap-3 rounded-xl shadow-md hover:shadow-lg transition-all"
               >
-                <Square className="h-4 w-4 mr-2" />
+                <Square className="h-6 w-6" />
                 Durdur
               </Button>
             </>
@@ -79,16 +175,16 @@ const QuestionCard = ({
             <>
               <Button
                 onClick={onResume}
-                className="bg-green-600 hover:bg-green-700 text-white px-6 py-3"
+                className="bg-green-600 hover:bg-green-700 text-white px-8 py-4 text-lg flex items-center gap-3 rounded-xl shadow-md hover:shadow-lg transition-all"
               >
-                <Play className="h-4 w-4 mr-2" />
+                <Play className="h-6 w-6" />
                 Devam Et
               </Button>
               <Button
-                onClick={onStop}
-                className="bg-red-600 hover:bg-red-700 text-white px-6 py-3"
+                onClick={handleStop}
+                className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 text-lg flex items-center gap-3 rounded-xl shadow-md hover:shadow-lg transition-all"
               >
-                <Square className="h-4 w-4 mr-2" />
+                <Square className="h-6 w-6" />
                 Durdur
               </Button>
             </>
@@ -97,9 +193,9 @@ const QuestionCard = ({
           {hasRecording && !isRecording && (
             <Button
               onClick={onRecord}
-              className="bg-green-600 hover:bg-green-700 text-white px-6 py-3"
+              className="bg-green-600 hover:bg-green-700 text-white px-8 py-4 text-lg flex items-center gap-3 rounded-xl shadow-md hover:shadow-lg transition-all"
             >
-              <Mic className="h-4 w-4 mr-2" />
+              <Mic className="h-6 w-6" />
               Tekrar Kaydet
             </Button>
           )}
@@ -107,20 +203,23 @@ const QuestionCard = ({
 
         {isRecording && (
           <div className="text-center mb-4">
-            <div className="inline-flex items-center gap-2 text-red-600 text-sm">
-              <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse"></div>
+            <div className="inline-flex items-center gap-2 text-red-600 font-medium text-lg">
+              <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse"></div>
               {isPaused ? "Kayıt duraklatıldı" : "Kayıt yapılıyor..."}
+            </div>
+            <div className="mt-2 text-lg font-semibold text-gray-800">
+              Süre: {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
             </div>
           </div>
         )}
 
         {hasRecording && !isRecording && (
           <div className="text-center mb-4">
-            <div className="inline-flex items-center gap-2 text-green-600 text-sm">
-              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+            <div className="inline-flex items-center gap-2 text-green-600 font-medium text-lg">
+              <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
-              Kayıt tamamlandı
+              Kayıt tamamlandı ({Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}s)
             </div>
           </div>
         )}
@@ -128,12 +227,18 @@ const QuestionCard = ({
         {/* Next Question Button */}
         {showNextButton && (
           <div className="text-center">
-            <Button
-              onClick={onNext}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3"
-            >
-              Sonraki Soru
-            </Button>
+            {showCountdownTimer ? (
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-600 text-white text-2xl font-bold animate-pulse">
+                {countdown}
+              </div>
+            ) : (
+              <Button
+                onClick={handleNext}
+                className="bg-red-600 hover:bg-red-700 text-white px-4 sm:px-5 py-2 text-sm sm:text-base"
+              >
+                Sonraki Soru
+              </Button>
+            )}
           </div>
         )}
       </div>

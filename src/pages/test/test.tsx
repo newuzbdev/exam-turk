@@ -231,7 +231,7 @@ const TestPage = () => {
         {/* Step 1: Main Test Selection */}
         {!selectedTest ? (
           <div>
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">
+            <h2 className="text-xl font-semibold text-gray-800 mb-6">
               Test Seçin
             </h2>
             {turkishTestData?.ieltsData &&

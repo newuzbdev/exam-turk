@@ -5,12 +5,16 @@ interface CountdownTimerProps {
   seconds: number;
   onComplete: () => void;
   message?: string;
+  type?: "preparation" | "answer";
+  part?: 1 | 2 | 3;
 }
 
 export const CountdownTimer = ({
   seconds,
   onComplete,
   message = "Başlıyor...",
+  type = "preparation",
+  part = 1,
 }: CountdownTimerProps) => {
   const [timeLeft, setTimeLeft] = useState(seconds);
 
@@ -31,43 +35,62 @@ export const CountdownTimer = ({
   const progressPercentage = ((seconds - timeLeft) / seconds) * 100;
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-gray-900/90 to-black/95 flex items-center justify-center z-50 backdrop-blur-sm">
-      <div className="bg-gradient-to-br from-white to-gray-100 rounded-3xl p-8 text-center shadow-2xl border border-gray-200 max-w-md w-full mx-4">
-        <div className="w-24 h-24 bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-          <Mic className="h-12 w-12 text-white" />
+    <div className="fixed inset-0 bg-gradient-to-br from-gray-900/95 to-black/95 flex items-center justify-center z-50 backdrop-blur-sm">
+      <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl p-10 text-center shadow-2xl border-2 border-gray-200 max-w-lg w-full mx-4">
+        {/* Icon */}
+        <div className="w-32 h-32 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-xl">
+          <Mic className="h-16 w-16 text-white" />
         </div>
 
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">{message}</h2>
+        {/* Title */}
+        <h2 className="text-4xl font-bold text-gray-800 mb-6">{message}</h2>
+        
+        {/* Part-specific instructions */}
+        <div className="bg-orange-50 rounded-xl p-6 mb-8 border-2 border-orange-200">
+          <p className="text-2xl font-semibold text-orange-800">
+            {type === "preparation" ? (
+              part === 1 ? "Hazır olun, hemen başlayacak" : "Konuyu inceleyin ve hazırlanın"
+            ) : (
+              part === 1 ? "30-45 saniye doğal cevap verin" : "2 dakika süre ile konuşun"
+            )}
+          </p>
+        </div>
 
-        <div className="relative mb-6">
-          <div className="text-7xl font-bold text-transparent bg-gradient-to-r from-red-500 to-red-600 bg-clip-text">
+        {/* Countdown Number */}
+        <div className="relative mb-8">
+          <div className="text-9xl font-bold text-transparent bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text animate-pulse">
             {timeLeft}
           </div>
           <div className="absolute inset-0 flex items-center justify-center">
             <div
-              className={`w-28 h-28 rounded-full border-4 ${
-                timeLeft <= 3 ? "border-red-500 animate-pulse" : "border-blue-500"
-              } transition-all duration-300`}
+              className={`w-40 h-40 rounded-full border-8 ${
+                timeLeft <= 2 ? "border-red-500 animate-bounce" : "border-orange-500 animate-spin"
+              } transition-all duration-500`}
+              style={{ animationDuration: timeLeft <= 2 ? '0.5s' : '2s' }}
             ></div>
           </div>
         </div>
 
-        <div className="flex items-center justify-center gap-2 text-gray-600 mb-6">
-          <Play className="h-5 w-5 text-red-500" />
-          <p className="text-lg font-medium">saniye sonra başlayacak</p>
+        {/* Message */}
+        <div className="flex items-center justify-center gap-3 text-gray-700 mb-6">
+          <Play className="h-8 w-8 text-orange-500" />
+          <p className="text-2xl font-semibold">saniye sonra başlayacak</p>
         </div>
 
-        {/* Progress indicator */}
-        <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+        {/* Progress Bar */}
+        <div className="w-full bg-gray-200 rounded-full h-4 mb-6 shadow-inner">
           <div
-            className="bg-red-500 h-2 rounded-full transition-all duration-1000 ease-linear"
+            className="bg-gradient-to-r from-orange-400 to-orange-600 h-4 rounded-full transition-all duration-1000 ease-out shadow-sm"
             style={{ width: `${progressPercentage}%` }}
           ></div>
         </div>
 
-        <p className="text-gray-500 text-sm">
-          Hazırlanın ve net konuşmaya dikkat edin
-        </p>
+        {/* Bottom message */}
+        <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+          <p className="text-lg font-medium text-green-800">
+            🎤 Mikrofona yakın konuşun ve net sesle cevap verin
+          </p>
+        </div>
       </div>
     </div>
   );

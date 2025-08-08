@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Section } from "@/pages/speaking-test/SpeakingTest";
-import QuestionCard from "../QuestionCard";
 import { Timer } from "@/components/speaking-test/Timer";
 import CountdownTimer from "@/components/speaking-test/CountdownTimer";
 import { Pause, Play, Square } from "lucide-react";
@@ -113,7 +112,9 @@ const Part3Section = ({
       <CountdownTimer
         seconds={countdownSeconds}
         onComplete={handleCountdownComplete}
-        message="Konuşmaya başlayın..."
+        message="Konuşma Zamanı"
+        type="answer"
+        part={3}
       />
     );
   }
@@ -122,12 +123,14 @@ const Part3Section = ({
     <div className="space-y-6">
       {/* Section Header */}
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+        <h2 className="text-2xl font-bold text-gray-900 mb-3">
           {section.title} - Bölüm {sectionIndex + 1}/{totalSections}
         </h2>
-        <p className="text-gray-600 whitespace-pre-line">
-          {section.description}
-        </p>
+        <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+          <p className="text-lg font-medium text-purple-800 whitespace-pre-line">
+            {section.description}
+          </p>
+        </div>
       </div>
 
       {/* Topic Display */}
@@ -193,35 +196,49 @@ const Part3Section = ({
 
       {/* Phase-specific Content */}
       {currentPhase === "instructions" && (
-        <div className="space-y-4">
-          <QuestionCard
-            question={{
-              id: `part3-instructions-${section.id}`,
-              questionText: "Yukarıdaki konu hakkında 2 dakikalık bir konuşma yapacaksınız. Her iki taraftan (olumlu ve olumsuz) en az iki argüman seçerek dengeli bir görüş sunun.",
-              sectionTitle: section.title,
-              sectionDescription: section.description
-            }}
-            isRecording={false}
-            isPaused={false}
-            hasRecording={false}
-            recordingDuration={0}
-            onRecord={() => {}}
-            onPause={() => {}}
-            onResume={() => {}}
-            onStop={() => {}}
-            onNext={() => handleStartPreparation()}
-            showNextButton={true}
-            showCountdownAfterStop={true}
-            showCountdownAfterNext={true}
-          />
+        <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl p-8 border-2 border-purple-200 shadow-lg">
+          <div className="text-center mb-6">
+            <div className="w-20 h-20 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="text-2xl font-bold text-purple-800 mb-4">Bölüm Talimatları</h3>
+          </div>
           
+          <div className="bg-white rounded-lg p-6 mb-6 border border-purple-200">
+            <p className="text-xl leading-relaxed text-gray-800">
+              Sınavci Part 2 konusuyla ilgili daha soyut ve genel sorular soracak. 
+              Bu sorular daha geniş konular ve fikirler hakkında tartışmanıza olanak tanır.
+              <br /><br />
+              <strong>IELTS Formatı:</strong> Detaylı, analitik cevaplar verin (45-60 saniye).
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
+              <h4 className="text-lg font-semibold text-orange-800 mb-2">⏱️ Zamanlar</h4>
+              <ul className="text-orange-700 space-y-1">
+                <li>• Hazırlık: 1 dakika</li>
+                <li>• Konuşma: 2 dakika</li>
+              </ul>
+            </div>
+            <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+              <h4 className="text-lg font-semibold text-green-800 mb-2">📝 Yapıcınız</h4>
+              <ul className="text-green-700 space-y-1">
+                <li>• Argümanları inceleyin</li>
+                <li>• Dengeli görüş oluşturun</li>
+              </ul>
+            </div>
+          </div>
+
           <div className="text-center">
-            <Button
+            <button
               onClick={handleStartPreparation}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3"
+              className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-4 rounded-xl text-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
             >
-              Hazırlanmaya Başla
-            </Button>
+              Hazırım - Başlayalım! 🚀
+            </button>
           </div>
         </div>
       )}
@@ -235,6 +252,7 @@ const Part3Section = ({
             autoStart={true}
             showControls={true}
             type="preparation"
+            part={3}
             isActive={isTimerRunning}
           />
           
@@ -262,6 +280,7 @@ const Part3Section = ({
             autoStart={true}
             showControls={false}
             type="answer"
+            part={3}
             isActive={isTimerRunning}
           />
           
@@ -272,7 +291,7 @@ const Part3Section = ({
             <CardContent>
               {question ? (
                 <div className="space-y-4">
-                  <p className="text-gray-700 font-medium">
+                  <p className="text-4xl font-bold text-gray-900 mb-6 text-center leading-relaxed">
                     Yukarıdaki konu hakkında dengeli bir görüş sunun.
                   </p>
                   

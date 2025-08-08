@@ -7,7 +7,8 @@ import SignUp from "@/pages/auth/signup";
 import OAuthCallback from "@/pages/auth/oauth-callback";
 import { createBrowserRouter } from "react-router";
 import TestPage from "@/pages/test/test";
-import SpeakingTest from "@/pages/speaking-test/SpeakingTest";
+import ImprovedSpeakingTest from "@/pages/speaking-test/ImprovedSpeakingTest";
+import SpeakingDemo from "@/pages/speaking-demo";
 
 export const router = createBrowserRouter([
   {
@@ -44,7 +45,11 @@ export const router = createBrowserRouter([
       },
       {
         path: "/speaking-test/:testId",
-        element: <SpeakingTest />,
+        element: <ImprovedSpeakingTest />,
+      },
+      {
+        path: "/speaking-demo",
+        element: <SpeakingDemo />,
       },
     ],
   },

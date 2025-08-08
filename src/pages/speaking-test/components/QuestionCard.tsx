@@ -72,6 +72,10 @@ const QuestionCard = ({
           if (prev <= 1) {
             clearInterval(countdownTimer);
             setShowCountdownTimer(false);
+            // Automatically start recording after countdown completes
+            setTimeout(() => {
+              onRecord();
+            }, 300);
             return 0;
           }
           return prev - 1;
@@ -86,7 +90,7 @@ const QuestionCard = ({
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-md overflow-hidden">
       <div className="bg-gradient-to-r from-red-50 to-red-100 p-4 sm:p-5 border-b border-red-200">
-        <div className="text-base sm:text-lg text-red-800 font-semibold flex items-center gap-2">
+        <div className="text-lg sm:text-xl text-red-800 font-semibold flex items-center gap-2">
           <svg className="h-5 w-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
           </svg>
@@ -132,12 +136,14 @@ const QuestionCard = ({
           </div>
         </div>
         
-        <div className="bg-gray-50 rounded-lg p-4 mb-6">
-          <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2 text-center">
+        <div className="bg-gray-50 rounded-lg p-8 mb-8">
+          {/* Question with large text */}
+          <h3 className="text-4xl font-bold text-gray-900 mb-6 text-center leading-relaxed">
             {question.questionText}
           </h3>
-          <div className="text-center text-sm text-gray-600 mt-2">
-            Net ve anlaşılır bir şekilde cevap verin
+          
+          <div className="text-center text-xl text-gray-600 mt-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+            <p className="font-medium">💡 Net ve anlaşılır bir şekilde cevap verin</p>
           </div>
         </div>
 

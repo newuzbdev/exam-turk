@@ -10,6 +10,7 @@ export interface TimerProps {
   showControls?: boolean;
   type: "preparation" | "answer";
   isActive?: boolean;
+  part?: 1 | 2 | 3; // Add part number for correct timing
 }
 
 export const Timer = ({
@@ -20,6 +21,7 @@ export const Timer = ({
   showControls = false,
   type,
   isActive = true,
+  part = 1,
 }: TimerProps) => {
   const [timeLeft, setTimeLeft] = useState(duration);
   const [isRunning, setIsRunning] = useState(autoStart);
@@ -129,11 +131,21 @@ export const Timer = ({
           <Clock className="h-6 w-6 text-white" />
         </div>
         <div className="text-center">
-          <p className="text-xs font-medium text-gray-700 mb-1">
-            {type === "preparation" ? "Hazırlanma Süresi" : "Cevap Süresi"}
+          <p className="text-sm font-medium text-gray-700 mb-2">
+            {type === "preparation" ? "Düşünme Süresi" : "Cevap Süresi"}
           </p>
-          <p className={`text-3xl font-bold ${getTimerColor()} font-mono`}>
+          <p className={`text-5xl font-bold ${getTimerColor()} font-mono mb-1`}>
             {formatTime(timeLeft)}
+          </p>
+          <p className="text-xs text-gray-600">
+            {type === "preparation" 
+              ? part === 1 
+                ? "5 saniye düşünme süresi" 
+                : "1 dakika düşünme süresi"
+              : part === 1
+                ? "30 saniye cevap süresi"
+                : "2 dakika cevap süresi"
+            }
           </p>
         </div>
       </div>

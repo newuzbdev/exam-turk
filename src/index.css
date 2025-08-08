@@ -1,7 +1,9 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* Clean white backgrounds with red icons for test type cards */
+
+
+/* Clean white backgrounds with red accents for test type cards */
 .listening-card {
   background: white;
   position: relative;

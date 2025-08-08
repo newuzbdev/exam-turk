@@ -166,22 +166,26 @@ const SpeakingTest = () => {
         // Reset recording duration
         setRecordingDuration(0);
         
+        // Set the recording question ID first
+        setTestState((prev) => ({
+          ...prev,
+          currentlyRecordingQuestionId: questionId,
+          isPaused: false,
+        }));
+        
         // Start recording for this question
         await startRecording();
-        
-        // Check if recording started successfully
-        // We need to add a small delay to ensure the recording state is updated
-        setTimeout(() => {
-          setTestState((prev) => ({
-            ...prev,
-            currentlyRecordingQuestionId: questionId,
-            isPaused: false,
-          }));
-        }, 100);
       }
     } catch (error) {
       console.error("Recording error:", error);
       toast.error("Kayıt başlatılamadı. Lütfen tekrar deneyin.");
+      
+      // Reset the recording state if there's an error
+      setTestState((prev) => ({
+        ...prev,
+        currentlyRecordingQuestionId: null,
+        isPaused: false,
+      }));
     }
   };
 

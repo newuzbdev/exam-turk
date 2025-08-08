@@ -299,10 +299,10 @@ const ImprovedSpeakingTest = () => {
       // Format submission data according to API structure
       const submissionData = {
         speakingTestId: testData.id,
-        parts: testData.sections.map((section, sectionIndex) => {
+        parts: testData.sections.map((section, ) => {
           const part: any = {
             description: section.description,
-            image: section.images?.[0] || "",
+            image: "", // Section does not have images property
           };
 
           if (section.subParts && section.subParts.length > 0) {

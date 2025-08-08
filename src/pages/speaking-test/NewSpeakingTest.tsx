@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import {  useNavigate } from 'react-router-dom';
 import { Mic, Square, Play, Pause, ArrowLeft, CheckCircle, Clock, User } from 'lucide-react';
 
 interface Question {
@@ -16,7 +16,6 @@ interface Recording {
 }
 
 const NewSpeakingTest = () => {
-  const { testId } = useParams();
   const navigate = useNavigate();
   
   // Test data (this would come from API)

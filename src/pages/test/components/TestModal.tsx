@@ -88,7 +88,7 @@ const TestModal = ({
       id: "listening",
       title: "Listening",
       icon: Headphones,
-      color: "bg-blue-500 hover:bg-blue-600",
+      color: "bg-gray-600 hover:bg-gray-700",
       tests: listeningTests,
       duration: "30 min",
       questions: listeningTests.length
@@ -97,7 +97,7 @@ const TestModal = ({
       id: "reading", 
       title: "Reading",
       icon: BookOpen,
-      color: "bg-green-500 hover:bg-green-600", 
+      color: "bg-gray-600 hover:bg-gray-700", 
       tests: readingTests,
       duration: "60 min",
       questions: readingTests.length
@@ -106,7 +106,7 @@ const TestModal = ({
       id: "writing",
       title: "Writing", 
       icon: PenTool,
-      color: "bg-purple-500 hover:bg-purple-600",
+      color: "bg-gray-600 hover:bg-gray-700",
       tests: writingTests,
       duration: "60 min",
       questions: writingTests.length
@@ -115,7 +115,7 @@ const TestModal = ({
       id: "speaking",
       title: "Speaking",
       icon: Mic,
-      color: "bg-orange-500 hover:bg-orange-600",
+      color: "bg-gray-600 hover:bg-gray-700",
       tests: speakingTests, 
       duration: "15 min",
       questions: speakingTests.length
@@ -139,8 +139,12 @@ const TestModal = ({
                 <Button 
                   size="sm"
                   onClick={() => {
-                    // Handle individual test start
-                    console.log(`Starting ${testType} test:`, test);
+                    if (testType === 'speaking') {
+                      window.location.href = `/speaking-test/${test.id}`;
+                    } else {
+                      console.log(`Starting ${testType} test:`, test);
+                      // TODO: Add navigation for other test types
+                    }
                   }}
                 >
                   <Play className="h-4 w-4 mr-1" />
@@ -168,14 +172,14 @@ const TestModal = ({
 
         <div className="space-y-6">
           {/* Full Test Option */}
-          <Card className="border-2 border-red-200 bg-gradient-to-r from-red-50 to-red-100">
+          <Card className="border border-gray-200 bg-gray-50">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Target className="h-6 w-6 text-red-600" />
-                  <span className="text-red-900">Tam Test</span>
+                  <Target className="h-6 w-6 text-gray-700" />
+                  <span className="text-gray-900">Tam Test</span>
                 </div>
-                <Badge variant="secondary" className="bg-red-600 text-white">
+                <Badge variant="secondary" className="bg-gray-700 text-white">
                   165 dakika
                 </Badge>
               </CardTitle>
@@ -183,7 +187,7 @@ const TestModal = ({
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                 {testSections.map((section) => (
-                  <div key={section.id} className="text-center p-3 bg-white rounded-lg">
+                  <div key={section.id} className="text-center p-3 bg-white rounded-lg border border-gray-200">
                     <section.icon className="h-8 w-8 mx-auto mb-2 text-gray-600" />
                     <div className="text-sm font-medium text-gray-900">{section.title}</div>
                     <div className="text-xs text-gray-500">{section.duration}</div>
@@ -191,7 +195,7 @@ const TestModal = ({
                 ))}
               </div>
               <Button 
-                className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3"
+                className="w-full bg-gray-700 hover:bg-gray-800 text-white font-semibold py-3"
                 onClick={() => {
                   // Handle full test start
                   console.log("Starting full test");

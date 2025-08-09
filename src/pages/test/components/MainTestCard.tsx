@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Headphones, Mic, BookOpen, PenTool } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import TestInstructionModal from "./TestInstructionModal";
 
 interface TurkishTest {
   id: string;
@@ -58,6 +60,8 @@ const MainTestCard = ({
   availableTestTypes,
 }: MainTestCardProps) => {
   const navigate = useNavigate();
+  const [showInstructionModal, setShowInstructionModal] = useState(false);
+  const [selectedTestType, setSelectedTestType] = useState<string>("");
 
   const getAvailableTypes = () => {
     const types = [];
@@ -81,11 +85,16 @@ const MainTestCard = ({
   };
 
   const handleTestTypeClick = (testType: string) => {
+    setSelectedTestType(testType);
+    setShowInstructionModal(true);
+  };
+
+  const handleStartTestFromModal = () => {
     // Navigate to the test page with the specific test type selected
     navigate("/test", {
       state: {
         selectedTestId: test.id,
-        selectedTestType: testType,
+        selectedTestType: selectedTestType,
       },
     });
   };
@@ -121,7 +130,7 @@ const MainTestCard = ({
                 return (
                   <div
                     key={index}
-                    className="flex items-center gap-2 bg-red-50 text-red-700 px-3 py-2 rounded-lg text-sm font-medium cursor-pointer border border-red-200"
+                    className="flex items-center gap-2 bg-gray-50 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium cursor-pointer border border-gray-200 hover:bg-gray-100 hover:border-gray-300 transition-colors"
                     onClick={() => handleTestTypeClick(type.type)}
                   >
                     <IconComponent className="h-4 w-4" />
@@ -135,12 +144,20 @@ const MainTestCard = ({
 
         {/* Main Test Start Button */}
         <Button
-          className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 mt-6 shadow-xl text-xl rounded-lg border-2 border-red-700"
+          className="w-full bg-gray-700 hover:bg-gray-800 text-white font-bold py-4 mt-6 shadow-lg text-xl rounded-lg"
           onClick={() => onTestStart(test)}
         >
           🎯 Test Başla
         </Button>
       </CardContent>
+
+      {/* Test Instruction Modal */}
+      <TestInstructionModal
+        open={showInstructionModal}
+        onOpenChange={setShowInstructionModal}
+        testType={selectedTestType}
+        onStartTest={handleStartTestFromModal}
+      />
     </Card>
   );
 };

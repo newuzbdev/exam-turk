@@ -69,8 +69,8 @@ const TestPage = () => {
   const [turkishTestData, setTurkishTestData] =
     useState<TurkishTestResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedTest, setSelectedTest] = useState<TurkishTest | null>(null);
-  const [selectedTestType, setSelectedTestType] = useState<TestType>("all");
+  const [_selectedTest, setSelectedTest] = useState<TurkishTest | null>(null);
+  const [_selectedTestType, setSelectedTestType] = useState<TestType>("all");
   const [showTestModal, setShowTestModal] = useState(false);
   const [currentTestForModal, setCurrentTestForModal] = useState<TurkishTest | null>(null);
   const location = useLocation();

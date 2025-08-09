@@ -16,19 +16,19 @@ const SpeakingDemo = () => {
         </p>
         
         <div className="space-y-4 text-xl text-black mb-8">
-          <div className="border-2 border-black p-4">
+          <div className="border border-gray-300 p-4 rounded-lg shadow-sm">
             ✓ Temiz ve modern tasarım
           </div>
-          <div className="border-2 border-black p-4">
+          <div className="border border-gray-300 p-4 rounded-lg shadow-sm">
             ✓ Sadece siyah, beyaz, kırmızı renkler
           </div>
-          <div className="border-2 border-black p-4">
+          <div className="border border-gray-300 p-4 rounded-lg shadow-sm">
             ✓ Basit kayıt sistemi
           </div>
-          <div className="border-2 border-black p-4">
+          <div className="border border-gray-300 p-4 rounded-lg shadow-sm">
             ✓ Büyük metinler (daha okunabilir)
           </div>
-          <div className="border-2 border-black p-4">
+          <div className="border border-gray-300 p-4 rounded-lg shadow-sm">
             ✓ Hatasız çalışma
           </div>
         </div>

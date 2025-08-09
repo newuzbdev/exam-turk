@@ -41,7 +41,7 @@ interface ReadingTest {
 
 interface MainTestCardProps {
   test: TurkishTest;
-  onSelect: (test: TurkishTest) => void;
+  onTestStart: (test: TurkishTest) => void;
   getTestImage: () => string;
   formatDate: (dateString: string) => string;
   availableTestTypes: {
@@ -54,7 +54,7 @@ interface MainTestCardProps {
 
 const MainTestCard = ({
   test,
-  onSelect,
+  onTestStart,
   availableTestTypes,
 }: MainTestCardProps) => {
   const navigate = useNavigate();
@@ -82,7 +82,6 @@ const MainTestCard = ({
 
   const handleTestTypeClick = (testType: string) => {
     // Navigate to the test page with the specific test type selected
-    // Use state instead of URL parameters to avoid showing IDs
     navigate("/test", {
       state: {
         selectedTestId: test.id,
@@ -93,36 +92,16 @@ const MainTestCard = ({
 
   const availableTypes = getAvailableTypes();
   return (
-    <Card
-      key={test.id}
-      className="overflow-visible flex flex-col hover:shadow-lg transition-shadow duration-200  shadow-md rounded-xl"
-    >
+    <Card className="overflow-visible flex flex-col shadow-xl rounded-xl border border-gray-200 bg-white cursor-pointer">
       <div className="relative flex-shrink-1">
-        <div className="w-full h-48 bg-gray-100 rounded-t-xl flex flex-col items-center justify-center cursor-pointer border-b">
-          <div className="flex items-center gap-4 mb-3 px-4">
-            {availableTypes.map((type, index) => {
-              const IconComponent = type.icon;
-              return (
-                <div
-                  key={index}
-                  className="flex flex-col items-center cursor-pointer hover:scale-105 transition-transform flex-1"
-                  onClick={() => handleTestTypeClick(type.type)}
-                >
-                  <div className="bg-white rounded-lg p-3 mb-2 shadow-sm border">
-                    <IconComponent className="h-8 w-8 text-gray-700" />
-                  </div>
-                  <span className="text-sm font-medium text-gray-700 text-center">
-                    {type.name}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+        <div className="w-full h-48 rounded-t-xl overflow-hidden border-b border-gray-100 relative">
+          <img
+            src="https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&h=250&fit=crop&auto=format"
+            alt="Test"
+            className="w-full h-full object-cover"
+          />
           <div className="absolute top-4 right-4">
-            <Badge
-              variant="secondary"
-              className="bg-white text-gray-600 border"
-            >
+            <Badge variant="secondary" className="bg-white text-gray-600 shadow-md border border-gray-200">
               <Clock className="h-4 w-4 mr-1" />
               {availableTypes.length} Tür
             </Badge>
@@ -142,7 +121,7 @@ const MainTestCard = ({
                 return (
                   <div
                     key={index}
-                    className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-700 px-3 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors border border-red-200"
+                    className="flex items-center gap-2 bg-red-50 text-red-700 px-3 py-2 rounded-lg text-sm font-medium cursor-pointer border border-red-200"
                     onClick={() => handleTestTypeClick(type.type)}
                   >
                     <IconComponent className="h-4 w-4" />
@@ -152,32 +131,14 @@ const MainTestCard = ({
               })}
             </div>
           </div>
-
-          {/* <div className="bg-red-50 rounded-lg p-5 mb-4 border border-red-200">
-            <div className="flex items-center justify-between">
-              <span className="text-base text-red-600">Toplam Test Türü</span>
-              <span className="text-xl font-bold text-red-700">
-                {availableTypes.length}
-              </span>
-            </div>
-          </div> */}
         </div>
 
-        {/* Main Enter Test Button */}
+        {/* Main Test Start Button */}
         <Button
-          className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 mt-4 shadow-md text-lg"
-          onClick={() => {
-            console.log("Available test types:", availableTestTypes);
-            console.log("Speaking tests:", availableTestTypes.speaking);
-            const speakingTest = availableTestTypes.speaking[0];
-            if (speakingTest) {
-              navigate(`/speaking-test/${speakingTest.id}`);
-            } else {
-              console.log("No speaking test found");
-            }
-          }}
+          className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 mt-6 shadow-xl text-xl rounded-lg border-2 border-red-700"
+          onClick={() => onTestStart(test)}
         >
-          🎯 Testni Başla
+          🎯 Test Başla
         </Button>
       </CardContent>
     </Card>

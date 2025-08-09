@@ -228,7 +228,7 @@ const NewSpeakingTest = () => {
             </button>
             <button
               onClick={() => navigate('/test')}
-              className="w-full border-2 border-black text-black font-bold py-6 px-8 text-2xl rounded-lg hover:bg-black hover:text-white transition-all duration-200"
+              className="w-full border border-gray-300 text-gray-900 font-bold py-6 px-8 text-2xl rounded-lg hover:bg-gray-900 hover:text-white transition-all duration-200 shadow-md hover:shadow-lg"
             >
               Test Sayfasına Dön
             </button>
@@ -241,7 +241,7 @@ const NewSpeakingTest = () => {
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-black">
+      <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <button
@@ -261,7 +261,7 @@ const NewSpeakingTest = () => {
       </div>
 
       {/* Progress */}
-      <div className="bg-white border-b border-black">
+      <div className="bg-white border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-4 py-3">
           <div className="w-full bg-black h-2 rounded-full overflow-hidden">
             <div 
@@ -276,7 +276,7 @@ const NewSpeakingTest = () => {
       <div className="max-w-6xl mx-auto px-4 py-8">
         
         {/* Question Card */}
-        <div className="bg-white rounded-2xl shadow-lg border-2 border-black p-12 mb-8">
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-12 mb-8">
           <div className="text-center">
             <div className="inline-flex items-center bg-red-600 text-white px-6 py-2 rounded-full text-lg font-bold mb-6">
               <User className="w-5 h-5 mr-2" />
@@ -301,7 +301,7 @@ const NewSpeakingTest = () => {
           </div>
 
           {/* Recording Time */}
-          <div className="bg-white border-2 border-black rounded-2xl p-8 text-center shadow-lg">
+          <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center shadow-lg">
             <div className="w-8 h-8 mx-auto mb-3 bg-red-600 rounded-full flex items-center justify-center">
               <div className="w-3 h-3 bg-white rounded-full"></div>
             </div>
@@ -312,14 +312,14 @@ const NewSpeakingTest = () => {
           </div>
 
           {/* Status */}
-          <div className="bg-white border-2 border-black rounded-2xl p-8 text-center shadow-lg">
+          <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center shadow-lg">
             <div className="w-8 h-8 mx-auto mb-3">
               {isRecording ? (
                 <div className="w-8 h-8 bg-red-600 rounded-full animate-pulse"></div>
               ) : recordings.has(currentQuestion.id) ? (
                 <CheckCircle className="w-8 h-8 text-red-600" />
               ) : (
-                <div className="w-8 h-8 border-2 border-black rounded-full"></div>
+                <div className="w-8 h-8 border-2 border-gray-300 rounded-full"></div>
               )}
             </div>
             <div className="text-lg font-bold text-black mb-2">Durum</div>
@@ -394,8 +394,8 @@ const NewSpeakingTest = () => {
             disabled={currentQuestionIndex === 0}
             className={`px-10 py-5 text-xl font-bold rounded-xl transition-all duration-200 ${
               currentQuestionIndex === 0 
-                ? 'border-2 border-black text-black opacity-50 cursor-not-allowed'
-                : 'border-2 border-black text-black hover:bg-black hover:text-white shadow-lg hover:shadow-xl'
+                ? 'border border-gray-300 text-gray-500 opacity-50 cursor-not-allowed'
+                : 'border border-gray-300 text-gray-900 hover:bg-gray-900 hover:text-white shadow-md hover:shadow-lg'
             }`}
           >
             ← Önceki

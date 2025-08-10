@@ -38,19 +38,9 @@ const getTestInstructions = (testType: string) => {
         icon: Mic,
         duration: "11-15 dakika",
         sections: "3 bölüm",
-        description: "IELTS Konuşma testi İngilizce konuşma becerinizi değerlendirir.",
-        instructions: [
-          "Bölüm 1: Tanışma ve genel sorular (4-5 dakika)",
-          "Bölüm 2: Kısa sunum - size verilen konu hakkında 2 dakika konuşun (3-4 dakika)",
-          "Bölüm 3: Detaylı tartışma - Bölüm 2'nin konusuyla ilgili derin sorular (4-5 dakika)",
-          "Tüm konuşmalar kaydedilir",
-          "Doğal ve akıcı konuşmaya odaklanın"
-        ],
-        tips: [
-          "Açık ve net konuşun",
-          "Örnekler vererek cevaplarınızı geliştirin",
-          "Gramer çeşitliliği kullanın"
-        ]
+        description: "Konuşma testi İngilizce konuşma becerinizi değerlendirir. Her bölümde farklı görsel materyaller ve sorular sunulur.",
+        instructions: [],
+        tips: []
       };
     case "reading":
       return {
@@ -111,42 +101,54 @@ const TestInstructionModal = ({ open, onOpenChange, testType, onStartTest }: Tes
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-3 text-2xl">
-            <div className="p-2 bg-gray-100 rounded-lg">
-              <IconComponent className="h-6 w-6 text-gray-700" />
+      <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] overflow-y-auto bg-white rounded-lg shadow-lg">
+        <DialogHeader className="pb-4 border-b border-gray-200">
+          <DialogTitle className="flex items-center gap-3 text-2xl font-bold text-gray-900">
+            <div className="p-3 bg-red-600 rounded-lg">
+              <IconComponent className="h-6 w-6 text-white" />
             </div>
-            {testInfo.title}
+            <div>
+              {testInfo.title}
+              <p className="text-sm font-normal text-gray-600 mt-1">Test talimatlarını dikkatli okuyun</p>
+            </div>
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-6 py-4">
           {/* Test Overview */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-gray-600" />
-              <span className="text-sm text-gray-600">Süre: {testInfo.duration}</span>
+            <div className="flex items-center gap-3 p-4 bg-white rounded-lg shadow-md">
+              <Clock className="h-5 w-5 text-red-600" />
+              <div>
+                <p className="text-xs text-red-600 font-bold uppercase">Süre</p>
+                <p className="text-lg font-bold text-gray-900">{testInfo.duration}</p>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-gray-600" />
-              <span className="text-sm text-gray-600">{testInfo.sections}</span>
+            <div className="flex items-center gap-3 p-4 bg-white rounded-lg shadow-md">
+              <Users className="h-5 w-5 text-red-600" />
+              <div>
+                <p className="text-xs text-red-600 font-bold uppercase">Bölümler</p>
+                <p className="text-lg font-bold text-gray-900">{testInfo.sections}</p>
+              </div>
             </div>
           </div>
 
-          <div className="p-4 bg-gray-50 rounded-lg">
-            <p className="text-gray-700">{testInfo.description}</p>
+          <div className="p-4 bg-white rounded-lg shadow-md">
+            <h3 className="text-lg font-bold text-gray-900 mb-3">Test Hakkında</h3>
+            <p className="text-gray-700 leading-relaxed">{testInfo.description}</p>
           </div>
 
           {/* Instructions */}
           {testInfo.instructions.length > 0 && (
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">Test Talimatları</h3>
-              <div className="space-y-2">
+            <div className="bg-white rounded-lg shadow-md p-4">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Test Talimatları</h3>
+              <div className="space-y-3">
                 {testInfo.instructions.map((instruction, index) => (
-                  <div key={index} className="flex items-start gap-3">
-                    <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm text-gray-700">{instruction}</span>
+                  <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                    <div className="w-6 h-6 bg-red-600 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-white text-xs font-bold">{index + 1}</span>
+                    </div>
+                    <span className="text-gray-700 leading-relaxed">{instruction}</span>
                   </div>
                 ))}
               </div>
@@ -155,33 +157,43 @@ const TestInstructionModal = ({ open, onOpenChange, testType, onStartTest }: Tes
 
           {/* Tips */}
           {testInfo.tips.length > 0 && (
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">İpuçları</h3>
-              <div className="grid gap-2">
+            <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
+              <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-3">
+                <div className="p-2 bg-amber-500 rounded-lg">
+                  <span className="text-white text-lg">💡</span>
+                </div>
+                İpuçları
+              </h3>
+              <div className="grid gap-4">
                 {testInfo.tips.map((tip, index) => (
-                  <Badge key={index} variant="outline" className="justify-start p-2 h-auto">
-                    💡 {tip}
-                  </Badge>
+                  <div key={index} className="flex items-start gap-4 p-5 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200">
+                    <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-white text-sm font-bold">{index + 1}</span>
+                    </div>
+                    <span className="text-slate-700 leading-relaxed font-medium">{tip}</span>
+                  </div>
                 ))}
               </div>
             </div>
           )}
 
           {/* Action Buttons */}
-          <div className="flex gap-3 pt-4 border-t">
+          <div className="flex gap-4 pt-6 border-t border-gray-200">
             <Button
               variant="outline"
+              size="lg"
               onClick={() => onOpenChange(false)}
-              className="flex-1"
+              className="flex-1 h-12 text-gray-700 border-gray-300 hover:bg-gray-50 font-bold"
             >
               İptal
             </Button>
             <Button
+              size="lg"
               onClick={() => {
                 onOpenChange(false);
                 onStartTest();
               }}
-              className="flex-1 bg-gray-700 hover:bg-gray-800"
+              className="flex-1 h-12 bg-red-600 hover:bg-red-700 text-white font-bold"
             >
               Teste Başla
             </Button>

@@ -90,13 +90,24 @@ const MainTestCard = ({
   };
 
   const handleStartTestFromModal = () => {
-    // Navigate to the test page with the specific test type selected
-    navigate("/test", {
-      state: {
-        selectedTestId: test.id,
-        selectedTestType: selectedTestType,
-      },
-    });
+    // Navigate to the specific test type page
+    if (selectedTestType === "speaking") {
+      // Find the speaking test ID from available tests
+      const speakingTest = availableTestTypes.speaking[0];
+      if (speakingTest) {
+        navigate(`/speaking-test/${speakingTest.id}`);
+      } else {
+        console.error("No speaking test available");
+      }
+    } else {
+      // Navigate to the general test page for other test types
+      navigate("/test", {
+        state: {
+          selectedTestId: test.id,
+          selectedTestType: selectedTestType,
+        },
+      });
+    }
   };
 
   const availableTypes = getAvailableTypes();
@@ -144,7 +155,8 @@ const MainTestCard = ({
 
         {/* Main Test Start Button */}
         <Button
-          className="w-full bg-gray-700 hover:bg-gray-800 text-white font-bold py-4 mt-6 shadow-lg text-xl rounded-lg"
+          size="default"
+          className="w-full bg-gray-700 hover:bg-gray-800 text-white font-bold py-3 mt-6 shadow-lg text-base rounded-lg"
           onClick={() => onTestStart(test)}
         >
           🎯 Test Başla

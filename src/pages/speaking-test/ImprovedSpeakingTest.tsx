@@ -54,12 +54,13 @@ const ImprovedSpeakingTest = () => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [showSectionDescription, setShowSectionDescription] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
   const [recordings, setRecordings] = useState<Map<string, Recording>>(new Map());
   const [timeLeft, setTimeLeft] = useState(30); // Default 30 seconds per question
   const [recordingTime, setRecordingTime] = useState(0);
   const [isTestComplete, setIsTestComplete] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPlayingInstructions, setIsPlayingInstructions] = useState(false);
+  const [autoRecordingEnabled, setAutoRecordingEnabled] = useState(false);
 
   // Refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -67,12 +68,19 @@ const ImprovedSpeakingTest = () => {
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const startSoundRef = useRef<HTMLAudioElement | null>(null);
+  const endSoundRef = useRef<HTMLAudioElement | null>(null);
 
-  // Load test data
+  // Load test data and initialize audio
   useEffect(() => {
     if (testId) {
       fetchTestData();
     }
+    
+    // Initialize sound effects
+    startSoundRef.current = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmshBziI0vPXeCsFJG7C7+WQPQ0PVKzl7axeBg4+o+HzultYFjLK4vK0V');
+    endSoundRef.current = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmshBziI0vPXeCsFJG7C7+WQPQ0PVKzl7axeBg4+o+HzultYFjLK4vK0V');
   }, [testId]);
 
   const fetchTestData = async () => {
@@ -87,6 +95,48 @@ const ImprovedSpeakingTest = () => {
     }
   };
 
+  const playInstructionAudio = async (partNumber: number) => {
+    try {
+      setIsPlayingInstructions(true);
+      const audioFile = `/speaking part${partNumber}.mp3`;
+      audioRef.current = new Audio(audioFile);
+      
+      audioRef.current.onended = () => {
+        setIsPlayingInstructions(false);
+        // Auto start recording after instruction
+        setTimeout(() => {
+          if (!isRecording) {
+            startRecording();
+          }
+        }, 1000);
+      };
+      
+      audioRef.current.onerror = () => {
+        setIsPlayingInstructions(false);
+        toast.error('Ses talimatı oynatılamadı');
+      };
+      
+      await audioRef.current.play();
+    } catch (error) {
+      setIsPlayingInstructions(false);
+      console.error('Error playing instruction audio:', error);
+    }
+  };
+
+  const playSound = (type: 'start' | 'end') => {
+    try {
+      if (type === 'start' && startSoundRef.current) {
+        startSoundRef.current.currentTime = 0;
+        startSoundRef.current.play().catch(console.error);
+      } else if (type === 'end' && endSoundRef.current) {
+        endSoundRef.current.currentTime = 0;
+        endSoundRef.current.play().catch(console.error);
+      }
+    } catch (error) {
+      console.error('Error playing sound:', error);
+    }
+  };
+
   // Get current question
   const getCurrentQuestion = () => {
     if (!testData) return null;
@@ -94,12 +144,15 @@ const ImprovedSpeakingTest = () => {
     const section = testData.sections[currentSectionIndex];
     if (!section) return null;
 
-    if (section.subParts.length > 0) {
+    // Check if section has subParts and they exist
+    if (section.subParts && section.subParts.length > 0) {
       const subPart = section.subParts[currentSubPartIndex];
-      if (!subPart) return null;
-      return subPart.questions[currentQuestionIndex];
+      if (!subPart || !subPart.questions) return null;
+      return subPart.questions[currentQuestionIndex] || null;
     } else {
-      return section.questions[currentQuestionIndex];
+      // Direct questions in section
+      if (!section.questions || section.questions.length === 0) return null;
+      return section.questions[currentQuestionIndex] || null;
     }
   };
 
@@ -108,7 +161,7 @@ const ImprovedSpeakingTest = () => {
 
   // Timer effects
   useEffect(() => {
-    if (timeLeft > 0 && isRecording && !isPaused) {
+    if (timeLeft > 0 && isRecording) {
       timerRef.current = setTimeout(() => {
         setTimeLeft(timeLeft - 1);
       }, 1000);
@@ -121,10 +174,10 @@ const ImprovedSpeakingTest = () => {
         clearTimeout(timerRef.current);
       }
     };
-  }, [timeLeft, isRecording, isPaused]);
+  }, [timeLeft, isRecording]);
 
   useEffect(() => {
-    if (isRecording && !isPaused) {
+    if (isRecording) {
       recordingTimerRef.current = setInterval(() => {
         setRecordingTime(prev => prev + 1);
       }, 1000);
@@ -139,10 +192,13 @@ const ImprovedSpeakingTest = () => {
         clearInterval(recordingTimerRef.current);
       }
     };
-  }, [isRecording, isPaused]);
+  }, [isRecording]);
 
   const startRecording = async () => {
     try {
+      // Play start sound
+      playSound('start');
+      
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: true,
@@ -167,6 +223,9 @@ const ImprovedSpeakingTest = () => {
       };
 
       mediaRecorder.onstop = () => {
+        // Play end sound
+        playSound('end');
+        
         const blob = new Blob(chunksRef.current, { type: 'audio/webm;codecs=opus' });
         if (currentQuestion) {
           const recording: Recording = {
@@ -176,6 +235,11 @@ const ImprovedSpeakingTest = () => {
           };
           
           setRecordings(prev => new Map(prev.set(currentQuestion.id, recording)));
+          
+          // Auto proceed to next question after 2 seconds
+          setTimeout(() => {
+            nextQuestion();
+          }, 2000);
         }
         
         // Clean up
@@ -187,8 +251,8 @@ const ImprovedSpeakingTest = () => {
 
       mediaRecorder.start(100);
       setIsRecording(true);
-      setIsPaused(false);
       setRecordingTime(0);
+      setAutoRecordingEnabled(true);
       
     } catch (error) {
       console.error('Error starting recording:', error);
@@ -196,25 +260,12 @@ const ImprovedSpeakingTest = () => {
     }
   };
 
-  const pauseRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.pause();
-      setIsPaused(true);
-    }
-  };
 
-  const resumeRecording = () => {
-    if (mediaRecorderRef.current && isRecording && isPaused) {
-      mediaRecorderRef.current.resume();
-      setIsPaused(false);
-    }
-  };
 
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
-      setIsPaused(false);
     }
   };
 
@@ -263,6 +314,10 @@ const ImprovedSpeakingTest = () => {
   const startSection = () => {
     setShowSectionDescription(false);
     setTimeLeft(30);
+    
+    // Play instruction audio for current section
+    const partNumber = currentSectionIndex + 1;
+    playInstructionAudio(partNumber);
   };
 
   const submitTest = async () => {
@@ -464,7 +519,27 @@ const ImprovedSpeakingTest = () => {
   }
 
   // Show question interface
-  if (!currentQuestion) return null;
+  if (!currentQuestion) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 bg-red-600 rounded-full mx-auto flex items-center justify-center">
+            <span className="text-white text-2xl">!</span>
+          </div>
+          <h2 className="text-xl font-bold text-black">Soru Bulunamadı</h2>
+          <p className="text-gray-600">
+            Bölüm {currentSectionIndex + 1}, Alt Bölüm {currentSubPartIndex + 1}, Soru {currentQuestionIndex + 1}
+          </p>
+          <button
+            onClick={nextQuestion}
+            className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700"
+          >
+            Sonraki Soruya Geç
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -481,9 +556,17 @@ const ImprovedSpeakingTest = () => {
             </button>
             <div className="text-center">
               <h1 className="text-2xl font-bold text-black">{testData.title}</h1>
-              <p className="text-sm text-black">{currentSection?.title}</p>
+              <div className="flex items-center justify-center gap-2 mt-1">
+                <div className="px-3 py-1 bg-red-600 text-white rounded-full text-sm font-bold">
+                  {currentSection?.title}
+                </div>
+                <span className="text-sm text-gray-600">•</span>
+                <span className="text-sm text-gray-600">
+                  Soru {currentQuestionIndex + 1}
+                </span>
+              </div>
             </div>
-            <div className="text-lg text-black">
+            <div className="text-lg font-bold text-black">
               Bölüm {currentSectionIndex + 1} / {testData.sections.length}
             </div>
           </div>
@@ -495,10 +578,27 @@ const ImprovedSpeakingTest = () => {
         
         {/* Question Card */}
         <div className="bg-white border-2 border-red-600 rounded-lg p-8 mb-6">
+          {/* Show images if available */}
+          {currentSection?.subParts && currentSection.subParts[currentSubPartIndex]?.images && 
+           currentSection.subParts[currentSubPartIndex].images.length > 0 && (
+            <div className="mb-6">
+              <img 
+                src={currentSection.subParts[currentSubPartIndex].images[0]} 
+                alt="Test görseli" 
+                className="max-w-md mx-auto rounded-lg shadow-lg"
+              />
+            </div>
+          )}
+          
           <div className="text-center">
             <h2 className="text-3xl font-bold text-black leading-relaxed">
               {currentQuestion.questionText}
             </h2>
+          </div>
+          
+          {/* Debug info - remove in production */}
+          <div className="mt-4 text-xs text-gray-500 text-center">
+            Debug: Section {currentSectionIndex + 1}, SubPart {currentSubPartIndex + 1}, Question {currentQuestionIndex + 1}
           </div>
         </div>
 
@@ -528,8 +628,10 @@ const ImprovedSpeakingTest = () => {
             </div>
             <div className="text-sm font-bold text-black">Durum</div>
             <div className="text-lg font-bold">
-              {isRecording ? (
-                <span className="text-red-600">{isPaused ? 'DURAKLADI' : 'KAYIT'}</span>
+              {isPlayingInstructions ? (
+                <span className="text-blue-600">TALİMAT</span>
+              ) : isRecording ? (
+                <span className="text-red-600">KAYIT</span>
               ) : recordings.has(currentQuestion.id) ? (
                 <span className="text-red-600">TAMAM</span>
               ) : (
@@ -541,51 +643,39 @@ const ImprovedSpeakingTest = () => {
 
         {/* Recording Controls */}
         <div className="text-center mb-6">
-          <div className="flex justify-center items-center space-x-4">
-            {!isRecording ? (
+          {isPlayingInstructions ? (
+            <div className="space-y-4">
+              <div className="text-6xl">🔊</div>
+              <p className="text-2xl font-bold text-black">Talimat dinleniyor...</p>
+            </div>
+          ) : !isRecording ? (
+            <div className="space-y-4">
               <button
                 onClick={startRecording}
-                className="bg-red-600 text-white p-6 rounded-full hover:bg-red-700 shadow-lg"
+                disabled={isPlayingInstructions}
+                className="bg-red-600 text-white p-6 rounded-full hover:bg-red-700 shadow-lg disabled:opacity-50"
               >
                 <Mic className="w-10 h-10" />
               </button>
-            ) : (
-              <>
-                {!isPaused ? (
-                  <button
-                    onClick={pauseRecording}
-                    className="bg-red-600 text-white p-4 rounded-full hover:bg-red-700"
-                  >
-                    <Pause className="w-8 h-8" />
-                  </button>
-                ) : (
-                  <button
-                    onClick={resumeRecording}
-                    className="bg-red-600 text-white p-4 rounded-full hover:bg-red-700"
-                  >
-                    <Play className="w-8 h-8" />
-                  </button>
-                )}
-                
+              <p className="text-lg font-bold text-black">Konuşmaya başlamak için tıklayın</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex justify-center items-center space-x-4">
+                <div className="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center animate-pulse">
+                  <Mic className="w-10 h-10 text-white" />
+                </div>
                 <button
                   onClick={stopRecording}
-                  className="bg-red-600 text-white p-4 rounded-full hover:bg-red-700"
+                  className="bg-gray-600 text-white p-4 rounded-full hover:bg-gray-700"
                 >
                   <Square className="w-8 h-8" />
                 </button>
-              </>
-            )}
-          </div>
-
-          <div className="mt-4">
-            {!isRecording ? (
-              <p className="text-lg font-bold text-black">Kayıt başlatmak için mikrofon butonuna tıklayın</p>
-            ) : isPaused ? (
-              <p className="text-lg font-bold text-red-600">Kayıt duraklatıldı</p>
-            ) : (
-              <p className="text-lg font-bold text-red-600">🔴 Kayıt devam ediyor...</p>
-            )}
-          </div>
+              </div>
+              <p className="text-xl font-bold text-red-600">🔴 Kayıt devam ediyor...</p>
+              <p className="text-sm text-gray-600">Bitirmek için durdur butonuna tıklayın</p>
+            </div>
+          )}
         </div>
 
         {/* Navigation */}

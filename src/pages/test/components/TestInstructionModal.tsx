@@ -1,7 +1,11 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Headphones, Mic, BookOpen, PenTool, Clock, Users, CheckCircle } from "lucide-react";
+import { Headphones, Mic, BookOpen, PenTool, Clock, Users } from "lucide-react";
 
 interface TestInstructionModalProps {
   open: boolean;
@@ -18,19 +22,20 @@ const getTestInstructions = (testType: string) => {
         icon: Headphones,
         duration: "30 dakika",
         sections: "4 bölüm",
-        description: "IELTS Dinleme testi ses kayıtlarını dinleyerek soruları yanıtlama becerinizi ölçer.",
+        description:
+          "IELTS Dinleme testi ses kayıtlarını dinleyerek soruları yanıtlama becerinizi ölçer.",
         instructions: [
           "Test süresince ses kayıtları sadece bir kez çalınır",
           "Her bölümde farklı konuşma türleri vardır (günlük konuşma, akademik sunum, vb.)",
           "Sorular ses kaydından önce okunabilir",
           "Cevaplarınızı dinlerken not alabilirsiniz",
-          "Test sonunda cevap kağıdınızı doldurmak için ek süre verilir"
+          "Test sonunda cevap kağıdınızı doldurmak için ek süre verilir",
         ],
         tips: [
           "Önemli anahtar kelimeleri önceden okuyun",
           "Dinlerken not tutun",
-          "Telaffuz ve aksan farklılıklarına dikkat edin"
-        ]
+          "Telaffuz ve aksan farklılıklarına dikkat edin",
+        ],
       };
     case "speaking":
       return {
@@ -38,9 +43,10 @@ const getTestInstructions = (testType: string) => {
         icon: Mic,
         duration: "11-15 dakika",
         sections: "3 bölüm",
-        description: "Konuşma testi İngilizce konuşma becerinizi değerlendirir. Her bölümde farklı görsel materyaller ve sorular sunulur.",
+        description:
+          "Konuşma testi İngilizce konuşma becerinizi değerlendirir. Her bölümde farklı görsel materyaller ve sorular sunulur.",
         instructions: [],
-        tips: []
+        tips: [],
       };
     case "reading":
       return {
@@ -48,19 +54,20 @@ const getTestInstructions = (testType: string) => {
         icon: BookOpen,
         duration: "60 dakika",
         sections: "3 metin",
-        description: "IELTS Okuma testi İngilizce okuma anlama becerinizi ölçer.",
+        description:
+          "IELTS Okuma testi İngilizce okuma anlama becerinizi ölçer.",
         instructions: [
           "3 farklı metin üzerinde toplam 40 soru",
           "Metinler kitap, dergi, gazete ve akademik kaynaklardan alınır",
           "Soru türleri: çoktan seçmeli, doğru/yanlış, boşluk doldurma, eşleştirme",
           "Tüm cevaplar cevap kağıdına aktarılmalıdır",
-          "Her yanlış cevap puan düşürür, tahmin etmekten kaçının"
+          "Her yanlış cevap puan düşürür, tahmin etmekten kaçının",
         ],
         tips: [
           "Zamanınızı iyi yönetin",
           "Önce soruları okuyun, sonra metni tarayın",
-          "Anahtar kelimeleri belirleyin"
-        ]
+          "Anahtar kelimeleri belirleyin",
+        ],
       };
     case "writing":
       return {
@@ -68,19 +75,20 @@ const getTestInstructions = (testType: string) => {
         icon: PenTool,
         duration: "60 dakika",
         sections: "2 görev",
-        description: "IELTS Yazma testi İngilizce yazma becerinizi değerlendirir.",
+        description:
+          "IELTS Yazma testi İngilizce yazma becerinizi değerlendirir.",
         instructions: [
           "Görev 1: Grafik, tablo veya diyagram açıklama (150 kelime, 20 dakika)",
           "Görev 2: Essay yazma - verilen konuda görüşünüzü savunun (250 kelime, 40 dakika)",
           "Her iki görev de tamamlanmalıdır",
           "Kelime sayısı sınırlarına dikkat edin",
-          "El yazısı ile yazılmalıdır (bu testte bilgisayar kullanımı)"
+          "El yazısı ile yazılmalıdır (bu testte bilgisayar kullanımı)",
         ],
         tips: [
           "Zamanınızı görevlere göre ayırın",
           "Plan yapın, sonra yazın",
-          "Gramer ve kelime çeşitliliği gösterin"
-        ]
+          "Gramer ve kelime çeşitliliği gösterin",
+        ],
       };
     default:
       return {
@@ -90,12 +98,17 @@ const getTestInstructions = (testType: string) => {
         sections: "Çeşitli",
         description: "Test açıklaması mevcut değil.",
         instructions: [],
-        tips: []
+        tips: [],
       };
   }
 };
 
-const TestInstructionModal = ({ open, onOpenChange, testType, onStartTest }: TestInstructionModalProps) => {
+const TestInstructionModal = ({
+  open,
+  onOpenChange,
+  testType,
+  onStartTest,
+}: TestInstructionModalProps) => {
   const testInfo = getTestInstructions(testType);
   const IconComponent = testInfo.icon;
 
@@ -109,7 +122,9 @@ const TestInstructionModal = ({ open, onOpenChange, testType, onStartTest }: Tes
             </div>
             <div>
               {testInfo.title}
-              <p className="text-sm font-normal text-gray-600 mt-1">Test talimatlarını dikkatli okuyun</p>
+              <p className="text-sm font-normal text-gray-600 mt-1">
+                Test talimatlarını dikkatli okuyun
+              </p>
             </div>
           </DialogTitle>
         </DialogHeader>
@@ -121,34 +136,53 @@ const TestInstructionModal = ({ open, onOpenChange, testType, onStartTest }: Tes
               <Clock className="h-5 w-5 text-red-600" />
               <div>
                 <p className="text-xs text-red-600 font-bold uppercase">Süre</p>
-                <p className="text-lg font-bold text-gray-900">{testInfo.duration}</p>
+                <p className="text-lg font-bold text-gray-900">
+                  {testInfo.duration}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-3 p-4 bg-white rounded-lg shadow-md">
               <Users className="h-5 w-5 text-red-600" />
               <div>
-                <p className="text-xs text-red-600 font-bold uppercase">Bölümler</p>
-                <p className="text-lg font-bold text-gray-900">{testInfo.sections}</p>
+                <p className="text-xs text-red-600 font-bold uppercase">
+                  Bölümler
+                </p>
+                <p className="text-lg font-bold text-gray-900">
+                  {testInfo.sections}
+                </p>
               </div>
             </div>
           </div>
 
           <div className="p-4 bg-white rounded-lg shadow-md">
-            <h3 className="text-lg font-bold text-gray-900 mb-3">Test Hakkında</h3>
-            <p className="text-gray-700 leading-relaxed">{testInfo.description}</p>
+            <h3 className="text-lg font-bold text-gray-900 mb-3">
+              Test Hakkında
+            </h3>
+            <p className="text-gray-700 leading-relaxed">
+              {testInfo.description}
+            </p>
           </div>
 
           {/* Instructions */}
           {testInfo.instructions.length > 0 && (
             <div className="bg-white rounded-lg shadow-md p-4">
-              <h3 className="text-lg font-bold text-gray-900 mb-4">Test Talimatları</h3>
+              <h3 className="text-lg font-bold text-gray-900 mb-4">
+                Test Talimatları
+              </h3>
               <div className="space-y-3">
                 {testInfo.instructions.map((instruction, index) => (
-                  <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div
+                    key={index}
+                    className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg"
+                  >
                     <div className="w-6 h-6 bg-red-600 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-white text-xs font-bold">{index + 1}</span>
+                      <span className="text-white text-xs font-bold">
+                        {index + 1}
+                      </span>
                     </div>
-                    <span className="text-gray-700 leading-relaxed">{instruction}</span>
+                    <span className="text-gray-700 leading-relaxed">
+                      {instruction}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -166,11 +200,18 @@ const TestInstructionModal = ({ open, onOpenChange, testType, onStartTest }: Tes
               </h3>
               <div className="grid gap-4">
                 {testInfo.tips.map((tip, index) => (
-                  <div key={index} className="flex items-start gap-4 p-5 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200">
+                  <div
+                    key={index}
+                    className="flex items-start gap-4 p-5 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200"
+                  >
                     <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-white text-sm font-bold">{index + 1}</span>
+                      <span className="text-white text-sm font-bold">
+                        {index + 1}
+                      </span>
                     </div>
-                    <span className="text-slate-700 leading-relaxed font-medium">{tip}</span>
+                    <span className="text-slate-700 leading-relaxed font-medium">
+                      {tip}
+                    </span>
                   </div>
                 ))}
               </div>

@@ -1,13 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Mic, MicOff, Play, Pause, CheckCircle, Clock } from "lucide-react";
-import { toast } from 'sonner';
-import { findOneSpeakingTest } from '../../speakingTestService';
-import speakingSubmissionService, { SpeakingSubmissionData } from '@/services/speakingSubmission.service';
-import speechToTextService from '@/services/speechToText.service';
+import { Mic, MicOff, CheckCircle, Clock } from "lucide-react";
+import { toast } from "sonner";
+import { findOneSpeakingTest } from "../../../speakingTestService";
+import speakingSubmissionService, {
+  type SpeakingSubmissionData,
+} from "@/services/speakingSubmission.service";
+import speechToTextService from "@/services/speechToText.service";
 
 interface SpeakingTestDemoProps {
   testId: string;
@@ -43,13 +45,18 @@ interface SpeakingTestData {
   sections: TestPart[];
 }
 
-const SpeakingTestDemo = ({ testId, onTestComplete }: SpeakingTestDemoProps) => {
+const SpeakingTestDemo = ({
+  testId,
+  onTestComplete,
+}: SpeakingTestDemoProps) => {
   const [testData, setTestData] = useState<SpeakingTestData | null>(null);
   const [currentPartIndex, setCurrentPartIndex] = useState(0);
   const [currentSubPartIndex, setCurrentSubPartIndex] = useState(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(
+    null
+  );
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [timeLeft, setTimeLeft] = useState(0);
@@ -63,7 +70,7 @@ const SpeakingTestDemo = ({ testId, onTestComplete }: SpeakingTestDemoProps) => 
         setIsLoading(true);
         const data = await findOneSpeakingTest(testId);
         setTestData(data);
-        
+
         // Initialize timer for first question
         if (data.sections?.[0]) {
           const firstPart = data.sections[0];
@@ -74,8 +81,8 @@ const SpeakingTestDemo = ({ testId, onTestComplete }: SpeakingTestDemoProps) => 
           }
         }
       } catch (error) {
-        toast.error('Test yüklenirken hata oluştu');
-        console.error('Error fetching test:', error);
+        toast.error("Test yüklenirken hata oluştu");
+        console.error("Error fetching test:", error);
       } finally {
         setIsLoading(false);
       }
@@ -93,7 +100,8 @@ const SpeakingTestDemo = ({ testId, onTestComplete }: SpeakingTestDemoProps) => 
   }, [timeLeft]);
 
   const getCurrentPart = () => testData?.sections[currentPartIndex];
-  const getCurrentSubPart = () => getCurrentPart()?.subParts?.[currentSubPartIndex];
+  const getCurrentSubPart = () =>
+    getCurrentPart()?.subParts?.[currentSubPartIndex];
   const getCurrentQuestion = () => {
     const subPart = getCurrentSubPart();
     if (subPart) {
@@ -106,7 +114,7 @@ const SpeakingTestDemo = ({ testId, onTestComplete }: SpeakingTestDemoProps) => 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
-      
+
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           setAudioBlob(event.data);
@@ -116,24 +124,24 @@ const SpeakingTestDemo = ({ testId, onTestComplete }: SpeakingTestDemoProps) => 
       recorder.start();
       setMediaRecorder(recorder);
       setIsRecording(true);
-      toast.success('Kayıt başladı');
+      toast.success("Kayıt başladı");
     } catch (error) {
-      toast.error('Mikrofon erişimi reddedildi');
+      toast.error("Mikrofon erişimi reddedildi");
     }
   };
 
   const stopRecording = () => {
     if (mediaRecorder && isRecording) {
       mediaRecorder.stop();
-      mediaRecorder.stream.getTracks().forEach(track => track.stop());
+      mediaRecorder.stream.getTracks().forEach((track) => track.stop());
       setIsRecording(false);
-      toast.success('Kayıt durduruldu');
+      toast.success("Kayıt durduruldu");
     }
   };
 
   const processAudioToText = async () => {
     if (!audioBlob) {
-      toast.error('Ses kaydı bulunamadı');
+      toast.error("Ses kaydı bulunamadı");
       return;
     }
 
@@ -142,17 +150,17 @@ const SpeakingTestDemo = ({ testId, onTestComplete }: SpeakingTestDemoProps) => 
       if (result.success && result.text) {
         const currentQ = getCurrentQuestion();
         if (currentQ) {
-          setAnswers(prev => ({
+          setAnswers((prev) => ({
             ...prev,
-            [currentQ.id]: result.text!
+            [currentQ.id]: result.text!,
           }));
-          toast.success('Ses metne dönüştürüldü');
+          toast.success("Ses metne dönüştürüldü");
         }
       } else {
-        toast.error(result.error || 'Ses metne dönüştürülemedi');
+        toast.error(result.error || "Ses metne dönüştürülemedi");
       }
     } catch (error) {
-      toast.error('Ses işlenirken hata oluştu');
+      toast.error("Ses işlenirken hata oluştu");
     }
   };
 
@@ -161,15 +169,20 @@ const SpeakingTestDemo = ({ testId, onTestComplete }: SpeakingTestDemoProps) => 
     if (!currentPart) return;
 
     const currentSubPart = getCurrentSubPart();
-    
+
     if (currentSubPart) {
       // We're in a subpart
       if (currentQuestionIndex < currentSubPart.questions.length - 1) {
         setCurrentQuestionIndex(currentQuestionIndex + 1);
-      } else if (currentSubPartIndex < (currentPart.subParts?.length || 0) - 1) {
+      } else if (
+        currentSubPartIndex <
+        (currentPart.subParts?.length || 0) - 1
+      ) {
         setCurrentSubPartIndex(currentSubPartIndex + 1);
         setCurrentQuestionIndex(0);
-        setTimeLeft(currentPart.subParts?.[currentSubPartIndex + 1]?.duration || 60);
+        setTimeLeft(
+          currentPart.subParts?.[currentSubPartIndex + 1]?.duration || 60
+        );
       } else {
         moveToNextPart();
       }
@@ -185,12 +198,12 @@ const SpeakingTestDemo = ({ testId, onTestComplete }: SpeakingTestDemoProps) => 
 
   const moveToNextPart = () => {
     if (!testData) return;
-    
+
     if (currentPartIndex < testData.sections.length - 1) {
       setCurrentPartIndex(currentPartIndex + 1);
       setCurrentSubPartIndex(0);
       setCurrentQuestionIndex(0);
-      
+
       const nextPart = testData.sections[currentPartIndex + 1];
       if (nextPart.subParts?.[0]) {
         setTimeLeft(nextPart.subParts[0].duration || 60);
@@ -208,24 +221,27 @@ const SpeakingTestDemo = ({ testId, onTestComplete }: SpeakingTestDemoProps) => 
 
     setIsSubmitting(true);
     try {
-      const submissionData: SpeakingSubmissionData = speakingSubmissionService.formatSubmissionData(testData, answers);
-      
+      const submissionData: SpeakingSubmissionData =
+        speakingSubmissionService.formatSubmissionData(testData, answers);
+
       if (!speakingSubmissionService.validateSubmissionData(submissionData)) {
         return;
       }
 
-      const result = await speakingSubmissionService.submitSpeakingTest(submissionData);
-      
+      const result = await speakingSubmissionService.submitSpeakingTest(
+        submissionData
+      );
+
       if (result.success) {
-        toast.success('Test başarıyla gönderildi!');
+        toast.success("Test başarıyla gönderildi!");
         if (onTestComplete && result.submissionId) {
           onTestComplete(result.submissionId);
         }
       } else {
-        toast.error(result.error || 'Test gönderilemedi');
+        toast.error(result.error || "Test gönderilemedi");
       }
     } catch (error) {
-      toast.error('Test gönderilirken hata oluştu');
+      toast.error("Test gönderilirken hata oluştu");
     } finally {
       setIsSubmitting(false);
     }
@@ -281,7 +297,8 @@ const SpeakingTestDemo = ({ testId, onTestComplete }: SpeakingTestDemoProps) => 
               {timeLeft > 0 && (
                 <Badge variant="secondary" className="ml-auto">
                   <Clock className="h-4 w-4 mr-1" />
-                  {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+                  {Math.floor(timeLeft / 60)}:
+                  {(timeLeft % 60).toString().padStart(2, "0")}
                 </Badge>
               )}
             </CardTitle>
@@ -291,9 +308,9 @@ const SpeakingTestDemo = ({ testId, onTestComplete }: SpeakingTestDemoProps) => 
             {/* Part Image */}
             {currentPart.image && (
               <div className="mb-4">
-                <img 
-                  src={currentPart.image} 
-                  alt="Test görseli" 
+                <img
+                  src={currentPart.image}
+                  alt="Test görseli"
                   className="w-full max-w-md mx-auto rounded-lg"
                 />
               </div>
@@ -302,9 +319,9 @@ const SpeakingTestDemo = ({ testId, onTestComplete }: SpeakingTestDemoProps) => 
             {/* SubPart Image */}
             {currentSubPart?.image && (
               <div className="mb-4">
-                <img 
-                  src={currentSubPart.image} 
-                  alt="Alt bölüm görseli" 
+                <img
+                  src={currentSubPart.image}
+                  alt="Alt bölüm görseli"
                   className="w-full max-w-md mx-auto rounded-lg"
                 />
               </div>
@@ -313,7 +330,9 @@ const SpeakingTestDemo = ({ testId, onTestComplete }: SpeakingTestDemoProps) => 
             {/* Current Question */}
             {currentQuestion && (
               <div className="bg-gray-50 p-4 rounded-lg mb-4">
-                <h3 className="font-semibold mb-2">Soru {currentQuestionIndex + 1}:</h3>
+                <h3 className="font-semibold mb-2">
+                  Soru {currentQuestionIndex + 1}:
+                </h3>
                 <p className="text-gray-700">{currentQuestion.text}</p>
               </div>
             )}
@@ -332,7 +351,7 @@ const SpeakingTestDemo = ({ testId, onTestComplete }: SpeakingTestDemoProps) => 
             {/* Recording Controls */}
             <div className="flex gap-4 items-center justify-center">
               {!isRecording ? (
-                <Button 
+                <Button
                   onClick={startRecording}
                   className="bg-red-600 hover:bg-red-700"
                   disabled={isSubmitting}
@@ -341,7 +360,7 @@ const SpeakingTestDemo = ({ testId, onTestComplete }: SpeakingTestDemoProps) => 
                   Kayıt Başlat
                 </Button>
               ) : (
-                <Button 
+                <Button
                   onClick={stopRecording}
                   className="bg-gray-600 hover:bg-gray-700"
                 >
@@ -351,7 +370,7 @@ const SpeakingTestDemo = ({ testId, onTestComplete }: SpeakingTestDemoProps) => 
               )}
 
               {audioBlob && (
-                <Button 
+                <Button
                   onClick={processAudioToText}
                   variant="outline"
                   disabled={isSubmitting}
@@ -360,16 +379,17 @@ const SpeakingTestDemo = ({ testId, onTestComplete }: SpeakingTestDemoProps) => 
                 </Button>
               )}
 
-              <Button 
-                onClick={moveToNextQuestion}
-                disabled={isSubmitting}
-              >
-                {currentPartIndex === testData.sections.length - 1 && 
-                 (!currentSubPart || currentSubPartIndex === (currentPart.subParts?.length || 0) - 1) &&
-                 currentQuestionIndex === ((currentSubPart?.questions || currentPart.questions)?.length || 0) - 1
-                  ? 'Testi Bitir' 
-                  : 'Sonraki Soru'
-                }
+              <Button onClick={moveToNextQuestion} disabled={isSubmitting}>
+                {currentPartIndex === testData.sections.length - 1 &&
+                (!currentSubPart ||
+                  currentSubPartIndex ===
+                    (currentPart.subParts?.length || 0) - 1) &&
+                currentQuestionIndex ===
+                  ((currentSubPart?.questions || currentPart.questions)
+                    ?.length || 0) -
+                    1
+                  ? "Testi Bitir"
+                  : "Sonraki Soru"}
               </Button>
             </div>
           </CardContent>

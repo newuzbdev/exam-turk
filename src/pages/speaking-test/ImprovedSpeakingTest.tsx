@@ -1,15 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import {
-  Mic,
-  Square,
-  ArrowLeft,
-  CheckCircle,
-  Info,
-  Clock,
-} from "lucide-react";
+import { Mic, Square, ArrowLeft, CheckCircle, Info, Clock } from "lucide-react";
 import axiosPrivate from "@/config/api";
 import { toast } from "sonner";
+import { MicrophoneCheck } from "./components/MicrophoneCheck";
 
 interface Question {
   id: string;
@@ -64,6 +58,7 @@ const ImprovedSpeakingTest = () => {
   const [recordings, setRecordings] = useState<Map<string, Recording>>(
     new Map()
   );
+  const [micChecked, setMicChecked] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30); // Default 30 seconds per question
   const [recordingTime, setRecordingTime] = useState(0);
   const [isTestComplete, setIsTestComplete] = useState(false);
@@ -503,51 +498,57 @@ const ImprovedSpeakingTest = () => {
   if (showSectionDescription && currentSection) {
     return (
       <div className="min-h-screen bg-white">
-        <div className="bg-white border-b border-red-600">
-          <div className="max-w-4xl mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
-              <button
-                onClick={() => navigate("/test")}
-                className="flex items-center text-red-600 hover:text-red-700"
-              >
-                <ArrowLeft className="w-5 h-5 mr-2" />
-                <span className="text-lg font-bold">Geri</span>
-              </button>
-              <h1 className="text-2xl font-bold text-black">
-                {testData.title}
-              </h1>
-              <div className="text-lg text-black">
-                Bölüm {currentSectionIndex + 1} / {testData.sections.length}
+        {!micChecked ? (
+          <MicrophoneCheck onSuccess={() => setMicChecked(true)} />
+        ) : (
+          <>
+            <div className="bg-white border-b border-red-600">
+              <div className="max-w-4xl mx-auto px-4 py-4">
+                <div className="flex items-center justify-between">
+                  <button
+                    onClick={() => navigate("/test")}
+                    className="flex items-center text-red-600 hover:text-red-700"
+                  >
+                    <ArrowLeft className="w-5 h-5 mr-2" />
+                    <span className="text-lg font-bold">Geri</span>
+                  </button>
+                  <h1 className="text-2xl font-bold text-black">
+                    {testData.title}
+                  </h1>
+                  <div className="text-lg text-black">
+                    Bölüm {currentSectionIndex + 1} / {testData.sections.length}
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
 
-        <div className="max-w-4xl mx-auto px-4 py-8">
-          <div className="bg-white border-2 border-red-600 rounded-lg p-8 mb-8">
-            <div className="text-center mb-6">
-              <div className="inline-flex items-center bg-red-600 text-white px-4 py-2 rounded-full text-lg font-bold mb-4">
-                <Info className="w-5 h-5 mr-2" />
-                {currentSection.title}
+            <div className="max-w-4xl mx-auto px-4 py-8">
+              <div className="bg-white border-2 border-red-600 rounded-lg p-8 mb-8">
+                <div className="text-center mb-6">
+                  <div className="inline-flex items-center bg-red-600 text-white px-4 py-2 rounded-full text-lg font-bold mb-4">
+                    <Info className="w-5 h-5 mr-2" />
+                    {currentSection.title}
+                  </div>
+                  <h2 className="text-3xl font-bold text-black mb-6">
+                    Bölüm Açıklaması
+                  </h2>
+                  <div className="text-lg text-black leading-relaxed whitespace-pre-line max-w-3xl mx-auto">
+                    {currentSection.description}
+                  </div>
+                </div>
               </div>
-              <h2 className="text-3xl font-bold text-black mb-6">
-                Bölüm Açıklaması
-              </h2>
-              <div className="text-lg text-black leading-relaxed whitespace-pre-line max-w-3xl mx-auto">
-                {currentSection.description}
+
+              <div className="text-center">
+                <button
+                  onClick={startSection}
+                  className="bg-red-600 text-white font-bold py-4 px-8 text-xl rounded-lg hover:bg-red-700 shadow-lg"
+                >
+                  Bölümü Başlat
+                </button>
               </div>
             </div>
-          </div>
-
-          <div className="text-center">
-            <button
-              onClick={startSection}
-              className="bg-red-600 text-white font-bold py-4 px-8 text-xl rounded-lg hover:bg-red-700 shadow-lg"
-            >
-              Bölümü Başlat
-            </button>
-          </div>
-        </div>
+          </>
+        )}
       </div>
     );
   }

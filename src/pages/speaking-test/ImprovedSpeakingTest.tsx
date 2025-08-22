@@ -641,48 +641,6 @@ const ImprovedSpeakingTest = () => {
           </div>
         </div>
 
-        {/* Status Row */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="bg-red-600 text-white rounded-lg p-4 text-center">
-            <Clock className="w-6 h-6 mx-auto mb-2 text-white" />
-            <div className="text-sm font-bold">Kalan Süre</div>
-            <div className="text-2xl font-bold text-white">
-              {formatTime(timeLeft)}
-            </div>
-          </div>
-
-          <div className="bg-white border-2 border-red-600 rounded-lg p-4 text-center">
-            <div className="w-6 h-6 mx-auto mb-2 bg-red-600 rounded-full"></div>
-            <div className="text-sm font-bold text-black">Kayıt Süresi</div>
-            <div className="text-2xl font-bold text-red-600">
-              {formatTime(recordingTime)}
-            </div>
-          </div>
-
-          <div className="bg-white border-2 border-red-600 rounded-lg p-4 text-center">
-            <div className="w-6 h-6 mx-auto mb-2">
-              {isRecording ? (
-                <div className="w-6 h-6 bg-red-600 rounded-full animate-pulse"></div>
-              ) : recordings.has(currentQuestion.id) ? (
-                <CheckCircle className="w-6 h-6 text-red-600" />
-              ) : (
-                <div className="w-6 h-6 border-2 border-red-600 rounded-full"></div>
-              )}
-            </div>
-            <div className="text-sm font-bold text-black">Durum</div>
-            <div className="text-lg font-bold">
-              {isPlayingInstructions ? (
-                <span className="text-blue-600">TALİMAT</span>
-              ) : isRecording ? (
-                <span className="text-red-600">KAYIT</span>
-              ) : recordings.has(currentQuestion.id) ? (
-                <span className="text-red-600">TAMAM</span>
-              ) : (
-                <span className="text-black">HAZIR</span>
-              )}
-            </div>
-          </div>
-        </div>
 
         {/* Recording Controls */}
         <div className="text-center mb-6">
@@ -727,6 +685,50 @@ const ImprovedSpeakingTest = () => {
               </p>
             </div>
           )}
+        </div>
+
+        
+        {/* Status Row */}
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="bg-red-600 text-white rounded-lg p-4 text-center">
+            <Clock className="w-6 h-6 mx-auto mb-2 text-white" />
+            <div className="text-sm font-bold">Kalan Süre</div>
+            <div className="text-2xl font-bold text-white">
+              {formatTime(timeLeft)}
+            </div>
+          </div>
+
+          <div className="bg-white border-2 border-red-600 rounded-lg p-4 text-center">
+            <div className="w-6 h-6 mx-auto mb-2 bg-red-600 rounded-full"></div>
+            <div className="text-sm font-bold text-black">Kayıt Süresi</div>
+            <div className="text-2xl font-bold text-red-600">
+              {formatTime(recordingTime)}
+            </div>
+          </div>
+
+          <div className="bg-white border-2 border-red-600 rounded-lg p-4 text-center">
+            <div className="w-6 h-6 mx-auto mb-2">
+              {isRecording ? (
+                <div className="w-6 h-6 bg-red-600 rounded-full animate-pulse"></div>
+              ) : recordings.has(currentQuestion.id) ? (
+                <CheckCircle className="w-6 h-6 text-red-600" />
+              ) : (
+                <div className="w-6 h-6 border-2 border-red-600 rounded-full"></div>
+              )}
+            </div>
+            <div className="text-sm font-bold text-black">Durum</div>
+            <div className="text-lg font-bold">
+              {isPlayingInstructions ? (
+                <span className="text-blue-600">TALİMAT</span>
+              ) : isRecording ? (
+                <span className="text-red-600">KAYIT</span>
+              ) : recordings.has(currentQuestion.id) ? (
+                <span className="text-red-600">TAMAM</span>
+              ) : (
+                <span className="text-black">HAZIR</span>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Navigation */}

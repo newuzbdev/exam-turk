@@ -43,6 +43,12 @@ interface Recording {
   questionId: string;
 }
 
+const sectionAudios: Record<number, string> = {
+  1: "/speakingpart1.mp3",
+  2: "/speakingpart2.mp3",
+  3: "/speakingpart3.mp3",
+};
+
 const ImprovedSpeakingTest = () => {
   const { testId } = useParams();
   const navigate = useNavigate();
@@ -59,7 +65,7 @@ const ImprovedSpeakingTest = () => {
     new Map()
   );
   const [micChecked, setMicChecked] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(30); // Default 30 seconds per question
+  const [timeLeft, setTimeLeft] = useState(30); 
   const [recordingTime, setRecordingTime] = useState(0);
   const [isTestComplete, setIsTestComplete] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -103,33 +109,33 @@ const ImprovedSpeakingTest = () => {
     }
   };
 
-  const playInstructionAudio = async (partNumber: number) => {
-    try {
-      setIsPlayingInstructions(true);
-      const audioFile = `/speaking part${partNumber}.mp3`;
-      audioRef.current = new Audio(audioFile);
+  // const playInstructionAudio = async (partNumber: number) => {
+  //   try {
+  //     setIsPlayingInstructions(true);
+  //     const audioFile = `/speaking part${partNumber}.mp3`;
+  //     audioRef.current = new Audio(audioFile);
 
-      audioRef.current.onended = () => {
-        setIsPlayingInstructions(false);
-        // Auto start recording after instruction
-        setTimeout(() => {
-          if (!isRecording) {
-            startRecording();
-          }
-        }, 1000);
-      };
+  //     audioRef.current.onended = () => {
+  //       setIsPlayingInstructions(false);
+  //       // Auto start recording after instruction
+  //       setTimeout(() => {
+  //         if (!isRecording) {
+  //           startRecording();
+  //         }
+  //       }, 1000);
+  //     };
 
-      audioRef.current.onerror = () => {
-        setIsPlayingInstructions(false);
-        toast.error("Ses talimatı oynatılamadı");
-      };
+  //     audioRef.current.onerror = () => {
+  //       setIsPlayingInstructions(false);
+  //       toast.error("Ses talimatı oynatılamadı");
+  //     };
 
-      await audioRef.current.play();
-    } catch (error) {
-      setIsPlayingInstructions(false);
-      console.error("Error playing instruction audio:", error);
-    }
-  };
+  //     await audioRef.current.play();
+  //   } catch (error) {
+  //     setIsPlayingInstructions(false);
+  //     console.error("Error playing instruction audio:", error);
+  //   }
+  // };
 
   const playSound = (type: "start" | "end") => {
     try {
@@ -279,6 +285,15 @@ const ImprovedSpeakingTest = () => {
   };
 
   const nextQuestion = () => {
+    if (audioRef.current && !audioRef.current.paused) {
+      toast.error("Ses talimatı bitmeden sonraki soruya geçemezsiniz");
+      return;
+    }
+
+    if (isRecording) {
+      toast.error("Kayıt devam ederken sonraki soruya geçemezsiniz");
+      return;
+    }
     if (!testData || !currentSection) return;
 
     // Check if there are more questions in current subpart
@@ -320,13 +335,62 @@ const ImprovedSpeakingTest = () => {
     }
   };
 
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+      if (isRecording && mediaRecorderRef.current) {
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, []);
+
+  // startSection ichida audio tugamaguncha recording boshlanmasligi
   const startSection = () => {
+    if (!testData) return;
+    if (audioRef.current && !audioRef.current.paused) {
+      toast.error("Mevcut bölümün talimatı bitmeden devam edemezsiniz");
+      return;
+    }
+    if (isPlayingInstructions && audioRef.current && !audioRef.current.paused) {
+      toast.error("Mevcut bölümün talimatı bitmeden devam edemezsiniz");
+      return;
+    }
+
+    const section = testData?.sections[currentSectionIndex];
+    if (!section) return;
+
     setShowSectionDescription(false);
     setTimeLeft(30);
+    const audioSrc = sectionAudios[section.order];
+    if (!audioSrc) {
+      startRecording();
+      return;
+    }
+    if (audioSrc) {
+      const audio = new Audio(audioSrc);
+      audioRef.current = audio;
+      setIsPlayingInstructions(true);
 
-    // Play instruction audio for current section
-    const partNumber = currentSectionIndex + 1;
-    playInstructionAudio(partNumber);
+      audio.onended = () => {
+        setIsPlayingInstructions(false);
+        setTimeout(() => {
+          if (!isRecording) startRecording();
+        }, 1000);
+      };
+
+      audio.onerror = () => {
+        setIsPlayingInstructions(false);
+        toast.error("Audio yüklenemedi");
+      };
+
+      audio.play().catch((err) => {
+        console.error("Audio play error:", err);
+        setIsPlayingInstructions(false);
+      });
+    }
   };
 
   const submitTest = async () => {
@@ -641,7 +705,6 @@ const ImprovedSpeakingTest = () => {
           </div>
         </div>
 
-
         {/* Recording Controls */}
         <div className="text-center mb-6">
           {isPlayingInstructions ? (
@@ -687,7 +750,6 @@ const ImprovedSpeakingTest = () => {
           )}
         </div>
 
-        
         {/* Status Row */}
         <div className="grid grid-cols-3 gap-4 mb-6">
           <div className="bg-red-600 text-white rounded-lg p-4 text-center">

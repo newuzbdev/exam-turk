@@ -157,7 +157,7 @@ axiosCookie.interceptors.response.use(
       }
     }
 
-    // Password change required
+    // Password change required 
     if (
       error.response?.status === 405 &&
       error.response?.data?.message === "Password Change Required" &&

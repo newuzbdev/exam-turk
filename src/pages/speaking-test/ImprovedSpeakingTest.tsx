@@ -65,7 +65,7 @@ const ImprovedSpeakingTest = () => {
     new Map()
   );
   const [micChecked, setMicChecked] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(30); 
+  const [timeLeft, setTimeLeft] = useState(30);
   const [recordingTime, setRecordingTime] = useState(0);
   const [isTestComplete, setIsTestComplete] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -150,6 +150,20 @@ const ImprovedSpeakingTest = () => {
       console.error("Error playing sound:", error);
     }
   };
+
+  // Blobdan real audio davomiyligini (sekund) olish
+  const getBlobDuration = async (blob: Blob): Promise<number> => {
+    try {
+      const arrayBuffer = await blob.arrayBuffer();
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+      return Math.round(audioBuffer.duration); // real davomiylik (sekund)
+    } catch (e) {
+      console.error("Blob duration aniqlashda xato:", e);
+      return 0;
+    }
+  };
+
 
   // Get current question
   const getCurrentQuestion = () => {
@@ -236,36 +250,34 @@ const ImprovedSpeakingTest = () => {
         }
       };
 
-      mediaRecorder.onstop = () => {
-        // Play end sound
+      mediaRecorder.onstop = async () => {
         playSound("end");
 
         const blob = new Blob(chunksRef.current, {
           type: "audio/webm;codecs=opus",
         });
+
         if (currentQuestion) {
+          const duration = await getBlobDuration(blob); // ✅ endi 0 emas
           const recording: Recording = {
             blob,
-            duration: recordingTime,
+            duration,
             questionId: currentQuestion.id,
           };
 
-          setRecordings(
-            (prev) => new Map(prev.set(currentQuestion.id, recording))
-          );
+          setRecordings((prev) => new Map(prev.set(currentQuestion.id, recording)));
 
-          // Auto proceed to next question after 2 seconds
           setTimeout(() => {
             nextQuestion();
           }, 2000);
         }
 
-        // Clean up
         if (streamRef.current) {
           streamRef.current.getTracks().forEach((track) => track.stop());
           streamRef.current = null;
         }
       };
+
 
       mediaRecorder.start(100);
       setIsRecording(true);
@@ -400,13 +412,28 @@ const ImprovedSpeakingTest = () => {
     try {
       toast.info("Konuşmalarınız metne dönüştürülüyor...");
 
-      // Convert recordings to text first
-      const questionAnswers = new Map<string, string>();
+      // 1) Barcha savollar uchun default javoblar (text="", duration=0) ni tayyorlab olamiz
+      const answerMap = new Map<string, { text: string; duration: number }>();
 
-      for (const [questionId, recording] of recordings) {
+      testData.sections.forEach((section) => {
+        if (section.subParts && section.subParts.length > 0) {
+          section.subParts.forEach((sp) => {
+            (sp.questions || []).forEach((q) => {
+              answerMap.set(q.id, { text: "[Cevap bulunamadı]", duration: 0 });
+            });
+          });
+        } else {
+          (section.questions || []).forEach((q) => {
+            answerMap.set(q.id, { text: "[Cevap bulunamadı]", duration: 0 });
+          });
+        }
+      });
+
+      // 2) Yozib olingan savollarni STT qilib, text va duration ni to‘ldiramiz
+      for (const [questionId, rec] of recordings) {
         try {
           const formData = new FormData();
-          formData.append("audio", recording.blob, "recording.webm");
+          formData.append("audio", rec.blob, "recording.webm");
 
           const response = await axiosPrivate.post(
             "/api/speaking-submission/speech-to-text",
@@ -417,61 +444,92 @@ const ImprovedSpeakingTest = () => {
             }
           );
 
-          const userAnswer =
-            response.data?.text || "[Ses metne dönüştürülemedi]";
-          questionAnswers.set(questionId, userAnswer);
+          const userText = response.data?.text || "[Ses metne dönüştürülemedi]";
+          answerMap.set(questionId, { text: userText, duration: rec.duration });
         } catch (error) {
-          console.error(
-            "Speech to text error for question:",
-            questionId,
-            error
-          );
-          questionAnswers.set(questionId, "[Ses metne dönüştürülemedi]");
+          console.error("Speech to text error for question:", questionId, error);
+          // duration baribir rec.duration bo‘lishi mumkin, text fallback
+          const prev = answerMap.get(questionId);
+          answerMap.set(questionId, {
+            text: "[Ses metne dönüştürülemedi]",
+            duration: rec.duration || prev?.duration || 0,
+          });
         }
       }
 
       toast.info("Test gönderiliyor...");
 
-      // Format submission data according to API structure
+      // 3) Yuboriladigan ma’lumotni duration bilan birga yig‘amiz
+      const parts = testData.sections.map((section) => {
+        const part: any = {
+          description: section.description,
+          image: "",
+        };
+
+        if (section.subParts && section.subParts.length > 0) {
+          // SubPart’li bo‘lim
+          const subParts = section.subParts.map((sp) => {
+            const questions = (sp.questions || []).map((q) => {
+              const ans = answerMap.get(q.id);
+              return {
+                questionId: q.id,
+                userAnswer: ans?.text ?? "[Cevap bulunamadı]",
+                duration: ans?.duration ?? 0,
+              };
+            });
+
+            const subPartDuration = questions.reduce(
+              (sum, q) => sum + (q.duration || 0),
+              0
+            );
+
+            return {
+              image: sp.images?.[0] || "",
+              duration: subPartDuration, // ✅ backend talab qiladi
+              questions,
+            };
+          });
+
+          const partDuration = subParts.reduce(
+            (sum, sp) => sum + (sp.duration || 0),
+            0
+          );
+
+          part.subParts = subParts;
+          part.duration = partDuration; // ✅ backend talab qiladi
+        } else {
+          // To‘g‘ridan-to‘g‘ri savollar
+          const questions = (section.questions || []).map((q) => {
+            const ans = answerMap.get(q.id);
+            return {
+              questionId: q.id,
+              userAnswer: ans?.text ?? "[Cevap bulunamadı]",
+              duration: ans?.duration ?? 0,
+            };
+          });
+
+          const partDuration = questions.reduce(
+            (sum, q) => sum + (q.duration || 0),
+            0
+          );
+
+          part.questions = questions;
+          part.duration = partDuration; // ✅ backend talab qiladi
+
+          if (section.type === "PART3") {
+            part.type = "DISADVANTAGE"; // kerak bo‘lsa
+          }
+        }
+
+        return part;
+      });
+
       const submissionData = {
         speakingTestId: testData.id,
-        parts: testData.sections.map((section) => {
-          const part: any = {
-            description: section.description,
-            image: "", // Section does not have images property
-          };
-
-          if (section.subParts && section.subParts.length > 0) {
-            // Section with subParts
-            part.subParts = section.subParts.map((subPart) => ({
-              image: subPart.images?.[0] || "",
-              questions: subPart.questions.map((question) => ({
-                questionId: question.id,
-                userAnswer:
-                  questionAnswers.get(question.id) || "[Cevap bulunamadı]",
-              })),
-            }));
-          } else {
-            // Section with direct questions
-            part.questions = section.questions.map((question) => ({
-              questionId: question.id,
-              userAnswer:
-                questionAnswers.get(question.id) || "[Cevap bulunamadı]",
-            }));
-
-            // Add type for Part 3 if needed
-            if (section.type === "PART3") {
-              part.type = "DISADVANTAGE"; // or whatever type is appropriate
-            }
-          }
-
-          return part;
-        }),
+        parts,
       };
 
-      console.log("Submitting data:", submissionData);
-
-      // Submit the processed data
+      // 4) POST
       await axiosPrivate.post("/api/speaking-submission", submissionData);
 
       toast.success("Test başarıyla gönderildi!");
@@ -706,49 +764,7 @@ const ImprovedSpeakingTest = () => {
         </div>
 
         {/* Recording Controls */}
-        <div className="text-center mb-6">
-          {isPlayingInstructions ? (
-            <div className="space-y-4">
-              <div className="text-6xl">🔊</div>
-              <p className="text-2xl font-bold text-black">
-                Talimat dinleniyor...
-              </p>
-            </div>
-          ) : !isRecording ? (
-            <div className="space-y-4">
-              <button
-                onClick={startRecording}
-                disabled={isPlayingInstructions}
-                className="bg-red-600 text-white p-6 rounded-full hover:bg-red-700 shadow-lg disabled:opacity-50"
-              >
-                <Mic className="w-10 h-10" />
-              </button>
-              <p className="text-lg font-bold text-black">
-                Konuşmaya başlamak için tıklayın
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex justify-center items-center space-x-4">
-                <div className="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center animate-pulse">
-                  <Mic className="w-10 h-10 text-white" />
-                </div>
-                <button
-                  onClick={stopRecording}
-                  className="bg-gray-600 text-white p-4 rounded-full hover:bg-gray-700"
-                >
-                  <Square className="w-8 h-8" />
-                </button>
-              </div>
-              <p className="text-xl font-bold text-red-600">
-                🔴 Kayıt devam ediyor...
-              </p>
-              <p className="text-sm text-gray-600">
-                Bitirmek için durdur butonuna tıklayın
-              </p>
-            </div>
-          )}
-        </div>
+
 
         {/* Status Row */}
         <div className="grid grid-cols-3 gap-4 mb-6">
@@ -792,7 +808,49 @@ const ImprovedSpeakingTest = () => {
             </div>
           </div>
         </div>
-
+        <div className="text-center mb-6">
+          {isPlayingInstructions ? (
+            <div className="space-y-4">
+              <div className="text-6xl">🔊</div>
+              <p className="text-2xl font-bold text-black">
+                Talimat dinleniyor...
+              </p>
+            </div>
+          ) : !isRecording ? (
+            <div className="space-y-4">
+              <button
+                onClick={startRecording}
+                disabled={isPlayingInstructions}
+                className="bg-red-600 text-white p-6 rounded-full hover:bg-red-700 shadow-lg disabled:opacity-50"
+              >
+                <Mic className="w-10 h-10" />
+              </button>
+              <p className="text-lg font-bold text-black">
+                Konuşmaya başlamak için tıklayın
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex justify-center items-center space-x-4">
+                <div className="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center animate-pulse">
+                  <Mic className="w-10 h-10 text-white" />
+                </div>
+                <button
+                  onClick={stopRecording}
+                  className="bg-gray-600 text-white p-4 rounded-full hover:bg-gray-700"
+                >
+                  <Square className="w-8 h-8" />
+                </button>
+              </div>
+              <p className="text-xl font-bold text-red-600">
+                🔴 Kayıt devam ediyor...
+              </p>
+              <p className="text-sm text-gray-600">
+                Bitirmek için durdur butonuna tıklayın
+              </p>
+            </div>
+          )}
+        </div>
         {/* Navigation */}
         <div className="flex justify-between items-center">
           <button
@@ -813,11 +871,10 @@ const ImprovedSpeakingTest = () => {
           <button
             onClick={nextQuestion}
             disabled={isRecording}
-            className={`px-6 py-3 text-lg font-bold rounded-lg ${
-              isRecording
-                ? "bg-red-600 text-white opacity-50 cursor-not-allowed"
-                : "bg-red-600 text-white hover:bg-red-700"
-            }`}
+            className={`px-6 py-3 text-lg font-bold rounded-lg ${isRecording
+              ? "bg-red-600 text-white opacity-50 cursor-not-allowed"
+              : "bg-red-600 text-white hover:bg-red-700"
+              }`}
           >
             Sonraki →
           </button>

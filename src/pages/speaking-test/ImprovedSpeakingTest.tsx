@@ -793,9 +793,9 @@ export default function ImprovedSpeakingTest() {
     )
   }
 
-  const totalQuestionsInSection = currentSection.subParts?.length
+  const totalQuestionsInSection = currentSection?.subParts?.length
     ? (currentSection.subParts[currentSubPartIndex]?.questions?.length ?? 0)
-    : (currentSection.questions?.length ?? 0)
+    : (currentSection?.questions?.length ?? 0)
   const progressPercent = (currentQuestionIndex / Math.max(1, totalQuestionsInSection)) * 100
 
   return (

@@ -1,5 +1,3 @@
-"use client"
-
 import { useEffect, useRef, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
@@ -50,6 +48,7 @@ const sectionAudios: Record<number, string> = {
   2: "/speakingpart2.mp3",
   3: "/speakingpart3.mp3",
 }
+
 
 export default function ImprovedSpeakingTest() {
   const { testId } = useParams()
@@ -564,11 +563,29 @@ export default function ImprovedSpeakingTest() {
   const Progress = ({ value }: { value: number }) => (
     <div className="w-full h-3 bg-gradient-to-r from-red-50 to-rose-50 rounded-full overflow-hidden shadow-inner">
       <motion.div
-        className="h-full bg-gradient-to-r from-red-500 via-red-600 to-rose-600 shadow-sm"
-        initial={{ width: 0 }}
-        animate={{ width: `${value}%` }}
-        transition={{ type: "spring", stiffness: 100, damping: 25 }}
-      />
+        className="h-full bg-gradient-to-r from-red-500 via-red-600 to-rose-600 shadow-sm relative"
+        initial={{ width: 0, x: "-100%" }}
+        animate={{
+          width: `${value}%`,
+          x: "0%",
+        }}
+        transition={{
+          type: "spring",
+          stiffness: 100,
+          damping: 25,
+          duration: 0.8,
+        }}
+      >
+        <motion.div
+          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+          animate={{ x: ["-100%", "100%"] }}
+          transition={{
+            duration: 2,
+            repeat: Number.POSITIVE_INFINITY,
+            ease: "easeInOut",
+          }}
+        />
+      </motion.div>
     </div>
   )
 
@@ -578,14 +595,19 @@ export default function ImprovedSpeakingTest() {
         <motion.span
           key={i}
           className="w-1.5 rounded-full bg-gradient-to-t from-red-600 to-rose-500 shadow-sm"
-          initial={{ height: 8, opacity: 0.4 }}
+          initial={{ height: 8, opacity: 0.4, scaleY: 0.5 }}
           animate={
             active
               ? {
-                height: [8, 32, 16, 28, 12, 24, 10][i % 7],
-                opacity: [0.4, 1, 0.7, 0.9, 0.6],
+                height: [8, 32, 16, 28, 12, 24, 10, 20][i % 8],
+                opacity: [0.4, 1, 0.7, 0.9, 0.6, 0.8],
+                scaleY: [0.5, 1.2, 0.8, 1.1, 0.7, 1],
               }
-              : { height: 8, opacity: 0.3 }
+              : {
+                height: 8,
+                opacity: 0.3,
+                scaleY: 0.5,
+              }
           }
           transition={{
             repeat: active ? Number.POSITIVE_INFINITY : 0,
@@ -599,17 +621,31 @@ export default function ImprovedSpeakingTest() {
   )
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-rose-100 flex items-center justify-center">
-        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center">
-          <div className="w-20 h-20 bg-gradient-to-br from-red-600 to-rose-600 rounded-3xl mx-auto mb-6 grid place-items-center shadow-2xl shadow-red-200">
+      <motion.div
+        className="min-h-screen bg-gradient-to-br from-red-50 via-white to-rose-100 flex items-center justify-center"
+        initial="initial"
+        animate="animate"
+      >
+        <motion.div className="text-center">
+          <motion.div
+            className="w-20 h-20 bg-gradient-to-br from-red-600 to-rose-600 rounded-3xl mx-auto mb-6 grid place-items-center shadow-2xl shadow-red-200"
+            animate="animate"
+          >
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
             >
               <Mic className="w-10 h-10 text-white" />
             </motion.div>
-          </div>
-          <p className="text-xl font-bold text-gray-800 mb-2">Test yükleniyor...</p>
+          </motion.div>
+          <motion.p
+            className="text-xl font-bold text-gray-800 mb-2"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            Test yükleniyor...
+          </motion.p>
           <div className="w-32 h-1 bg-red-100 rounded-full mx-auto overflow-hidden">
             <motion.div
               className="h-full bg-gradient-to-r from-red-500 to-rose-500"
@@ -618,40 +654,65 @@ export default function ImprovedSpeakingTest() {
             />
           </div>
         </motion.div>
-      </div>
+      </motion.div>
     )
   }
 
-  // --- Test topilmadi ---
   if (!testData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-rose-100 flex items-center justify-center">
+      <motion.div
+        className="min-h-screen bg-gradient-to-br from-red-50 via-white to-rose-100 flex items-center justify-center"
+        initial="initial"
+        animate="animate"
+      >
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
           className="text-center bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-2xl border border-red-100"
+          whileHover={{ y: -5, boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)" }}
         >
-          <div className="w-16 h-16 bg-gradient-to-br from-red-600 to-rose-600 rounded-2xl mx-auto mb-4 grid place-items-center shadow-lg">
+          <motion.div
+            className="w-16 h-16 bg-gradient-to-br from-red-600 to-rose-600 rounded-2xl mx-auto mb-4 grid place-items-center shadow-lg"
+            animate={{
+              rotate: [0, -10, 10, -10, 0],
+              scale: [1, 1.1, 1],
+            }}
+            transition={{
+              duration: 2,
+              repeat: Number.POSITIVE_INFINITY,
+              repeatDelay: 3,
+            }}
+          >
             <span className="text-white text-2xl font-bold">!</span>
-          </div>
-          <p className="text-xl font-bold text-gray-800 mb-4">Test bulunamadı</p>
+          </motion.div>
+          <motion.p
+            className="text-xl font-bold text-gray-800 mb-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+          >
+            Test bulunamadı
+          </motion.p>
           <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+            initial="initial"
+            whileHover="hover"
+            whileTap="tap"
             onClick={() => navigate("/test")}
             className="bg-gradient-to-r from-red-600 to-rose-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all duration-200"
           >
             Geri Dön
           </motion.button>
         </motion.div>
-      </div>
+      </motion.div>
     )
   }
 
   if (isTestComplete) {
     if (result && showResult) {
       return (
-        <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-rose-100 flex items-center justify-center p-4">
+        <motion.div
+          className="min-h-screen bg-gradient-to-br from-red-50 via-white to-rose-100 flex items-center justify-center p-4"
+          initial="initial"
+          animate="animate"
+        >
           <ResultModal
             isOpen={showResult}
             onClose={() => {
@@ -659,137 +720,258 @@ export default function ImprovedSpeakingTest() {
             }}
             result={result}
           />
-        </div>
+        </motion.div>
       )
     }
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-rose-100 flex items-center justify-center p-4">
+      <motion.div
+        className="min-h-screen bg-gradient-to-br from-red-50 via-white to-rose-100 flex items-center justify-center p-4"
+        initial="initial"
+        animate="animate"
+      >
         <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
           className="max-w-md w-full text-center bg-white/90 backdrop-blur-sm border border-red-100 rounded-3xl p-10 shadow-2xl"
+          whileHover={{ y: -5 }}
         >
-          <div className="w-24 h-24 bg-gradient-to-br from-red-600 to-rose-600 rounded-3xl grid place-items-center mx-auto mb-8 shadow-2xl shadow-red-200">
+          <motion.div
+            className="w-24 h-24 bg-gradient-to-br from-red-600 to-rose-600 rounded-3xl grid place-items-center mx-auto mb-8 shadow-2xl shadow-red-200"
+            animate={{
+              scale: [1, 1.1, 1],
+              rotate: [0, 5, -5, 0],
+            }}
+            transition={{
+              duration: 2,
+              repeat: Number.POSITIVE_INFINITY,
+              repeatDelay: 1,
+            }}
+          >
             <CheckCircle className="w-12 h-12 text-white" />
-          </div>
-          <h1 className="text-3xl font-black text-gray-900 mb-3">Test Tamamlandı!</h1>
-          <p className="text-gray-600 mb-8 text-lg">{recordings.size} soru cevaplanmıştır.</p>
-          <div className="space-y-4">
+          </motion.div>
+          <motion.h1
+            className="text-3xl font-black text-gray-900 mb-3"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            Test Tamamlandı!
+          </motion.h1>
+          <motion.p
+            className="text-gray-600 mb-8 text-lg"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            {recordings.size} soru cevaplanmıştır.
+          </motion.p>
+          <motion.div
+            className="space-y-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          >
             <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              initial="initial"
+              whileHover="hover"
+              whileTap="tap"
               onClick={submitTest}
               disabled={isSubmitting}
               className="w-full bg-gradient-to-r from-red-600 to-rose-600 text-white font-black py-4 px-6 text-lg rounded-xl hover:shadow-xl disabled:opacity-50 shadow-lg transition-all duration-200"
             >
-              {isSubmitting ? "Gönderiliyor..." : "Testi Gönder"}
+              {isSubmitting ? (
+                <motion.span
+                  animate={{ opacity: [1, 0.5, 1] }}
+                  transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY }}
+                >
+                  Gönderiliyor...
+                </motion.span>
+              ) : (
+                "Testi Gönder"
+              )}
             </motion.button>
             <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              initial="initial"
+              whileHover="hover"
+              whileTap="tap"
               onClick={() => navigate("/test")}
               className="w-full border-2 border-red-600 text-red-600 font-black py-4 px-6 text-lg rounded-xl hover:bg-red-600 hover:text-white transition-all duration-200"
             >
               Test Sayfasına Dön
             </motion.button>
-          </div>
+          </motion.div>
         </motion.div>
-      </div>
+      </motion.div>
     )
   }
 
   if (showSectionDescription && currentSection) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-rose-100">
+      <motion.div
+        className="min-h-screen bg-gradient-to-br from-red-50 via-white to-rose-100"
+        initial="initial"
+        animate="animate"
+      >
         {!micChecked ? (
           <MicrophoneCheck onSuccess={() => setMicChecked(true)} />
         ) : (
           <>
             {!isExamMode && (
-              <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-xl border-b border-red-100 shadow-sm">
+              <motion.header
+                className="sticky top-0 z-10 bg-white/80 backdrop-blur-xl border-b border-red-100 shadow-sm"
+                initial={{ y: -100, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+              >
                 <div className="max-w-6xl mx-auto px-6 py-5">
                   <div className="flex items-center justify-between">
                     <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
+                      initial="initial"
+                      whileHover="hover"
+                      whileTap="tap"
                       onClick={() => navigate("/test")}
                       className="flex items-center text-red-600 hover:text-red-700 font-bold transition-colors"
                     >
                       <ArrowLeft className="w-5 h-5 mr-2" />
                       <span className="text-lg">Geri</span>
                     </motion.button>
-                    <h1 className="text-2xl font-black text-gray-900">{testData.title}</h1>
-                    <div className="text-lg font-bold text-gray-700 bg-red-50 px-4 py-2 rounded-xl">
+                    <motion.h1
+                      className="text-2xl font-black text-gray-900"
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.2 }}
+                    >
+                      {testData.title}
+                    </motion.h1>
+                    <motion.div
+                      className="text-lg font-bold text-gray-700 bg-red-50 px-4 py-2 rounded-xl"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.3 }}
+                    >
                       Bölüm {currentSectionIndex + 1} / {testData.sections.length}
-                    </div>
+                    </motion.div>
                   </div>
                 </div>
-              </header>
+              </motion.header>
             )}
 
             <main className="max-w-5xl mx-auto px-6 py-10">
               <motion.div
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
                 className="bg-white/90 backdrop-blur-sm border border-red-100 rounded-3xl p-10 shadow-2xl"
+                whileHover={{ y: -5, boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)" }}
               >
                 <div className="text-center mb-8">
                   <motion.div
-                    initial={{ scale: 0.9 }}
-                    animate={{ scale: 1 }}
                     className="inline-flex items-center bg-gradient-to-r from-red-600 to-rose-600 text-white px-6 py-3 rounded-2xl text-lg font-black mb-6 shadow-lg"
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
                   >
                     <Info className="w-6 h-6 mr-3" />
                     {currentSection.title}
                   </motion.div>
-                  <h2 className="text-4xl font-black text-gray-900 mb-6">Bölüm Açıklaması</h2>
-                  <p className="text-xl text-gray-700 leading-relaxed whitespace-pre-line max-w-4xl mx-auto">
-                    {currentSection.description}
-                  </p>
-                </div>
-                <div className="mt-10 text-center">
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={startSection}
-                    className="bg-gradient-to-r from-red-600 to-rose-600 text-white font-black py-5 px-10 text-xl rounded-2xl hover:shadow-2xl shadow-xl transition-all duration-300"
+                  <motion.h2
+                    className="text-4xl font-black text-gray-900 mb-6"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
                   >
+                    Bölüm Açıklaması
+                  </motion.h2>
+                  <motion.p
+                    className="text-xl text-gray-700 leading-relaxed whitespace-pre-line max-w-4xl mx-auto"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4 }}
+                  >
+                    {currentSection.description}
+                  </motion.p>
+                </div>
+                <motion.div
+                  className="mt-10 text-center"
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                >
+                  <motion.button
+                    initial="initial"
+                    whileHover="hover"
+                    whileTap="tap"
+                    onClick={startSection}
+                    className="bg-gradient-to-r from-red-600 to-rose-600 text-white font-black py-5 px-10 text-xl rounded-2xl hover:shadow-2xl shadow-xl transition-all duration-300 relative overflow-hidden"
+                  >
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                      animate={{ x: ["-100%", "100%"] }}
+                      transition={{
+                        duration: 2,
+                        repeat: Number.POSITIVE_INFINITY,
+                        repeatDelay: 3,
+                        ease: "easeInOut",
+                      }}
+                    />
                     Bölümü Başlat
                   </motion.button>
-                </div>
+                </motion.div>
               </motion.div>
             </main>
           </>
         )}
-      </div>
+      </motion.div>
     )
   }
 
   if (!currentQuestion) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-rose-100 grid place-items-center">
+      <motion.div
+        className="min-h-screen bg-gradient-to-br from-red-50 via-white to-rose-100 grid place-items-center"
+        initial="initial"
+        animate="animate"
+      >
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
           className="text-center space-y-6 bg-white/90 backdrop-blur-sm rounded-3xl p-8 shadow-2xl border border-red-100"
+          whileHover={{ y: -5 }}
         >
-          <div className="w-20 h-20 bg-gradient-to-br from-red-600 to-rose-600 rounded-3xl mx-auto grid place-items-center shadow-xl">
+          <motion.div
+            className="w-20 h-20 bg-gradient-to-br from-red-600 to-rose-600 rounded-3xl mx-auto grid place-items-center shadow-xl"
+            animate={{
+              rotate: [0, -10, 10, -10, 0],
+              scale: [1, 1.1, 1],
+            }}
+            transition={{
+              duration: 2,
+              repeat: Number.POSITIVE_INFINITY,
+              repeatDelay: 2,
+            }}
+          >
             <span className="text-white text-3xl font-bold">!</span>
-          </div>
-          <h2 className="text-2xl font-black text-gray-900">Soru Bulunamadı</h2>
-          <p className="text-gray-600 text-lg">
+          </motion.div>
+          <motion.h2
+            className="text-2xl font-black text-gray-900"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            Soru Bulunamadı
+          </motion.h2>
+          <motion.p
+            className="text-gray-600 text-lg"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+          >
             Bölüm {currentSectionIndex + 1}, Alt Bölüm {currentSubPartIndex + 1}, Soru {currentQuestionIndex + 1}
-          </p>
+          </motion.p>
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            initial="initial"
+            whileHover="hover"
+            whileTap="tap"
             onClick={nextQuestion}
             className="bg-gradient-to-r from-red-600 to-rose-600 text-white px-8 py-4 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all duration-200"
           >
             Sonraki Soruya Geç
           </motion.button>
         </motion.div>
-      </div>
+      </motion.div>
     )
   }
 
@@ -799,94 +981,159 @@ export default function ImprovedSpeakingTest() {
   const progressPercent = (currentQuestionIndex / Math.max(1, totalQuestionsInSection)) * 100
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-rose-100">
+    <motion.div
+      className="min-h-screen bg-gradient-to-br from-red-50 via-white to-rose-100"
+      initial="initial"
+      animate="animate"
+    >
       <DisableKeys />
       {!isExamMode && (
-        <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-xl border-b border-red-100 shadow-sm">
+        <motion.header
+          className="sticky top-0 z-10 bg-white/80 backdrop-blur-xl border-b border-red-100 shadow-sm"
+          initial={{ y: -100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+        >
           <div className="max-w-6xl mx-auto px-6 py-5">
             <div className="flex items-center justify-between">
               <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                initial="initial"
+                whileHover="hover"
+                whileTap="tap"
                 onClick={() => navigate("/test")}
                 className="flex items-center text-red-600 hover:text-red-700 font-bold transition-colors"
               >
                 <ArrowLeft className="w-5 h-5 mr-2" />
                 <span className="text-lg">Geri</span>
               </motion.button>
-              <div className="text-center">
+              <motion.div
+                className="text-center"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.2 }}
+              >
                 <h1 className="text-2xl font-black text-gray-900">{testData.title}</h1>
                 <div className="flex items-center justify-center gap-3 mt-2">
-                  <div className="px-4 py-1.5 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-full text-sm font-bold shadow-md">
+                  <motion.div
+                    className="px-4 py-1.5 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-full text-sm font-bold shadow-md"
+                    whileHover={{ scale: 1.05 }}
+                  >
                     {currentSection?.title}
-                  </div>
+                  </motion.div>
                   <span className="text-sm text-gray-400">•</span>
                   <span className="text-sm text-gray-600 font-semibold">Soru {currentQuestionIndex + 1}</span>
                 </div>
-              </div>
-              <div className="text-lg font-bold text-gray-700 bg-red-50 px-4 py-2 rounded-xl">
+              </motion.div>
+              <motion.div
+                className="text-lg font-bold text-gray-700 bg-red-50 px-4 py-2 rounded-xl"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 }}
+              >
                 Bölüm {currentSectionIndex + 1} / {testData.sections.length}
-              </div>
+              </motion.div>
             </div>
-            <div className="mt-4">
+            <motion.div
+              className="mt-4"
+              initial={{ opacity: 0, scaleX: 0 }}
+              animate={{ opacity: 1, scaleX: 1 }}
+              transition={{ delay: 0.4, duration: 0.5 }}
+            >
               <Progress value={progressPercent} />
-            </div>
+            </motion.div>
           </div>
-        </header>
+        </motion.header>
       )}
 
       <main className="max-w-6xl mx-auto px-6 py-8">
         <AnimatePresence mode="wait">
           <motion.div
             key={`${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`}
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -10, opacity: 0 }}
-            transition={{ duration: 0.3 }}
+            initial="initial"
+            animate="animate"
+            exit="exit"
             className="bg-white/90 backdrop-blur-sm border border-red-100 rounded-3xl p-10 shadow-2xl"
           >
             {currentSection?.subParts?.[currentSubPartIndex]?.images?.length ? (
-              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="mb-8">
-                <img
+              <motion.div
+                className="mb-8"
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.5 }}
+              >
+                <motion.img
                   src={currentSection.subParts[currentSubPartIndex].images[0] || "/placeholder.svg"}
                   alt="Test görseli"
                   className="max-w-lg mx-auto rounded-2xl shadow-xl border border-red-100"
+                  whileHover={{ scale: 1.02, y: -5 }}
+                  transition={{ duration: 0.3 }}
                 />
               </motion.div>
             ) : null}
 
-            <div className="text-center mb-10">
+            <motion.div
+              className="text-center mb-10"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
               <motion.h2
+                className="text-4xl font-black text-gray-900 leading-relaxed max-w-4xl mx-auto"
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                className="text-4xl font-black text-gray-900 leading-relaxed max-w-4xl mx-auto"
+                transition={{ delay: 0.4, duration: 0.5 }}
               >
                 {currentQuestion.questionText}
               </motion.h2>
-            </div>
+            </motion.div>
 
-            <div className="mt-10 flex flex-col items-center gap-8">
-              <div className="bg-gradient-to-r from-red-50 to-rose-50 rounded-3xl p-6 shadow-inner">
+            <motion.div
+              className="mt-10 flex flex-col items-center gap-8"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+            >
+              <motion.div
+                className="bg-gradient-to-r from-red-50 to-rose-50 rounded-3xl p-6 shadow-inner"
+                whileHover={{ scale: 1.02 }}
+                transition={{ duration: 0.2 }}
+              >
                 <Waveform active={isRecording && !isPaused} />
-              </div>
+              </motion.div>
 
               <div className="flex items-center justify-center gap-4 w-full">
                 {!isRecording ? (
                   <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                    initial="initial"
+                    whileHover="hover"
+                    whileTap="tap"
                     onClick={startRecording}
                     disabled={isPlayingInstructions}
-                    className="flex items-center justify-center w-[88%] gap-3 bg-gradient-to-r from-red-600 to-rose-600 text-white px-8 py-4 rounded-2xl text-xl font-black hover:shadow-2xl disabled:opacity-50 shadow-xl transition-all duration-300"
+                    className="flex items-center justify-center w-[88%] gap-3 bg-gradient-to-r from-red-600 to-rose-600 text-white px-8 py-4 rounded-2xl text-xl font-black hover:shadow-2xl disabled:opacity-50 shadow-xl transition-all duration-300 relative overflow-hidden"
                   >
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                      animate={{ x: ["-100%", "100%"] }}
+                      transition={{
+                        duration: 2,
+                        repeat: Number.POSITIVE_INFINITY,
+                        repeatDelay: 4,
+                        ease: "easeInOut",
+                      }}
+                    />
                     <Mic className="w-6 h-6" /> Kaydı Başlat
                   </motion.button>
                 ) : (
-                  <div className="flex items-center justify-center gap-4 w-full">
+                  <motion.div
+                    className="flex items-center justify-center gap-4 w-full"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                  >
                     {isPaused && (
                       <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
+                        initial="initial"
+                        whileHover="hover"
+                        whileTap="tap"
                         onClick={resumeRecording}
                         className="flex items-center gap-2 bg-white border-2 border-green-600 text-green-700 px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-green-50 transition-all duration-200"
                       >
@@ -894,51 +1141,100 @@ export default function ImprovedSpeakingTest() {
                       </motion.button>
                     )}
                     <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
+                      initial="initial"
+                      whileHover="hover"
+                      whileTap="tap"
                       onClick={stopRecording}
                       className="flex items-center justify-center w-[88%] gap-2 bg-gray-900 text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-gray-800 transition-all duration-200"
                     >
                       <Square className="w-5 h-5" /> Bitir
                     </motion.button>
-                  </div>
+                  </motion.div>
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl">
+              <motion.div
+                className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6, staggerChildren: 0.1 }}
+              >
                 <motion.div
-                  whileHover={{ scale: 1.02 }}
                   className="bg-gradient-to-br from-red-600 to-rose-600 text-white rounded-2xl p-6 text-center shadow-xl"
+                  whileHover={{ scale: 1.02, y: -5 }}
                 >
                   <Clock className="w-8 h-8 mx-auto mb-3" />
                   <div className="text-sm font-bold tracking-wide opacity-90">Kalan Süre</div>
-                  <div className="text-3xl font-black">{formatTime(timeLeft)}</div>
+                  <motion.div
+                    className="text-3xl font-black"
+                    animate={
+                      timeLeft <= 10
+                        ? {
+                          scale: [1, 1.1, 1],
+                          color: ["#ffffff", "#fef2f2", "#ffffff"],
+                        }
+                        : {}
+                    }
+                    transition={{ duration: 1, repeat: timeLeft <= 10 ? Number.POSITIVE_INFINITY : 0 }}
+                  >
+                    {formatTime(timeLeft)}
+                  </motion.div>
                 </motion.div>
 
                 <motion.div
-                  whileHover={{ scale: 1.02 }}
                   className="bg-white border-2 border-red-200 rounded-2xl p-6 text-center shadow-lg"
+                  whileHover={{ scale: 1.02, y: -5 }}
                 >
-                  <div className="w-8 h-8 mx-auto mb-3 bg-gradient-to-br from-red-600 to-rose-600 rounded-full" />
+                  <motion.div
+                    className="w-8 h-8 mx-auto mb-3 bg-gradient-to-br from-red-600 to-rose-600 rounded-full"
+                    animate={isRecording ? { scale: [1, 1.2, 1] } : {}}
+                    transition={{ duration: 1, repeat: isRecording ? Number.POSITIVE_INFINITY : 0 }}
+                  />
                   <div className="text-sm font-bold text-gray-700">Kayıt Süresi</div>
                   <div className="text-3xl font-black text-red-600">{formatTime(recordingTime)}</div>
                 </motion.div>
 
                 <motion.div
-                  whileHover={{ scale: 1.02 }}
                   className="bg-white border-2 border-red-200 rounded-2xl p-6 text-center shadow-lg"
+                  whileHover={{ scale: 1.02, y: -5 }}
                 >
                   <div className="w-8 h-8 mx-auto mb-3">
                     {isRecording ? (
-                      <div className="w-8 h-8 bg-gradient-to-br from-red-600 to-rose-600 rounded-full animate-pulse shadow-lg" />
+                      <motion.div
+                        className="w-8 h-8 bg-gradient-to-br from-red-600 to-rose-600 rounded-full shadow-lg"
+                        animate={{
+                          scale: [1, 1.3, 1],
+                          opacity: [1, 0.7, 1],
+                        }}
+                        transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY }}
+                      />
                     ) : recordings.has(currentQuestion.id) ? (
-                      <CheckCircle className="w-8 h-8 text-green-600" />
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", stiffness: 200 }}
+                      >
+                        <CheckCircle className="w-8 h-8 text-green-600" />
+                      </motion.div>
                     ) : (
                       <div className="w-8 h-8 border-3 border-red-600 rounded-full" />
                     )}
                   </div>
                   <div className="text-sm font-bold text-gray-700">Durum</div>
-                  <div className="text-lg font-black">
+                  <motion.div
+                    className="text-lg font-black"
+                    key={
+                      isPlayingInstructions
+                        ? "instruction"
+                        : isRecording
+                          ? "recording"
+                          : recordings.has(currentQuestion.id)
+                            ? "done"
+                            : "ready"
+                    }
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                  >
                     {isPlayingInstructions ? (
                       <span className="text-blue-600">TALİMAT</span>
                     ) : isRecording ? (
@@ -948,32 +1244,48 @@ export default function ImprovedSpeakingTest() {
                     ) : (
                       <span className="text-gray-700">HAZIR</span>
                     )}
-                  </div>
+                  </motion.div>
                 </motion.div>
-              </div>
+              </motion.div>
 
               {isPlayingInstructions && (
                 <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
                   className="text-center bg-blue-50 rounded-2xl p-6 border border-blue-200 w-[88%]"
                 >
                   <motion.div
-                    animate={{ scale: [1, 1.1, 1] }}
+                    animate={{
+                      scale: [1, 1.1, 1],
+                      rotate: [0, 5, -5, 0],
+                    }}
                     transition={{ duration: 1.5, repeat: Number.POSITIVE_INFINITY }}
                   >
                     <Volume2 className="w-12 h-12 text-blue-600 mx-auto mb-3" />
                   </motion.div>
-                  <p className="text-blue-800 font-bold text-lg">Talimat dinleniyor...</p>
+                  <motion.p
+                    className="text-blue-800 font-bold text-lg"
+                    animate={{ opacity: [1, 0.7, 1] }}
+                    transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}
+                  >
+                    Talimat dinleniyor...
+                  </motion.p>
                 </motion.div>
               )}
-            </div>
+            </motion.div>
 
-            <div className="mt-10 flex justify-between items-center">
+            <motion.div
+              className="mt-10 flex justify-between items-center"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7 }}
+            >
               {!isExamMode && (
                 <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                  initial="initial"
+                  whileHover="hover"
+                  whileTap="tap"
                   onClick={() => setIsTestComplete(true)}
                   className="px-6 py-3 text-sm bg-white border-2 border-red-200 text-red-600 rounded-xl hover:bg-red-50 font-bold transition-all duration-200"
                 >
@@ -988,27 +1300,42 @@ export default function ImprovedSpeakingTest() {
                     animate={{ scale: 1, opacity: 1 }}
                     className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-3 rounded-2xl text-sm font-black shadow-lg"
                   >
-                    ✓ Cevaplandı
+                    <motion.span animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 0.5 }}>
+                      ✓ Cevaplandı
+                    </motion.span>
                   </motion.div>
                 )}
               </div>
 
               <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                initial="initial"
+                whileHover="hover"
+                whileTap="tap"
                 onClick={nextQuestion}
                 disabled={isRecording || isPlayingInstructions}
-                className={`px-8 py-4 text-lg font-black rounded-2xl shadow-lg transition-all duration-200 ${isRecording || isPlayingInstructions
+                className={`px-8 py-4 text-lg font-black rounded-2xl shadow-lg transition-all duration-200 relative overflow-hidden ${isRecording || isPlayingInstructions
                   ? "bg-red-600 text-white opacity-50 cursor-not-allowed"
                   : "bg-gradient-to-r from-red-600 to-rose-600 text-white hover:shadow-2xl"
                   }`}
               >
+                {!(isRecording || isPlayingInstructions) && (
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                    animate={{ x: ["-100%", "100%"] }}
+                    transition={{
+                      duration: 2,
+                      repeat: Number.POSITIVE_INFINITY,
+                      repeatDelay: 3,
+                      ease: "easeInOut",
+                    }}
+                  />
+                )}
                 Sonraki →
               </motion.button>
-            </div>
+            </motion.div>
           </motion.div>
         </AnimatePresence>
       </main>
-    </div>
+    </motion.div>
   )
 }

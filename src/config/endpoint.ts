@@ -8,3 +8,10 @@ export const authEndPoint = {
   user: "/api/user", // For getting user by ID: /api/user/{id}
   logout: "/api/auth/logout",
 };
+
+export const writingEndPoint = {
+  writingSubmission: "/api/writing-submission",
+  writingSubmissionAll: "/api/writing-submission",
+  writingSubmissionById: (id: string) => `/api/writing-submission/${id}`,
+  writingSubmissionByUserId: (userId: string) => `/api/writing-submissions/user/${userId}`,
+}

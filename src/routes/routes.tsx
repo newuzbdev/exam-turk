@@ -9,6 +9,7 @@ import { createBrowserRouter } from "react-router";
 import TestPage from "@/pages/test/test";
 import ImprovedSpeakingTest from "@/pages/speaking-test/ImprovedSpeakingTest";
 import SpeakingDemo from "@/pages/speaking-demo";
+import WritingTest from "@/pages/writing-test/WritingTest";
 
 export const router = createBrowserRouter([
   {
@@ -46,6 +47,10 @@ export const router = createBrowserRouter([
       {
         path: "/speaking-test/:testId",
         element: <ImprovedSpeakingTest />,
+      },
+      {
+        path: "/writing-test/:testId",
+        element: <WritingTest />,
       },
       {
         path: "/speaking-demo",

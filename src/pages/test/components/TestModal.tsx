@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -81,6 +82,7 @@ const TestModal = ({
   readingTests,
   onTestTypeClick
 }: TestModalProps) => {
+  const navigate = useNavigate();
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
 
   const testSections = [
@@ -124,35 +126,32 @@ const TestModal = ({
 
   const renderTestsList = (tests: any[], testType: string) => {
     return (
-      <div className="space-y-3">
+      <div className="space-y-2">
         {tests.map((test, index) => (
-          <Card key={test.id} className="hover:shadow-md transition-shadow cursor-pointer">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-medium text-gray-900">Part {index + 1}</h4>
-                  <p className="text-sm text-gray-600">{test.title}</p>
-                  {test.description && (
-                    <p className="text-xs text-gray-500 mt-1">{test.description}</p>
-                  )}
-                </div>
-                <Button 
-                  size="sm"
-                  onClick={() => {
-                    if (testType === 'speaking') {
-                      window.location.href = `/speaking-test/${test.id}`;
-                    } else {
-                      console.log(`Starting ${testType} test:`, test);
-                      // TODO: Add navigation for other test types
-                    }
-                  }}
-                >
-                  <Play className="h-4 w-4 mr-1" />
-                  Başla
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <div key={test.id} className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-3 hover:bg-gray-50">
+            <div>
+              <div className="text-sm font-semibold text-gray-900">Part {index + 1}</div>
+              <div className="text-sm text-gray-700">{test.title}</div>
+              {test.description && (
+                <div className="text-xs text-gray-500 mt-0.5">{test.description}</div>
+              )}
+            </div>
+            <Button 
+              size="sm"
+              onClick={() => {
+                if (testType === 'speaking') {
+                  navigate(`/speaking-test/${test.id}`);
+                } else if (testType === 'writing') {
+                  navigate(`/writing-test/${test.id}`);
+                } else {
+                  console.log(`Starting ${testType} test:`, test);
+                }
+              }}
+            >
+              <Play className="h-4 w-4 mr-1" />
+              Başla
+            </Button>
+          </div>
         ))}
       </div>
     );
@@ -160,14 +159,12 @@ const TestModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-xl w-[90vw] max-h-[70vh] overflow-y-auto bg-white rounded-lg shadow-lg border border-gray-100">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-gray-900">
+          <DialogTitle className="text-lg font-semibold text-gray-900">
             {selectedTest.title}
           </DialogTitle>
-          <p className="text-gray-600">
-            Tam test deneyimi için aşağıdaki bölümlerden birini seçin
-          </p>
+          <p className="text-gray-600 text-xs">Bölüm seçin ve başlayın.</p>
         </DialogHeader>
 
         <div className="space-y-6">
@@ -185,30 +182,30 @@ const TestModal = ({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+              <div className="grid grid-cols-2 gap-3 mb-3">
                 {testSections.map((section) => (
-                  <div key={section.id} className="text-center p-3 bg-white rounded-lg border border-gray-200">
-                    <section.icon className="h-8 w-8 mx-auto mb-2 text-gray-600" />
-                    <div className="text-sm font-medium text-gray-900">{section.title}</div>
-                    <div className="text-xs text-gray-500">{section.duration}</div>
+                  <div key={section.id} className="text-center p-2 bg-white rounded-md border border-gray-200">
+                    <section.icon className="h-6 w-6 mx-auto mb-1 text-gray-600" />
+                    <div className="text-xs font-medium text-gray-900">{section.title}</div>
+                    <div className="text-[10px] text-gray-500">{section.duration}</div>
                   </div>
                 ))}
               </div>
               <Button 
-                className="w-full bg-gray-700 hover:bg-gray-800 text-white font-semibold py-3"
+                className="w-full bg-gray-700 hover:bg-gray-800 text-white font-medium py-2"
                 onClick={() => {
                   // Handle full test start
                   console.log("Starting full test");
                 }}
               >
-                <Play className="h-5 w-5 mr-2" />
+                <Play className="h-4 w-4 mr-2" />
                 Tam Testi Başlat
               </Button>
             </CardContent>
           </Card>
 
           {/* Individual Sections */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {testSections.map((section) => {
               const IconComponent = section.icon;
               const isSelected = selectedSection === section.id;
@@ -216,8 +213,8 @@ const TestModal = ({
               return (
                 <Card 
                   key={section.id} 
-                  className={`cursor-pointer transition-all hover:shadow-lg ${
-                    isSelected ? 'ring-2 ring-blue-500 shadow-lg' : ''
+                  className={`cursor-pointer transition-all border border-gray-200 hover:border-gray-300 ${
+                    isSelected ? 'ring-2 ring-blue-500' : ''
                   }`}
                   onClick={() => {
                     if (isSelected) {
@@ -231,10 +228,10 @@ const TestModal = ({
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${section.color} transition-colors`}>
-                          <IconComponent className="h-6 w-6 text-white" />
+                        <div className="p-1.5 rounded-md bg-gray-100">
+                          <IconComponent className="h-4 w-4 text-gray-700" />
                         </div>
-                        <span>{section.title}</span>
+                        <span className="text-gray-900 font-medium text-sm">{section.title}</span>
                       </div>
                       <div className="flex gap-2">
                         <Badge variant="outline">
@@ -252,13 +249,13 @@ const TestModal = ({
                   {isSelected && (
                     <CardContent>
                       <div className="border-t pt-4">
-                        <h4 className="font-medium text-gray-900 mb-3">
+                        <h4 className="font-medium text-gray-900 mb-2 text-sm">
                           Mevcut Testler:
                         </h4>
                         {section.tests.length > 0 ? (
                           renderTestsList(section.tests, section.id)
                         ) : (
-                          <p className="text-gray-500 text-sm">Bu bölüm için test bulunmuyor.</p>
+                          <p className="text-gray-500 text-xs">Bu bölüm için test bulunmuyor.</p>
                         )}
                       </div>
                     </CardContent>

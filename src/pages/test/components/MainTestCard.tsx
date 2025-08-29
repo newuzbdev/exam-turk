@@ -99,6 +99,13 @@ const MainTestCard = ({
       } else {
         console.error("No speaking test available");
       }
+    } else if (selectedTestType === "writing") {
+      const writingTest = availableTestTypes.writing[0];
+      if (writingTest) {
+        navigate(`/writing-test/${writingTest.id}`);
+      } else {
+        console.error("No writing test available");
+      }
     } else {
       // Navigate to the general test page for other test types
       navigate("/test", {

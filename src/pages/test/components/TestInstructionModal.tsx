@@ -114,15 +114,15 @@ const TestInstructionModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] overflow-y-auto bg-white rounded-lg shadow-lg">
+      <DialogContent className="max-w-xl w-[90vw] max-h-[70vh] overflow-y-auto bg-white rounded-lg shadow-lg border border-gray-100">
         <DialogHeader className="pb-4 border-b border-gray-200">
-          <DialogTitle className="flex items-center gap-3 text-2xl font-bold text-gray-900">
+          <DialogTitle className="flex items-center gap-3 text-xl font-bold text-gray-900">
             <div className="p-3 bg-red-600 rounded-lg">
               <IconComponent className="h-6 w-6 text-white" />
             </div>
             <div>
               {testInfo.title}
-              <p className="text-sm font-normal text-gray-600 mt-1">
+              <p className="text-xs font-normal text-gray-600 mt-1">
                 Test talimatlarını dikkatli okuyun
               </p>
             </div>
@@ -189,34 +189,7 @@ const TestInstructionModal = ({
             </div>
           )}
 
-          {/* Tips */}
-          {testInfo.tips.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
-              <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-3">
-                <div className="p-2 bg-amber-500 rounded-lg">
-                  <span className="text-white text-lg">💡</span>
-                </div>
-                İpuçları
-              </h3>
-              <div className="grid gap-4">
-                {testInfo.tips.map((tip, index) => (
-                  <div
-                    key={index}
-                    className="flex items-start gap-4 p-5 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200"
-                  >
-                    <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-white text-sm font-bold">
-                        {index + 1}
-                      </span>
-                    </div>
-                    <span className="text-slate-700 leading-relaxed font-medium">
-                      {tip}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Tips removed as requested */}
 
           {/* Action Buttons */}
           <div className="flex gap-4 pt-6 border-t border-gray-200">

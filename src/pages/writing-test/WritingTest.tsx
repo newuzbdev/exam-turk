@@ -51,25 +51,82 @@ export default function WritingTest() {
 		setAnswers((prev) => ({ ...prev, [selectedQuestionId]: value }));
 	};
 
+	const validateAllAnswers = () => {
+		// For each section and subpart, check if answer exists and is at least 10 chars
+		for (const section of sections) {
+			if (section.subParts && section.subParts.length > 0) {
+				for (const sub of section.subParts) {
+					const ans = answers[sub.id] || "";
+					if (!ans.trim() || ans.trim().length < 10) {
+						return false;
+					}
+				}
+			} else {
+				const ans = answers[section.id] || "";
+				if (!ans.trim() || ans.trim().length < 10) {
+					return false;
+				}
+			}
+		}
+		return true;
+	};
+
 	const handleSubmit = async () => {
 		if (!testId) return;
-		const currentAnswer = answers[selectedQuestionId] || "";
-		if (!currentAnswer || currentAnswer.trim().length < 10) {
-			toast.error("Lütfen en az 10 karakterlik bir cevap yazın");
+
+		// Validate all answers
+		if (!validateAllAnswers()) {
+			toast.error("Tüm sorulara en az 10 karakterlik cevap yazmalısınız.");
 			return;
 		}
+
 		setSubmitting(true);
-		const payload = writingSubmissionService.formatSingleAnswerPayload(
-			testId,
-			selectedQuestionId,
-			currentAnswer.trim(),
-			test?.title
-		);
-		const res = await writingSubmissionService.create(payload);
-		setSubmitting(false);
-		if (res) {
-			toast.success("Cevabınız kaydedildi");
-			navigate("/test");
+
+		// Build the payload as described in the prompt
+		const submissionPayload = {
+			writingTestId: testId,
+			sections: sections.map((section) => {
+				const sectionAnswers: { questionId: string; userAnswer: string }[] = [];
+				const subPartsPayload: {
+					description?: string;
+					answers: { questionId: string; userAnswer: string }[];
+				}[] = [];
+
+				if (section.subParts && section.subParts.length > 0) {
+					for (const sub of section.subParts) {
+						const ans = answers[sub.id] || "";
+						subPartsPayload.push({
+							description: sub.label || sub.question,
+							answers: ans.trim()
+								? [{ questionId: sub.id, userAnswer: ans.trim() }]
+								: [],
+						});
+					}
+				} else {
+					const ans = answers[section.id] || "";
+					if (ans.trim()) {
+						sectionAnswers.push({ questionId: section.id, userAnswer: ans.trim() });
+					}
+				}
+
+				return {
+					description: section.title || section.description || "",
+					answers: sectionAnswers,
+					subParts: subPartsPayload,
+				};
+			}),
+		};
+
+		try {
+			const res = await writingSubmissionService.create(submissionPayload);
+			setSubmitting(false);
+			if (res) {
+				toast.success("Cevaplarınız kaydedildi");
+				navigate("/test");
+			}
+		} catch (err) {
+			setSubmitting(false);
+			toast.error("Cevaplar gönderilirken bir hata oluştu.");
 		}
 	};
 
@@ -183,5 +240,3 @@ export default function WritingTest() {
 		</div>
 	);
 }
-
-

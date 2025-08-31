@@ -100,15 +100,19 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
   
   const selectedQuestionId = useMemo(() => {
     if (hasSubParts && selectedSubPart) {
+      console.log("Using subPart ID:", selectedSubPart.id);
       return selectedSubPart.id;
     }
     if (hasQuestions && selectedQuestion) {
+      console.log("Using question ID:", selectedQuestion.id);
       return selectedQuestion.id;
     }
+    console.log("Using section ID:", selectedSection?.id || "0");
     return selectedSection?.id || "0";
   }, [selectedSection?.id, selectedSubPart?.id, selectedQuestion?.id, hasSubParts, hasQuestions]);
 
   const handleAnswerChange = (value: string) => {
+    console.log("Storing answer for questionId:", selectedQuestionId, "value:", value.substring(0, 50) + "...");
     setAnswers((prev) => ({ ...prev, [selectedQuestionId]: value }));
   };
 
@@ -119,98 +123,67 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
   const currentAnswer = answers[selectedQuestionId] || "";
   const wordCount = getWordCount(currentAnswer);
 
-  // No validation required - allow any length answers
-  const validateAllAnswers = () => {
-    return true;
-  };
-
   const handleSubmit = async () => {
     if (!testId) return;
 
     setSubmitting(true);
     setShowSubmitModal(false);
 
-    // Instead of trying to use the complex API structure, let's create a simple submission
-    // that contains all the content without requiring question IDs
-    const submissionData = {
+    // Create proper payload matching API structure
+    const payload = {
       writingTestId: testId,
-      content: sections.map((section, sectionIndex) => {
-        let sectionContent = "";
-        
-        // Handle sections with subParts (like Section 1)
+      sections: sections.map((section) => {
+        const sectionData = {
+          description: section.title || section.description || `Section ${section.order || 1}`,
+          answers: [] as any[],
+          subParts: [] as any[]
+        };
+
+        // Handle sections with subParts
         if (section.subParts && section.subParts.length > 0) {
-          const subPartAnswers = section.subParts
-            .map((subPart, index) => {
-              const ans = answers[subPart.id] || "";
-              if (ans.trim()) {
-                return `Part ${index + 1}: ${ans.trim()}`;
-              }
-              return null;
-            })
-            .filter(Boolean)
-            .join("\n\n");
-          
-          if (subPartAnswers) {
-            sectionContent = subPartAnswers;
-          }
+          sectionData.subParts = section.subParts.map((subPart) => ({
+            description: subPart.label || subPart.description,
+            answers: [{
+              questionId: subPart.id,
+              userAnswer: answers[subPart.id] || ""
+            }]
+          }));
         }
-        
-        // Handle sections with questions (like Section 2)
+
+        // Handle sections with questions (answers go directly in section)
         if (section.questions && section.questions.length > 0) {
-          const questionAnswers = section.questions
-            .map((question, index) => {
-              const ans = answers[question.id] || "";
-              if (ans.trim()) {
-                return `Question ${index + 1}: ${ans.trim()}`;
-              }
-              return null;
-            })
-            .filter(Boolean)
-            .join("\n\n");
-          
-          if (questionAnswers) {
-            sectionContent = questionAnswers;
-          }
+          // Use section ID for storage consistency
+          const sectionAnswer = answers[section.id] || "";
+          sectionData.answers = [{
+            questionId: section.questions[0].id, // Use question ID for API
+            userAnswer: sectionAnswer // But get answer from section ID
+          }];
         }
-        
-        // Handle sections without subParts or questions
+
+        // Handle sections without subParts or questions (direct answers)
         if (!section.subParts?.length && !section.questions?.length) {
-          const ans = answers[section.id] || "";
-          if (ans.trim()) {
-            sectionContent = ans.trim();
+          const sectionAnswer = answers[section.id] || "";
+          if (sectionAnswer.trim()) {
+            sectionData.answers = [{
+              questionId: section.id,
+              userAnswer: sectionAnswer
+            }];
           }
         }
 
-        return {
-          sectionTitle: section.title || section.description || `Section ${section.order || sectionIndex + 1}`,
-          content: sectionContent
-        };
-      }).filter(section => section.content.trim()),
-      totalWords: Object.values(answers).reduce((total, answer) => total + getWordCount(answer), 0),
-      timeSpent: 60 * 60 - timeLeft // Time spent in seconds
+        return sectionData;
+      })
     };
 
-    console.log("Simple submission data:", submissionData);
+    console.log("Current answers state:", answers);
+    console.log("Sections structure:", sections);
+    console.log("Submission payload:", payload);
 
     try {
-      // Try to submit using a different approach - maybe the server has a simpler endpoint
-      // or we can modify the submission service to handle this structure
-      
-      // For now, let's try to submit with a minimal structure that might work
-      const minimalPayload = {
-        writingTestId: testId,
-        sections: sections.map((section) => ({
-          description: section.title || section.description || `Section ${section.order || 1}`,
-          answers: [], // Empty answers array
-          subParts: [] // Empty subParts array
-        }))
-      };
-
-      const res = await writingSubmissionService.create(minimalPayload);
+      const res = await writingSubmissionService.create(payload);
       setSubmitting(false);
       if (res) {
         toast.success("Your answers have been saved successfully!");
-        // Store the results and show them
         setTestResults(res);
         setShowResults(true);
         onTestComplete?.(res.id || "success");
@@ -218,11 +191,7 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
     } catch (err: any) {
       setSubmitting(false);
       console.error("Submission error:", err);
-      
-      // If the API still fails, at least we have the data locally
-      console.log("Submission failed, but here's what we collected:", submissionData);
-      
-      // Show a different message - maybe we can save locally or use a different approach
+      console.log("Submission failed, payload was:", payload);
       toast.error("API submission failed, but your answers are saved locally. Please contact support.");
     }
   };

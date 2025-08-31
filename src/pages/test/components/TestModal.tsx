@@ -84,6 +84,9 @@ const TestModal = ({
 }: TestModalProps) => {
   const navigate = useNavigate();
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
+  
+  console.log("TestModal - Selected test:", selectedTest);
+  console.log("TestModal - Writing tests received:", writingTests);
 
   const testSections = [
     {
@@ -159,7 +162,7 @@ const TestModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl w-[90vw] max-h-[70vh] overflow-y-auto bg-white rounded-lg shadow-lg border border-gray-100">
+      <DialogContent className="max-w-4xl w-[95vw] max-h-[80vh] overflow-y-auto bg-white rounded-lg shadow-lg border border-gray-100">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold text-gray-900">
             {selectedTest.title}

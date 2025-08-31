@@ -80,9 +80,6 @@ const getTestInstructions = (testType: string) => {
         instructions: [
           "Görev 1: Grafik, tablo veya diyagram açıklama (150 kelime, 20 dakika)",
           "Görev 2: Essay yazma - verilen konuda görüşünüzü savunun (250 kelime, 40 dakika)",
-          "Her iki görev de tamamlanmalıdır",
-          "Kelime sayısı sınırlarına dikkat edin",
-          "El yazısı ile yazılmalıdır (bu testte bilgisayar kullanımı)",
         ],
         tips: [
           "Zamanınızı görevlere göre ayırın",
@@ -114,7 +111,7 @@ const TestInstructionModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl w-[90vw] max-h-[70vh] overflow-y-auto bg-white rounded-lg shadow-lg border border-gray-100">
+      <DialogContent className="max-w-4xl w-[90vw] bg-white rounded-lg shadow-lg border border-gray-100">
         <DialogHeader className="pb-4 border-b border-gray-200">
           <DialogTitle className="flex items-center gap-3 text-xl font-bold text-gray-900">
             <div className="p-3 bg-red-600 rounded-lg">
@@ -154,14 +151,7 @@ const TestInstructionModal = ({
             </div>
           </div>
 
-          <div className="p-4 bg-white rounded-lg shadow-md">
-            <h3 className="text-lg font-bold text-gray-900 mb-3">
-              Test Hakkında
-            </h3>
-            <p className="text-gray-700 leading-relaxed">
-              {testInfo.description}
-            </p>
-          </div>
+
 
           {/* Instructions */}
           {testInfo.instructions.length > 0 && (

@@ -79,6 +79,8 @@ const TestPage = () => {
     const fetchTurkishTestData = async () => {
       try {
         const response = await axiosPrivate.get("/api/ielts");
+        console.log("IELTS IDs:", response.data.ieltsData.map((t: any) => t.id));
+        console.log("Writing test ieltsIds:", response.data.writingTests.map((t: any) => `${t.title}: ${t.ieltsId}`));
         setTurkishTestData(response.data);
         
         // Handle navigation state for direct navigation

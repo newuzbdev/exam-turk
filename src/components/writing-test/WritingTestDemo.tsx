@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Clock, FileText, Maximize2, Menu, Send, ChevronLeft, ChevronRight } from "lucide-react";
+import { Clock, Send, ChevronLeft, ChevronRight, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -141,6 +141,7 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
 
         // Handle sections with subParts
         if (section.subParts && section.subParts.length > 0) {
+          console.log("SubParts structure:", JSON.stringify(section.subParts, null, 2));
           sectionData.subParts = section.subParts.map((subPart) => ({
             description: subPart.label || subPart.description,
             answers: [{
@@ -176,7 +177,7 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
     };
 
     console.log("Current answers state:", answers);
-    console.log("Sections structure:", sections);
+    console.log("Sections structure:", JSON.stringify(sections, null, 2));
     console.log("Submission payload:", payload);
 
     try {
@@ -218,12 +219,7 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <div className="text-2xl font-bold text-blue-600">i.t.</div>
-              <div className="text-sm text-gray-600">by InterGreat</div>
-            </div>
-          </div>
+          <div></div>
           
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2 text-gray-600">
@@ -231,24 +227,13 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
               <span className="font-medium">{formatTime(timeLeft)} remaining</span>
             </div>
             
-            <div className="flex items-center space-x-2">
-              <Button variant="ghost" size="sm">
-                <FileText className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="sm">
-                <Maximize2 className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="sm">
-                <Menu className="h-4 w-4" />
-              </Button>
-              <Button 
-                onClick={() => setShowSubmitModal(true)}
-                className="bg-orange-500 hover:bg-orange-600 text-white"
-              >
-                <Send className="h-4 w-4 mr-2" />
-                Submit
-              </Button>
-            </div>
+            <Button 
+              onClick={() => setShowSubmitModal(true)}
+              className="bg-red-500 hover:bg-red-600 text-white"
+            >
+              <Send className="h-4 w-4 mr-2" />
+              Submit
+            </Button>
           </div>
         </div>
       </div>
@@ -264,7 +249,7 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
           </div>
 
           {/* Resizable Panels */}
-          <PanelGroup direction="horizontal" className="min-h-[70vh] rounded-lg border bg-white">
+          <PanelGroup direction="horizontal" className="min-h-[70vh] rounded-xl border-2 border-gray-300 bg-white shadow-lg">
             {/* Left Panel - Questions */}
             <Panel defaultSize={50} minSize={30}>
               <div className="h-full p-6">
@@ -277,28 +262,28 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
                     <div className="space-y-4 text-gray-700">
                       <p className="font-medium">{selectedSection.description}</p>
                       
-                      {hasSubParts && (
-                        <div className="space-y-4">
-                          {subParts.map((subPart, idx) => (
-                            <div key={subPart.id} className="p-4 bg-gray-50 rounded-lg">
-                              <h3 className="font-medium text-gray-900 mb-2">
-                                {subPart.label || `Part ${idx + 1}`}
-                              </h3>
-                              {subPart.question && (
-                                <p className="text-gray-700">{subPart.question}</p>
-                              )}
-                              {subPart.description && (
-                                <p className="text-gray-600 text-sm mt-2">{subPart.description}</p>
-                              )}
-                            </div>
-                          ))}
+                      {hasSubParts && selectedSubPart && (
+                        <div className="p-4 border-2 border-gray-300 rounded-lg">
+                          <h3 className="font-medium text-gray-900 mb-2">
+                            {selectedSubPart.label || `Part ${currentSubPartIndex + 1}`}
+                          </h3>
+                          {selectedSubPart.question && (
+                            <p className="text-gray-700">{selectedSubPart.question}</p>
+                          )}
+                          {selectedSubPart.description && (
+                            <p className="text-gray-600 text-sm mt-2">{selectedSubPart.description}</p>
+                          )}
                         </div>
                       )}
 
                       {hasQuestions && (
                         <div className="space-y-4">
                           {questions.map((question, idx) => (
-                            <div key={question.id} className="p-4 bg-gray-50 rounded-lg">
+                            <div key={question.id} className={`p-4 rounded-lg border-2 ${
+                              currentSubPartIndex === idx 
+                                ? 'border-red-300' 
+                                : 'border-gray-200'
+                            }`}>
                               <h3 className="font-medium text-gray-900 mb-2">
                                 Question {idx + 1}
                               </h3>
@@ -331,14 +316,18 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
                     Previous
                   </Button>
                   
-                  <div className="flex space-x-2">
+                  <div className="flex space-x-3">
                     {sections.map((_, idx) => (
                       <Button
                         key={idx}
                         variant={idx === currentSectionIndex ? "default" : "outline"}
                         size="sm"
                         onClick={() => setCurrentSectionIndex(idx)}
-                        className="w-20"
+                        className={`px-6 py-2 font-semibold transition-all ${
+                          idx === currentSectionIndex 
+                            ? 'bg-red-600 hover:bg-red-700 text-white shadow-md' 
+                            : 'bg-white border-2 border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-red-300'
+                        }`}
                       >
                         Task {idx + 1}
                       </Button>
@@ -358,23 +347,25 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
               </div>
             </Panel>
 
-            <PanelResizeHandle />
+            <PanelResizeHandle className="w-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 transition-colors cursor-col-resize group">
+              <GripVertical className="h-6 w-6 text-gray-400 group-hover:text-gray-600 transition-colors bg-gray-100 p-1 rounded" />
+            </PanelResizeHandle>
 
             {/* Right Panel - Text Input */}
             <Panel defaultSize={50} minSize={30}>
               <div className="h-full p-6">
                 <div className="h-full flex flex-col">
                   {/* Sub-part or Question Tabs */}
-                  {(hasSubParts || hasQuestions) && (
+                  {(hasSubParts || hasQuestions) && (hasSubParts ? subParts : questions).length > 1 && (
                     <div className="mb-4">
                       <Tabs 
                         value={String(currentSubPartIndex)} 
                         onValueChange={(value) => setCurrentSubPartIndex(parseInt(value))}
                         className="w-full"
                       >
-                        <TabsList className="grid w-full grid-cols-2">
+                        <TabsList className="grid w-full bg-gray-100 border border-gray-300" style={{gridTemplateColumns: `repeat(${(hasSubParts ? subParts : questions).length}, 1fr)`}}>
                           {(hasSubParts ? subParts : questions).map((_, idx) => (
-                            <TabsTrigger key={idx} value={String(idx)} className="text-sm">
+                            <TabsTrigger key={idx} value={String(idx)} className="text-sm data-[state=active]:bg-red-500 data-[state=active]:text-white font-medium transition-colors">
                               {hasSubParts ? `${currentSectionIndex + 1}.${idx + 1}` : `Q${idx + 1}`}
                             </TabsTrigger>
                           ))}
@@ -395,15 +386,6 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
                   <div className="mt-4 flex items-center justify-between">
                     <div className="text-sm text-gray-600">
                       Words Count: {wordCount}
-                    </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      <Button variant="outline" size="sm" className="rounded-full w-10 h-10 p-0">
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" size="sm" className="rounded-full w-10 h-10 p-0">
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
                     </div>
                   </div>
                 </div>
@@ -445,7 +427,7 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
             <Button
               onClick={handleSubmit}
               disabled={submitting}
-              className="bg-orange-500 hover:bg-orange-600"
+              className="bg-red-500 hover:bg-red-600"
             >
               {submitting ? "Submitting..." : "Submit Test"}
             </Button>

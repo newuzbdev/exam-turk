@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Keyboard from "react-simple-keyboard";
+import "simple-keyboard/build/css/index.css";
 import writingTestService, { type WritingTestItem } from "@/services/writingTest.service";
 import writingSubmissionService from "@/services/writingSubmission.service";
 
@@ -38,7 +40,7 @@ interface WritingTestDemoProps {
 }
 
 export default function WritingTestDemo({ testId, onTestComplete }: WritingTestDemoProps) {
-  const [test, setTest] = useState<WritingTestItem | null>(null);
+  const [, setTest] = useState<WritingTestItem | null>(null);
   const [sections, setSections] = useState<WritingSection[]>([]);
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
   const [currentSubPartIndex, setCurrentSubPartIndex] = useState(0);
@@ -49,6 +51,8 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [testResults, setTestResults] = useState<any>(null); // State to hold test results
   const [showResults, setShowResults] = useState(false); // State to control results modal visibility
+
+
 
   // Fetch test data on component mount
   useEffect(() => {
@@ -100,20 +104,31 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
   
   const selectedQuestionId = useMemo(() => {
     if (hasSubParts && selectedSubPart) {
-      console.log("Using subPart ID:", selectedSubPart.id);
-      return selectedSubPart.id;
+      const id = `${currentSectionIndex}-${currentSubPartIndex}-${selectedSubPart.id}`;
+      console.log("Using subPart ID:", id, "for section:", currentSectionIndex, "subPart:", currentSubPartIndex);
+      return id;
     }
     if (hasQuestions && selectedQuestion) {
-      console.log("Using question ID:", selectedQuestion.id);
-      return selectedQuestion.id;
+      const id = `${currentSectionIndex}-${currentSubPartIndex}-${selectedQuestion.id}`;
+      console.log("Using question ID:", id, "for section:", currentSectionIndex, "question:", currentSubPartIndex);
+      return id;
     }
-    console.log("Using section ID:", selectedSection?.id || "0");
-    return selectedSection?.id || "0";
-  }, [selectedSection?.id, selectedSubPart?.id, selectedQuestion?.id, hasSubParts, hasQuestions]);
+    const id = `${currentSectionIndex}-${selectedSection?.id || "0"}`;
+    console.log("Using section ID:", id);
+    return id;
+  }, [selectedSection?.id, selectedSubPart?.id, selectedQuestion?.id, hasSubParts, hasQuestions, currentSectionIndex, currentSubPartIndex]);
 
   const handleAnswerChange = (value: string) => {
-    console.log("Storing answer for questionId:", selectedQuestionId, "value:", value.substring(0, 50) + "...");
-    setAnswers((prev) => ({ ...prev, [selectedQuestionId]: value }));
+    console.log("=== ANSWER CHANGE ===");
+    console.log("Section:", currentSectionIndex, "SubPart:", currentSubPartIndex);
+    console.log("Storing answer for questionId:", selectedQuestionId);
+    console.log("Value:", value.substring(0, 50) + "...");
+    console.log("Current answers state:", Object.keys(answers));
+    setAnswers((prev) => {
+      const newAnswers = { ...prev, [selectedQuestionId]: value };
+      console.log("New answers state:", Object.keys(newAnswers));
+      return newAnswers;
+    });
   };
 
   const getWordCount = (text: string) => {
@@ -122,6 +137,26 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
 
   const currentAnswer = answers[selectedQuestionId] || "";
   const wordCount = getWordCount(currentAnswer);
+  
+  console.log("=== CURRENT ANSWER DEBUG ===");
+  console.log("Current selectedQuestionId:", selectedQuestionId);
+  console.log("Current answer for this ID:", currentAnswer);
+  console.log("All answers:", answers);
+
+  const onKeyboardChange = (input: string) => {
+    console.log("=== KEYBOARD CHANGE ===");
+    console.log("Keyboard input:", input);
+    console.log("Current selectedQuestionId:", selectedQuestionId);
+    handleAnswerChange(input);
+  };
+
+  const onKeyPress = (button: string) => {
+    if (button === "{shift}" || button === "{lock}") return;
+    if (button === "{tab}") return;
+    if (button === "{enter}") {
+      handleAnswerChange(currentAnswer + "\n");
+    }
+  };
 
   const handleSubmit = async () => {
     if (!testId) return;
@@ -132,7 +167,7 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
     // Create proper payload matching API structure
     const payload = {
       writingTestId: testId,
-      sections: sections.map((section) => {
+      sections: sections.map((section, sectionIndex) => {
         const sectionData = {
           description: section.title || section.description || `Section ${section.order || 1}`,
           answers: [] as any[],
@@ -142,28 +177,50 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
         // Handle sections with subParts
         if (section.subParts && section.subParts.length > 0) {
           console.log("SubParts structure:", JSON.stringify(section.subParts, null, 2));
-          sectionData.subParts = section.subParts.map((subPart) => ({
+          sectionData.subParts = section.subParts.map((subPart, subPartIndex) => ({
             description: subPart.label || subPart.description,
             answers: [{
               questionId: subPart.id,
-              userAnswer: answers[subPart.id] || ""
+              userAnswer: answers[`${sectionIndex}-${subPartIndex}-${subPart.id}`] || ""
             }]
           }));
         }
 
         // Handle sections with questions (answers go directly in section)
         if (section.questions && section.questions.length > 0) {
-          // Use section ID for storage consistency
-          const sectionAnswer = answers[section.id] || "";
+          console.log("=== SUBMISSION DEBUG FOR SECTION", sectionIndex, "===");
+          console.log("Section has questions:", section.questions.length);
+          console.log("All answer keys:", Object.keys(answers));
+          
+          // Try multiple ID formats to find the answer
+          let questionAnswer = "";
+          const possibleKeys = [
+            `${sectionIndex}-0-${section.questions[0].id}`, // composite format
+            `${sectionIndex}-${section.questions[0].id}`, // section-question format  
+            `${sectionIndex}-${section.id}`, // section-based format (Part 2 uses this!)
+            section.questions[0].id, // direct question ID
+            section.id // section ID
+          ];
+          
+          console.log("Trying keys:", possibleKeys);
+          for (const key of possibleKeys) {
+            if (answers[key]) {
+              questionAnswer = answers[key];
+              console.log("Found answer with key:", key, "value:", questionAnswer);
+              break;
+            }
+          }
+          
           sectionData.answers = [{
-            questionId: section.questions[0].id, // Use question ID for API
-            userAnswer: sectionAnswer // But get answer from section ID
+            questionId: section.questions[0].id,
+            userAnswer: questionAnswer
           }];
+          console.log("Final answer for section", sectionIndex, ":", questionAnswer);
         }
 
         // Handle sections without subParts or questions (direct answers)
         if (!section.subParts?.length && !section.questions?.length) {
-          const sectionAnswer = answers[section.id] || "";
+          const sectionAnswer = answers[`${sectionIndex}-${section.id}`] || "";
           if (sectionAnswer.trim()) {
             sectionData.answers = [{
               questionId: section.id,
@@ -178,7 +235,7 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
 
     console.log("Current answers state:", answers);
     console.log("Sections structure:", JSON.stringify(sections, null, 2));
-    console.log("Submission payload:", payload);
+    console.log("Submission payload:", JSON.stringify(payload, null, 2));
 
     try {
       const res = await writingSubmissionService.create(payload);
@@ -215,24 +272,24 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-100 via-gray-50 to-blue-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-100 via-gray-50 to-blue-50 pb-60">
+      {/* Fixed Header */}
+      <div className="fixed top-0 left-0 right-0 z-[999] bg-white border-b-2 border-gray-300 px-6 py-4 shadow-lg backdrop-blur-sm">
         <div className="flex items-center justify-center">
           <div className="w-full max-w-7xl flex items-center justify-between">
             <div className="flex items-center space-x-8">
               <h1 className="text-2xl font-bold text-gray-900">ALT TEST 3: YAZMA</h1>
               
-              {/* Task Tabs - Simple and clean */}
-              <div className="flex border-b border-gray-200">
+              {/* Task Tabs - Better UI */}
+              <div className="flex bg-white rounded-lg border border-gray-300 p-1 shadow-sm">
                 {sections.map((_, idx) => (
                   <button
                     key={idx}
                     onClick={() => setCurrentSectionIndex(idx)}
-                    className={`px-8 py-3 font-medium transition-all duration-200 border-b-2 ${
+                    className={`px-6 py-2 rounded-md font-semibold transition-all duration-300 ${
                       idx === currentSectionIndex 
-                        ? 'border-blue-500 text-blue-600' 
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        ? 'bg-blue-500 text-white shadow-md transform scale-105' 
+                        : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
                     }`}
                   >
                     Task {idx + 1}
@@ -260,12 +317,64 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-6 pt-24">
         <div className="max-w-7xl mx-auto">
 
 
-          {/* Resizable Panels */}
-          <PanelGroup direction="horizontal" className="min-h-[70vh] rounded-xl border-2 border-gray-300 bg-white shadow-lg">
+          {/* Responsive Layout */}
+          <div className="space-y-6">
+            {/* Questions Panel - Top on Mobile, Left on Desktop */}
+            <div className="lg:hidden bg-white rounded-xl border-2 border-gray-300 shadow-lg p-6">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                  {selectedSection?.title || `WRITING TASK ${currentSectionIndex + 1}`}
+                </h2>
+                
+                {selectedSection?.description && (
+                  <div className="space-y-4 text-gray-700">
+                    <p className="font-medium">{selectedSection.description}</p>
+                    
+                    {hasSubParts && selectedSubPart && (
+                      <div className="p-4 border-2 border-gray-300 rounded-lg">
+                        <h3 className="font-medium text-gray-900 mb-2">
+                          {selectedSubPart.label || `Part ${currentSubPartIndex + 1}`}
+                        </h3>
+                        {selectedSubPart.question && (
+                          <p className="text-gray-700">{selectedSubPart.question}</p>
+                        )}
+                        {selectedSubPart.description && (
+                          <p className="text-gray-600 text-sm mt-2">{selectedSubPart.description}</p>
+                        )}
+                      </div>
+                    )}
+
+                    {hasQuestions && (
+                      <div className="space-y-4">
+                        {questions.map((question, idx) => (
+                          <div key={question.id} className="p-4 border-2 border-gray-300 rounded-lg">
+                            <h3 className="font-medium text-gray-900 mb-2">
+                              Question {idx + 1}
+                            </h3>
+                            {question.text && (
+                              <p className="text-gray-700">{question.text}</p>
+                            )}
+                            {question.question && (
+                              <p className="text-gray-700">{question.question}</p>
+                            )}
+                            {question.description && (
+                              <p className="text-gray-600 text-sm mt-2">{question.description}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+          {/* Desktop Layout - Side by Side */}
+          <PanelGroup direction="horizontal" className="hidden lg:flex min-h-[70vh] rounded-xl border-2 border-gray-300 bg-white shadow-lg">
             {/* Left Panel - Questions */}
             <Panel defaultSize={50} minSize={30}>
               <div className="h-full p-6">
@@ -349,6 +458,7 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
 
                   <div className="flex-1">
                     <textarea
+
                       value={currentAnswer}
                       onChange={(e) => handleAnswerChange(e.target.value)}
                       placeholder="Kompozisyonunuzu buraya yazın... (Write your essay here in Turkish...)"
@@ -367,6 +477,81 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
               </div>
             </Panel>
           </PanelGroup>
+
+          {/* Mobile Writing Area - Bottom on Mobile */}
+          <div className="lg:hidden bg-white rounded-xl border-2 border-gray-300 shadow-lg p-6">
+            {/* Sub-part or Question Tabs */}
+            {(hasSubParts || hasQuestions) && (hasSubParts ? subParts : questions).length > 1 && (
+              <div className="mb-4">
+                <Tabs 
+                  value={String(currentSubPartIndex)} 
+                  onValueChange={(value) => setCurrentSubPartIndex(parseInt(value))}
+                  className="w-full"
+                >
+                  <TabsList className="grid w-full bg-gray-100 border border-gray-300" style={{gridTemplateColumns: `repeat(${(hasSubParts ? subParts : questions).length}, 1fr)`}}>
+                    {(hasSubParts ? subParts : questions).map((_, idx) => (
+                      <TabsTrigger key={idx} value={String(idx)} className="text-sm data-[state=active]:bg-red-500 data-[state=active]:text-white font-medium transition-colors">
+                        {hasSubParts ? `${currentSectionIndex + 1}.${idx + 1}` : `Q${idx + 1}`}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </Tabs>
+              </div>
+            )}
+
+            <div className="flex-1">
+              <textarea
+                value={currentAnswer}
+                onChange={(e) => handleAnswerChange(e.target.value)}
+                placeholder="Kompozisyonunuzu buraya yazın... (Write your essay here in Turkish...)"
+                className="w-full h-80 p-4 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder:text-gray-400"
+                dir="ltr"
+                lang="tr"
+              />
+            </div>
+            
+            <div className="mt-4 flex items-center justify-between">
+              <div className="text-sm text-gray-600">
+                Words Count: {wordCount}
+              </div>
+            </div>
+          </div>
+          
+          </div>
+        </div>
+      </div>
+
+      {/* Turkish Virtual Keyboard - Always Visible */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t-2 border-gray-300 shadow-2xl">
+        <div className="max-w-4xl mx-auto p-4">
+          <div className="flex items-center justify-center mb-2">
+            <span className="text-lg font-bold text-gray-700">🇹🇷 Turkish Virtual Keyboard</span>
+          </div>
+          <Keyboard
+            key={selectedQuestionId}
+            onChange={onKeyboardChange}
+            onKeyPress={onKeyPress}
+            layoutName="default"
+            layout={{
+              default: [
+                "\" 1 2 3 4 5 6 7 8 9 0 * - {bksp}",
+                "{tab} q w e r t y u ı o p ğ ü",
+                "{lock} a s d f g h j k l ş i {enter}",
+                "{shift} < z x c v b n m ö ç . {shift}",
+                ".com @ {space}"
+              ]
+            }}
+            display={{
+              "{bksp}": "⌫",
+              "{enter}": "⏎",
+              "{shift}": "⇧",
+              "{tab}": "⇥",
+              "{lock}": "⇪",
+              "{space}": "______"
+            }}
+            theme="hg-theme-default hg-layout-default"
+            physicalKeyboardHighlight={true}
+          />
         </div>
       </div>
 

@@ -4,11 +4,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Headphones, 
-  Mic, 
-  BookOpen, 
-  PenTool, 
+import {
+  Headphones,
+  Mic,
+  BookOpen,
+  PenTool,
   Play,
   Clock,
   Users,
@@ -84,7 +84,7 @@ const TestModal = ({
 }: TestModalProps) => {
   const navigate = useNavigate();
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
-  
+
   console.log("TestModal - Selected test:", selectedTest);
   console.log("TestModal - Writing tests received:", writingTests);
 
@@ -99,17 +99,17 @@ const TestModal = ({
       questions: listeningTests.length
     },
     {
-      id: "reading", 
+      id: "reading",
       title: "Reading",
       icon: BookOpen,
-      color: "bg-gray-600 hover:bg-gray-700", 
+      color: "bg-gray-600 hover:bg-gray-700",
       tests: readingTests,
       duration: "60 min",
       questions: readingTests.length
     },
     {
       id: "writing",
-      title: "Writing", 
+      title: "Writing",
       icon: PenTool,
       color: "bg-gray-600 hover:bg-gray-700",
       tests: writingTests,
@@ -121,7 +121,7 @@ const TestModal = ({
       title: "Speaking",
       icon: Mic,
       color: "bg-gray-600 hover:bg-gray-700",
-      tests: speakingTests, 
+      tests: speakingTests,
       duration: "15 min",
       questions: speakingTests.length
     }
@@ -139,14 +139,17 @@ const TestModal = ({
                 <div className="text-xs text-gray-500 mt-0.5">{test.description}</div>
               )}
             </div>
-            <Button 
+            <Button
               size="sm"
               onClick={() => {
                 if (testType === 'speaking') {
                   navigate(`/speaking-test/${test.id}`);
                 } else if (testType === 'writing') {
                   navigate(`/writing-test/${test.id}`);
-                } else {
+                } else if (testType === 'listening') {
+                  navigate(`/listening-test/${test.id}`);
+                }
+                else {
                   console.log(`Starting ${testType} test:`, test);
                 }
               }}
@@ -194,7 +197,7 @@ const TestModal = ({
                   </div>
                 ))}
               </div>
-              <Button 
+              <Button
                 className="w-full bg-gray-700 hover:bg-gray-800 text-white font-medium py-2"
                 onClick={() => {
                   // Handle full test start
@@ -212,13 +215,12 @@ const TestModal = ({
             {testSections.map((section) => {
               const IconComponent = section.icon;
               const isSelected = selectedSection === section.id;
-              
+
               return (
-                <Card 
-                  key={section.id} 
-                  className={`cursor-pointer transition-all border border-gray-200 hover:border-gray-300 ${
-                    isSelected ? 'ring-2 ring-blue-500' : ''
-                  }`}
+                <Card
+                  key={section.id}
+                  className={`cursor-pointer transition-all border border-gray-200 hover:border-gray-300 ${isSelected ? 'ring-2 ring-blue-500' : ''
+                    }`}
                   onClick={() => {
                     if (isSelected) {
                       setSelectedSection(null);
@@ -248,7 +250,7 @@ const TestModal = ({
                       </div>
                     </CardTitle>
                   </CardHeader>
-                  
+
                   {isSelected && (
                     <CardContent>
                       <div className="border-t pt-4">

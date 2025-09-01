@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Clock, Send, ChevronLeft, ChevronRight, GripVertical } from "lucide-react";
+import { Clock, Send, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -218,22 +218,43 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
     <div className="min-h-screen bg-gradient-to-br from-gray-100 via-gray-50 to-blue-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div></div>
-          
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2 text-gray-600">
-              <Clock className="h-5 w-5" />
-              <span className="font-medium">{formatTime(timeLeft)} remaining</span>
+        <div className="flex items-center justify-center">
+          <div className="w-full max-w-7xl flex items-center justify-between">
+            <div className="flex items-center space-x-8">
+              <h1 className="text-2xl font-bold text-gray-900">ALT TEST 3: YAZMA</h1>
+              
+              {/* Task Tabs - Simple and clean */}
+              <div className="flex border-b border-gray-200">
+                {sections.map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setCurrentSectionIndex(idx)}
+                    className={`px-8 py-3 font-medium transition-all duration-200 border-b-2 ${
+                      idx === currentSectionIndex 
+                        ? 'border-blue-500 text-blue-600' 
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    Task {idx + 1}
+                  </button>
+                ))}
+              </div>
             </div>
             
-            <Button 
-              onClick={() => setShowSubmitModal(true)}
-              className="bg-red-500 hover:bg-red-600 text-white"
-            >
-              <Send className="h-4 w-4 mr-2" />
-              Submit
-            </Button>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2 text-gray-600">
+                <Clock className="h-5 w-5" />
+                <span className="font-medium">{formatTime(timeLeft)} remaining</span>
+              </div>
+              
+              <Button 
+                onClick={() => setShowSubmitModal(true)}
+                className="bg-red-500 hover:bg-red-600 text-white"
+              >
+                <Send className="h-4 w-4 mr-2" />
+                Submit
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -241,12 +262,7 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
       {/* Main Content */}
       <div className="flex-1 p-6">
         <div className="max-w-7xl mx-auto">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              {test?.title || "Writing Test"}
-            </h1>
-            <p className="text-gray-600">{test?.instruction}</p>
-          </div>
+
 
           {/* Resizable Panels */}
           <PanelGroup direction="horizontal" className="min-h-[70vh] rounded-xl border-2 border-gray-300 bg-white shadow-lg">
@@ -279,11 +295,7 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
                       {hasQuestions && (
                         <div className="space-y-4">
                           {questions.map((question, idx) => (
-                            <div key={question.id} className={`p-4 rounded-lg border-2 ${
-                              currentSubPartIndex === idx 
-                                ? 'border-red-300' 
-                                : 'border-gray-200'
-                            }`}>
+                            <div key={question.id} className="p-4 border-2 border-gray-300 rounded-lg">
                               <h3 className="font-medium text-gray-900 mb-2">
                                 Question {idx + 1}
                               </h3>
@@ -304,46 +316,7 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
                   )}
                 </div>
 
-                {/* Section Navigation */}
-                <div className="flex items-center justify-between mt-8">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentSectionIndex(Math.max(0, currentSectionIndex - 1))}
-                    disabled={currentSectionIndex === 0}
-                  >
-                    <ChevronLeft className="h-4 w-4 mr-1" />
-                    Previous
-                  </Button>
-                  
-                  <div className="flex space-x-3">
-                    {sections.map((_, idx) => (
-                      <Button
-                        key={idx}
-                        variant={idx === currentSectionIndex ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setCurrentSectionIndex(idx)}
-                        className={`px-6 py-2 font-semibold transition-all ${
-                          idx === currentSectionIndex 
-                            ? 'bg-red-600 hover:bg-red-700 text-white shadow-md' 
-                            : 'bg-white border-2 border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-red-300'
-                        }`}
-                      >
-                        Task {idx + 1}
-                      </Button>
-                    ))}
-                  </div>
-                  
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentSectionIndex(Math.min(sections.length - 1, currentSectionIndex + 1))}
-                    disabled={currentSectionIndex === sections.length - 1}
-                  >
-                    Next
-                    <ChevronRight className="h-4 w-4 ml-1" />
-                  </Button>
-                </div>
+
               </div>
             </Panel>
 
@@ -378,8 +351,10 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
                     <textarea
                       value={currentAnswer}
                       onChange={(e) => handleAnswerChange(e.target.value)}
-                      placeholder="Type your essay here.."
+                      placeholder="Kompozisyonunuzu buraya yazın... (Write your essay here in Turkish...)"
                       className="w-full h-full min-h-[500px] p-4 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder:text-gray-400"
+                      dir="ltr"
+                      lang="tr"
                     />
                   </div>
                   

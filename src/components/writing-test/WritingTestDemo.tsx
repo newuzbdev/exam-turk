@@ -196,13 +196,21 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
         // Handle sections with subParts
         if (section.subParts && section.subParts.length > 0) {
           console.log("SubParts structure:", JSON.stringify(section.subParts, null, 2));
-          sectionData.subParts = section.subParts.map((subPart, subPartIndex) => ({
-            description: subPart.label || subPart.description,
-            answers: [{
-              questionId: subPart.id,
-              userAnswer: answers[`${sectionIndex}-${subPartIndex}-${subPart.id}`] || ""
-            }]
-          }));
+          sectionData.subParts = section.subParts.map((subPart, subPartIndex) => {
+            // Use the actual question ID from subPart.questions, not subPart.id
+            const questionId = subPart.questions?.[0]?.id || subPart.id;
+            const userAnswer = answers[`${sectionIndex}-${subPartIndex}-${subPart.id}`] || "";
+            
+            console.log(`SubPart ${subPartIndex}: questionId=${questionId}, userAnswer length=${userAnswer.length}`);
+            
+            return {
+              description: subPart.label || subPart.description,
+              answers: [{
+                questionId: questionId,
+                userAnswer: userAnswer
+              }]
+            };
+          });
         }
 
         // Handle sections with questions (answers go directly in section)
@@ -225,16 +233,22 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
           for (const key of possibleKeys) {
             if (answers[key]) {
               questionAnswer = answers[key];
-              console.log("Found answer with key:", key, "value:", questionAnswer);
+              console.log("Found answer with key:", key, "value:", questionAnswer.substring(0, 50));
               break;
             }
+          }
+          
+          // Make sure we're not sending question text as answer
+          if (questionAnswer && questionAnswer.includes("Kulübün bir başka üyesi")) {
+            console.log("WARNING: Found question text in answer, clearing it");
+            questionAnswer = "";
           }
           
           sectionData.answers = [{
             questionId: section.questions[0].id,
             userAnswer: questionAnswer
           }];
-          console.log("Final answer for section", sectionIndex, ":", questionAnswer);
+          console.log("Final answer for section", sectionIndex, ":", questionAnswer.substring(0, 50));
         }
 
         // Handle sections without subParts or questions (direct answers)
@@ -551,7 +565,7 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
       </div>
 
       {/* Turkish Virtual Keyboard - Always Visible */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t-2 border-gray-300 shadow-2xl">
+      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t-2 border-gray-300 shadow-2xl">
         <div className="max-w-4xl mx-auto p-4">
           <div className="flex items-center justify-center mb-2">
             <span className="text-lg font-bold text-gray-700">🇹🇷 Turkish Virtual Keyboard</span>

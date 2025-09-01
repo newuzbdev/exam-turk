@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Clock, Send, GripVertical } from "lucide-react";
 import { toast } from "sonner";
@@ -16,6 +16,12 @@ interface WritingSubPart {
   order?: number;
   question?: string;
   description?: string;
+  questions?: Array<{
+    id: string;
+    text?: string;
+    sectionId?: string;
+    subPartId?: string;
+  }>;
 }
 
 interface WritingQuestion {
@@ -51,6 +57,7 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [testResults, setTestResults] = useState<any>(null); // State to hold test results
   const [showResults, setShowResults] = useState(false); // State to control results modal visibility
+  const keyboardRef = useRef<any>(null);
 
 
 
@@ -147,14 +154,26 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
     console.log("=== KEYBOARD CHANGE ===");
     console.log("Keyboard input:", input);
     console.log("Current selectedQuestionId:", selectedQuestionId);
-    handleAnswerChange(input);
+    console.log("Previous answer:", currentAnswer);
+    // Don't call handleAnswerChange here - let onKeyPress handle individual keys
   };
 
   const onKeyPress = (button: string) => {
+    console.log("=== KEY PRESS ===", button);
     if (button === "{shift}" || button === "{lock}") return;
     if (button === "{tab}") return;
+    
+    const currentText = currentAnswer;
+    
     if (button === "{enter}") {
-      handleAnswerChange(currentAnswer + "\n");
+      handleAnswerChange(currentText + "\n");
+    } else if (button === "{bksp}") {
+      handleAnswerChange(currentText.slice(0, -1));
+    } else if (button === "{space}") {
+      handleAnswerChange(currentText + " ");
+    } else if (button.length === 1) {
+      // Single character - append to existing text
+      handleAnswerChange(currentText + button);
     }
   };
 
@@ -398,6 +417,16 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
                           {selectedSubPart.description && (
                             <p className="text-gray-600 text-sm mt-2">{selectedSubPart.description}</p>
                           )}
+                          {/* Render questions from subPart.questions */}
+                          {selectedSubPart.questions && selectedSubPart.questions.length > 0 && (
+                            <div className="mt-3 space-y-2">
+                              {selectedSubPart.questions.map((question: any) => (
+                                <div key={question.id} className="p-3 bg-blue-50 rounded border border-blue-200">
+                                  <p className="text-gray-800 font-medium">{question.text}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -528,10 +557,12 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
             <span className="text-lg font-bold text-gray-700">🇹🇷 Turkish Virtual Keyboard</span>
           </div>
           <Keyboard
+            ref={keyboardRef}
             key={selectedQuestionId}
             onChange={onKeyboardChange}
             onKeyPress={onKeyPress}
             layoutName="default"
+            preventMouseDownDefault={true}
             layout={{
               default: [
                 "\" 1 2 3 4 5 6 7 8 9 0 * - {bksp}",

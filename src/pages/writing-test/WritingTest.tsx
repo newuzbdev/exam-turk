@@ -11,7 +11,8 @@ export default function WritingTest() {
   }
 
   const handleTestComplete = (_submissionId: string) => {
-    navigate("/test");
+    // Don't navigate - let the modal show the results instead
+    // navigate("/test");
   };
 
   return (

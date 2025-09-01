@@ -1,8 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Clock, Send, GripVertical } from "lucide-react";
+import { Clock, Send } from "lucide-react";
 import { toast } from "sonner";
-import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Keyboard from "react-simple-keyboard";
@@ -142,8 +141,16 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
     return text.trim().split(/\s+/).filter(Boolean).length;
   };
 
+  const getWordLimit = () => {
+    if (currentSectionIndex === 1) return 300; // Part 2 (Task 2)
+    return 200; // Part 1 (Task 1) - both 1.1 and 1.2
+  };
+
   const currentAnswer = answers[selectedQuestionId] || "";
   const wordCount = getWordCount(currentAnswer);
+  const wordLimit = getWordLimit();
+  const wordsRemaining = Math.max(0, wordLimit - wordCount);
+  const isOverLimit = wordCount > wordLimit;
   
   console.log("=== CURRENT ANSWER DEBUG ===");
   console.log("Current selectedQuestionId:", selectedQuestionId);
@@ -277,7 +284,8 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
         toast.success("Your answers have been saved successfully!");
         setTestResults(res);
         setShowResults(true);
-        onTestComplete?.(res.id || "success");
+        // Don't call onTestComplete immediately - let user see results first
+        // onTestComplete?.(res.id || "success");
       }
     } catch (err: any) {
       setSubmitting(false);
@@ -307,22 +315,63 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-100 via-gray-50 to-blue-50 pb-60">
       {/* Fixed Header */}
-      <div className="fixed top-0 left-0 right-0 z-[999] bg-white border-b-2 border-gray-300 px-6 py-4 shadow-lg backdrop-blur-sm">
-        <div className="flex items-center justify-center">
-          <div className="w-full max-w-7xl flex items-center justify-between">
+      <div className="fixed top-0 left-0 right-0 z-[999] bg-white border-b border-gray-200 px-4 py-3 shadow-sm">
+        {/* Mobile Header */}
+        <div className="lg:hidden">
+          <div className="flex items-center justify-between">
+            <h1 className="text-lg font-bold text-gray-900">YAZMA TEST</h1>
+            
+            <div className="flex items-center gap-2">
+              <div className="flex items-center text-gray-600">
+                <Clock className="h-4 w-4 mr-1" />
+                <span className="text-sm font-medium">{formatTime(timeLeft)}</span>
+              </div>
+              
+              <Button 
+                onClick={() => setShowSubmitModal(true)}
+                className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 text-sm"
+              >
+                Submit
+              </Button>
+            </div>
+          </div>
+          
+          {/* Mobile Task Tabs */}
+          <div className="mt-3">
+            <div className="flex bg-gray-100 rounded-lg p-1">
+              {sections.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setCurrentSectionIndex(idx)}
+                  className={`flex-1 px-3 py-2 rounded-md font-medium text-sm transition-all ${
+                    idx === currentSectionIndex 
+                      ? 'bg-red-500 text-white shadow-sm' 
+                      : 'text-gray-600 hover:text-red-600 hover:bg-red-50'
+                  }`}
+                >
+                  Task {idx + 1}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop Header */}
+        <div className="hidden lg:block">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex items-center space-x-8">
               <h1 className="text-2xl font-bold text-gray-900">ALT TEST 3: YAZMA</h1>
               
-              {/* Task Tabs - Better UI */}
-              <div className="flex bg-white rounded-lg border border-gray-300 p-1 shadow-sm">
+              {/* Task Tabs - Desktop */}
+              <div className="flex bg-gray-100 rounded-lg p-1">
                 {sections.map((_, idx) => (
                   <button
                     key={idx}
                     onClick={() => setCurrentSectionIndex(idx)}
-                    className={`px-6 py-2 rounded-md font-semibold transition-all duration-300 ${
+                    className={`px-6 py-2 rounded-md font-semibold transition-all ${
                       idx === currentSectionIndex 
-                        ? 'bg-blue-500 text-white shadow-md transform scale-105' 
-                        : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                        ? 'bg-red-500 text-white shadow-sm' 
+                        : 'text-gray-600 hover:text-red-600 hover:bg-red-50'
                     }`}
                   >
                     Task {idx + 1}
@@ -350,222 +399,202 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-6 pt-24">
+      <div className="flex-1 p-4 pt-28 lg:pt-24 lg:p-6">
         <div className="max-w-7xl mx-auto">
 
 
-          {/* Responsive Layout */}
-          <div className="space-y-6">
-            {/* Questions Panel - Top on Mobile, Left on Desktop */}
-            <div className="lg:hidden bg-white rounded-xl border-2 border-gray-300 shadow-lg p-6">
-              <div className="mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                  {selectedSection?.title || `WRITING TASK ${currentSectionIndex + 1}`}
-                </h2>
-                
-                {selectedSection?.description && (
-                  <div className="space-y-4 text-gray-700">
-                    <p className="font-medium">{selectedSection.description}</p>
-                    
-                    {hasSubParts && selectedSubPart && (
-                      <div className="p-4 border-2 border-gray-300 rounded-lg">
-                        <h3 className="font-medium text-gray-900 mb-2">
-                          {selectedSubPart.label || `Part ${currentSubPartIndex + 1}`}
-                        </h3>
-                        {selectedSubPart.question && (
-                          <p className="text-gray-700">{selectedSubPart.question}</p>
-                        )}
-                        {selectedSubPart.description && (
-                          <p className="text-gray-600 text-sm mt-2">{selectedSubPart.description}</p>
-                        )}
-                      </div>
-                    )}
+          {/* Mobile Layout - Questions on top */}
+          <div className="lg:hidden space-y-4">
+            {/* Questions Panel - Mobile Only */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+              <h2 className="text-lg font-bold text-gray-900 mb-3">
+                {selectedSection?.title || `WRITING TASK ${currentSectionIndex + 1}`}
+              </h2>
+              
+              {selectedSection?.description && (
+                <div className="space-y-3 text-gray-700">
+                  <p className="text-sm">{selectedSection.description}</p>
+                  
+                  {hasSubParts && selectedSubPart && (
+                    <div className="p-3 border border-gray-200 rounded-lg bg-gray-50">
+                      <h3 className="font-medium text-gray-900 mb-2 text-sm">
+                        {selectedSubPart.label || `Part ${currentSubPartIndex + 1}`}
+                      </h3>
+                      {selectedSubPart.question && (
+                        <p className="text-gray-700 text-sm">{selectedSubPart.question}</p>
+                      )}
+                      {selectedSubPart.description && (
+                        <p className="text-gray-600 text-xs mt-1">{selectedSubPart.description}</p>
+                      )}
+                    </div>
+                  )}
 
-                    {hasQuestions && (
-                      <div className="space-y-4">
-                        {questions.map((question, idx) => (
-                          <div key={question.id} className="p-4 border-2 border-gray-300 rounded-lg">
-                            <h3 className="font-medium text-gray-900 mb-2">
-                              Question {idx + 1}
-                            </h3>
-                            {question.text && (
-                              <p className="text-gray-700">{question.text}</p>
-                            )}
-                            {question.question && (
-                              <p className="text-gray-700">{question.question}</p>
-                            )}
-                            {question.description && (
-                              <p className="text-gray-600 text-sm mt-2">{question.description}</p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+                  {hasQuestions && (
+                    <div className="space-y-3">
+                      {questions.map((question, idx) => (
+                        <div key={question.id} className="p-3 border border-gray-200 rounded-lg bg-gray-50">
+                          <h3 className="font-medium text-gray-900 mb-2 text-sm">
+                            Question {idx + 1}
+                          </h3>
+                          {question.text && (
+                            <p className="text-gray-700 text-sm">{question.text}</p>
+                          )}
+                          {question.question && (
+                            <p className="text-gray-700 text-sm">{question.question}</p>
+                          )}
+                          {question.description && (
+                            <p className="text-gray-600 text-xs mt-1">{question.description}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
-          {/* Desktop Layout - Side by Side */}
-          <PanelGroup direction="horizontal" className="hidden lg:flex min-h-[70vh] rounded-xl border-2 border-gray-300 bg-white shadow-lg">
-            {/* Left Panel - Questions */}
-            <Panel defaultSize={50} minSize={30}>
-              <div className="h-full p-6">
-                <div className="mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                    {selectedSection?.title || `WRITING TASK ${currentSectionIndex + 1}`}
-                  </h2>
-                  
-                  {selectedSection?.description && (
-                    <div className="space-y-4 text-gray-700">
-                      <p className="font-medium">{selectedSection.description}</p>
-                      
-                      {hasSubParts && selectedSubPart && (
-                        <div className="p-4 border-2 border-gray-300 rounded-lg">
-                          <h3 className="font-medium text-gray-900 mb-2">
-                            {selectedSubPart.label || `Part ${currentSubPartIndex + 1}`}
-                          </h3>
-                          {selectedSubPart.question && (
-                            <p className="text-gray-700">{selectedSubPart.question}</p>
-                          )}
-                          {selectedSubPart.description && (
-                            <p className="text-gray-600 text-sm mt-2">{selectedSubPart.description}</p>
-                          )}
-                          {/* Render questions from subPart.questions */}
-                          {selectedSubPart.questions && selectedSubPart.questions.length > 0 && (
-                            <div className="mt-3 space-y-2">
-                              {selectedSubPart.questions.map((question: any) => (
-                                <div key={question.id} className="p-3 bg-blue-50 rounded border border-blue-200">
-                                  <p className="text-gray-800 font-medium">{question.text}</p>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {hasQuestions && (
-                        <div className="space-y-4">
-                          {questions.map((question, idx) => (
-                            <div key={question.id} className="p-4 border-2 border-gray-300 rounded-lg">
-                              <h3 className="font-medium text-gray-900 mb-2">
-                                Question {idx + 1}
-                              </h3>
-                              {question.text && (
-                                <p className="text-gray-700">{question.text}</p>
-                              )}
-                              {question.question && (
-                                <p className="text-gray-700">{question.question}</p>
-                              )}
-                              {question.description && (
-                                <p className="text-gray-600 text-sm mt-2">{question.description}</p>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
+            {/* Writing Area - Mobile Only */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+              {/* Sub-part or Question Tabs */}
+              {(hasSubParts || hasQuestions) && (hasSubParts ? subParts : questions).length > 1 && (
+                <div className="mb-4">
+                  <Tabs 
+                    value={String(currentSubPartIndex)} 
+                    onValueChange={(value) => setCurrentSubPartIndex(parseInt(value))}
+                    className="w-full"
+                  >
+                    <TabsList className="grid w-full bg-gray-100 border border-gray-300" style={{gridTemplateColumns: `repeat(${(hasSubParts ? subParts : questions).length}, 1fr)`}}>
+                      {(hasSubParts ? subParts : questions).map((_, idx) => (
+                        <TabsTrigger key={idx} value={String(idx)} className="text-sm data-[state=active]:bg-red-500 data-[state=active]:text-white font-medium transition-colors">
+                          {hasSubParts ? `${currentSectionIndex + 1}.${idx + 1}` : `Q${idx + 1}`}
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+                  </Tabs>
                 </div>
+              )}
 
-
-              </div>
-            </Panel>
-
-            <PanelResizeHandle className="w-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 transition-colors cursor-col-resize group">
-              <GripVertical className="h-6 w-6 text-gray-400 group-hover:text-gray-600 transition-colors bg-gray-100 p-1 rounded" />
-            </PanelResizeHandle>
-
-            {/* Right Panel - Text Input */}
-            <Panel defaultSize={50} minSize={30}>
-              <div className="h-full p-6">
-                <div className="h-full flex flex-col">
-                  {/* Sub-part or Question Tabs */}
-                  {(hasSubParts || hasQuestions) && (hasSubParts ? subParts : questions).length > 1 && (
-                    <div className="mb-4">
-                      <Tabs 
-                        value={String(currentSubPartIndex)} 
-                        onValueChange={(value) => setCurrentSubPartIndex(parseInt(value))}
-                        className="w-full"
-                      >
-                        <TabsList className="grid w-full bg-gray-100 border border-gray-300" style={{gridTemplateColumns: `repeat(${(hasSubParts ? subParts : questions).length}, 1fr)`}}>
-                          {(hasSubParts ? subParts : questions).map((_, idx) => (
-                            <TabsTrigger key={idx} value={String(idx)} className="text-sm data-[state=active]:bg-red-500 data-[state=active]:text-white font-medium transition-colors">
-                              {hasSubParts ? `${currentSectionIndex + 1}.${idx + 1}` : `Q${idx + 1}`}
-                            </TabsTrigger>
-                          ))}
-                        </TabsList>
-                      </Tabs>
-                    </div>
-                  )}
-
-                  <div className="flex-1">
-                    <textarea
-
-                      value={currentAnswer}
-                      onChange={(e) => handleAnswerChange(e.target.value)}
-                      placeholder="Kompozisyonunuzu buraya yazın... (Write your essay here in Turkish...)"
-                      className="w-full h-full min-h-[500px] p-4 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder:text-gray-400"
-                      dir="ltr"
-                      lang="tr"
-                    />
-                  </div>
-                  
-                  <div className="mt-4 flex items-center justify-between">
-                    <div className="text-sm text-gray-600">
-                      Words Count: {wordCount}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Panel>
-          </PanelGroup>
-
-          {/* Mobile Writing Area - Bottom on Mobile */}
-          <div className="lg:hidden bg-white rounded-xl border-2 border-gray-300 shadow-lg p-6">
-            {/* Sub-part or Question Tabs */}
-            {(hasSubParts || hasQuestions) && (hasSubParts ? subParts : questions).length > 1 && (
-              <div className="mb-4">
-                <Tabs 
-                  value={String(currentSubPartIndex)} 
-                  onValueChange={(value) => setCurrentSubPartIndex(parseInt(value))}
-                  className="w-full"
-                >
-                  <TabsList className="grid w-full bg-gray-100 border border-gray-300" style={{gridTemplateColumns: `repeat(${(hasSubParts ? subParts : questions).length}, 1fr)`}}>
-                    {(hasSubParts ? subParts : questions).map((_, idx) => (
-                      <TabsTrigger key={idx} value={String(idx)} className="text-sm data-[state=active]:bg-red-500 data-[state=active]:text-white font-medium transition-colors">
-                        {hasSubParts ? `${currentSectionIndex + 1}.${idx + 1}` : `Q${idx + 1}`}
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
-                </Tabs>
-              </div>
-            )}
-
-            <div className="flex-1">
               <textarea
                 value={currentAnswer}
                 onChange={(e) => handleAnswerChange(e.target.value)}
                 placeholder="Kompozisyonunuzu buraya yazın... (Write your essay here in Turkish...)"
-                className="w-full h-80 p-4 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder:text-gray-400"
+                className="w-full h-64 p-4 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-gray-900 placeholder:text-gray-400"
                 dir="ltr"
                 lang="tr"
               />
-            </div>
-            
-            <div className="mt-4 flex items-center justify-between">
-              <div className="text-sm text-gray-600">
-                Words Count: {wordCount}
+              
+              <div className="mt-3 flex items-center justify-between">
+                <div className={`text-sm ${isOverLimit ? 'text-red-600' : 'text-gray-600'}`}>
+                  Words: {wordCount} / {wordLimit} ({wordsRemaining} remaining)
+                </div>
               </div>
             </div>
           </div>
-          
+
+          {/* Desktop Layout - Questions on top, textarea below */}
+          <div className="hidden lg:block space-y-4">
+            {/* Questions Panel - Desktop */}
+            <div className="bg-white rounded-xl border-2 border-gray-300 shadow-lg p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                {selectedSection?.title || `WRITING TASK ${currentSectionIndex + 1}`}
+              </h2>
+              
+              {selectedSection?.description && (
+                <div className="space-y-4 text-gray-700">
+                  <p className="font-medium">{selectedSection.description}</p>
+                  
+                  {hasSubParts && selectedSubPart && (
+                    <div className="p-4 border-2 border-gray-300 rounded-lg">
+                      <h3 className="font-medium text-gray-900 mb-2">
+                        {selectedSubPart.label || `Part ${currentSubPartIndex + 1}`}
+                      </h3>
+                      {selectedSubPart.question && (
+                        <p className="text-gray-700">{selectedSubPart.question}</p>
+                      )}
+                      {selectedSubPart.description && (
+                        <p className="text-gray-600 text-sm mt-2">{selectedSubPart.description}</p>
+                      )}
+                      {/* Render questions from subPart.questions */}
+                      {selectedSubPart.questions && selectedSubPart.questions.length > 0 && (
+                        <div className="mt-3 space-y-2">
+                          {selectedSubPart.questions.map((question: any) => (
+                            <div key={question.id} className="p-3 bg-blue-50 rounded border border-blue-200">
+                              <p className="text-gray-800 font-medium">{question.text}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {hasQuestions && (
+                    <div className="space-y-4">
+                      {questions.map((question, idx) => (
+                        <div key={question.id} className="p-4 border-2 border-gray-300 rounded-lg">
+                          <h3 className="font-medium text-gray-900 mb-2">
+                            Question {idx + 1}
+                          </h3>
+                          {question.text && (
+                            <p className="text-gray-700">{question.text}</p>
+                          )}
+                          {question.question && (
+                            <p className="text-gray-700">{question.question}</p>
+                          )}
+                          {question.description && (
+                            <p className="text-gray-600 text-sm mt-2">{question.description}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Writing Area - Desktop */}
+            <div className="bg-white rounded-xl border-2 border-gray-300 shadow-lg p-6">
+              {/* Sub-part or Question Tabs */}
+              {(hasSubParts || hasQuestions) && (hasSubParts ? subParts : questions).length > 1 && (
+                <div className="mb-4">
+                  <Tabs 
+                    value={String(currentSubPartIndex)} 
+                    onValueChange={(value) => setCurrentSubPartIndex(parseInt(value))}
+                    className="w-full"
+                  >
+                    <TabsList className="grid w-full bg-gray-100 border border-gray-300" style={{gridTemplateColumns: `repeat(${(hasSubParts ? subParts : questions).length}, 1fr)`}}>
+                      {(hasSubParts ? subParts : questions).map((_, idx) => (
+                        <TabsTrigger key={idx} value={String(idx)} className="text-sm data-[state=active]:bg-red-500 data-[state=active]:text-white font-medium transition-colors">
+                          {hasSubParts ? `${currentSectionIndex + 1}.${idx + 1}` : `Q${idx + 1}`}
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+                  </Tabs>
+                </div>
+              )}
+
+              <textarea
+                value={currentAnswer}
+                onChange={(e) => handleAnswerChange(e.target.value)}
+                placeholder="Kompozisyonunuzu buraya yazın... (Write your essay here in Turkish...)"
+                className="w-full h-96 p-4 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-gray-900 placeholder:text-gray-400"
+                dir="ltr"
+                lang="tr"
+              />
+              
+              <div className="mt-4 flex items-center justify-between">
+                <div className={`text-sm ${isOverLimit ? 'text-red-600' : 'text-gray-600'}`}>
+                  Words: {wordCount} / {wordLimit} ({wordsRemaining} remaining)
+                </div>
+              </div>
+            </div>
           </div>
+
+
         </div>
       </div>
 
-      {/* Turkish Virtual Keyboard - Always Visible */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t-2 border-gray-300 shadow-2xl">
+      {/* Turkish Virtual Keyboard - Hidden on Mobile */}
+      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t-2 border-gray-300 shadow-2xl hidden lg:block">
         <div className="max-w-4xl mx-auto p-4">
           <div className="flex items-center justify-center mb-2">
             <span className="text-lg font-bold text-gray-700">🇹🇷 Turkish Virtual Keyboard</span>
@@ -643,129 +672,83 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
       {/* Results Modal */}
       {testResults && (
         <Dialog open={showResults} onOpenChange={setShowResults}>
-          <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-3xl font-bold text-center text-gray-900 mb-2">
-                🎯 Writing Test Results
-              </DialogTitle>
-              <DialogDescription className="text-center text-gray-600 text-lg">
-                Congratulations on completing your writing test! Here's your detailed analysis.
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className="mt-6 space-y-6">
-              {/* Overall Score Section */}
+          <DialogContent className="max-w-2xl p-0 bg-white rounded-3xl overflow-hidden">
+            {/* Modern Header */}
+            <div className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-8">
               <div className="text-center">
-                <div className="inline-flex items-center justify-center w-32 h-32 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 text-white">
-                  <div className="text-center">
-                    <div className="text-4xl font-bold">{testResults.score || "N/A"}</div>
-                    <div className="text-sm opacity-90">out of 9</div>
-                  </div>
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-red-500 rounded-2xl mb-4">
+                  <span className="text-white font-bold text-xl">{testResults.score || "N/A"}</span>
                 </div>
-                <div className="mt-4">
-                  <h3 className="text-xl font-semibold text-gray-900">Overall Band Score</h3>
-                  <p className="text-gray-600">Your writing performance assessment</p>
+                <h1 className="text-white text-2xl font-bold mb-2">Test Results</h1>
+                <p className="text-slate-300">Your IELTS Writing Assessment</p>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-6">
+              {/* Score Display */}
+              <div className="text-center">
+                <div className="text-4xl font-bold text-red-500 mb-1">
+                  {testResults.score || "N/A"}
+                </div>
+                <p className="text-slate-600 text-sm">Band Score out of 9</p>
+              </div>
+
+              {/* Stats Row */}
+              <div className="flex gap-4">
+                <div className="flex-1 bg-slate-50 rounded-xl p-4 text-center">
+                  <div className="text-xl font-bold text-slate-900 mb-1">
+                    {Object.values(answers).reduce((total, answer) => total + getWordCount(answer), 0)}
+                  </div>
+                  <p className="text-slate-500 text-xs">Words</p>
+                </div>
+                <div className="flex-1 bg-slate-50 rounded-xl p-4 text-center">
+                  <div className="text-xl font-bold text-slate-900 mb-1">
+                    {Math.floor((60 * 60 - timeLeft) / 60)}
+                  </div>
+                  <p className="text-slate-500 text-xs">Minutes</p>
                 </div>
               </div>
 
-              {/* AI Feedback Grid */}
+              {/* Assessment Details */}
               {testResults.aiFeedback && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Task Achievement */}
-                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6">
-                    <div className="flex items-center mb-3">
-                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
-                        <span className="text-green-600 text-lg">📝</span>
+                <div className="space-y-3">
+                  <h3 className="text-base font-semibold text-slate-900">Assessment</h3>
+                  <div className="grid gap-3">
+                    <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl">
+                      <div className="w-2 h-2 bg-red-500 rounded-full mt-1.5"></div>
+                      <div className="flex-1">
+                        <h4 className="font-medium text-slate-900 text-sm mb-1">Task Achievement</h4>
+                        <p className="text-slate-600 text-xs leading-relaxed">
+                          {testResults.aiFeedback.taskAchievement || "Assessment completed"}
+                        </p>
                       </div>
-                      <h4 className="font-semibold text-green-900">Task Achievement</h4>
                     </div>
-                    <p className="text-green-800 text-sm leading-relaxed">
-                      {testResults.aiFeedback.taskAchievement || "No feedback available"}
-                    </p>
-                  </div>
-
-                  {/* Coherence and Cohesion */}
-                  <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200 rounded-xl p-6">
-                    <div className="flex items-center mb-3">
-                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                        <span className="text-blue-600 text-lg">🔗</span>
+                    
+                    <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl">
+                      <div className="w-2 h-2 bg-red-500 rounded-full mt-1.5"></div>
+                      <div className="flex-1">
+                        <h4 className="font-medium text-slate-900 text-sm mb-1">Language Quality</h4>
+                        <p className="text-slate-600 text-xs leading-relaxed">
+                          {testResults.aiFeedback.grammaticalRangeAndAccuracy || "Language skills evaluated"}
+                        </p>
                       </div>
-                      <h4 className="font-semibold text-blue-900">Coherence & Cohesion</h4>
                     </div>
-                    <p className="text-blue-800 text-sm leading-relaxed">
-                      {testResults.aiFeedback.coherenceAndCohesion || "No feedback available"}
-                    </p>
-                  </div>
-
-                  {/* Lexical Resource */}
-                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-xl p-6">
-                    <div className="flex items-center mb-3">
-                      <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center mr-3">
-                        <span className="text-purple-600 text-lg">📚</span>
-                      </div>
-                      <h4 className="font-semibold text-purple-900">Lexical Resource</h4>
-                    </div>
-                    <p className="text-purple-800 text-sm leading-relaxed">
-                      {testResults.aiFeedback.lexicalResource || "No feedback available"}
-                    </p>
-                  </div>
-
-                  {/* Grammatical Range and Accuracy */}
-                  <div className="bg-gradient-to-br from-orange-50 to-red-50 border border-orange-200 rounded-xl p-6">
-                    <div className="flex items-center mb-3">
-                      <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center mr-3">
-                        <span className="text-orange-600 text-lg">⚡</span>
-                      </div>
-                      <h4 className="font-semibold text-orange-900">Grammar & Accuracy</h4>
-                    </div>
-                    <p className="text-orange-800 text-sm leading-relaxed">
-                      {testResults.aiFeedback.grammaticalRangeAndAccuracy || "No feedback available"}
-                    </p>
                   </div>
                 </div>
               )}
 
-              {/* Test Details */}
-              <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
-                <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
-                  <span className="text-gray-600 mr-2">📊</span>
-                  Test Details
-                </h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-600">{testResults.score || "N/A"}</div>
-                    <div className="text-gray-600">Band Score</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">
-                      {Object.values(answers).reduce((total, answer) => total + getWordCount(answer), 0)}
-                    </div>
-                    <div className="text-gray-600">Total Words</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-purple-600">
-                      {Math.floor((60 * 60 - timeLeft) / 60)}
-                    </div>
-                    <div className="text-gray-600">Minutes Used</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-orange-600">
-                      {new Date(testResults.submittedAt || Date.now()).toLocaleDateString()}
-                    </div>
-                    <div className="text-gray-600">Submitted</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <DialogFooter className="flex justify-center mt-8">
-              <Button 
-                onClick={() => setShowResults(false)} 
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3 text-lg rounded-xl"
+              {/* Action */}
+              <Button
+                onClick={() => {
+                  setShowResults(false);
+                  onTestComplete?.(testResults.id || "success");
+                }}
+                className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-3 rounded-xl"
               >
-                🎉 Close Results
+                Continue
               </Button>
-            </DialogFooter>
+            </div>
           </DialogContent>
         </Dialog>
       )}

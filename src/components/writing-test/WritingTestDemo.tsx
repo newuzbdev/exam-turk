@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Clock, Send } from "lucide-react";
 import { toast } from "sonner";
@@ -45,6 +46,7 @@ interface WritingTestDemoProps {
 }
 
 export default function WritingTestDemo({ testId, onTestComplete }: WritingTestDemoProps) {
+  const navigate = useNavigate();
   const [, setTest] = useState<WritingTestItem | null>(null);
   const [sections, setSections] = useState<WritingSection[]>([]);
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
@@ -54,8 +56,7 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
   const [loading, setLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState(60 * 60); // 60 minutes in seconds
   const [showSubmitModal, setShowSubmitModal] = useState(false);
-  const [testResults, setTestResults] = useState<any>(null); // State to hold test results
-  const [showResults, setShowResults] = useState(false); // State to control results modal visibility
+
   const keyboardRef = useRef<any>(null);
 
 
@@ -282,10 +283,8 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
       setSubmitting(false);
       if (res) {
         toast.success("Your answers have been saved successfully!");
-        setTestResults(res);
-        setShowResults(true);
-        // Don't call onTestComplete immediately - let user see results first
-        // onTestComplete?.(res.id || "success");
+        // Navigate to results page with the submission ID
+        navigate(`/writing-test/results/${res.id}`);
       }
     } catch (err: any) {
       setSubmitting(false);
@@ -313,9 +312,9 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-100 via-gray-50 to-blue-50 pb-60">
+    <div className="min-h-screen bg-gray-50 pb-60">
       {/* Fixed Header */}
-      <div className="fixed top-0 left-0 right-0 z-[999] bg-white border-b border-gray-200 px-4 py-3 shadow-sm">
+      <div className="fixed top-0 left-0 right-0 z-[999] bg-white px-4 py-3 shadow-sm">
         {/* Mobile Header */}
         <div className="lg:hidden">
           <div className="flex items-center justify-between">
@@ -426,6 +425,16 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
                       {selectedSubPart.description && (
                         <p className="text-gray-600 text-xs mt-1">{selectedSubPart.description}</p>
                       )}
+                      {/* Render questions from subPart.questions - Mobile */}
+                      {selectedSubPart.questions && selectedSubPart.questions.length > 0 && (
+                        <div className="mt-3 space-y-2">
+                          {selectedSubPart.questions.map((question: any) => (
+                            <div key={question.id} className="p-3 bg-gray-100 rounded border border-gray-200">
+                              <p className="text-gray-800 font-medium text-sm">{question.text}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -518,7 +527,7 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
                       {selectedSubPart.questions && selectedSubPart.questions.length > 0 && (
                         <div className="mt-3 space-y-2">
                           {selectedSubPart.questions.map((question: any) => (
-                            <div key={question.id} className="p-3 bg-blue-50 rounded border border-blue-200">
+                            <div key={question.id} className="p-3 bg-gray-100 rounded border border-gray-200">
                               <p className="text-gray-800 font-medium">{question.text}</p>
                             </div>
                           ))}
@@ -631,127 +640,47 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
 
       {/* Submit Modal */}
       <Dialog open={showSubmitModal} onOpenChange={setShowSubmitModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-semibold">Submit Writing Test</DialogTitle>
-            <DialogDescription className="text-gray-600">
-              Are you sure you want to submit your writing test? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="py-4">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h4 className="font-medium text-blue-900 mb-2">Submission Summary</h4>
-              <div className="space-y-2 text-sm text-blue-800">
-                <div>Total Sections: {sections.length}</div>
-                <div>Total Words: {Object.values(answers).reduce((total, answer) => total + getWordCount(answer), 0)}</div>
-                <div>Time Remaining: {formatTime(timeLeft)}</div>
-              </div>
+        <DialogContent className="max-w-sm p-6 rounded-2xl">
+          {/* Simple Header */}
+          <div className="text-center mb-6">
+            <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Send className="w-6 h-6 text-white" />
             </div>
+            <h2 className="text-xl font-bold text-black mb-2">Submit Test</h2>
+            <p className="text-gray-600 text-sm">
+              {Object.values(answers).reduce((total, answer) => total + getWordCount(answer), 0)} words • {formatTime(timeLeft)} left
+            </p>
           </div>
-          
-          <DialogFooter className="flex space-x-3">
+
+          {submitting && (
+            <div className="text-center py-4 mb-6">
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-red-500 border-t-transparent mx-auto mb-3"></div>
+              <p className="text-gray-600 text-sm">Submitting...</p>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex gap-3">
             <Button
               variant="outline"
               onClick={() => setShowSubmitModal(false)}
               disabled={submitting}
+              className="flex-1 py-3"
             >
               Cancel
             </Button>
             <Button
               onClick={handleSubmit}
               disabled={submitting}
-              className="bg-red-500 hover:bg-red-600"
+              className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3"
             >
-              {submitting ? "Submitting..." : "Submit Test"}
+              Submit
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
-      {/* Results Modal */}
-      {testResults && (
-        <Dialog open={showResults} onOpenChange={setShowResults}>
-          <DialogContent className="max-w-2xl p-0 bg-white rounded-3xl overflow-hidden">
-            {/* Modern Header */}
-            <div className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-8">
-              <div className="text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-red-500 rounded-2xl mb-4">
-                  <span className="text-white font-bold text-xl">{testResults.score || "N/A"}</span>
-                </div>
-                <h1 className="text-white text-2xl font-bold mb-2">Test Results</h1>
-                <p className="text-slate-300">Your IELTS Writing Assessment</p>
-              </div>
-            </div>
 
-            {/* Content */}
-            <div className="p-6 space-y-6">
-              {/* Score Display */}
-              <div className="text-center">
-                <div className="text-4xl font-bold text-red-500 mb-1">
-                  {testResults.score || "N/A"}
-                </div>
-                <p className="text-slate-600 text-sm">Band Score out of 9</p>
-              </div>
-
-              {/* Stats Row */}
-              <div className="flex gap-4">
-                <div className="flex-1 bg-slate-50 rounded-xl p-4 text-center">
-                  <div className="text-xl font-bold text-slate-900 mb-1">
-                    {Object.values(answers).reduce((total, answer) => total + getWordCount(answer), 0)}
-                  </div>
-                  <p className="text-slate-500 text-xs">Words</p>
-                </div>
-                <div className="flex-1 bg-slate-50 rounded-xl p-4 text-center">
-                  <div className="text-xl font-bold text-slate-900 mb-1">
-                    {Math.floor((60 * 60 - timeLeft) / 60)}
-                  </div>
-                  <p className="text-slate-500 text-xs">Minutes</p>
-                </div>
-              </div>
-
-              {/* Assessment Details */}
-              {testResults.aiFeedback && (
-                <div className="space-y-3">
-                  <h3 className="text-base font-semibold text-slate-900">Assessment</h3>
-                  <div className="grid gap-3">
-                    <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl">
-                      <div className="w-2 h-2 bg-red-500 rounded-full mt-1.5"></div>
-                      <div className="flex-1">
-                        <h4 className="font-medium text-slate-900 text-sm mb-1">Task Achievement</h4>
-                        <p className="text-slate-600 text-xs leading-relaxed">
-                          {testResults.aiFeedback.taskAchievement || "Assessment completed"}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl">
-                      <div className="w-2 h-2 bg-red-500 rounded-full mt-1.5"></div>
-                      <div className="flex-1">
-                        <h4 className="font-medium text-slate-900 text-sm mb-1">Language Quality</h4>
-                        <p className="text-slate-600 text-xs leading-relaxed">
-                          {testResults.aiFeedback.grammaticalRangeAndAccuracy || "Language skills evaluated"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Action */}
-              <Button
-                onClick={() => {
-                  setShowResults(false);
-                  onTestComplete?.(testResults.id || "success");
-                }}
-                className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-3 rounded-xl"
-              >
-                Continue
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
     </div>
   );
 }

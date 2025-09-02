@@ -500,99 +500,101 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
             </div>
           </div>
 
-          {/* Desktop Layout - Questions on top, textarea below */}
-          <div className="hidden lg:block space-y-4">
-            {/* Questions Panel - Desktop */}
-            <div className="bg-white rounded-xl border-2 border-gray-300 shadow-lg p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                {selectedSection?.title || `WRITING TASK ${currentSectionIndex + 1}`}
-              </h2>
-              
-              {selectedSection?.description && (
-                <div className="space-y-4 text-gray-700">
-                  <p className="font-medium">{selectedSection.description}</p>
-                  
-                  {hasSubParts && selectedSubPart && (
-                    <div className="p-4 border-2 border-gray-300 rounded-lg">
-                      <h3 className="font-medium text-gray-900 mb-2">
-                        {selectedSubPart.label || `Part ${currentSubPartIndex + 1}`}
-                      </h3>
-                      {selectedSubPart.question && (
-                        <p className="text-gray-700">{selectedSubPart.question}</p>
-                      )}
-                      {selectedSubPart.description && (
-                        <p className="text-gray-600 text-sm mt-2">{selectedSubPart.description}</p>
-                      )}
-                      {/* Render questions from subPart.questions */}
-                      {selectedSubPart.questions && selectedSubPart.questions.length > 0 && (
-                        <div className="mt-3 space-y-2">
-                          {selectedSubPart.questions.map((question: any) => (
-                            <div key={question.id} className="p-3 bg-gray-100 rounded border border-gray-200">
-                              <p className="text-gray-800 font-medium">{question.text}</p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
+          {/* Desktop Layout - Questions left, textarea right */}
+          <div className="hidden lg:block">
+            <div className="grid lg:grid-cols-2 gap-6">
+              {/* Questions Panel - Desktop Left */}
+              <div className="bg-white rounded-xl border-2 border-gray-300 shadow-lg p-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                  {selectedSection?.title || `WRITING TASK ${currentSectionIndex + 1}`}
+                </h2>
+                
+                {selectedSection?.description && (
+                  <div className="space-y-4 text-gray-700">
+                    <p className="font-medium">{selectedSection.description}</p>
+                    
+                    {hasSubParts && selectedSubPart && (
+                      <div className="p-4 border-2 border-gray-300 rounded-lg">
+                        <h3 className="font-medium text-gray-900 mb-2">
+                          {selectedSubPart.label || `Part ${currentSubPartIndex + 1}`}
+                        </h3>
+                        {selectedSubPart.question && (
+                          <p className="text-gray-700">{selectedSubPart.question}</p>
+                        )}
+                        {selectedSubPart.description && (
+                          <p className="text-gray-600 text-sm mt-2">{selectedSubPart.description}</p>
+                        )}
+                        {/* Render questions from subPart.questions */}
+                        {selectedSubPart.questions && selectedSubPart.questions.length > 0 && (
+                          <div className="mt-3 space-y-2">
+                            {selectedSubPart.questions.map((question: any) => (
+                              <div key={question.id} className="p-3 bg-gray-100 rounded border border-gray-200">
+                                <p className="text-gray-800 font-medium">{question.text}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
-                  {hasQuestions && (
-                    <div className="space-y-4">
-                      {questions.map((question, idx) => (
-                        <div key={question.id} className="p-4 border-2 border-gray-300 rounded-lg">
-                          <h3 className="font-medium text-gray-900 mb-2">
-                            Question {idx + 1}
-                          </h3>
-                          {question.text && (
-                            <p className="text-gray-700">{question.text}</p>
-                          )}
-                          {question.question && (
-                            <p className="text-gray-700">{question.question}</p>
-                          )}
-                          {question.description && (
-                            <p className="text-gray-600 text-sm mt-2">{question.description}</p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+                    {hasQuestions && (
+                      <div className="space-y-4">
+                        {questions.map((question, idx) => (
+                          <div key={question.id} className="p-4 border-2 border-gray-300 rounded-lg">
+                            <h3 className="font-medium text-gray-900 mb-2">
+                              Question {idx + 1}
+                            </h3>
+                            {question.text && (
+                              <p className="text-gray-700">{question.text}</p>
+                            )}
+                            {question.question && (
+                              <p className="text-gray-700">{question.question}</p>
+                            )}
+                            {question.description && (
+                              <p className="text-gray-600 text-sm mt-2">{question.description}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
-            {/* Writing Area - Desktop */}
-            <div className="bg-white rounded-xl border-2 border-gray-300 shadow-lg p-6">
-              {/* Sub-part or Question Tabs */}
-              {(hasSubParts || hasQuestions) && (hasSubParts ? subParts : questions).length > 1 && (
-                <div className="mb-4">
-                  <Tabs 
-                    value={String(currentSubPartIndex)} 
-                    onValueChange={(value) => setCurrentSubPartIndex(parseInt(value))}
-                    className="w-full"
-                  >
-                    <TabsList className="grid w-full bg-gray-100 border border-gray-300" style={{gridTemplateColumns: `repeat(${(hasSubParts ? subParts : questions).length}, 1fr)`}}>
-                      {(hasSubParts ? subParts : questions).map((_, idx) => (
-                        <TabsTrigger key={idx} value={String(idx)} className="text-sm data-[state=active]:bg-red-500 data-[state=active]:text-white font-medium transition-colors">
-                          {hasSubParts ? `${currentSectionIndex + 1}.${idx + 1}` : `Q${idx + 1}`}
-                        </TabsTrigger>
-                      ))}
-                    </TabsList>
-                  </Tabs>
-                </div>
-              )}
+              {/* Writing Area - Desktop Right */}
+              <div className="bg-white rounded-xl border-2 border-gray-300 shadow-lg p-6">
+                {/* Sub-part or Question Tabs */}
+                {(hasSubParts || hasQuestions) && (hasSubParts ? subParts : questions).length > 1 && (
+                  <div className="mb-4">
+                    <Tabs 
+                      value={String(currentSubPartIndex)} 
+                      onValueChange={(value) => setCurrentSubPartIndex(parseInt(value))}
+                      className="w-full"
+                    >
+                      <TabsList className="grid w-full bg-gray-100 border border-gray-300" style={{gridTemplateColumns: `repeat(${(hasSubParts ? subParts : questions).length}, 1fr)`}}>
+                        {(hasSubParts ? subParts : questions).map((_, idx) => (
+                          <TabsTrigger key={idx} value={String(idx)} className="text-sm data-[state=active]:bg-red-500 data-[state=active]:text-white font-medium transition-colors">
+                            {hasSubParts ? `${currentSectionIndex + 1}.${idx + 1}` : `Q${idx + 1}`}
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
+                    </Tabs>
+                  </div>
+                )}
 
-              <textarea
-                value={currentAnswer}
-                onChange={(e) => handleAnswerChange(e.target.value)}
-                placeholder="Kompozisyonunuzu buraya yazın... (Write your essay here in Turkish...)"
-                className="w-full h-96 p-4 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-gray-900 placeholder:text-gray-400"
-                dir="ltr"
-                lang="tr"
-              />
-              
-              <div className="mt-4 flex items-center justify-between">
-                <div className={`text-sm ${isOverLimit ? 'text-red-600' : 'text-gray-600'}`}>
-                  Words: {wordCount} / {wordLimit} ({wordsRemaining} remaining)
+                <textarea
+                  value={currentAnswer}
+                  onChange={(e) => handleAnswerChange(e.target.value)}
+                  placeholder="Kompozisyonunuzu buraya yazın... (Write your essay here in Turkish...)"
+                  className="w-full h-96 p-4 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-gray-900 placeholder:text-gray-400"
+                  dir="ltr"
+                  lang="tr"
+                />
+                
+                <div className="mt-4 flex items-center justify-between">
+                  <div className={`text-sm ${isOverLimit ? 'text-red-600' : 'text-gray-600'}`}>
+                    Words: {wordCount} / {wordLimit} ({wordsRemaining} remaining)
+                  </div>
                 </div>
               </div>
             </div>

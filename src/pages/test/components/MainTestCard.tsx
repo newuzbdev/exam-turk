@@ -106,7 +106,15 @@ const MainTestCard = ({
       } else {
         console.error("No writing test available");
       }
-    } else {
+    } else if (selectedTestType === "listening") {
+      const listeningTest = availableTestTypes.listening[0];
+      if (listeningTest) {
+        navigate(`/listening-test/${listeningTest.id}`);
+      } else {
+        console.error("No listening test available");
+      }
+    }
+    else {
       // Navigate to the general test page for other test types
       navigate("/test", {
         state: {

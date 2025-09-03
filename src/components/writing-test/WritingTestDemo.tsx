@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Clock, Send } from "lucide-react";
 import { toast } from "sonner";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Keyboard from "react-simple-keyboard";
 import "simple-keyboard/build/css/index.css";
@@ -640,6 +640,22 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
         </div>
       </div>
 
+      {/* Full Screen Loading Overlay */}
+      {submitting && (
+        <div className="fixed inset-0 z-[9999] bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white rounded-2xl p-8 max-w-sm w-full mx-4 text-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-red-500 border-t-transparent mx-auto mb-4"></div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Test Gönderiliyor</h3>
+            <p className="text-gray-600">Lütfen bekleyin, testiniz gönderiliyor ve sonuçlar sayfasına yönlendiriliyorsunuz...</p>
+            <div className="mt-4">
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-red-500 h-2 rounded-full animate-pulse" style={{width: '100%'}}></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Submit Modal */}
       <Dialog open={showSubmitModal} onOpenChange={setShowSubmitModal}>
         <DialogContent className="max-w-sm p-6 rounded-2xl">
@@ -655,9 +671,10 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
           </div>
 
           {submitting && (
-            <div className="text-center py-4 mb-6">
-              <div className="animate-spin rounded-full h-8 w-8 border-2 border-red-500 border-t-transparent mx-auto mb-3"></div>
-              <p className="text-gray-600 text-sm">Submitting...</p>
+            <div className="text-center py-6 mb-6">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-red-500 border-t-transparent mx-auto mb-4"></div>
+              <p className="text-gray-800 font-medium">Test gönderiliyor...</p>
+              <p className="text-gray-600 text-sm mt-1">Lütfen bekleyin, test sonuçlar sayfasına yönlendiriliyorsunuz</p>
             </div>
           )}
 

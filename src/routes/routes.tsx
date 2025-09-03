@@ -12,6 +12,7 @@ import SpeakingDemo from "@/pages/speaking-demo";
 import WritingTest from "@/pages/writing-test/WritingTest";
 import WritingTestResults from "@/pages/writing-test/WritingTestResults";
 import ListeningTest from "@/pages/listening-test/ListeningTest";
+import ListeningTestResults from "@/pages/listening-test/ListeningTestResults";
 
 export const router = createBrowserRouter([
   {
@@ -61,6 +62,10 @@ export const router = createBrowserRouter([
       {
         path: "/listening-test/:testId",
         element: <ListeningTest />,
+      },
+      {
+        path: "/listening-test/results/:resultId",
+        element: <ListeningTestResults />,
       },
       {
         path: "/speaking-demo",

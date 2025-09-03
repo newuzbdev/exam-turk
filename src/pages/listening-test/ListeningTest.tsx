@@ -6,13 +6,9 @@ export default function ListeningTestPage() {
     const navigate = useNavigate();
 
     if (!testId) {
-        navigate("/test"); // Testlar ro'yxatiga qaytarish
+        navigate("/test");
         return null;
     }
-
-    const handleTestComplete = () => {
-        navigate("/test"); // Natijalar sahifasiga o'tkazish
-    };
 
     return (
         <ListeningTestDemo

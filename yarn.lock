@@ -4251,7 +4251,7 @@ requires-port@^1.0.0:
 
 resizable@^2.0.0:
   version "2.0.0"
-  resolved "https://registry.npmjs.org/resizable/-/resizable-2.0.0.tgz"
+  resolved "https://registry.yarnpkg.com/resizable/-/resizable-2.0.0.tgz#408da4a8d377b39d1a48e0e184e1d58f9e640b47"
   integrity sha512-ykbsO5/aIT5QEwYtpKgkuKa6Ximc/ZgD0Se0SJWCMdvwtfLtgw1RhjonLP/2XjbVD4AtBgHn4zEbsHLOxGOabg==
   dependencies:
     draggy "^2.0.5"
@@ -4397,10 +4397,10 @@ setprototypeof@1.2.0:
   resolved "https://registry.npmjs.org/setprototypeof/-/setprototypeof-1.2.0.tgz"
   integrity sha512-E5LDX7Wrp85Kil5bhZv46j8jOeboKq5JMmYM3gVGdGH8xFpPWXUMsNrlODCrkoxMEeNi/XZIwuRvY4XNwYMJpw==
 
-shadcn@^3.0.0:
-  version "3.0.0"
-  resolved "https://registry.npmjs.org/shadcn/-/shadcn-3.0.0.tgz"
-  integrity sha512-GhMwMwcxR3GpDO2ctocvyetQ7BJAxSakaznBtYM/1mPRTjN0I0TAZCGSXdfj0VXOW4PaHbFEHsyUCnFcEf/1Ag==
+shadcn@^3.1.0:
+  version "3.1.0"
+  resolved "https://registry.yarnpkg.com/shadcn/-/shadcn-3.1.0.tgz#e2174a17f78b0aa47ade6b958f5999bd79e67a0d"
+  integrity sha512-tYem+5cR8kSo0g3V3JbVpZ5NmblrH+b52UX9pgYkpyalotjejldZCAIoCszF3VoKTvHRRxrifmTO8gdOpmkz1w==
   dependencies:
     "@antfu/ni" "^25.0.0"
     "@babel/core" "^7.28.0"

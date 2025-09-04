@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Clock, FileText } from "lucide-react";
+import { ArrowLeft, FileText } from "lucide-react";
 import writingSubmissionService from "@/services/writingSubmission.service";
 
 interface TestResult {

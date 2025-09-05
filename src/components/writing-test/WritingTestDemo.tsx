@@ -206,6 +206,13 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
   const selectedSubPart = hasSubParts ? subParts[currentSubPartIndex] : undefined;
   const selectedQuestion = hasQuestions ? questions[currentSubPartIndex] : undefined;
 
+  // Always default to 0 for subpart index if not set
+  useEffect(() => {
+    if (hasSubParts && currentSubPartIndex === undefined) {
+      setCurrentSubPartIndex(0);
+    }
+  }, [hasSubParts, currentSubPartIndex]);
+
   const selectedQuestionId = useMemo(() => {
     if (hasSubParts && selectedSubPart) {
       return `${currentSectionIndex}-${currentSubPartIndex}-${selectedSubPart.id}`;
@@ -364,13 +371,13 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
         {/* Mobile Header */}
         <div className="lg:hidden">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">YAZMA TEST</h1>
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">YAZMA TEST</h1>
             <div className="flex items-center gap-3">
               <div className="flex items-center text-gray-600">
                 <Clock className="h-5 w-5 mr-1" />
                 <span className="text-base font-semibold">{formatTime(timeLeft)}</span>
               </div>
-              <div className="ml-2 text-base text-gray-700 font-bold">
+              <div className="ml-2 text-base text-gray-700 font-semibold">
                 {wordCount}/{wordLimit}
               </div>
               <Button 
@@ -388,7 +395,7 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
                 <button
                   key={idx}
                   onClick={() => setCurrentSectionIndex(idx)}
-                  className={`flex-1 px-3 py-2 rounded-md font-bold text-base transition-all ${
+                  className={`flex-1 px-3 py-2 rounded-md font-medium text-base transition-all ${
                     idx === currentSectionIndex 
                       ? 'bg-red-500 text-white shadow-sm' 
                       : 'text-gray-600 hover:text-red-600 hover:bg-red-50'
@@ -404,14 +411,14 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
         <div className="hidden lg:block">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex items-center space-x-10">
-              <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">ALT TEST 3: YAZMA</h1>
+              <h1 className="text-3xl font-bold text-gray-900 tracking-tight">ALT TEST 3: YAZMA</h1>
               {/* Task Tabs - Desktop */}
               <div className="flex bg-gray-100 rounded-lg p-1">
                 {sections.map((_, idx) => (
                   <button
                     key={idx}
                     onClick={() => setCurrentSectionIndex(idx)}
-                    className={`px-8 py-3 rounded-md font-bold text-lg transition-all ${
+                    className={`px-8 py-3 rounded-md font-medium text-lg transition-all ${
                       idx === currentSectionIndex 
                         ? 'bg-red-500 text-white shadow-sm' 
                         : 'text-gray-600 hover:text-red-600 hover:bg-red-50'
@@ -425,9 +432,9 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
             <div className="flex items-center space-x-6">
               <div className="flex items-center space-x-2 text-gray-600">
                 <Clock className="h-6 w-6" />
-                <span className="font-bold text-lg">{formatTime(timeLeft)} left</span>
+                <span className="font-semibold text-lg">{formatTime(timeLeft)} left</span>
               </div>
-              <div className={`text-lg font-bold ${isOverLimit ? 'text-red-600' : 'text-gray-700'}`}>
+              <div className={`text-lg font-semibold ${isOverLimit ? 'text-red-600' : 'text-gray-700'}`}>
                 {wordCount}/{wordLimit}
               </div>
               <Button 
@@ -449,7 +456,7 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
           <div className="lg:hidden space-y-4">
             {/* Questions Panel - Mobile Only */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mt-0">
-              <h2 className="text-xl font-bold text-gray-900 mb-2">
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
                 {selectedSection?.title || `WRITING TASK ${currentSectionIndex + 1}`}
               </h2>
               {selectedSection?.description && (
@@ -457,7 +464,7 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
                   <p className="text-base">{selectedSection.description}</p>
                   {hasSubParts && selectedSubPart && (
                     <div className="p-3 border border-gray-200 rounded-lg bg-gray-50">
-                      <h3 className="font-semibold text-gray-900 mb-2 text-base">
+                      <h3 className="font-medium text-gray-900 mb-2 text-base">
                         {selectedSubPart.label || `Part ${currentSubPartIndex + 1}`}
                       </h3>
                       {selectedSubPart.question && (
@@ -470,7 +477,7 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
                         <div className="mt-3 space-y-2">
                           {selectedSubPart.questions.map((question: any) => (
                             <div key={question.id} className="p-3 bg-gray-100 rounded border border-gray-200">
-                              <p className="text-gray-800 font-medium text-base">{question.text}</p>
+                              <p className="text-gray-800 font-normal text-base">{question.text}</p>
                             </div>
                           ))}
                         </div>
@@ -481,7 +488,7 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
                     <div className="space-y-3">
                       {questions.map((question, idx) => (
                         <div key={question.id} className="p-3 border border-gray-200 rounded-lg bg-gray-50">
-                          <h3 className="font-semibold text-gray-900 mb-2 text-base">
+                          <h3 className="font-medium text-gray-900 mb-2 text-base">
                             Question {idx + 1}
                           </h3>
                           {question.text && (
@@ -509,10 +516,45 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
                     onValueChange={(value) => setCurrentSubPartIndex(parseInt(value))}
                     className="w-full"
                   >
-                    <TabsList className="grid w-full bg-gray-100 border border-gray-300" style={{gridTemplateColumns: `repeat(${(hasSubParts ? subParts : questions).length}, 1fr)`}}>
+                    <TabsList
+                      className="flex w-full bg-gray-100 border border-gray-300 rounded-lg overflow-hidden p-0"
+                      style={{
+                        boxShadow: "none"
+                      }}
+                    >
                       {(hasSubParts ? subParts : questions).map((_, idx) => (
-                        <TabsTrigger key={idx} value={String(idx)} className="text-base data-[state=active]:bg-red-500 data-[state=active]:text-white font-semibold transition-colors">
-                          {hasSubParts ? `${currentSectionIndex + 1}.${idx + 1}` : `Q${idx + 1}`}
+                        <TabsTrigger
+                          key={idx}
+                          value={String(idx)}
+                          className={`
+                            flex-1 px-0 py-2 text-base font-medium border-none rounded-none
+                            transition-all
+                            relative
+                            ${idx === 0 ? "rounded-l-lg" : ""}
+                            ${idx === (hasSubParts ? subParts.length - 1 : questions.length - 1) ? "rounded-r-lg" : ""}
+                            ${currentSubPartIndex === idx ? "bg-red-500 text-white z-10" : "text-gray-700"}
+                          `}
+                          style={{
+                            borderRight: idx !== (hasSubParts ? subParts.length - 1 : questions.length - 1)
+                              ? "1px solid #e5e7eb"
+                              : undefined,
+                            background: currentSubPartIndex === idx ? "#ef4444" : "none",
+                            color: currentSubPartIndex === idx ? "#fff" : undefined,
+                            boxShadow: "none",
+                            minWidth: 0,
+                            position: "relative",
+                            zIndex: currentSubPartIndex === idx ? 10 : 1,
+                          }}
+                        >
+                          {hasSubParts ? (
+                            <span>
+                              <span className="">{currentSectionIndex + 1}</span>
+                              <span className="mx-0.5 text-gray-200">.</span>
+                              <span className="">{idx + 1}</span>
+                            </span>
+                          ) : (
+                            <span>Q{idx + 1}</span>
+                          )}
                         </TabsTrigger>
                       ))}
                     </TabsList>
@@ -528,7 +570,7 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
                 lang="tr"
               />
               <div className="mt-2 flex items-center justify-end">
-                <div className={`text-base font-semibold ${isOverLimit ? 'text-red-600' : 'text-gray-500'}`}>
+                <div className={`text-base font-medium ${isOverLimit ? 'text-red-600' : 'text-gray-500'}`}>
                   {wordsRemaining} words left
                 </div>
               </div>
@@ -541,15 +583,15 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
             <ResizableHorizontalPanels
               left={
                 <>
-                  <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                  <h2 className="text-2xl font-semibold text-gray-900 mb-2">
                     {selectedSection?.title || `WRITING TASK ${currentSectionIndex + 1}`}
                   </h2>
                   {selectedSection?.description && (
                     <div className="space-y-4 text-gray-700">
-                      <p className="font-semibold text-lg">{selectedSection.description}</p>
+                      <p className="font-normal text-lg">{selectedSection.description}</p>
                       {hasSubParts && selectedSubPart && (
                         <div className="p-4 border-2 border-gray-300 rounded-lg">
-                          <h3 className="font-semibold text-gray-900 mb-2 text-lg">
+                          <h3 className="font-medium text-gray-900 mb-2 text-lg">
                             {selectedSubPart.label || `Part ${currentSubPartIndex + 1}`}
                           </h3>
                           {selectedSubPart.question && (
@@ -562,7 +604,7 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
                             <div className="mt-3 space-y-2">
                               {selectedSubPart.questions.map((question: any) => (
                                 <div key={question.id} className="p-3 bg-gray-100 rounded border border-gray-200">
-                                  <p className="text-gray-800 font-medium text-lg">{question.text}</p>
+                                  <p className="text-gray-800 font-normal text-lg">{question.text}</p>
                                 </div>
                               ))}
                             </div>
@@ -574,7 +616,7 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
                         <div className="space-y-4">
                           {questions.map((question, idx) => (
                             <div key={question.id} className="p-4 border-2 border-gray-300 rounded-lg">
-                              <h3 className="font-semibold text-gray-900 mb-2 text-lg">
+                              <h3 className="font-medium text-gray-900 mb-2 text-lg">
                                 Question {idx + 1}
                               </h3>
                               {question.text && (
@@ -603,10 +645,45 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
                         onValueChange={(value) => setCurrentSubPartIndex(parseInt(value))}
                         className="w-full"
                       >
-                        <TabsList className="grid w-full bg-gray-100 border border-gray-300" style={{gridTemplateColumns: `repeat(${(hasSubParts ? subParts : questions).length}, 1fr)`}}>
+                        <TabsList
+                          className="flex w-full bg-gray-100 border border-gray-300 rounded-lg overflow-hidden p-0"
+                          style={{
+                            boxShadow: "none"
+                          }}
+                        >
                           {(hasSubParts ? subParts : questions).map((_, idx) => (
-                            <TabsTrigger key={idx} value={String(idx)} className="text-lg data-[state=active]:bg-red-500 data-[state=active]:text-white font-semibold transition-colors">
-                              {hasSubParts ? `${currentSectionIndex + 1}.${idx + 1}` : `Q${idx + 1}`}
+                            <TabsTrigger
+                              key={idx}
+                              value={String(idx)}
+                              className={`
+                                flex-1 px-0 py-3 text-lg font-medium border-none rounded-none
+                                transition-all
+                                relative
+                                ${idx === 0 ? "rounded-l-lg" : ""}
+                                ${idx === (hasSubParts ? subParts.length - 1 : questions.length - 1) ? "rounded-r-lg" : ""}
+                                ${currentSubPartIndex === idx ? "bg-red-500 text-white z-10" : "text-gray-700"}
+                              `}
+                              style={{
+                                borderRight: idx !== (hasSubParts ? subParts.length - 1 : questions.length - 1)
+                                  ? "1px solid #e5e7eb"
+                                  : undefined,
+                                background: currentSubPartIndex === idx ? "#ef4444" : "none",
+                                color: currentSubPartIndex === idx ? "#fff" : undefined,
+                                boxShadow: "none",
+                                minWidth: 0,
+                                position: "relative",
+                                zIndex: currentSubPartIndex === idx ? 10 : 1,
+                              }}
+                            >
+                              {hasSubParts ? (
+                                <span>
+                                  <span className="">{currentSectionIndex + 1}</span>
+                                  <span className="mx-0.5 text-gray-200">.</span>
+                                  <span className="">{idx + 1}</span>
+                                </span>
+                              ) : (
+                                <span>Q{idx + 1}</span>
+                              )}
                             </TabsTrigger>
                           ))}
                         </TabsList>
@@ -634,7 +711,7 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
                         <path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10" className="stroke-current" />
                       </svg>
                     </Button>
-                    <div className={`text-lg font-semibold ${isOverLimit ? 'text-red-600' : 'text-gray-600'}`}>
+                    <div className={`text-lg font-medium ${isOverLimit ? 'text-red-600' : 'text-gray-600'}`}>
                       Words: {wordCount} / {wordLimit} ({wordsRemaining} remaining)
                     </div>
                   </div>
@@ -684,7 +761,7 @@ export default function WritingTestDemo({ testId, onTestComplete }: WritingTestD
 
       {/* Full Screen Loading Overlay */}
       {submitting && (
-        <div className="fixed inset-0 z-[9999] bg-black bg-opacity-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-[9999]  bg-opacity-50 flex items-center justify-center">
           <div className="bg-white rounded-2xl p-8 max-w-sm w-full mx-4 text-center">
             <div className="animate-spin rounded-full h-16 w-16 border-4 border-red-500 border-t-transparent mx-auto mb-4"></div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">Test Gönderiliyor</h3>

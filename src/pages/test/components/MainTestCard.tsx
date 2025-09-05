@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Headphones, Mic, BookOpen, PenTool } from "lucide-react";
+import { Clock, Headphones, Mic, BookOpen, PenTool, Play } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import TestInstructionModal from "./TestInstructionModal";
@@ -171,10 +171,11 @@ const MainTestCard = ({
         {/* Main Test Start Button */}
         <Button
           size="default"
-          className="w-full bg-gray-700 hover:bg-gray-800 text-white font-bold py-3 mt-6 shadow-lg text-base rounded-lg"
+          className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 mt-6 shadow-lg text-base rounded-lg"
           onClick={() => onTestStart(test)}
         >
-          🎯 Test Başla
+          <Play className="w-5 h-5 mr-2" />
+          Test Başla
         </Button>
       </CardContent>
 

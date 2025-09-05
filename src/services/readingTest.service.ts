@@ -2,7 +2,7 @@ import { SecureStorage } from "@/utils/secureStorage";
 import axiosPrivate from "@/config/api";
 import { toast } from "sonner";
 
-export interface ListeningAnswer {
+export interface ReadingAnswer {
   id: string;
   questionId?: string;
   variantText?: string | null;
@@ -12,48 +12,47 @@ export interface ListeningAnswer {
   updatedAt?: string;
 }
 
-export interface ListeningQuestion {
+export interface ReadingQuestion {
   id: string;
   number?: number;
   text?: string | null;
   content?: string | null;
   type: string;
-  answers?: ListeningAnswer[];
+  answers?: ReadingAnswer[];
   createdAt?: string;
   updatedAt?: string;
 }
 
-export interface ListeningSection {
+export interface ReadingSection {
   id: string;
   partId?: string;
   title?: string | null;
   content?: string | null;
   hasBullets?: boolean;
   imageUrl?: string | null;
-  questions?: ListeningQuestion[];
+  questions?: ReadingQuestion[];
   createdAt?: string;
   updatedAt?: string;
 }
 
-export interface ListeningPart {
+export interface ReadingPart {
   id: string;
   testId?: string;
   number?: number;
-  audioUrl?: string | null;
   title?: string | null;
   description?: string | null;
-  sections?: ListeningSection[];
+  sections?: ReadingSection[];
   createdAt?: string;
   updatedAt?: string;
 }
 
-export interface ListeningTestItem {
+export interface ReadingTestItem {
   id: string;
   title: string;
   type?: string;
   description?: string | null;
   ieltsId?: string | null;
-  parts?: ListeningPart[];
+  parts?: ReadingPart[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -108,43 +107,42 @@ function extractData<T = any>(res: any): T {
   );
 }
 
-export const listeningTestService = {
-  getAllListeningTests: async (
+export const readingTestService = {
+  getAllReadingTests: async (
     page = 1,
     limit = 50
-  ): Promise<ListeningTestItem[]> => {
+  ): Promise<ReadingTestItem[]> => {
     try {
       const res = await axiosPrivate.get("/api/test", {
-        params: { page, limit, type: "LISTENING" },
+        params: { page, limit, type: "READING" },
       });
       const data = extractData<any>(res);
-      if (Array.isArray(data.data)) return data.data as ListeningTestItem[];
-      if (Array.isArray(data)) return data as ListeningTestItem[];
+      if (Array.isArray(data.data)) return data.data as ReadingTestItem[];
+      if (Array.isArray(data)) return data as ReadingTestItem[];
       return [];
     } catch (error: any) {
-      console.error("getAllListeningTests error:", error);
-      toast.error("Tinglash testlari yuklanmadi");
+      console.error("getAllReadingTests error:", error);
+      toast.error("O‘qish testlari yuklanmadi");
       return [];
     }
   },
 
-
   getTestWithFullData: async (
     testId: string
-  ): Promise<ListeningTestItem | null> => {
+  ): Promise<ReadingTestItem | null> => {
     try {
       const res = await axiosPrivate.get(`/api/test/testaddition/${testId}`);
-      const testData = extractData<ListeningTestItem>(res);
+      const testData = extractData<ReadingTestItem>(res);
       return testData;
     } catch (error) {
       console.error("getTestWithFullData error:", error);
-      toast.error("Tinglash testining to‘liq ma'lumoti yuklanmadi");
+      toast.error("O‘qish testining to‘liq ma'lumoti yuklanmadi");
       return null;
     }
   },
 };
 
-export const listeningSubmissionService = {
+export const readingSubmissionService = {
   submitAnswers: async (
     testId: string,
     answers: { questionId: string; userAnswer: string }[],
@@ -196,7 +194,7 @@ export const listeningSubmissionService = {
       });
       const data = extractData<TestResultData[]>(res);
       if (Array.isArray(data) && data.length > 0) {
-        return data[0]; 
+        return data[0];
       }
       return null;
     } catch (error) {
@@ -207,4 +205,4 @@ export const listeningSubmissionService = {
   },
 };
 
-export default listeningTestService;
+export default readingTestService;

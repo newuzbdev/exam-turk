@@ -3,9 +3,20 @@ import { toast } from "sonner";
 
 const DisableKeys = () => {
     useEffect(() => {
+        const detectDevTools = () => {
+            const threshold = 160;
+            if (
+                window.outerWidth - window.innerWidth > threshold ||
+                window.outerHeight - window.innerHeight > threshold
+            ) {
+                alert("DevTools aniqlanmoqda! Iltimos, uni yoping.");
+                document.exitFullscreen?.();
+                window.location.href = "/test";
+            }
+        };
+
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === "F11" || e.key === "Escape") {
-                // e.preventDefault();
                 toast.error("Fullscreen rejimidan chiqish taqiqlangan");
             }
 
@@ -35,10 +46,17 @@ const DisableKeys = () => {
             toast.error("Right click sinov davomida taqiqlangan");
         };
 
+        // 🔍 Boshlanishida tekshirish
+        detectDevTools();
+
+        // 🔄 Har 1 sekundda qayta tekshirish
+        const interval = setInterval(detectDevTools, 1000);
+
         window.addEventListener("keydown", handleKeyDown);
         window.addEventListener("contextmenu", handleContextMenu);
 
         return () => {
+            clearInterval(interval);
             window.removeEventListener("keydown", handleKeyDown);
             window.removeEventListener("contextmenu", handleContextMenu);
 

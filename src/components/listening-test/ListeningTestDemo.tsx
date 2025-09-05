@@ -153,6 +153,24 @@ export default function ListeningTestPage({
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const abortCtlRef = useRef<AbortController | null>(null);
+  useEffect(() => {
+    document.body.classList.add("exam-mode");
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) {
+      elem.requestFullscreen().catch((err) => {
+        console.warn("Fullscreen ochilmadi:", err);
+      });
+    }
+
+    return () => {
+      document.body.classList.remove("exam-mode");
+      if (document.fullscreenElement && document.exitFullscreen) {
+        document.exitFullscreen().catch((err) => {
+          console.warn("Fullscreen yopilmadi:", err);
+        });
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const storageKey = `${AUTO_SAVE_KEY}${testId ? `_${testId}` : ""}`;

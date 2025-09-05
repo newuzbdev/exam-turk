@@ -37,7 +37,7 @@ export default function ListeningResultPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen  flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
           <p className="text-muted-foreground">Natijalar yuklanmoqda...</p>
@@ -48,8 +48,8 @@ export default function ListeningResultPage() {
 
   if (!data) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Card className="p-8 text-center shadow-lg border-red-300">
+      <div className="min-h-screen  flex items-center justify-center">
+        <Card className="p-8 text-center shadow-lg border-red-300 bg-white">
           <XCircle className="w-12 h-12 text-red-600 mx-auto mb-4" />
           <h2 className="text-xl font-semibold mb-2">Natijalar topilmadi</h2>
           <p className="text-muted-foreground mb-4">
@@ -85,8 +85,7 @@ export default function ListeningResultPage() {
   const scoreBadge = getScoreBadge(data.score);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-red-50 to-white">
-      {/* Header */}
+    <div className="min-h-screen  ">
       <header className="bg-white border-b border-red-200 shadow-sm">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
@@ -95,7 +94,7 @@ export default function ListeningResultPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => router(-1)}
-                className="flex items-center gap-2 border-red-300 text-red-600 hover:bg-red-50"
+                className="flex items-center gap-2 border-red-300 text-red-600 "
               >
                 <ArrowLeft className="w-4 h-4" />
                 Orqaga
@@ -116,14 +115,13 @@ export default function ListeningResultPage() {
         </div>
       </header>
 
-      {/* Content */}
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 bg-white" >
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Score Overview */}
-          <div className="lg:col-span-1">
-            <Card className="text-center shadow-lg border-red-200">
+          <div className="lg:col-span-1 ">
+            <Card className="text-center shadow-lg border-red-200 bg-white">
               <CardHeader>
-                <div className="mx-auto w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                <div className="mx-auto w-20 h-20  rounded-full flex items-center justify-center mb-4">
                   <Trophy className="w-10 h-10 text-red-600" />
                 </div>
                 <CardTitle className="text-3xl font-bold text-red-700">
@@ -163,7 +161,7 @@ export default function ListeningResultPage() {
             </Card>
 
             {/* Performance Insights */}
-            <Card className="mt-6 shadow-lg border-red-200">
+            <Card className="mt-6 shadow-lg border-red-200 bg-white">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg text-red-700">
                   <TrendingUp className="w-5 h-5 text-red-600" />
@@ -210,7 +208,7 @@ export default function ListeningResultPage() {
 
           {/* Detailed Answers */}
           <div className="lg:col-span-2">
-            <Card className="shadow-lg border-red-200">
+            <Card className="shadow-lg border-red-200 bg-white">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-red-700">
                   <BookOpen className="w-5 h-5 text-red-600" />
@@ -277,7 +275,6 @@ export default function ListeningResultPage() {
           </div>
         </div>
 
-        {/* Action Buttons */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -286,7 +283,7 @@ export default function ListeningResultPage() {
         >
           <Button
             variant="outline"
-            onClick={() => router("/tests")}
+            onClick={() => router("/test")}
             className="border-red-300 text-red-600 hover:bg-red-50"
           >
             Boshqa testlar

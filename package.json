@@ -28,6 +28,7 @@
     "axios": "^1.10.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "devtools-detect": "^4.0.2",
     "framer-motion": "^12.23.12",
     "google-auth-library": "^10.1.0",
     "input-otp": "^1.4.2",

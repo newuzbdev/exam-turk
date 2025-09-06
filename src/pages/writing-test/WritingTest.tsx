@@ -1,4 +1,5 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+
 import WritingTestDemo from "@/components/writing-test/WritingTestDemo";
 
 export default function WritingTest() {
@@ -10,15 +11,10 @@ export default function WritingTest() {
     return null;
   }
 
-  const handleTestComplete = (_submissionId: string) => {
-    // Don't navigate - let the modal show the results instead
-    // navigate("/test");
-  };
+  // const handleTestComplete = (_submissionId: string) => {
+  //   // Don't navigate - let the modal show the results instead
+  //   // navigate("/test");
+  // };
 
-  return (
-    <WritingTestDemo 
-      testId={testId} 
-      onTestComplete={handleTestComplete}
-    />
-  );
+  return <WritingTestDemo testId={testId} />;
 }

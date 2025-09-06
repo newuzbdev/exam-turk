@@ -1,29 +1,30 @@
-import { useParams, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import { ArrowLeft, FileText } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+
+import { Button } from "@/components/ui/button";
 import writingSubmissionService from "@/services/writingSubmission.service";
 
-interface TestResult {
-  id: string;
-  score?: number;
-  aiFeedback?: {
-    taskAchievement: string;
-    coherenceAndCohesion: string;
-    lexicalResource: string;
-    grammaticalRangeAndAccuracy: string;
-  };
-  submittedAt?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  userId: string;
-  writingTestId: string;
-}
+// interface TestResult {
+//   id: string;
+//   score?: number;
+//   aiFeedback?: {
+//     taskAchievement: string;
+//     coherenceAndCohesion: string;
+//     lexicalResource: string;
+//     grammaticalRangeAndAccuracy: string;
+//   };
+//   submittedAt?: string;
+//   createdAt?: string;
+//   updatedAt?: string;
+//   userId: string;
+//   writingTestId: string;
+// }
 
 export default function WritingTestResults() {
   const { resultId } = useParams<{ resultId: string }>();
   const navigate = useNavigate();
-  const [result, setResult] = useState<TestResult | null>(null);
+  const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -86,13 +87,17 @@ export default function WritingTestResults() {
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <div>
-                <h1 className="text-2xl font-bold text-black">Writing Test Results</h1>
+                <h1 className="text-2xl font-bold text-black">
+                  Writing Test Results
+                </h1>
                 <p className="text-gray-600">IELTS Assessment Complete</p>
               </div>
             </div>
-            
+
             <div className="text-right">
-              <div className="text-3xl font-black text-red-500">{result.score || "N/A"}</div>
+              <div className="text-3xl font-black text-red-500">
+                {result.score || "N/A"}
+              </div>
               <div className="text-sm text-gray-600">Band Score</div>
             </div>
           </div>
@@ -104,14 +109,22 @@ export default function WritingTestResults() {
         {/* Hero Section */}
         <div className="bg-white rounded-3xl shadow-lg border border-gray-200 p-8 mb-8 text-center">
           <div className="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
-            <span className="text-white text-3xl font-bold">{result.score || "N/A"}</span>
+            <span className="text-white text-3xl font-bold">
+              {result.score || "N/A"}
+            </span>
           </div>
-          <h2 className="text-3xl font-bold text-black mb-2">Test Completed!</h2>
-          <p className="text-gray-600 text-lg mb-6">Your IELTS Writing Assessment Results</p>
-          
+          <h2 className="text-3xl font-bold text-black mb-2">
+            Test Completed!
+          </h2>
+          <p className="text-gray-600 text-lg mb-6">
+            Your IELTS Writing Assessment Results
+          </p>
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-gray-50 rounded-2xl p-4">
-              <div className="text-2xl font-bold text-black mb-1">{result.score || "N/A"}</div>
+              <div className="text-2xl font-bold text-black mb-1">
+                {result.score || "N/A"}
+              </div>
               <div className="text-sm text-gray-600">Band Score</div>
             </div>
             <div className="bg-gray-50 rounded-2xl p-4">
@@ -120,7 +133,9 @@ export default function WritingTestResults() {
             </div>
             <div className="bg-gray-50 rounded-2xl p-4">
               <div className="text-2xl font-bold text-black mb-1">
-                {new Date(result.submittedAt || result.createdAt || Date.now()).toLocaleDateString()}
+                {new Date(
+                  result.submittedAt || result.createdAt || Date.now()
+                ).toLocaleDateString()}
               </div>
               <div className="text-sm text-gray-600">Completed</div>
             </div>
@@ -142,7 +157,9 @@ export default function WritingTestResults() {
                 </div>
                 <div>
                   <h3 className="font-bold text-black">Task Achievement</h3>
-                  <p className="text-sm text-gray-600">How well you addressed the task</p>
+                  <p className="text-sm text-gray-600">
+                    How well you addressed the task
+                  </p>
                 </div>
               </div>
               <p className="text-gray-700 leading-relaxed">
@@ -158,7 +175,9 @@ export default function WritingTestResults() {
                 </div>
                 <div>
                   <h3 className="font-bold text-black">Coherence & Cohesion</h3>
-                  <p className="text-sm text-gray-600">Structure and flow of your writing</p>
+                  <p className="text-sm text-gray-600">
+                    Structure and flow of your writing
+                  </p>
                 </div>
               </div>
               <p className="text-gray-700 leading-relaxed">
@@ -174,7 +193,9 @@ export default function WritingTestResults() {
                 </div>
                 <div>
                   <h3 className="font-bold text-black">Lexical Resource</h3>
-                  <p className="text-sm text-gray-600">Vocabulary range and accuracy</p>
+                  <p className="text-sm text-gray-600">
+                    Vocabulary range and accuracy
+                  </p>
                 </div>
               </div>
               <p className="text-gray-700 leading-relaxed">
@@ -190,7 +211,9 @@ export default function WritingTestResults() {
                 </div>
                 <div>
                   <h3 className="font-bold text-black">Grammar & Accuracy</h3>
-                  <p className="text-sm text-gray-600">Language structure and correctness</p>
+                  <p className="text-sm text-gray-600">
+                    Language structure and correctness
+                  </p>
                 </div>
               </div>
               <p className="text-gray-700 leading-relaxed">

@@ -1,5 +1,5 @@
+import { Clock, Headphones, Mic, Play, Square } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Headphones, Mic, Clock, Play, Square } from "lucide-react";
 
 interface Props {
   onSuccess: () => void;
@@ -23,7 +23,8 @@ export const MicrophoneCheck = ({ onSuccess }: Props) => {
   const chunksRef = useRef<Blob[]>([]);
 
   // Check for MediaRecorder support
-  const isMediaRecorderSupported = typeof window !== "undefined" && "MediaRecorder" in window;
+  const isMediaRecorderSupported =
+    typeof window !== "undefined" && "MediaRecorder" in window;
 
   // Request mic permission on mount, but do not create MediaRecorder yet.
   useEffect(() => {
@@ -86,7 +87,7 @@ export const MicrophoneCheck = ({ onSuccess }: Props) => {
         }
       };
 
-      recorder.onerror = (e) => {
+      recorder.onerror = () => {
         setError("Yozib olishda xatolik yuz berdi.");
         setRecording(false);
         if (streamRef.current) {
@@ -129,7 +130,9 @@ export const MicrophoneCheck = ({ onSuccess }: Props) => {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-2xl mx-auto">
-        <h1 className="text-center mb-12 text-red-700 text-4xl font-medium gap-2">{"Turkce test"}</h1>
+        <h1 className="text-center mb-12 text-red-700 text-4xl font-medium gap-2">
+          {"Turkce test"}
+        </h1>
 
         <div className="space-y-8">
           <div className="flex gap-6">
@@ -140,9 +143,12 @@ export const MicrophoneCheck = ({ onSuccess }: Props) => {
               <div className="w-px h-20 bg-gray-200 mx-8 mt-4"></div>
             </div>
             <div className="flex-1">
-              <h2 className="text-xl font-semibold text-slate-700 mb-3">1. Quloqchin tekshiruvi</h2>
+              <h2 className="text-xl font-semibold text-slate-700 mb-3">
+                1. Quloqchin tekshiruvi
+              </h2>
               <p className="text-gray-600 mb-4">
-                Test olishdan oldin quloqchiningizning audio sifatini yaxshi ekanligiga ishonch hosil qiling. Ovoz sifatini tekshirish uchun{" "}
+                Test olishdan oldin quloqchiningizning audio sifatini yaxshi
+                ekanligiga ishonch hosil qiling. Ovoz sifatini tekshirish uchun{" "}
                 <span className="inline-flex items-center mx-1">
                   <Play className="w-4 h-4 text-rose-500" />
                 </span>{" "}
@@ -173,7 +179,9 @@ export const MicrophoneCheck = ({ onSuccess }: Props) => {
                     </div>
                   </div>
 
-                  <span className="text-sm text-gray-500 min-w-[40px]">{headphoneTestPlaying ? "00:08" : "00:00"}</span>
+                  <span className="text-sm text-gray-500 min-w-[40px]">
+                    {headphoneTestPlaying ? "00:08" : "00:00"}
+                  </span>
 
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 bg-gray-300 rounded"></div>
@@ -202,16 +210,29 @@ export const MicrophoneCheck = ({ onSuccess }: Props) => {
                   currentStep >= 2 ? "border-rose-300" : "border-gray-200"
                 }`}
               >
-                <Mic className={`w-8 h-8 ${currentStep >= 2 ? "text-rose-500" : "text-gray-300"}`} />
+                <Mic
+                  className={`w-8 h-8 ${
+                    currentStep >= 2 ? "text-rose-500" : "text-gray-300"
+                  }`}
+                />
               </div>
               <div className="w-px h-32 bg-gray-200 mx-8 mt-4"></div>
             </div>
             <div className="flex-1">
-              <h2 className={`text-xl font-semibold mb-3 ${currentStep >= 2 ? "text-slate-700" : "text-gray-400"}`}>
+              <h2
+                className={`text-xl font-semibold mb-3 ${
+                  currentStep >= 2 ? "text-slate-700" : "text-gray-400"
+                }`}
+              >
                 2. Mikrofon tekshiruvi
               </h2>
-              <p className={`mb-4 ${currentStep >= 2 ? "text-gray-600" : "text-gray-400"}`}>
-                Test olishdan oldin mikrofoningiz yaxshi ishlashiga ishonch hosil qiling. Yozib olish{" "}
+              <p
+                className={`mb-4 ${
+                  currentStep >= 2 ? "text-gray-600" : "text-gray-400"
+                }`}
+              >
+                Test olishdan oldin mikrofoningiz yaxshi ishlashiga ishonch
+                hosil qiling. Yozib olish{" "}
                 <span className="inline-flex items-center mx-1">
                   <div className="w-3 h-3 bg-rose-500 rounded-full"></div>
                 </span>{" "}
@@ -225,9 +246,12 @@ export const MicrophoneCheck = ({ onSuccess }: Props) => {
               {currentStep >= 2 && (
                 <>
                   <div className="bg-gray-50 rounded-lg p-4 mb-4 text-center">
-                    <p className="text-gray-500 text-sm mb-2">Iltimos baland ovozda o'qing:</p>
+                    <p className="text-gray-500 text-sm mb-2">
+                      Iltimos baland ovozda o'qing:
+                    </p>
                     <p className="text-gray-700 font-medium">
-                      "Men o'zbek tilini yaxshi ko'raman. Mening o'zbek tilim yaxshi va men uni har kuni mashq qilaman!"
+                      "Men o'zbek tilini yaxshi ko'raman. Mening o'zbek tilim
+                      yaxshi va men uni har kuni mashq qilaman!"
                     </p>
                   </div>
 
@@ -236,7 +260,9 @@ export const MicrophoneCheck = ({ onSuccess }: Props) => {
                       <button
                         onClick={recording ? stopRecording : startRecording}
                         className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${
-                          recording ? "bg-gray-500 hover:bg-gray-600" : "bg-rose-500 hover:bg-rose-600"
+                          recording
+                            ? "bg-gray-500 hover:bg-gray-600"
+                            : "bg-rose-500 hover:bg-rose-600"
                         }`}
                         disabled={!!error}
                       >
@@ -249,11 +275,17 @@ export const MicrophoneCheck = ({ onSuccess }: Props) => {
 
                       <div className="flex-1">
                         <div className="w-full bg-rose-200 rounded-full h-2">
-                          <div className={`bg-rose-500 h-2 rounded-full ${recording ? "animate-pulse" : ""}`}></div>
+                          <div
+                            className={`bg-rose-500 h-2 rounded-full ${
+                              recording ? "animate-pulse" : ""
+                            }`}
+                          ></div>
                         </div>
                       </div>
 
-                      <span className="text-sm text-rose-500 font-medium min-w-[30px]">{recording ? "REC" : ""}</span>
+                      <span className="text-sm text-rose-500 font-medium min-w-[30px]">
+                        {recording ? "REC" : ""}
+                      </span>
 
                       <div className="flex items-center gap-2">
                         <div className="w-4 h-4 bg-gray-300 rounded"></div>
@@ -290,15 +322,30 @@ export const MicrophoneCheck = ({ onSuccess }: Props) => {
                   currentStep >= 3 ? "border-rose-300" : "border-gray-200"
                 }`}
               >
-                <Clock className={`w-8 h-8 ${currentStep >= 3 ? "text-rose-500 animate-spin" : "text-gray-300"}`} />
+                <Clock
+                  className={`w-8 h-8 ${
+                    currentStep >= 3
+                      ? "text-rose-500 animate-spin"
+                      : "text-gray-300"
+                  }`}
+                />
               </div>
             </div>
             <div className="flex-1">
-              <h2 className={`text-xl font-semibold mb-3 ${currentStep >= 3 ? "text-slate-700" : "text-gray-400"}`}>
+              <h2
+                className={`text-xl font-semibold mb-3 ${
+                  currentStep >= 3 ? "text-slate-700" : "text-gray-400"
+                }`}
+              >
                 3. Kutish xonasi
               </h2>
-              <p className={`${currentStep >= 3 ? "text-gray-600" : "text-gray-400"}`}>
-                Siz hozir kutish xonasisiz. Imtihon oluvchi tez orada uchrashuvga kiradi. Iltimos biroz kuting.
+              <p
+                className={`${
+                  currentStep >= 3 ? "text-gray-600" : "text-gray-400"
+                }`}
+              >
+                Siz hozir kutish xonasisiz. Imtihon oluvchi tez orada
+                uchrashuvga kiradi. Iltimos biroz kuting.
               </p>
 
               {currentStep === 3 && (
@@ -312,7 +359,9 @@ export const MicrophoneCheck = ({ onSuccess }: Props) => {
                     className="w-2 h-2 bg-rose-500 rounded-full animate-bounce"
                     style={{ animationDelay: "0.2s" }}
                   ></div>
-                  <span className="text-sm text-gray-500 ml-2">Imtihon oluvchiga ulanmoqda...</span>
+                  <span className="text-sm text-gray-500 ml-2">
+                    Imtihon oluvchiga ulanmoqda...
+                  </span>
                 </div>
               )}
             </div>

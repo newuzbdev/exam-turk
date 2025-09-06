@@ -1,23 +1,23 @@
-import type React from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
-  Clock,
   ArrowLeft,
   ArrowRight,
-  CheckCircle,
-  ListChecks,
   BookOpen,
+  CheckCircle,
+  Clock,
   Headphones,
+  ListChecks,
 } from "lucide-react";
-import { toast } from "sonner";
-import axiosPrivate from "@/config/api";
 import listeningTestService, {
   listeningSubmissionService,
 } from "@/services/listeningTest.service";
-import DisableKeys from "@/pages/speaking-test/components/DisableKeys";
+import { useEffect, useMemo, useRef, useState } from "react";
 
+import DisableKeys from "@/pages/speaking-test/components/DisableKeys";
+import type React from "react";
+import axiosPrivate from "@/config/api";
+import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 interface ListeningAnswer {
   id: string;
@@ -87,10 +87,8 @@ interface ListeningTestItem {
   parts: ListeningPart[];
 }
 
-
 const FILE_BASE = "https://api.turkcetest.uz/files/";
 const AUTO_SAVE_KEY = "listening_test_answers_v1";
-
 
 const formatTime = (seconds: number) => {
   const minutes = Math.floor(Math.max(0, seconds) / 60);
@@ -110,7 +108,7 @@ function getGlobalTokenFromAxios() {
     if (auth && typeof auth === "string" && auth.startsWith("Bearer ")) {
       return auth.slice("Bearer ".length);
     }
-  } catch { }
+  } catch {}
   return (
     localStorage.getItem("accessToken") ||
     localStorage.getItem("token") ||
@@ -129,7 +127,6 @@ const Q = {
 } as const;
 
 type AnswersState = Record<string, string | string[]>;
-
 
 export default function ListeningTestPage({
   testId,
@@ -236,10 +233,7 @@ export default function ListeningTestPage({
         section.questions?.forEach((q: any) => {
           if (Object.prototype.hasOwnProperty.call(answers, q.id)) {
             init[q.id] = answers[q.id];
-          } else if (
-            q.type === Q.MULTI_SELECT ||
-            q.type === Q.MATCHING
-          ) {
+          } else if (q.type === Q.MULTI_SELECT || q.type === Q.MATCHING) {
             init[q.id] = [];
           } else {
             init[q.id] = "";
@@ -261,7 +255,7 @@ export default function ListeningTestPage({
         AUTO_SAVE_KEY + (testId ? `_${testId}` : ""),
         JSON.stringify(answers)
       );
-    } catch { }
+    } catch {}
   }, [answers, testId]);
 
   useEffect(() => {
@@ -317,7 +311,6 @@ export default function ListeningTestPage({
     return count;
   }, [test, answers]);
 
-
   function handleChangeSingle(questionId: string, value: string) {
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
   }
@@ -362,7 +355,7 @@ export default function ListeningTestPage({
       toast.success("Javoblaringiz yuborildi. Rahmat!");
       try {
         localStorage.removeItem(AUTO_SAVE_KEY + `_${testId}`);
-      } catch { }
+      } catch {}
       navigate(`/listening-test/results/${response.testResultId}`);
     } catch (err: any) {
       console.error("submit error", err);
@@ -372,7 +365,6 @@ export default function ListeningTestPage({
       setSubmitting(false);
     }
   }
-
 
   function Badge({ children }: { children: React.ReactNode }) {
     return (
@@ -501,10 +493,11 @@ export default function ListeningTestPage({
                   return (
                     <label
                       key={ans.id}
-                      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer border transition-all ${checked
-                        ? "bg-red-50 border-red-300"
-                        : "hover:bg-gray-50 border-gray-200"
-                        }`}
+                      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer border transition-all ${
+                        checked
+                          ? "bg-red-50 border-red-300"
+                          : "hover:bg-gray-50 border-gray-200"
+                      }`}
                     >
                       <input
                         type="checkbox"
@@ -526,10 +519,21 @@ export default function ListeningTestPage({
 
             {type === Q.TRUE_FALSE && (
               <div className="flex items-center gap-6">
-                {(variants.length ? variants : [
-                  { id: `${q.id}-true`, answer: "TRUE", variantText: "True" },
-                  { id: `${q.id}-false`, answer: "FALSE", variantText: "False" },
-                ]).map((ans) => (
+                {(variants.length
+                  ? variants
+                  : [
+                      {
+                        id: `${q.id}-true`,
+                        answer: "TRUE",
+                        variantText: "True",
+                      },
+                      {
+                        id: `${q.id}-false`,
+                        answer: "FALSE",
+                        variantText: "False",
+                      },
+                    ]
+                ).map((ans) => (
                   <label
                     key={ans.id}
                     className="flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-gray-50"
@@ -556,10 +560,11 @@ export default function ListeningTestPage({
                   return (
                     <label
                       key={ans.id}
-                      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer border transition-all ${checked
-                        ? "bg-red-50 border-red-300"
-                        : "hover:bg-gray-50 border-gray-200"
-                        }`}
+                      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer border transition-all ${
+                        checked
+                          ? "bg-red-50 border-red-300"
+                          : "hover:bg-gray-50 border-gray-200"
+                      }`}
                     >
                       <input
                         type="checkbox"
@@ -608,15 +613,16 @@ export default function ListeningTestPage({
 
             {type === Q.FILL_BLANK && renderFillBlank()}
 
-            {([Q.MULTI_SELECT, Q.MULTIPLE_CHOICE, Q.MATCHING] as string[]).includes(
-              type
-            ) &&
+            {(
+              [Q.MULTI_SELECT, Q.MULTIPLE_CHOICE, Q.MATCHING] as string[]
+            ).includes(type) &&
               (q.answers?.length ?? 0) === 0 && (
                 <div className="mt-3 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <div className="flex items-center gap-2 text-yellow-800">
                     <BookOpen className="w-4 h-4" />
                     <span className="text-sm font-medium">
-                      Variyantlar topilmadi. Iltimos, matn orqali javob kiriting.
+                      Variyantlar topilmadi. Iltimos, matn orqali javob
+                      kiriting.
                     </span>
                   </div>
                   <input
@@ -654,16 +660,21 @@ export default function ListeningTestPage({
               key={q.id}
               onClick={() => {
                 if (currentPartIndex !== partIdx) setCurrentPartIndex(partIdx);
-                setExpandedSections((prev) => ({ ...prev, [section.id]: true }));
+                setExpandedSections((prev) => ({
+                  ...prev,
+                  [section.id]: true,
+                }));
                 setTimeout(() => {
                   const el = document.getElementById(`q-${q.id}`);
-                  if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+                  if (el)
+                    el.scrollIntoView({ behavior: "smooth", block: "center" });
                 }, 80);
               }}
-              className={`text-xs md:text-sm px-2.5 py-1.5 rounded-lg border font-medium transition-all ${hasAns
-                ? "bg-green-100 border-green-300 text-green-700 hover:bg-green-200"
-                : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
-                }`}
+              className={`text-xs md:text-sm px-2.5 py-1.5 rounded-lg border font-medium transition-all ${
+                hasAns
+                  ? "bg-green-100 border-green-300 text-green-700 hover:bg-green-200"
+                  : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+              }`}
               title={`Qism ${partIdx + 1}, Savol ${idx}`}
             >
               {idx}
@@ -680,7 +691,9 @@ export default function ListeningTestPage({
             <div className="flex items-center justify-between gap-3 px-4 py-3">
               <div className="flex items-center gap-2 text-gray-700">
                 <ListChecks className="w-5 h-5 text-red-600" />
-                <span className="font-medium hidden sm:inline">Javoblar holati</span>
+                <span className="font-medium hidden sm:inline">
+                  Javoblar holati
+                </span>
                 <span className="text-xs sm:text-sm text-gray-500">
                   {answeredCount}/{totalQuestions}
                 </span>
@@ -717,7 +730,6 @@ export default function ListeningTestPage({
     );
   }
 
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -733,9 +745,12 @@ export default function ListeningTestPage({
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
         <div className="p-8 bg-white rounded-lg shadow text-center">
-          <h2 className="text-2xl font-bold text-red-600 mb-2">Test topilmadi</h2>
+          <h2 className="text-2xl font-bold text-red-600 mb-2">
+            Test topilmadi
+          </h2>
           <p className="text-gray-700">
-            Test ma'lumotlarini olishda muammo bo'ldi. Iltimos, keyinroq urinib ko'ring.
+            Test ma'lumotlarini olishda muammo bo'ldi. Iltimos, keyinroq urinib
+            ko'ring.
           </p>
         </div>
       </div>
@@ -809,7 +824,8 @@ export default function ListeningTestPage({
                   />
                 ) : (
                   <div className="w-full rounded-lg border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm">
-                    ⚠️ Audio fayl topilmadi. Keyingi qismga o'ting yoki administratorga murojaat qiling.
+                    ⚠️ Audio fayl topilmadi. Keyingi qismga o'ting yoki
+                    administratorga murojaat qiling.
                   </div>
                 )}
               </div>
@@ -821,11 +837,15 @@ export default function ListeningTestPage({
                 </div>
                 <div className="hidden md:flex items-center gap-2 text-gray-700">
                   <span>Javob berilgan:</span>
-                  <span className="font-semibold text-green-600">{answeredCount}</span>
+                  <span className="font-semibold text-green-600">
+                    {answeredCount}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock className="w-5 h-5 text-red-600" />
-                  <span className="text-red-600 font-semibold text-lg">{formatTime(timeLeft)}</span>
+                  <span className="text-red-600 font-semibold text-lg">
+                    {formatTime(timeLeft)}
+                  </span>
                 </div>
               </div>
             </div>
@@ -841,7 +861,10 @@ export default function ListeningTestPage({
         <h2 className="text-xl font-semibold text-gray-900 mb-4">
           Qism {currentPartIndex + 1}/{test?.parts?.length || 1}
           {currentPart?.title ? (
-            <span className="text-gray-500 font-normal"> — {currentPart.title}</span>
+            <span className="text-gray-500 font-normal">
+              {" "}
+              — {currentPart.title}
+            </span>
           ) : null}
         </h2>
 
@@ -898,7 +921,10 @@ export default function ListeningTestPage({
                         {section.imageUrl && (
                           <div className="mb-5">
                             <img
-                              src={resolveFileUrl(section.imageUrl) || "/placeholder.svg"}
+                              src={
+                                resolveFileUrl(section.imageUrl) ||
+                                "/placeholder.svg"
+                              }
                               alt="Bo'lim rasmi"
                               className="rounded-xl shadow max-w-full h-auto"
                             />

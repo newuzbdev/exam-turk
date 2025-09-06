@@ -10,35 +10,35 @@ const ProfileHeader = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const userData = await authService.getCurrentUser();
-        console.log("Profile - User data received:", userData);
-        if (userData) {
-          setUser({
-            ...userData,
-            followers: 0, // Default values for now
-            following: 0,
-            joinDate: userData.createdAt
-              ? new Date(userData.createdAt).toLocaleDateString("tr-TR", {
-                  year: "numeric",
-                  month: "long",
-                })
-              : "Bilinmiyor",
-            totalPoints: 0,
-            bio: "Türkçe dil ve kültürünü öğrenmeye tutkulu.",
-          });
+    useEffect(() => {
+      const fetchUserData = async () => {
+        try {
+          const userData = await authService.getCurrentUser();
+          console.log("Profile - User data received:", userData);
+          if (userData) {
+            setUser({
+              ...userData,
+              followers: 0, // Default values for now
+              following: 0,
+              joinDate: userData.createdAt
+                ? new Date(userData.createdAt).toLocaleDateString("tr-TR", {
+                    year: "numeric",
+                    month: "long",
+                  })
+                : "Bilinmiyor",
+              totalPoints: 0,
+              bio: "Türkçe dil ve kültürünü öğrenmeye tutkulu.",
+            });
+          }
+        } catch (error) {
+          console.error("Profile - Error fetching user data:", error);
+        } finally {
+          setLoading(false);
         }
-      } catch (error) {
-        console.error("Profile - Error fetching user data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+      };
 
-    fetchUserData();
-  }, []);
+      fetchUserData();
+    }, []);
 
   if (loading) {
     return (

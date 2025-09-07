@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { TrendingUp, Eye, Calendar, Star } from "lucide-react"
+import { TrendingUp, Eye, Calendar } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { authService } from "@/services/auth.service"
 
@@ -65,7 +65,7 @@ const ProfileTabs = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {results.map((test, index) => (
+              {results.map((test) => (
                 <div
                   key={test.id}
                   className="group relative bg-gray-50/50 hover:bg-gray-50 rounded-xl border border-gray-100 hover:border-gray-200 transition-all duration-200 p-6"

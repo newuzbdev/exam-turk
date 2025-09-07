@@ -34,7 +34,6 @@ type QuestionCoreType =
   | "MULTI_SELECT"
   | "TEXT_INPUT"
   | "TRUE_FALSE"
-  | "NUMBER"
   | "MATCHING"
   | "FILL_BLANK";
 
@@ -87,7 +86,7 @@ interface ListeningTestItem {
   parts: ListeningPart[];
 }
 
-const FILE_BASE = "https://api.turkcetest.uz/files/";
+const FILE_BASE = "https://api.turkcetest.uz/"
 const AUTO_SAVE_KEY = "listening_test_answers_v1";
 
 const formatTime = (seconds: number) => {
@@ -108,7 +107,7 @@ function getGlobalTokenFromAxios() {
     if (auth && typeof auth === "string" && auth.startsWith("Bearer ")) {
       return auth.slice("Bearer ".length);
     }
-  } catch {}
+  } catch { }
   return (
     localStorage.getItem("accessToken") ||
     localStorage.getItem("token") ||
@@ -255,7 +254,7 @@ export default function ListeningTestPage({
         AUTO_SAVE_KEY + (testId ? `_${testId}` : ""),
         JSON.stringify(answers)
       );
-    } catch {}
+    } catch { }
   }, [answers, testId]);
 
   useEffect(() => {
@@ -355,7 +354,7 @@ export default function ListeningTestPage({
       toast.success("Javoblaringiz yuborildi. Rahmat!");
       try {
         localStorage.removeItem(AUTO_SAVE_KEY + `_${testId}`);
-      } catch {}
+      } catch { }
       navigate(`/listening-test/results/${response.testResultId}`);
     } catch (err: any) {
       console.error("submit error", err);
@@ -444,7 +443,6 @@ export default function ListeningTestPage({
                   {type === Q.TRUE_FALSE && "To'g'ri/Noto'g'ri"}
                   {type === Q.MATCHING && "Moslashtiring"}
                   {type === Q.TEXT_INPUT && "Matn kiriting"}
-                  {type === Q.NUMBER && "Raqam kiriting"}
                   {type === Q.FILL_BLANK && "Bo'sh joyni to'ldiring"}
                 </Badge>
 
@@ -493,11 +491,10 @@ export default function ListeningTestPage({
                   return (
                     <label
                       key={ans.id}
-                      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer border transition-all ${
-                        checked
-                          ? "bg-red-50 border-red-300"
-                          : "hover:bg-gray-50 border-gray-200"
-                      }`}
+                      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer border transition-all ${checked
+                        ? "bg-red-50 border-red-300"
+                        : "hover:bg-gray-50 border-gray-200"
+                        }`}
                     >
                       <input
                         type="checkbox"
@@ -522,17 +519,17 @@ export default function ListeningTestPage({
                 {(variants.length
                   ? variants
                   : [
-                      {
-                        id: `${q.id}-true`,
-                        answer: "TRUE",
-                        variantText: "True",
-                      },
-                      {
-                        id: `${q.id}-false`,
-                        answer: "FALSE",
-                        variantText: "False",
-                      },
-                    ]
+                    {
+                      id: `${q.id}-true`,
+                      answer: "TRUE",
+                      variantText: "True",
+                    },
+                    {
+                      id: `${q.id}-false`,
+                      answer: "FALSE",
+                      variantText: "False",
+                    },
+                  ]
                 ).map((ans) => (
                   <label
                     key={ans.id}
@@ -560,11 +557,10 @@ export default function ListeningTestPage({
                   return (
                     <label
                       key={ans.id}
-                      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer border transition-all ${
-                        checked
-                          ? "bg-red-50 border-red-300"
-                          : "hover:bg-gray-50 border-gray-200"
-                      }`}
+                      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer border transition-all ${checked
+                        ? "bg-red-50 border-red-300"
+                        : "hover:bg-gray-50 border-gray-200"
+                        }`}
                     >
                       <input
                         type="checkbox"
@@ -584,20 +580,7 @@ export default function ListeningTestPage({
               </div>
             )}
 
-            {type === Q.NUMBER && (
-              <div className="space-y-1">
-                <input
-                  type="number"
-                  placeholder="Raqamli javob..."
-                  value={(qAns as string) ?? ""}
-                  onChange={(e) => handleChangeSingle(q.id, e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                />
-                <div className="text-xs text-gray-500">
-                  Faqat raqam kiriting (masalan: 42, 3.14)
-                </div>
-              </div>
-            )}
+
 
             {type === Q.TEXT_INPUT && (
               <div className="space-y-1">
@@ -670,11 +653,10 @@ export default function ListeningTestPage({
                     el.scrollIntoView({ behavior: "smooth", block: "center" });
                 }, 80);
               }}
-              className={`text-xs md:text-sm px-2.5 py-1.5 rounded-lg border font-medium transition-all ${
-                hasAns
-                  ? "bg-green-100 border-green-300 text-green-700 hover:bg-green-200"
-                  : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
-              }`}
+              className={`text-xs md:text-sm px-2.5 py-1.5 rounded-lg border font-medium transition-all ${hasAns
+                ? "bg-green-100 border-green-300 text-green-700 hover:bg-green-200"
+                : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                }`}
               title={`Qism ${partIdx + 1}, Savol ${idx}`}
             >
               {idx}

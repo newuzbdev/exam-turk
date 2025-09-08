@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useNavigate } from "react-router";
+import HighlightableText from "@/pages/reading-test/components/HighlightableText";
 
 interface ReadingPageProps {
   testId?: string;
@@ -538,7 +539,7 @@ export default function ReadingPage({ testId, testData }: ReadingPageProps) {
             <div key={section.id || sectionIndex} className="mb-8">
               <div className="space-y-6">
                 <h2 className="text-2xl font-bold text-gray-900 border-b-2 border-red-200 pb-2">
-                  {section.title}
+                  <HighlightableText text={section.title} />
                 </h2>
                 <div className="text-sm leading-7 text-gray-700 space-y-5">
                   {section.content?.split("\n\n").map((paragraph, index) => (

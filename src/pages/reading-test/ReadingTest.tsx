@@ -11,5 +11,5 @@ export default function ReadingTest() {
     return null;
   }
 
-  return <ReadingTestDemo />;
+  return <ReadingTestDemo testId={testId} />;
 }

@@ -1,19 +1,25 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
+  BookOpen,
+  Clock,
   Headphones,
   Mic,
-  BookOpen,
   PenTool,
   Play,
-  Clock,
+  Target,
   Users,
-  Target
 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 
 interface TurkishTest {
   id: string;
@@ -80,7 +86,7 @@ const TestModal = ({
   speakingTests,
   listeningTests,
   readingTests,
-  onTestTypeClick
+  onTestTypeClick,
 }: TestModalProps) => {
   const navigate = useNavigate();
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
@@ -96,7 +102,7 @@ const TestModal = ({
       color: "bg-gray-600 hover:bg-gray-700",
       tests: listeningTests,
       duration: "30 min",
-      questions: listeningTests.length
+      questions: listeningTests.length,
     },
     {
       id: "reading",
@@ -105,7 +111,7 @@ const TestModal = ({
       color: "bg-gray-600 hover:bg-gray-700",
       tests: readingTests,
       duration: "60 min",
-      questions: readingTests.length
+      questions: readingTests.length,
     },
     {
       id: "writing",
@@ -114,7 +120,7 @@ const TestModal = ({
       color: "bg-gray-600 hover:bg-gray-700",
       tests: writingTests,
       duration: "60 min",
-      questions: writingTests.length
+      questions: writingTests.length,
     },
     {
       id: "speaking",
@@ -123,33 +129,41 @@ const TestModal = ({
       color: "bg-gray-600 hover:bg-gray-700",
       tests: speakingTests,
       duration: "15 min",
-      questions: speakingTests.length
-    }
+      questions: speakingTests.length,
+    },
   ];
 
   const renderTestsList = (tests: any[], testType: string) => {
     return (
       <div className="space-y-2">
         {tests.map((test, index) => (
-          <div key={test.id} className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-3 hover:bg-gray-50">
+          <div
+            key={test.id}
+            className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-3 hover:bg-gray-50"
+          >
             <div>
-              <div className="text-sm font-semibold text-gray-900">Part {index + 1}</div>
+              <div className="text-sm font-semibold text-gray-900">
+                Part {index + 1}
+              </div>
               <div className="text-sm text-gray-700">{test.title}</div>
               {test.description && (
-                <div className="text-xs text-gray-500 mt-0.5">{test.description}</div>
+                <div className="text-xs text-gray-500 mt-0.5">
+                  {test.description}
+                </div>
               )}
             </div>
             <Button
               size="sm"
               onClick={() => {
-                if (testType === 'speaking') {
+                if (testType === "speaking") {
                   navigate(`/speaking-test/${test.id}`);
-                } else if (testType === 'writing') {
+                } else if (testType === "writing") {
                   navigate(`/writing-test/${test.id}`);
-                } else if (testType === 'listening') {
+                } else if (testType === "listening") {
                   navigate(`/listening-test/${test.id}`);
-                }
-                else {
+                } else if (testType === "reading") {
+                  navigate(`/reading-test/${test.id}`);
+                } else {
                   console.log(`Starting ${testType} test:`, test);
                 }
               }}
@@ -190,10 +204,17 @@ const TestModal = ({
             <CardContent>
               <div className="grid grid-cols-2 gap-3 mb-3">
                 {testSections.map((section) => (
-                  <div key={section.id} className="text-center p-2 bg-white rounded-md border border-gray-200">
+                  <div
+                    key={section.id}
+                    className="text-center p-2 bg-white rounded-md border border-gray-200"
+                  >
                     <section.icon className="h-6 w-6 mx-auto mb-1 text-gray-600" />
-                    <div className="text-xs font-medium text-gray-900">{section.title}</div>
-                    <div className="text-[10px] text-gray-500">{section.duration}</div>
+                    <div className="text-xs font-medium text-gray-900">
+                      {section.title}
+                    </div>
+                    <div className="text-[10px] text-gray-500">
+                      {section.duration}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -219,8 +240,9 @@ const TestModal = ({
               return (
                 <Card
                   key={section.id}
-                  className={`cursor-pointer transition-all border border-gray-200 hover:border-gray-300 ${isSelected ? 'ring-2 ring-blue-500' : ''
-                    }`}
+                  className={`cursor-pointer transition-all border border-gray-200 hover:border-gray-300 ${
+                    isSelected ? "ring-2 ring-blue-500" : ""
+                  }`}
                   onClick={() => {
                     if (isSelected) {
                       setSelectedSection(null);
@@ -236,7 +258,9 @@ const TestModal = ({
                         <div className="p-1.5 rounded-md bg-gray-100">
                           <IconComponent className="h-4 w-4 text-gray-700" />
                         </div>
-                        <span className="text-gray-900 font-medium text-sm">{section.title}</span>
+                        <span className="text-gray-900 font-medium text-sm">
+                          {section.title}
+                        </span>
                       </div>
                       <div className="flex gap-2">
                         <Badge variant="outline">
@@ -260,7 +284,9 @@ const TestModal = ({
                         {section.tests.length > 0 ? (
                           renderTestsList(section.tests, section.id)
                         ) : (
-                          <p className="text-gray-500 text-xs">Bu bölüm için test bulunmuyor.</p>
+                          <p className="text-gray-500 text-xs">
+                            Bu bölüm için test bulunmuyor.
+                          </p>
                         )}
                       </div>
                     </CardContent>

@@ -1,10 +1,11 @@
+import { BookOpen, Clock, Headphones, Mic, PenTool, Play } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+
 import { Badge } from "@/components/ui/badge";
-import { Clock, Headphones, Mic, BookOpen, PenTool, Play } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import TestInstructionModal from "./TestInstructionModal";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
-import TestInstructionModal from "./TestInstructionModal";
 
 interface TurkishTest {
   id: string;
@@ -113,8 +114,14 @@ const MainTestCard = ({
       } else {
         console.error("No listening test available");
       }
-    }
-    else {
+    } else if (selectedTestType === "reading") {
+      const readingTest = availableTestTypes.reading[0];
+      if (readingTest) {
+        navigate(`/reading-test/${readingTest.id}`);
+      } else {
+        console.error("No reading test available");
+      }
+    } else {
       // Navigate to the general test page for other test types
       navigate("/test", {
         state: {
@@ -136,7 +143,10 @@ const MainTestCard = ({
             className="w-full h-full object-cover"
           />
           <div className="absolute top-4 right-4">
-            <Badge variant="secondary" className="bg-white text-gray-600 shadow-md border border-gray-200">
+            <Badge
+              variant="secondary"
+              className="bg-white text-gray-600 shadow-md border border-gray-200"
+            >
               <Clock className="h-4 w-4 mr-1" />
               {availableTypes.length} Tür
             </Badge>

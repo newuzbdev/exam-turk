@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 
 interface Highlight {
   id: string;
-  text: any;
+  start: number;
+  end: number;
 }
 
 export default function HighlightableText({ text }: { text: any }) {
@@ -12,48 +13,87 @@ export default function HighlightableText({ text }: { text: any }) {
   const [tooltip, setTooltip] = useState<{
     x: number;
     y: number;
-    text: any;
+    start: number;
+    end: number;
   } | null>(null);
+
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // tanlangan textni olish
+  // Tanlangan textni olish
   useEffect(() => {
     const handleMouseUp = () => {
       const selection = window.getSelection();
       if (!selection || selection.rangeCount === 0) return;
 
-      const selectedText = selection.toString();
-      if (selectedText.trim().length === 0) return;
+      const range = selection.getRangeAt(0);
+      if (
+        !containerRef.current ||
+        !containerRef.current.contains(range.startContainer)
+      ) {
+        setTooltip(null);
+        return;
+      }
 
-      const rect = selection.getRangeAt(0).getBoundingClientRect();
+      const selectedText = selection.toString().trim();
+      if (!selectedText) return;
+
+      // indexlarni hisoblash
+      const preSelectionRange = range.cloneRange();
+      preSelectionRange.selectNodeContents(containerRef.current);
+      preSelectionRange.setEnd(range.startContainer, range.startOffset);
+
+      const start = preSelectionRange.toString().length;
+      const end = start + selectedText.length;
+
+      const rect = range.getBoundingClientRect();
+      const containerRect = containerRef.current.getBoundingClientRect();
 
       setTooltip({
-        x: rect.left + rect.width / 2,
-        y: rect.top - 30,
-        text: selectedText,
+        x: rect.left - containerRect.left + rect.width / 2,
+        y: rect.top - containerRect.top - 10,
+        start,
+        end,
       });
     };
 
     document.addEventListener("mouseup", handleMouseUp);
-    return () => {
-      document.removeEventListener("mouseup", handleMouseUp);
-    };
+    return () => document.removeEventListener("mouseup", handleMouseUp);
   }, []);
 
-  // highlight qilish
+  // Tooltip tashqarisiga bosilganda yopish
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setTooltip(null);
+        window.getSelection()?.removeAllRanges();
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Highlight qo‘shish yoki olib tashlash
   const handleHighlight = () => {
     if (!tooltip) return;
 
-    const exists = highlights.find((h) => h.text === tooltip.text);
+    const exists = highlights.some(
+      (h) => h.start === tooltip.start && h.end === tooltip.end
+    );
 
     if (exists) {
-      // agar allaqachon mavjud bo‘lsa → o‘chirib tashlaymiz
-      setHighlights((prev) => prev.filter((h) => h.id !== exists.id));
+      setHighlights((prev) =>
+        prev.filter(
+          (h) => !(h.start === tooltip.start && h.end === tooltip.end)
+        )
+      );
     } else {
-      // yangi highlight qo‘shamiz
       setHighlights((prev) => [
         ...prev,
-        { id: Date.now().toString(), text: tooltip.text },
+        { id: Date.now().toString(), start: tooltip.start, end: tooltip.end },
       ]);
     }
 
@@ -61,55 +101,62 @@ export default function HighlightableText({ text }: { text: any }) {
     window.getSelection()?.removeAllRanges();
   };
 
-  // textni render qilish (highlightlarni qo‘yib)
-  const getHighlightedText = () => {
-    if (highlights.length === 0) return text;
+  // Matnni highlight bilan render qilish
+  const renderText = () => {
+    const parts = [];
+    let lastIndex = 0;
 
-    let modified = text;
-    highlights.forEach((h) => {
-      // oddiy replace → birinchi topilganini highlight qiladi
-      // ko‘proq moslashtirish uchun regex ishlatish mumkin
-      modified = modified.replace(
-        h.text,
-        `<mark class="bg-yellow-300">${h.text}</mark>`
+    const sorted = [...highlights].sort((a, b) => a.start - b.start);
+
+    for (const h of sorted) {
+      if (h.start > lastIndex) {
+        parts.push(
+          <span key={`text-${lastIndex}`}>
+            {text.substring(lastIndex, h.start)}
+          </span>
+        );
+      }
+      parts.push(
+        <mark key={h.id} className="bg-yellow-300 rounded-sm px-0.5">
+          {text.substring(h.start, h.end)}
+        </mark>
       );
-    });
-    return modified;
+      lastIndex = h.end;
+    }
+
+    if (lastIndex < text.length) {
+      parts.push(<span key={`text-end`}>{text.substring(lastIndex)}</span>);
+    }
+
+    return parts;
   };
+
+  const isHighlighted = tooltip
+    ? highlights.some((h) => h.start === tooltip.start && h.end === tooltip.end)
+    : false;
 
   return (
     <div ref={containerRef} className="relative">
-      <p
-        className="leading-relaxed text-gray-700 whitespace-pre-line"
-        dangerouslySetInnerHTML={{ __html: getHighlightedText() }}
-      />
+      <p className="leading-relaxed text-gray-700 whitespace-pre-line">
+        {renderText()}
+      </p>
 
       {tooltip && (
         <div
           className="absolute bg-black text-white text-xs px-3 py-2 rounded shadow-lg flex items-center gap-2 z-50"
           style={{
-            top:
-              tooltip.y +
-              window.scrollY -
-              containerRef.current!.getBoundingClientRect().top,
-            left:
-              tooltip.x - containerRef.current!.getBoundingClientRect().left,
+            top: tooltip.y + window.scrollY,
+            left: tooltip.x,
             transform: "translate(-50%, -100%)",
           }}
         >
-          <span>
-            {highlights.find((h) => h.text === tooltip.text)
-              ? "Olib tashlansinmi?"
-              : "Belgilansinmi?"}
-          </span>
+          <span>{isHighlighted ? "Olib tashlansinmi?" : "Belgilansinmi?"}</span>
           <Button
             size="sm"
             className="bg-yellow-400 text-black hover:bg-yellow-500"
             onClick={handleHighlight}
           >
-            {highlights.find((h) => h.text === tooltip.text)
-              ? "Olib tashla"
-              : "Belgila"}
+            {isHighlighted ? "Olib tashla" : "Belgila"}
           </Button>
         </div>
       )}

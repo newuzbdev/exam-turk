@@ -19,7 +19,6 @@ export default function HighlightableText({ text }: { text: any }) {
 
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Tanlangan textni olish
   useEffect(() => {
     const handleMouseUp = () => {
       const selection = window.getSelection();
@@ -37,7 +36,6 @@ export default function HighlightableText({ text }: { text: any }) {
       const selectedText = selection.toString().trim();
       if (!selectedText) return;
 
-      // indexlarni hisoblash
       const preSelectionRange = range.cloneRange();
       preSelectionRange.selectNodeContents(containerRef.current);
       preSelectionRange.setEnd(range.startContainer, range.startOffset);
@@ -60,7 +58,6 @@ export default function HighlightableText({ text }: { text: any }) {
     return () => document.removeEventListener("mouseup", handleMouseUp);
   }, []);
 
-  // Tooltip tashqarisiga bosilganda yopish
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -76,7 +73,6 @@ export default function HighlightableText({ text }: { text: any }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Highlight qo‘shish yoki olib tashlash
   const handleHighlight = () => {
     if (!tooltip) return;
 
@@ -101,7 +97,6 @@ export default function HighlightableText({ text }: { text: any }) {
     window.getSelection()?.removeAllRanges();
   };
 
-  // Matnni highlight bilan render qilish
   const renderText = () => {
     const parts = [];
     let lastIndex = 0;
@@ -117,7 +112,21 @@ export default function HighlightableText({ text }: { text: any }) {
         );
       }
       parts.push(
-        <mark key={h.id} className="bg-yellow-300 rounded-sm px-0.5">
+        <mark
+          key={h.id}
+          className="bg-yellow-300 rounded-sm px-0.5 select-none cursor-pointer"
+          onClick={(e) => {
+            const rect = (e.target as HTMLElement).getBoundingClientRect();
+            const containerRect = containerRef.current!.getBoundingClientRect();
+
+            setTooltip({
+              x: rect.left - containerRect.left + rect.width / 2,
+              y: rect.top - containerRect.top - 10,
+              start: h.start,
+              end: h.end,
+            });
+          }}
+        >
           {text.substring(h.start, h.end)}
         </mark>
       );
@@ -156,7 +165,7 @@ export default function HighlightableText({ text }: { text: any }) {
             className="bg-yellow-400 text-black hover:bg-yellow-500"
             onClick={handleHighlight}
           >
-            {isHighlighted ? "Olib tashla" : "Belgila"}
+            {isHighlighted ? "Olib tashla" : "Belgilash"}
           </Button>
         </div>
       )}

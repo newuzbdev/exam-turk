@@ -1,5 +1,3 @@
-"use client";
-
 import {
   BookOpen,
   CheckCircle,
@@ -18,6 +16,7 @@ import {
 } from "@/services/readingTest.service";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useNavigate } from "react-router";
 
 interface ReadingPageProps {
   testId?: string;
@@ -174,10 +173,11 @@ function QuestionInput({
 }
 
 export default function ReadingPage({ testId, testData }: ReadingPageProps) {
+  const navigate = useNavigate();
   const [test, setTest] = useState<ReadingTestItem | null>(testData || null);
   const [loading, setLoading] = useState<boolean>(!testData);
   const [submitting, setSubmitting] = useState<boolean>(false);
-  const [timeRemaining, setTimeRemaining] = useState(60 * 60); // 60 minutes in seconds
+  const [timeRemaining, setTimeRemaining] = useState(60 * 60);
   const [selectedAnswers, setSelectedAnswers] = useState<AnswersState>({});
   const [currentPart, setCurrentPart] = useState(0);
 
@@ -347,8 +347,7 @@ export default function ReadingPage({ testId, testData }: ReadingPageProps) {
       try {
         localStorage.removeItem(AUTO_SAVE_KEY + `_${testId}`);
       } catch {}
-
-      // Navigate to results page (you may need to implement navigation)
+      navigate(`/reading-test/results/${response.testResultId}`);
       console.log("Test completed, result ID:", response.testResultId);
     } catch (err: any) {
       console.error("submit error", err);

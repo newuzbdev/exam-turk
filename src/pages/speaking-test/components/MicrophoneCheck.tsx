@@ -1,4 +1,4 @@
-import { Clock, Headphones, Mic, Play, Square } from "lucide-react";
+import { Clock, Mic, Play, Square } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 interface Props {
@@ -12,7 +12,6 @@ export const MicrophoneCheck = ({ onSuccess }: Props) => {
   const [recording, setRecording] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
-  const [_headphoneTestPlaying, setHeadphoneTestPlaying] = useState(false);
 
   // We'll store the current MediaRecorder and MediaStream for cleanup
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -108,13 +107,6 @@ export const MicrophoneCheck = ({ onSuccess }: Props) => {
     }
   };
 
-  const playHeadphoneTest = () => {
-    setHeadphoneTestPlaying(true);
-    // Simulate audio playback
-    setTimeout(() => {
-      setHeadphoneTestPlaying(false);
-    }, 8000);
-  };
 
   const proceedToWaitingRoom = () => {
     setCurrentStep(3);
@@ -130,68 +122,6 @@ export const MicrophoneCheck = ({ onSuccess }: Props) => {
         <h1 className="text-center mb-12 text-red-700 text-4xl font-medium gap-2">{"Turkce test"}</h1>
 
         <div className="space-y-8">
-          <div className="flex gap-6">
-            <div className="flex-shrink-0">
-              <div className="w-16 h-16 rounded-full border-2 border-rose-300 flex items-center justify-center">
-                <Headphones className="w-8 h-8 text-rose-500" />
-              </div>
-              <div className="w-px h-20 bg-gray-200 mx-8 mt-4"></div>
-            </div>
-            <div className="flex-1">
-              <h2 className="text-xl font-semibold text-slate-700 mb-3">1. Quloqchin tekshiruvi</h2>
-              <p className="text-gray-600 mb-4">
-                Test olishdan oldin quloqchiningizning audio sifatini yaxshi ekanligiga ishonch hosil qiling. Ovoz sifatini tekshirish uchun{" "}
-                <span className="inline-flex items-center mx-1">
-                  <Play className="w-4 h-4 text-rose-500" />
-                </span>{" "}
-                belgisini bosing.
-              </p>
-
-              <div className="bg-white rounded-lg p-4 border border-gray-200">
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={playHeadphoneTest}
-                    disabled={_headphoneTestPlaying}
-                    className="w-12 h-12 rounded-full bg-rose-500 hover:bg-rose-600 disabled:bg-rose-400 flex items-center justify-center transition-colors"
-                  >
-                    {_headphoneTestPlaying ? (
-                      <Square className="w-6 h-6 text-white" />
-                    ) : (
-                      <Play className="w-6 h-6 text-white ml-1" />
-                    )}
-                  </button>
-
-                  <div className="flex-1">
-                    <div className="w-full bg-rose-200 rounded-full h-2">
-                      <div
-                        className={`bg-rose-500 h-2 rounded-full transition-all duration-8000 ${
-                          _headphoneTestPlaying ? "w-full" : "w-0"
-                        }`}
-                      ></div>
-                    </div>
-                  </div>
-
-                  <span className="text-sm text-gray-500 min-w-[40px]">{_headphoneTestPlaying ? "00:08" : "00:00"}</span>
-
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-gray-300 rounded"></div>
-                    <select className="text-sm text-gray-600 border-none bg-transparent">
-                      <option>Standart - Quloqchin</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {currentStep === 1 && (
-                <button
-                  onClick={() => setCurrentStep(2)}
-                  className="mt-4 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                >
-                  Mikrofon tekshiruviga o'tish
-                </button>
-              )}
-            </div>
-          </div>
 
           <div className="flex gap-6">
             <div className="flex-shrink-0">

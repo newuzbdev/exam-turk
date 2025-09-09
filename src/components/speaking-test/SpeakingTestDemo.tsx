@@ -249,7 +249,7 @@ const SpeakingTestDemo = ({
 
   if (isLoading) {
     return (
-      <Card className="w-full max-w-4xl mx-auto">
+      <Card className="w-full max-w-4xl mx-auto border-red-600">
         <CardContent className="p-8 text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
           <p>Test yükleniyor...</p>

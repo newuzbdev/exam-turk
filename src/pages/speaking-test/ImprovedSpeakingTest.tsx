@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { Mic, Square, ArrowLeft, CheckCircle, Info, Clock, Play, Volume2 } from "lucide-react"
+import { Mic, ArrowLeft, CheckCircle, Info, Volume2 } from "lucide-react"
 import axiosPrivate from "@/config/api"
 import { toast } from "sonner"
 import { MicrophoneCheck } from "./components/MicrophoneCheck"
@@ -50,6 +50,27 @@ const sectionAudios: Record<number, string> = {
 }
 
 
+
+// Simple Progress component
+const Progress = ({ value }: { value: number }) => (
+  <div className="w-full bg-red-100 rounded-full h-2 overflow-hidden">
+    <motion.div
+      className="h-full bg-gradient-to-r from-red-600 to-rose-600 rounded-full"
+      initial={{ width: 0 }}
+      animate={{ width: `${value}%` }}
+      transition={{ duration: 0.5 }}
+    />
+  </div>
+)
+
+// Format time utility
+const formatTime = (seconds: number) => {
+  const mins = Math.floor(seconds / 60)
+  const secs = seconds % 60
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+}
+
+
 export default function ImprovedSpeakingTest() {
   const { testId } = useParams()
   const navigate = useNavigate()
@@ -77,6 +98,20 @@ export default function ImprovedSpeakingTest() {
   const [timeLeft, setTimeLeft] = useState(RECORD_SECONDS_PER_QUESTION)
   const [recordingTime, setRecordingTime] = useState(0)
   const [recordings, setRecordings] = useState<Map<string, Recording>>(new Map())
+
+
+
+
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout
+    if (timeLeft > 0) {
+      interval = setInterval(() => {
+        setTimeLeft((prev) => prev - 1)
+      }, 1000)
+    }
+    return () => clearInterval(interval)
+  }, [timeLeft])
 
   // refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -333,14 +368,7 @@ export default function ImprovedSpeakingTest() {
     }
   }
 
-  const resumeRecording = () => {
-    try {
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state === "paused") {
-        mediaRecorderRef.current.resume()
-        setIsPaused(false)
-      }
-    } catch { }
-  }
+
 
   const stopRecording = () => {
     try {
@@ -557,78 +585,18 @@ export default function ImprovedSpeakingTest() {
     }
   }
 
-  const formatTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`
 
-  // UI helpers
-  const Progress = ({ value }: { value: number }) => (
-    <div className="w-full h-3 bg-gradient-to-r from-red-50 to-rose-50 rounded-full overflow-hidden shadow-inner">
-      <motion.div
-        className="h-full bg-gradient-to-r from-red-500 via-red-600 to-rose-600 shadow-sm relative"
-        initial={{ width: 0, x: "-100%" }}
-        animate={{
-          width: `${value}%`,
-          x: "0%",
-        }}
-        transition={{
-          type: "spring",
-          stiffness: 100,
-          damping: 25,
-          duration: 0.8,
-        }}
-      >
-        <motion.div
-          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
-          animate={{ x: ["-100%", "100%"] }}
-          transition={{
-            duration: 2,
-            repeat: Number.POSITIVE_INFINITY,
-            ease: "easeInOut",
-          }}
-        />
-      </motion.div>
-    </div>
-  )
 
-  const Waveform = ({ active }: { active: boolean }) => (
-    <div className="flex items-end justify-center gap-1.5 h-12 px-4">
-      {Array.from({ length: 20 }).map((_, i) => (
-        <motion.span
-          key={i}
-          className="w-1.5 rounded-full bg-gradient-to-t from-red-600 to-rose-500 shadow-sm"
-          initial={{ height: 8, opacity: 0.4, scaleY: 0.5 }}
-          animate={
-            active
-              ? {
-                height: [8, 32, 16, 28, 12, 24, 10, 20][i % 8],
-                opacity: [0.4, 1, 0.7, 0.9, 0.6, 0.8],
-                scaleY: [0.5, 1.2, 0.8, 1.1, 0.7, 1],
-              }
-              : {
-                height: 8,
-                opacity: 0.3,
-                scaleY: 0.5,
-              }
-          }
-          transition={{
-            repeat: active ? Number.POSITIVE_INFINITY : 0,
-            duration: 0.6 + i * 0.02,
-            delay: i * 0.04,
-            ease: "easeInOut",
-          }}
-        />
-      ))}
-    </div>
-  )
   if (loading) {
     return (
       <motion.div
-        className="min-h-screen bg-gradient-to-br from-red-50 via-white to-rose-100 flex items-center justify-center"
+        className="min-h-screen  flex items-center justify-center"
         initial="initial"
         animate="animate"
       >
         <motion.div className="text-center">
           <motion.div
-            className="w-20 h-20 bg-gradient-to-br from-red-600 to-rose-600 rounded-3xl mx-auto mb-6 grid place-items-center shadow-2xl shadow-red-200"
+            className="w-20 h-20  rounded-3xl mx-auto mb-6 grid place-items-center shadow-2xl shadow-red-200"
             animate="animate"
           >
             <motion.div
@@ -646,9 +614,9 @@ export default function ImprovedSpeakingTest() {
           >
             Test yükleniyor...
           </motion.p>
-          <div className="w-32 h-1 bg-red-100 rounded-full mx-auto overflow-hidden">
+          <div className="w-32 h-1  rounded-full mx-auto overflow-hidden">
             <motion.div
-              className="h-full bg-gradient-to-r from-red-500 to-rose-500"
+              className="h-full "
               animate={{ x: ["-100%", "100%"] }}
               transition={{ duration: 1.5, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
             />
@@ -661,7 +629,7 @@ export default function ImprovedSpeakingTest() {
   if (!testData) {
     return (
       <motion.div
-        className="min-h-screen bg-gradient-to-br from-red-50 via-white to-rose-100 flex items-center justify-center"
+        className="min-h-screen flex items-center justify-center"
         initial="initial"
         animate="animate"
       >
@@ -670,7 +638,7 @@ export default function ImprovedSpeakingTest() {
           whileHover={{ y: -5, boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)" }}
         >
           <motion.div
-            className="w-16 h-16 bg-gradient-to-br from-red-600 to-rose-600 rounded-2xl mx-auto mb-4 grid place-items-center shadow-lg"
+            className="w-16 h-16  rounded-2xl mx-auto mb-4 grid place-items-center shadow-lg"
             animate={{
               rotate: [0, -10, 10, -10, 0],
               scale: [1, 1.1, 1],
@@ -806,7 +774,7 @@ export default function ImprovedSpeakingTest() {
   if (showSectionDescription && currentSection) {
     return (
       <motion.div
-        className="min-h-screen bg-gradient-to-br from-red-50 via-white to-rose-100"
+        className="min-h-screen "
         initial="initial"
         animate="animate"
       >
@@ -816,7 +784,7 @@ export default function ImprovedSpeakingTest() {
           <>
             {!isExamMode && (
               <motion.header
-                className="sticky top-0 z-10 bg-white/80 backdrop-blur-xl border-b border-red-100 shadow-sm"
+                className="sticky top-0 z-10 bg-white/80  border-b border-gray-100 shadow-sm"
                 initial={{ y: -100, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ duration: 0.5, ease: "easeOut" }}
@@ -842,7 +810,7 @@ export default function ImprovedSpeakingTest() {
                       {testData.title}
                     </motion.h1>
                     <motion.div
-                      className="text-lg font-bold text-gray-700 bg-red-50 px-4 py-2 rounded-xl"
+                      className="text-lg font-bold text-gray-700  px-4 py-2 rounded-xl"
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.3 }}
@@ -853,67 +821,28 @@ export default function ImprovedSpeakingTest() {
                 </div>
               </motion.header>
             )}
-
-            <main className="max-w-5xl mx-auto px-6 py-10">
-              <motion.div
-                className="bg-white/90 backdrop-blur-sm border border-red-100 rounded-3xl p-10 shadow-2xl"
-                whileHover={{ y: -5, boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)" }}
-              >
-                <div className="text-center mb-8">
-                  <motion.div
-                    className="inline-flex items-center bg-gradient-to-r from-red-600 to-rose-600 text-white px-6 py-3 rounded-2xl text-lg font-black mb-6 shadow-lg"
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                  >
-                    <Info className="w-6 h-6 mr-3" />
-                    {currentSection.title}
-                  </motion.div>
-                  <motion.h2
-                    className="text-4xl font-black text-gray-900 mb-6"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                  >
-                    Bölüm Açıklaması
-                  </motion.h2>
-                  <motion.p
-                    className="text-xl text-gray-700 leading-relaxed whitespace-pre-line max-w-4xl mx-auto"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 }}
-                  >
-                    {currentSection.description}
-                  </motion.p>
-                </div>
-                <motion.div
-                  className="mt-10 text-center"
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 }}
-                >
-                  <motion.button
-                    initial="initial"
-                    whileHover="hover"
-                    whileTap="tap"
-                    onClick={startSection}
-                    className="bg-gradient-to-r from-red-600 to-rose-600 text-white font-black py-5 px-10 text-xl rounded-2xl hover:shadow-2xl shadow-xl transition-all duration-300 relative overflow-hidden"
-                  >
-                    <motion.div
-                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                      animate={{ x: ["-100%", "100%"] }}
-                      transition={{
-                        duration: 2,
-                        repeat: Number.POSITIVE_INFINITY,
-                        repeatDelay: 3,
-                        ease: "easeInOut",
-                      }}
-                    />
-                    Bölümü Başlat
-                  </motion.button>
-                </motion.div>
-              </motion.div>
-            </main>
+              <main className="max-w-5xl mx-auto px-6 py-10">
+      <div className="bg-white border border-gray-200 rounded-xl p-10 shadow-lg">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center bg-gray-100 text-gray-700 px-6 py-3 rounded-lg text-lg font-semibold mb-6 border border-gray-200">
+            <Info className="w-6 h-6 mr-3" />
+            {currentSection.title}
+          </div>
+          <h2 className="text-4xl font-black text-gray-900 mb-6">Bölüm Açıklaması</h2>
+          <p className="text-xl text-gray-700 leading-relaxed whitespace-pre-line max-w-4xl mx-auto">
+            {currentSection.description}
+          </p>
+        </div>
+        <div className="mt-10 text-center">
+          <button
+            onClick={startSection}
+            className="bg-red-600 hover:bg-red-700 text-white font-semibold py-4 px-8 text-lg rounded-lg hover:shadow-lg shadow-md transition-all duration-200 cursor-pointer"
+          >
+            Bölümü Başlat
+          </button>
+        </div>
+      </div>
+    </main>
           </>
         )}
       </motion.div>
@@ -923,12 +852,12 @@ export default function ImprovedSpeakingTest() {
   if (!currentQuestion) {
     return (
       <motion.div
-        className="min-h-screen bg-gradient-to-br from-red-50 via-white to-rose-100 grid place-items-center"
+        className="min-h-screen grid place-items-center"
         initial="initial"
         animate="animate"
       >
         <motion.div
-          className="text-center space-y-6 bg-white/90 backdrop-blur-sm rounded-3xl p-8 shadow-2xl border border-red-100"
+          className="text-center space-y-6 bg-white/90 backdrop-blur-sm rounded-3xl p-8 shadow-2xl"
           whileHover={{ y: -5 }}
         >
           <motion.div
@@ -982,11 +911,61 @@ export default function ImprovedSpeakingTest() {
 
   return (
     <motion.div
-      className="min-h-screen bg-gradient-to-br from-red-50 via-white to-rose-100"
+      className="min-h-screen bg-amber-50 relative overflow-hidden"
       initial="initial"
       animate="animate"
     >
       <DisableKeys />
+      
+      {/* Header with section indicators */}
+      <div className="flex items-center justify-between p-6">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center">
+            <span className="text-white font-bold text-sm">iT</span>
+          </div>
+          <div className="text-gray-800 font-bold text-lg">
+            <div>iTeacher</div>
+            <div className="text-sm font-normal">Academy</div>
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          {/* Section 1.1 */}
+          <div className={`px-4 py-2 rounded-lg font-bold text-lg ${
+            currentSectionIndex === 0 && currentSubPartIndex === 0
+              ? "bg-green-600 text-white"
+              : "bg-yellow-500 text-black"
+          }`}>
+            1.1
+          </div>
+          {/* Section 1.2 */}
+          <div className={`px-4 py-2 rounded-lg font-bold text-lg ${
+            currentSectionIndex === 0 && currentSubPartIndex === 1
+              ? "bg-green-600 text-white"
+              : "bg-yellow-500 text-black"
+          }`}>
+            1.2
+          </div>
+          {/* Section 2 */}
+          <div className={`px-4 py-2 rounded-lg font-bold text-lg ${
+            currentSectionIndex === 1
+              ? "bg-green-600 text-white"
+              : "bg-yellow-500 text-black"
+          }`}>
+            2
+          </div>
+          {/* Section 3 */}
+          <div className={`px-4 py-2 rounded-lg font-bold text-lg ${
+            currentSectionIndex === 2
+              ? "bg-green-600 text-white"
+              : "bg-yellow-500 text-black"
+          }`}>
+            3
+          </div>
+        </div>
+
+        <div className="bg-green-600 text-white px-4 py-2 rounded font-bold">MULTI LEVEL</div>
+      </div>
       {!isExamMode && (
         <motion.header
           className="sticky top-0 z-10 bg-white/80 backdrop-blur-xl border-b border-red-100 shadow-sm"
@@ -1025,7 +1004,7 @@ export default function ImprovedSpeakingTest() {
                 </div>
               </motion.div>
               <motion.div
-                className="text-lg font-bold text-gray-700 bg-red-50 px-4 py-2 rounded-xl"
+                className="text-lg font-bold text-gray-700 px-4 py-2 rounded-xl"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.3 }}
@@ -1044,298 +1023,177 @@ export default function ImprovedSpeakingTest() {
           </div>
         </motion.header>
       )}
-
-      <main className="max-w-6xl mx-auto px-6 py-8">
+         {/* question rendering part */}
+      <main className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] px-8">
         <AnimatePresence mode="wait">
           <motion.div
             key={`${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            className="bg-white/90 backdrop-blur-sm border border-red-100 rounded-3xl p-10 shadow-2xl"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="mb-16"
           >
-            {currentSection?.subParts?.[currentSubPartIndex]?.images?.length ? (
-              <motion.div
-                className="mb-8"
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ delay: 0.2, duration: 0.5 }}
-              >
-                <motion.img
-                  src={currentSection.subParts[currentSubPartIndex].images[0] || "/placeholder.svg"}
-                  alt="Test görseli"
-                  className="max-w-lg mx-auto rounded-2xl shadow-xl border border-red-100"
-                  whileHover={{ scale: 1.02, y: -5 }}
-                  transition={{ duration: 0.3 }}
-                />
-              </motion.div>
-            ) : null}
-
-            <motion.div
-              className="text-center mb-10"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-            >
-              <motion.h2
-                className="text-4xl font-black text-gray-900 leading-relaxed max-w-4xl mx-auto"
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.4, duration: 0.5 }}
-              >
-                {currentQuestion.questionText}
-              </motion.h2>
-            </motion.div>
-
-            <motion.div
-              className="mt-10 flex flex-col items-center gap-8"
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-            >
-              <motion.div
-                className="bg-gradient-to-r from-red-50 to-rose-50 rounded-3xl p-6 shadow-inner"
-                whileHover={{ scale: 1.02 }}
-                transition={{ duration: 0.2 }}
-              >
-                <Waveform active={isRecording && !isPaused} />
-              </motion.div>
-
-              <div className="flex items-center justify-center gap-4 w-full">
-                {!isRecording ? (
-                  <motion.button
-                    initial="initial"
-                    whileHover="hover"
-                    whileTap="tap"
-                    onClick={startRecording}
-                    disabled={isPlayingInstructions}
-                    className="flex items-center justify-center w-[88%] gap-3 bg-gradient-to-r from-red-600 to-rose-600 text-white px-8 py-4 rounded-2xl text-xl font-black hover:shadow-2xl disabled:opacity-50 shadow-xl transition-all duration-300 relative overflow-hidden"
-                  >
-                    <motion.div
-                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                      animate={{ x: ["-100%", "100%"] }}
-                      transition={{
-                        duration: 2,
-                        repeat: Number.POSITIVE_INFINITY,
-                        repeatDelay: 4,
-                        ease: "easeInOut",
-                      }}
-                    />
-                    <Mic className="w-6 h-6" /> Kaydı Başlat
-                  </motion.button>
-                ) : (
-                  <motion.div
-                    className="flex items-center justify-center gap-4 w-full"
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                  >
-                    {isPaused && (
-                      <motion.button
-                        initial="initial"
-                        whileHover="hover"
-                        whileTap="tap"
-                        onClick={resumeRecording}
-                        className="flex items-center gap-2 bg-white border-2 border-green-600 text-green-700 px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-green-50 transition-all duration-200"
-                      >
-                        <Play className="w-5 h-5" /> Devam Et
-                      </motion.button>
-                    )}
-                    <motion.button
-                      initial="initial"
-                      whileHover="hover"
-                      whileTap="tap"
-                      onClick={stopRecording}
-                      className="flex items-center justify-center w-[88%] gap-2 bg-gray-900 text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-gray-800 transition-all duration-200"
-                    >
-                      <Square className="w-5 h-5" /> Bitir
-                    </motion.button>
-                  </motion.div>
-                )}
-              </div>
-
-              <motion.div
-                className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6, staggerChildren: 0.1 }}
-              >
-                <motion.div
-                  className="bg-gradient-to-br from-red-600 to-rose-600 text-white rounded-2xl p-6 text-center shadow-xl"
-                  whileHover={{ scale: 1.02, y: -5 }}
-                >
-                  <Clock className="w-8 h-8 mx-auto mb-3" />
-                  <div className="text-sm font-bold tracking-wide opacity-90">Kalan Süre</div>
-                  <motion.div
-                    className="text-3xl font-black"
-                    animate={
-                      timeLeft <= 10
-                        ? {
-                          scale: [1, 1.1, 1],
-                          color: ["#ffffff", "#fef2f2", "#ffffff"],
-                        }
-                        : {}
+            <div className="flex items-center bg-green-600 rounded-l-2xl rounded-r-2xl overflow-hidden shadow-lg">
+              <div className="bg-green-600 text-white px-8 py-4 font-bold text-2xl">QUESTION</div>
+              <div className="bg-yellow-500 text-black px-6 py-4 font-bold text-3xl">
+                {(() => {
+                  if (!testData) return 1;
+                  let questionNumber = 1;
+                  for (let i = 0; i < currentSectionIndex; i++) {
+                    const section = testData.sections[i];
+                    if (section.subParts?.length) {
+                      for (let j = 0; j < section.subParts.length; j++) {
+                        questionNumber += section.subParts[j].questions.length;
+                      }
+                    } else {
+                      questionNumber += section.questions?.length || 0;
                     }
-                    transition={{ duration: 1, repeat: timeLeft <= 10 ? Number.POSITIVE_INFINITY : 0 }}
-                  >
-                    {formatTime(timeLeft)}
-                  </motion.div>
-                </motion.div>
-
-                <motion.div
-                  className="bg-white border-2 border-red-200 rounded-2xl p-6 text-center shadow-lg"
-                  whileHover={{ scale: 1.02, y: -5 }}
-                >
-                  <motion.div
-                    className="w-8 h-8 mx-auto mb-3 bg-gradient-to-br from-red-600 to-rose-600 rounded-full"
-                    animate={isRecording ? { scale: [1, 1.2, 1] } : {}}
-                    transition={{ duration: 1, repeat: isRecording ? Number.POSITIVE_INFINITY : 0 }}
-                  />
-                  <div className="text-sm font-bold text-gray-700">Kayıt Süresi</div>
-                  <div className="text-3xl font-black text-red-600">{formatTime(recordingTime)}</div>
-                </motion.div>
-
-                <motion.div
-                  className="bg-white border-2 border-red-200 rounded-2xl p-6 text-center shadow-lg"
-                  whileHover={{ scale: 1.02, y: -5 }}
-                >
-                  <div className="w-8 h-8 mx-auto mb-3">
-                    {isRecording ? (
-                      <motion.div
-                        className="w-8 h-8 bg-gradient-to-br from-red-600 to-rose-600 rounded-full shadow-lg"
-                        animate={{
-                          scale: [1, 1.3, 1],
-                          opacity: [1, 0.7, 1],
-                        }}
-                        transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY }}
-                      />
-                    ) : recordings.has(currentQuestion.id) ? (
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ type: "spring", stiffness: 200 }}
-                      >
-                        <CheckCircle className="w-8 h-8 text-green-600" />
-                      </motion.div>
-                    ) : (
-                      <div className="w-8 h-8 border-3 border-red-600 rounded-full" />
-                    )}
-                  </div>
-                  <div className="text-sm font-bold text-gray-700">Durum</div>
-                  <motion.div
-                    className="text-lg font-black"
-                    key={
-                      isPlayingInstructions
-                        ? "instruction"
-                        : isRecording
-                          ? "recording"
-                          : recordings.has(currentQuestion.id)
-                            ? "done"
-                            : "ready"
+                  }
+                  if (currentSection?.subParts?.length) {
+                    for (let j = 0; j < currentSubPartIndex; j++) {
+                      questionNumber += currentSection.subParts[j].questions.length;
                     }
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                  >
-                    {isPlayingInstructions ? (
-                      <span className="text-blue-600">TALİMAT</span>
-                    ) : isRecording ? (
-                      <span className="text-red-600">KAYIT</span>
-                    ) : recordings.has(currentQuestion.id) ? (
-                      <span className="text-green-600">TAMAM</span>
-                    ) : (
-                      <span className="text-gray-700">HAZIR</span>
-                    )}
-                  </motion.div>
-                </motion.div>
-              </motion.div>
-
-              {isPlayingInstructions && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                  className="text-center bg-blue-50 rounded-2xl p-6 border border-blue-200 w-[88%]"
-                >
-                  <motion.div
-                    animate={{
-                      scale: [1, 1.1, 1],
-                      rotate: [0, 5, -5, 0],
-                    }}
-                    transition={{ duration: 1.5, repeat: Number.POSITIVE_INFINITY }}
-                  >
-                    <Volume2 className="w-12 h-12 text-blue-600 mx-auto mb-3" />
-                  </motion.div>
-                  <motion.p
-                    className="text-blue-800 font-bold text-lg"
-                    animate={{ opacity: [1, 0.7, 1] }}
-                    transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}
-                  >
-                    Talimat dinleniyor...
-                  </motion.p>
-                </motion.div>
-              )}
-            </motion.div>
-
-            <motion.div
-              className="mt-10 flex justify-between items-center"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7 }}
-            >
-              {!isExamMode && (
-                <motion.button
-                  initial="initial"
-                  whileHover="hover"
-                  whileTap="tap"
-                  onClick={() => setIsTestComplete(true)}
-                  className="px-6 py-3 text-sm bg-white border-2 border-red-200 text-red-600 rounded-xl hover:bg-red-50 font-bold transition-all duration-200"
-                >
-                  Test Bitir (Debug)
-                </motion.button>
-              )}
-
-              <div className="text-center">
-                {recordings.has(currentQuestion.id) && (
-                  <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-3 rounded-2xl text-sm font-black shadow-lg"
-                  >
-                    <motion.span animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 0.5 }}>
-                      ✓ Cevaplandı
-                    </motion.span>
-                  </motion.div>
-                )}
+                  }
+                  return questionNumber + currentQuestionIndex;
+                })()}
               </div>
-
-              <motion.button
-                initial="initial"
-                whileHover="hover"
-                whileTap="tap"
-                onClick={nextQuestion}
-                disabled={isRecording || isPlayingInstructions}
-                className={`px-8 py-4 text-lg font-black rounded-2xl shadow-lg transition-all duration-200 relative overflow-hidden ${isRecording || isPlayingInstructions
-                  ? "bg-red-600 text-white opacity-50 cursor-not-allowed"
-                  : "bg-gradient-to-r from-red-600 to-rose-600 text-white hover:shadow-2xl"
-                  }`}
-              >
-                {!(isRecording || isPlayingInstructions) && (
-                  <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                    animate={{ x: ["-100%", "100%"] }}
-                    transition={{
-                      duration: 2,
-                      repeat: Number.POSITIVE_INFINITY,
-                      repeatDelay: 3,
-                      ease: "easeInOut",
-                    }}
-                  />
-                )}
-                Sonraki →
-              </motion.button>
-            </motion.div>
+            </div>
           </motion.div>
         </AnimatePresence>
+
+        {currentSection?.subParts?.[currentSubPartIndex]?.images?.length ? (
+          <motion.div 
+            className="mb-8" 
+            initial={{ opacity: 0, scale: 0.95 }} 
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            <motion.img
+              src={currentSection.subParts[currentSubPartIndex].images[0] || "/placeholder.svg"}
+              alt="Question image"
+              className="max-w-lg mx-auto rounded-2xl shadow-xl"
+              whileHover={{ scale: 1.02 }}
+              transition={{ duration: 0.3 }}
+            />
+          </motion.div>
+        ) : null}
+
+        {isPlayingInstructions ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-20"
+          >
+            <h2 className="text-4xl font-medium text-blue-600 text-center leading-relaxed max-w-4xl">
+              Playing instructions...
+            </h2>
+            <p className="text-xl text-gray-600 text-center mt-4">
+              Please wait while the instructions are playing
+            </p>
+          </motion.div>
+        ) : (
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentQuestion?.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ delay: 0.2 }}
+              className="mb-20"
+            >
+              <h2 className="text-4xl font-medium text-gray-800 text-center leading-relaxed max-w-4xl">
+                {currentQuestion?.questionText}
+              </h2>
+            </motion.div>
+          </AnimatePresence>
+        )}
+
+        <motion.button
+          onClick={isRecording ? stopRecording : startRecording}
+          disabled={isPlayingInstructions}
+          className={`w-32 h-32 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 ${
+            isRecording
+              ? "bg-red-600 hover:bg-red-700"
+              : "bg-gradient-to-br from-red-400 to-red-600 hover:from-red-500 hover:to-red-700"
+          } ${isPlayingInstructions ? "opacity-50 cursor-not-allowed" : ""}`}
+          whileHover={{ scale: isPlayingInstructions ? 1 : 1.05 }}
+          whileTap={{ scale: isPlayingInstructions ? 1 : 0.95 }}
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.4, type: "spring", stiffness: 200 }}
+        >
+          <motion.div
+            animate={isRecording ? { scale: [1, 1.2, 1] } : {}}
+            transition={{ duration: 1, repeat: isRecording ? Number.POSITIVE_INFINITY : 0 }}
+          >
+            <Mic className="w-12 h-12 text-white" />
+          </motion.div>
+        </motion.button>
+
+        {currentQuestion && recordings.has(currentQuestion.id) && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-4 flex items-center gap-2 text-green-600 font-bold"
+          >
+            <CheckCircle className="w-5 h-5" />
+            <span>Recorded</span>
+          </motion.div>
+        )}
+
+        {isPlayingInstructions && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-4 flex items-center gap-2 text-blue-600 font-bold"
+          >
+            <Volume2 className="w-5 h-5" />
+            <span>Playing instructions...</span>
+          </motion.div>
+        )}
+
+        <div className="flex items-center gap-4 mt-8">
+          {!isExamMode && (
+            <motion.button
+              initial="initial"
+              whileHover="hover"
+              whileTap="tap"
+              onClick={() => setIsTestComplete(true)}
+              className="px-6 py-3 text-sm bg-white border-2 border-red-200 text-red-600 rounded-xl hover:bg-red-50 font-bold transition-all duration-200"
+            >
+              Test Bitir (Debug)
+            </motion.button>
+          )}
+
+          <motion.button
+            onClick={nextQuestion}
+            disabled={isRecording || isPlayingInstructions}
+            className={`px-8 py-3 rounded-xl font-bold transition-all duration-200 ${
+              isRecording || isPlayingInstructions
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : "bg-red-600 text-white hover:bg-red-700 shadow-lg"
+            }`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6 }}
+          >
+            Sonraki →
+          </motion.button>
+        </div>
       </main>
+
+      <motion.div
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.6 }}
+        className="absolute bottom-8 right-8"
+      >
+        <div className="text-6xl font-bold text-gray-800 font-mono">{formatTime(timeLeft)}</div>
+        {isRecording && (
+          <div className="text-2xl font-bold text-red-600 font-mono text-center mt-2">
+            REC: {formatTime(recordingTime)}
+          </div>
+        )}
+      </motion.div>
     </motion.div>
   )
 }

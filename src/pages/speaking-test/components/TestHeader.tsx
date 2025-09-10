@@ -5,10 +5,11 @@ interface TestHeaderProps {
   testTitle: string;
   currentQuestion: number;
   totalQuestions: number;
+  currentSubPart?: string;
   onBack: () => void;
 }
 
-const TestHeader = ({ testTitle, currentQuestion, totalQuestions, onBack }: TestHeaderProps) => {
+const TestHeader = ({ testTitle, currentQuestion, totalQuestions, currentSubPart, onBack }: TestHeaderProps) => {
   return (
     <div className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-40 shadow-sm w-full">
       <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
@@ -30,7 +31,7 @@ const TestHeader = ({ testTitle, currentQuestion, totalQuestions, onBack }: Test
             </div>
           </div>
           <div className="bg-red-50 text-red-700 px-3 py-1.5 rounded-full text-sm font-semibold">
-            Soru {currentQuestion} / {totalQuestions}
+            {currentSubPart ? `${currentSubPart} - Soru ${currentQuestion}` : `Soru ${currentQuestion} / ${totalQuestions}`}
           </div>
         </div>
       </div>

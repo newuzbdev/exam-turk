@@ -1,10 +1,12 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Section } from "@/pages/speaking-test/SpeakingTest";
-import { Timer } from "@/components/speaking-test/Timer";
-import CountdownTimer from "@/components/speaking-test/CountdownTimer";
-import { Pause, Play, Square } from "lucide-react";
+"use client"
+
+import { motion } from "framer-motion"
+import { Mic, Check, Pause, Play, Square } from "lucide-react"
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import type { Section } from "@/pages/speaking-test/SpeakingTest"
+import { Timer } from "@/components/speaking-test/Timer"
+import CountdownTimer from "@/components/speaking-test/CountdownTimer"
 
 interface Part3SectionProps {
   section: Section;
@@ -23,6 +25,19 @@ interface Part3SectionProps {
   recordingDuration: number;
 }
 
+interface Point {
+  id: string;
+  sectionId: string;
+  type: "ADVANTAGE" | "DISADVANTAGE";
+  order: number;
+  example: Array<{
+    order: number;
+    text: string;
+  }>;
+  createdAt: string;
+  updatedAt: string;
+}
+
 const Part3Section = ({
   section,
   sectionIndex,
@@ -36,16 +51,15 @@ const Part3Section = ({
   isPaused,
   hasRecording,
   answeredQuestions,
+  recordingDuration,
 }: Part3SectionProps) => {
   // State for tracking current phase and timing
   const [currentPhase, setCurrentPhase] = useState<"instructions" | "preparation" | "speaking">("instructions");
-  const [timeLeft, setTimeLeft] = useState(60); // 1 minute preparation
-  console.log(timeLeft)
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [showCountdown, setShowCountdown] = useState(false);
   const [countdownSeconds, setCountdownSeconds] = useState(5);
 
-  // Get the first question for recording
+  // Get the first question for recording (just for recording purposes, we show debate topic)
   const getQuestion = () => {
     if (section.subParts.length > 0 && section.subParts[0].questions.length > 0) {
       return section.subParts[0].questions[0];
@@ -59,10 +73,24 @@ const Part3Section = ({
     return question ? answeredQuestions.has(question.id) : false;
   };
 
+  // Get advantages and disadvantages from points
+  const getAdvantages = () => {
+    if (!section.points) return [];
+    return section.points
+      .filter((point: Point) => point.type === "ADVANTAGE")
+      .sort((a, b) => a.order - b.order);
+  };
+
+  const getDisadvantages = () => {
+    if (!section.points) return [];
+    return section.points
+      .filter((point: Point) => point.type === "DISADVANTAGE")
+      .sort((a, b) => a.order - b.order);
+  };
+
   // Handle start preparation
   const handleStartPreparation = () => {
     setCurrentPhase("preparation");
-    setTimeLeft(60); // 1 minute
     setIsTimerRunning(true);
   };
 
@@ -77,7 +105,6 @@ const Part3Section = ({
   const handleCountdownComplete = () => {
     setShowCountdown(false);
     setCurrentPhase("speaking");
-    setTimeLeft(120); // 2 minutes
     setIsTimerRunning(true);
     
     // Start recording
@@ -104,7 +131,8 @@ const Part3Section = ({
     }
   };
 
-  const question = getQuestion();
+  const advantages = getAdvantages();
+  const disadvantages = getDisadvantages();
 
   // If we're showing countdown, render it
   if (showCountdown) {
@@ -116,6 +144,349 @@ const Part3Section = ({
         type="answer"
         part={3}
       />
+    );
+  }
+
+  // Preparation Phase - Show debate interface with timer
+  if (currentPhase === "preparation") {
+    return (
+      <div className="min-h-screen bg-amber-50 p-6">
+        <div className="max-w-6xl mx-auto">
+          {/* Header */}
+          <motion.div
+            className="flex items-center justify-between mb-8"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center">
+                <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                  <div className="w-4 h-4 bg-green-600 rounded-full"></div>
+                </div>
+              </div>
+              <div>
+                <div className="font-bold text-lg text-gray-800">iTeacher</div>
+                <div className="text-sm text-gray-600">Academy</div>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <motion.div
+                className="w-16 h-16 bg-green-600 rounded-lg flex items-center justify-center"
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.1, duration: 0.3 }}
+              >
+                <Check className="w-8 h-8 text-white" />
+              </motion.div>
+              <motion.div
+                className="w-16 h-16 bg-green-600 rounded-lg flex items-center justify-center"
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.2, duration: 0.3 }}
+              >
+                <Check className="w-8 h-8 text-white" />
+              </motion.div>
+              <motion.div
+                className="w-16 h-16 bg-green-600 rounded-lg flex items-center justify-center"
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.3, duration: 0.3 }}
+              >
+                <span className="text-white text-2xl font-bold">3</span>
+              </motion.div>
+            </div>
+
+            <div className="text-2xl font-bold">
+              <span className="text-green-600">MULTI</span>
+              <span className="text-xs bg-green-600 text-white px-1 ml-1 rounded">TEACH</span>
+            </div>
+          </motion.div>
+
+          {/* Debate Table */}
+          <motion.div
+            className="bg-amber-100 border-2 border-gray-400 rounded-lg overflow-hidden mb-8"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
+            <div className="bg-amber-200 border-b-2 border-gray-400 p-4 text-center">
+              <h1 className="text-xl font-semibold text-gray-800 text-balance">
+                {section.title === "Section 3" ? "Üniversite diplomanın iş alımda zorunlu olması" : section.title}
+              </h1>
+            </div>
+
+            <div className="grid grid-cols-2">
+              {/* For Column */}
+              <motion.div
+                className="p-6 border-r-2 border-gray-400"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.4 }}
+              >
+                <h2 className="text-lg font-semibold text-gray-700 mb-4">Lehte</h2>
+                <ul className="space-y-4 text-gray-700">
+                  {advantages.map((advantage, index) => (
+                    <li key={advantage.id} className="flex items-start gap-2">
+                      <div className="w-2 h-2 bg-gray-600 rounded-full mt-2 flex-shrink-0"></div>
+                      <span className="leading-relaxed">
+                        {advantage.example?.[0]?.text || `Avantaj ${index + 1}`}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </motion.div>
+
+              {/* Against Column */}
+              <motion.div
+                className="p-6"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.4 }}
+              >
+                <h2 className="text-lg font-semibold text-gray-700 mb-4">Aleyhte</h2>
+                <ul className="space-y-4 text-gray-700">
+                  {disadvantages.map((disadvantage, index) => (
+                    <li key={disadvantage.id} className="flex items-start gap-2">
+                      <div className="w-2 h-2 bg-gray-600 rounded-full mt-2 flex-shrink-0"></div>
+                      <span className="leading-relaxed">
+                        {disadvantage.example?.[0]?.text || `Dezavantaj ${index + 1}`}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </motion.div>
+            </div>
+          </motion.div>
+
+          {/* Timer and Controls */}
+          <motion.div
+            className="text-center"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.6 }}
+          >
+            <Timer
+              duration={60}
+              onComplete={handleTimerComplete}
+              autoStart={true}
+              showControls={true}
+              type="preparation"
+              part={3}
+              isActive={isTimerRunning}
+            />
+            
+            <div className="mt-4">
+              <Button 
+                onClick={() => {
+                  setIsTimerRunning(false);
+                  setCurrentPhase("instructions");
+                }}
+                variant="outline"
+              >
+                İptal
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
+  // Speaking Phase
+  if (currentPhase === "speaking") {
+    return (
+      <div className="min-h-screen bg-amber-50 p-6">
+        <div className="max-w-6xl mx-auto">
+          {/* Header */}
+          <motion.div
+            className="flex items-center justify-between mb-8"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center">
+                <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                  <div className="w-4 h-4 bg-green-600 rounded-full"></div>
+                </div>
+              </div>
+              <div>
+                <div className="font-bold text-lg text-gray-800">iTeacher</div>
+                <div className="text-sm text-gray-600">Academy</div>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <div className="w-16 h-16 bg-green-600 rounded-lg flex items-center justify-center">
+                <Check className="w-8 h-8 text-white" />
+              </div>
+              <div className="w-16 h-16 bg-green-600 rounded-lg flex items-center justify-center">
+                <Check className="w-8 h-8 text-white" />
+              </div>
+              <div className="w-16 h-16 bg-green-600 rounded-lg flex items-center justify-center">
+                <span className="text-white text-2xl font-bold">3</span>
+              </div>
+            </div>
+
+            <div className="text-2xl font-bold">
+              <span className="text-green-600">MULTI</span>
+              <span className="text-xs bg-green-600 text-white px-1 ml-1 rounded">TEACH</span>
+            </div>
+          </motion.div>
+
+          {/* Debate Table */}
+          <motion.div
+            className="bg-amber-100 border-2 border-gray-400 rounded-lg overflow-hidden mb-8"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
+            <div className="bg-amber-200 border-b-2 border-gray-400 p-4 text-center">
+              <h1 className="text-xl font-semibold text-gray-800 text-balance">
+                {section.title === "Section 3" ? "Üniversite diplomanın iş alımda zorunlu olması" : section.title}
+              </h1>
+            </div>
+
+            <div className="grid grid-cols-2">
+              {/* For Column */}
+              <motion.div
+                className="p-6 border-r-2 border-gray-400"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.4 }}
+              >
+                <h2 className="text-lg font-semibold text-gray-700 mb-4">Lehte</h2>
+                <ul className="space-y-4 text-gray-700">
+                  {advantages.map((advantage, index) => (
+                    <li key={advantage.id} className="flex items-start gap-2">
+                      <div className="w-2 h-2 bg-gray-600 rounded-full mt-2 flex-shrink-0"></div>
+                      <span className="leading-relaxed">
+                        {advantage.example?.[0]?.text || `Avantaj ${index + 1}`}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </motion.div>
+
+              {/* Against Column */}
+              <motion.div
+                className="p-6"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.4 }}
+              >
+                <h2 className="text-lg font-semibold text-gray-700 mb-4">Aleyhte</h2>
+                <ul className="space-y-4 text-gray-700">
+                  {disadvantages.map((disadvantage, index) => (
+                    <li key={disadvantage.id} className="flex items-start gap-2">
+                      <div className="w-2 h-2 bg-gray-600 rounded-full mt-2 flex-shrink-0"></div>
+                      <span className="leading-relaxed">
+                        {disadvantage.example?.[0]?.text || `Dezavantaj ${index + 1}`}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </motion.div>
+            </div>
+          </motion.div>
+
+          {/* Bottom Controls */}
+          <motion.div
+            className="flex items-center justify-center gap-8"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.6 }}
+          >
+            {/* Recording Controls */}
+            <div className="flex gap-4">
+              {isRecording && !isPaused && (
+                <>
+                  <Button
+                    onClick={onPause}
+                    className="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 flex items-center gap-2 rounded-xl"
+                  >
+                    <Pause className="h-5 w-5" />
+                    Duraklat
+                  </Button>
+                  <Button
+                    onClick={onStop}
+                    className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 flex items-center gap-2 rounded-xl"
+                  >
+                    <Square className="h-5 w-5" />
+                    Durdur
+                  </Button>
+                </>
+              )}
+              
+              {isRecording && isPaused && (
+                <>
+                  <Button
+                    onClick={onResume}
+                    className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 flex items-center gap-2 rounded-xl"
+                  >
+                    <Play className="h-5 w-5" />
+                    Devam Et
+                  </Button>
+                  <Button
+                    onClick={onStop}
+                    className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 flex items-center gap-2 rounded-xl"
+                  >
+                    <Square className="h-5 w-5" />
+                    Durdur
+                  </Button>
+                </>
+              )}
+            </div>
+
+            {/* Microphone */}
+            <motion.div
+              className={`w-16 h-16 rounded-full flex items-center justify-center cursor-pointer ${
+                isRecording
+                  ? isPaused
+                    ? "bg-yellow-500"
+                    : "bg-red-500 animate-pulse"
+                  : hasRecording
+                    ? "bg-green-500"
+                    : "bg-red-500"
+              }`}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Mic className="w-8 h-8 text-white" />
+            </motion.div>
+
+            {/* Timer */}
+            <Timer
+              duration={120}
+              onComplete={handleTimerComplete}
+              autoStart={true}
+              showControls={false}
+              type="answer"
+              part={3}
+              isActive={isTimerRunning}
+            />
+          </motion.div>
+
+          {/* Recording Status */}
+          {isRecording && (
+            <motion.div
+              className="text-center mt-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            >
+              <div className="inline-flex items-center gap-2 text-red-600 text-lg font-medium">
+                <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse"></div>
+                {isPaused ? "Kayıt duraklatıldı" : "Kayıt yapılıyor..."}
+              </div>
+              <div className="mt-2 text-lg font-semibold text-gray-800">
+                Süre: {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
+              </div>
+            </motion.div>
+          )}
+        </div>
+      </div>
     );
   }
 
@@ -133,239 +504,138 @@ const Part3Section = ({
         </div>
       </div>
 
-      {/* Topic Display */}
-      {section.content && (
-        <Card className="border border-gray-200">
-          <CardHeader>
-            <CardTitle className="text-base">Konu</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-              <p className="text-base font-medium text-gray-900">{section.content}</p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Pros/Cons Table */}
-      {section.subParts.length > 0 && section.subParts[0].questions.length > 0 && (
-        <Card className="border border-gray-200">
-          <CardHeader>
-            <CardTitle className="text-base">Argümanlar</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-green-50 p-3 rounded-lg border border-green-200">
-                <h3 className="text-sm font-semibold text-green-800 mb-2">Olumlu Argümanlar</h3>
-                <ul className="space-y-1.5">
-                  <li className="flex items-start">
-                    <span className="text-green-600 mr-1.5 mt-0.5">✓</span>
-                    <span className="text-green-700 text-sm">Öğrencilerin iletişim becerilerini geliştirir</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-green-600 mr-1.5 mt-0.5">✓</span>
-                    <span className="text-green-700 text-sm">Grup çalışması ile öğrenmeyi teşvik eder</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-green-600 mr-1.5 mt-0.5">✓</span>
-                    <span className="text-green-700 text-sm">Öğrencilerin özgüvenini artırır</span>
-                  </li>
-                </ul>
-              </div>
-              <div className="bg-red-50 p-3 rounded-lg border border-red-200">
-                <h3 className="text-sm font-semibold text-red-800 mb-2">Olumsuz Argümanlar</h3>
-                <ul className="space-y-1.5">
-                  <li className="flex items-start">
-                    <span className="text-red-600 mr-1.5 mt-0.5">✗</span>
-                    <span className="text-red-700 text-sm">Sınıf yönetimi zorlaşabilir</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-red-600 mr-1.5 mt-0.5">✗</span>
-                    <span className="text-red-700 text-sm">Bazı öğrenciler susturulabilir</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-red-600 mr-1.5 mt-0.5">✗</span>
-                    <span className="text-red-700 text-sm">Zaman yönetimi sorunları oluşabilir</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Phase-specific Content */}
+      {/* Instructions Phase */}
       {currentPhase === "instructions" && (
-        <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl p-8 border-2 border-purple-200 shadow-lg">
-          <div className="text-center mb-6">
-            <div className="w-20 h-20 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <h3 className="text-2xl font-bold text-purple-800 mb-4">Bölüm Talimatları</h3>
-          </div>
-          
-          <div className="bg-white rounded-lg p-6 mb-6 border border-purple-200">
-            <p className="text-xl leading-relaxed text-gray-800">
-              Sınavci Part 2 konusuyla ilgili daha soyut ve genel sorular soracak. 
-              Bu sorular daha geniş konular ve fikirler hakkında tartışmanıza olanak tanır.
-              <br /><br />
-              <strong>IELTS Formatı:</strong> Detaylı, analitik cevaplar verin (45-60 saniye).
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
-              <h4 className="text-lg font-semibold text-orange-800 mb-2">⏱️ Zamanlar</h4>
-              <ul className="text-orange-700 space-y-1">
-                <li>• Hazırlık: 1 dakika</li>
-                <li>• Konuşma: 2 dakika</li>
-              </ul>
-            </div>
-            <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-              <h4 className="text-lg font-semibold text-green-800 mb-2">📝 Yapıcınız</h4>
-              <ul className="text-green-700 space-y-1">
-                <li>• Argümanları inceleyin</li>
-                <li>• Dengeli görüş oluşturun</li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="text-center">
-            <button
-              onClick={handleStartPreparation}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-4 rounded-xl text-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+        <div className="min-h-screen bg-amber-50 p-6">
+          <div className="max-w-6xl mx-auto">
+            {/* Header */}
+            <motion.div
+              className="flex items-center justify-between mb-8"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
             >
-              Hazırım - Başlayalım! 🚀
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Preparation Phase */}
-      {currentPhase === "preparation" && (
-        <div className="space-y-4">
-          <Timer
-            duration={60}
-            onComplete={handleTimerComplete}
-            autoStart={true}
-            showControls={true}
-            type="preparation"
-            part={3}
-            isActive={isTimerRunning}
-          />
-          
-          <div className="text-center">
-            <Button 
-              onClick={() => {
-                setIsTimerRunning(false);
-                setCurrentPhase("instructions");
-              }}
-              variant="outline"
-              className="mr-2"
-            >
-              İptal
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Speaking Phase */}
-      {currentPhase === "speaking" && (
-        <div className="space-y-4">
-          <Timer
-            duration={120}
-            onComplete={handleTimerComplete}
-            autoStart={true}
-            showControls={false}
-            type="answer"
-            part={3}
-            isActive={isTimerRunning}
-          />
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>Konuşma</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {question ? (
-                <div className="space-y-4">
-                  <p className="text-4xl font-bold text-gray-900 mb-6 text-center leading-relaxed">
-                    Yukarıdaki konu hakkında dengeli bir görüş sunun.
-                  </p>
-                  
-                  <div className="flex justify-center gap-3">
-                    {!hasRecording && !isRecording && (
-                      <Button
-                        onClick={() => question && onRecord(question.id)}
-                        className="bg-red-600 hover:bg-red-700 text-white px-6 py-3"
-                        disabled={true}
-                      >
-                        Kayıt Devam Ediyor...
-                      </Button>
-                    )}
-                    
-                    {isRecording && !isPaused && (
-                      <>
-                        <Button
-                          onClick={onPause}
-                          className="bg-yellow-500 hover:bg-yellow-600 text-white px-8 py-4 text-lg flex items-center gap-3 rounded-xl shadow-md hover:shadow-lg transition-all"
-                        >
-                          <Pause className="h-6 w-6" />
-                          Duraklat
-                        </Button>
-                        <Button
-                          onClick={onStop}
-                          className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 text-lg flex items-center gap-3 rounded-xl shadow-md hover:shadow-lg transition-all"
-                        >
-                          <Square className="h-6 w-6" />
-                          Durdur
-                        </Button>
-                      </>
-                    )}
-                    
-                    {isRecording && isPaused && (
-                      <>
-                        <Button
-                          onClick={onResume}
-                          className="bg-green-600 hover:bg-green-700 text-white px-8 py-4 text-lg flex items-center gap-3 rounded-xl shadow-md hover:shadow-lg transition-all"
-                        >
-                          <Play className="h-6 w-6" />
-                          Devam Et
-                        </Button>
-                        <Button
-                          onClick={onStop}
-                          className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 text-lg flex items-center gap-3 rounded-xl shadow-md hover:shadow-lg transition-all"
-                        >
-                          <Square className="h-6 w-6" />
-                          Durdur
-                        </Button>
-                      </>
-                    )}
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center">
+                  <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                    <div className="w-4 h-4 bg-green-600 rounded-full"></div>
                   </div>
-                  
-                  {isRecording && (
-                    <div className="text-center">
-                      <div className="inline-flex items-center gap-2 text-red-600">
-                        <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse"></div>
-                        {isPaused ? "Kayıt duraklatıldı" : "Kayıt yapılıyor..."}
-                      </div>
-                    </div>
-                  )}
                 </div>
-              ) : (
-                <div className="text-center py-4">
-                  <p className="text-gray-500">Soru bulunamadı</p>
+                <div>
+                  <div className="font-bold text-lg text-gray-800">iTeacher</div>
+                  <div className="text-sm text-gray-600">Academy</div>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </div>
+
+              <div className="flex gap-2">
+                <motion.div
+                  className="w-16 h-16 bg-green-600 rounded-lg flex items-center justify-center"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.1, duration: 0.3 }}
+                >
+                  <Check className="w-8 h-8 text-white" />
+                </motion.div>
+                <motion.div
+                  className="w-16 h-16 bg-green-600 rounded-lg flex items-center justify-center"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.2, duration: 0.3 }}
+                >
+                  <Check className="w-8 h-8 text-white" />
+                </motion.div>
+                <motion.div
+                  className="w-16 h-16 bg-green-600 rounded-lg flex items-center justify-center"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.3, duration: 0.3 }}
+                >
+                  <span className="text-white text-2xl font-bold">3</span>
+                </motion.div>
+              </div>
+
+              <div className="text-2xl font-bold">
+                <span className="text-green-600">MULTI</span>
+                <span className="text-xs bg-green-600 text-white px-1 ml-1 rounded">TEACH</span>
+              </div>
+            </motion.div>
+
+            {/* Debate Table */}
+            <motion.div
+              className="bg-amber-100 border-2 border-gray-400 rounded-lg overflow-hidden mb-8"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
+              <div className="bg-amber-200 border-b-2 border-gray-400 p-4 text-center">
+                <h1 className="text-xl font-semibold text-gray-800 text-balance">
+                  {section.title === "Section 3" ? "Üniversite diplomanın iş alımda zorunlu olması" : section.title}
+                </h1>
+              </div>
+
+              <div className="grid grid-cols-2">
+                {/* For Column */}
+                <motion.div
+                  className="p-6 border-r-2 border-gray-400"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.6, delay: 0.4 }}
+                >
+                  <h2 className="text-lg font-semibold text-gray-700 mb-4">Lehte</h2>
+                  <ul className="space-y-4 text-gray-700">
+                    {advantages.map((advantage, index) => (
+                      <li key={advantage.id} className="flex items-start gap-2">
+                        <div className="w-2 h-2 bg-gray-600 rounded-full mt-2 flex-shrink-0"></div>
+                        <span className="leading-relaxed">
+                          {advantage.example?.[0]?.text || `Avantaj ${index + 1}`}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </motion.div>
+
+                {/* Against Column */}
+                <motion.div
+                  className="p-6"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.6, delay: 0.4 }}
+                >
+                  <h2 className="text-lg font-semibold text-gray-700 mb-4">Aleyhte</h2>
+                  <ul className="space-y-4 text-gray-700">
+                    {disadvantages.map((disadvantage, index) => (
+                      <li key={disadvantage.id} className="flex items-start gap-2">
+                        <div className="w-2 h-2 bg-gray-600 rounded-full mt-2 flex-shrink-0"></div>
+                        <span className="leading-relaxed">
+                          {disadvantage.example?.[0]?.text || `Dezavantaj ${index + 1}`}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </motion.div>
+              </div>
+            </motion.div>
+
+            {/* Start Button */}
+            <motion.div
+              className="text-center"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.6 }}
+            >
+              <button
+                onClick={handleStartPreparation}
+                className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-4 rounded-xl text-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+              >
+                Hazırım - Başlayalım! 🚀
+              </button>
+            </motion.div>
+          </div>
         </div>
       )}
 
       {/* Completion */}
-      {isQuestionAnswered() && currentPhase === "speaking" && !isTimerRunning && (
+      {isQuestionAnswered() && !isTimerRunning && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
           <h3 className="text-lg font-semibold text-green-800 mb-2">
             Bölüm Tamamlandı!
@@ -377,7 +647,7 @@ const Part3Section = ({
             onClick={onNextSection}
             className="bg-green-600 hover:bg-green-700 text-white"
           >
-            Sonraki Bölüm
+            Testi Tamamla
           </Button>
         </div>
       )}

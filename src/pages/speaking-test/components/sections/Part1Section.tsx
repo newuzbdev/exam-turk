@@ -45,20 +45,20 @@ const Part1Section = ({
   const [answerTimer, setAnswerTimer] = useState(0);
   const [isAnswerTimerActive, setIsAnswerTimerActive] = useState(false);
 
-  // Part 1 Answer Timer - 45 seconds max (IELTS standard)
+  // Part 1 Answer Timer - 30 seconds max
   useEffect(() => {
     let interval: NodeJS.Timeout;
     
-    if (isAnswerTimerActive && answerTimer < 45) {
+    if (isAnswerTimerActive && answerTimer < 30) {
       interval = setInterval(() => {
         setAnswerTimer(prev => {
-          if (prev >= 44) {
+          if (prev >= 29) {
             setIsAnswerTimerActive(false);
-            // Auto-stop recording after 45 seconds
+            // Auto-stop recording after 30 seconds
             if (isRecording) {
               onStop();
             }
-            return 45;
+            return 30;
           }
           return prev + 1;
         });
@@ -159,10 +159,10 @@ const Part1Section = ({
     }
   };
 
-  // Handle countdown during preparation - No preparation for Part 1 (IELTS standard)
+  // Handle countdown during preparation - 5 seconds preparation for Part 1
   const handlePreparationCountdown = () => {
     setShowCountdown(true);
-    setCountdownSeconds(3); // Part 1: Just 3 seconds to get ready (no preparation time in real IELTS)
+    setCountdownSeconds(5); // Part 1: 5 seconds preparation time
   };
 
   // Get progress percentage
@@ -243,8 +243,8 @@ const Part1Section = ({
             <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
               <h4 className="text-lg font-semibold text-blue-800 mb-2">⏱️ Zamanlar</h4>
               <ul className="text-blue-700 space-y-1">
-                <li>• Düşünme: Yok (IELTS standart)</li>
-                <li>• Cevap: 30-45 saniye</li>
+                <li>• Tayyorlanish: 5 saniye</li>
+                <li>• Cevap: 30 saniye</li>
               </ul>
             </div>
             <div className="bg-green-50 rounded-lg p-4 border border-green-200">
@@ -362,7 +362,7 @@ const Part1Section = ({
             </div>
             <div className="text-right">
               <div className="text-2xl font-bold text-green-600 font-mono">
-                {45 - answerTimer}s
+                {30 - answerTimer}s
               </div>
               <div className="text-xs text-green-700">kalan süre</div>
             </div>
@@ -370,7 +370,7 @@ const Part1Section = ({
           <div className="w-full bg-green-200 rounded-full h-2 mt-2">
             <div
               className="bg-green-500 h-2 rounded-full transition-all duration-1000"
-              style={{ width: `${(answerTimer / 45) * 100}%` }}
+              style={{ width: `${(answerTimer / 30) * 100}%` }}
             ></div>
           </div>
         </div>

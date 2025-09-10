@@ -35,6 +35,19 @@ interface SubPart {
   updatedAt: string;
 }
 
+interface Point {
+  id: string;
+  sectionId: string;
+  type: "ADVANTAGE" | "DISADVANTAGE";
+  order: number;
+  example: Array<{
+    order: number;
+    text: string;
+  }>;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Section {
   id: string;
   speakingTestId: string;
@@ -46,6 +59,7 @@ export interface Section {
   type: string;
   subParts: SubPart[];
   questions: Question[];
+  points?: Point[];
   isDeleted: boolean;
   createdAt: string;
   updatedAt: string;
@@ -351,6 +365,59 @@ const SpeakingTest = () => {
     };
   };
 
+  // Get current sub-part and question info for header
+  const getCurrentQuestionInfo = () => {
+    if (!testData || !testData.sections[testState.currentSectionIndex]) {
+      return { currentQuestion: 1, currentSubPart: undefined };
+    }
+
+    const currentSection = testData.sections[testState.currentSectionIndex];
+    
+    // For Part 1, calculate question number within current sub-part
+    if (currentSection.type === "PART1") {
+      const subParts = currentSection.subParts;
+      if (subParts.length === 0) {
+        return { currentQuestion: 1, currentSubPart: undefined };
+      }
+
+      // Get answered questions for each sub-part
+      const firstSubPartAnswered = subParts[0]?.questions.filter(q => testState.answeredQuestions.has(q.id)).length || 0;
+      const firstSubPartTotal = subParts[0]?.questions.length || 0;
+      
+      let secondSubPartAnswered = 0;
+      if (subParts.length > 1) {
+        secondSubPartAnswered = subParts[1]?.questions.filter(q => testState.answeredQuestions.has(q.id)).length || 0;
+      }
+      
+      // If first sub-part is completed or we have answers in second sub-part, we're in 1.2
+      if (firstSubPartAnswered === firstSubPartTotal && firstSubPartTotal > 0 && subParts.length > 1) {
+        // We're in the second sub-part (1.2)
+        return { 
+          currentQuestion: secondSubPartAnswered + 1, 
+          currentSubPart: subParts[1]?.label || '1.2' 
+        };
+      } else if (secondSubPartAnswered > 0 && subParts.length > 1) {
+        // We have answered questions in second sub-part, so we're in 1.2
+        return { 
+          currentQuestion: secondSubPartAnswered + 1, 
+          currentSubPart: subParts[1]?.label || '1.2' 
+        };
+      } else {
+        // We're in the first sub-part (1.1)
+        return { 
+          currentQuestion: firstSubPartAnswered + 1, 
+          currentSubPart: subParts[0]?.label || '1.1' 
+        };
+      }
+    }
+    
+    // For other parts, use global numbering
+    return { 
+      currentQuestion: testState.answeredQuestions.size + 1, 
+      currentSubPart: undefined 
+    };
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -425,13 +492,15 @@ const SpeakingTest = () => {
   }
 
   const progressInfo = getProgressInfo();
+  const questionInfo = getCurrentQuestionInfo();
 
   return (
     <div className="min-h-screen bg-white">
       <TestHeader
         testTitle={testData.title}
-        currentQuestion={progressInfo.answered + 1}
+        currentQuestion={questionInfo.currentQuestion}
         totalQuestions={progressInfo.total}
+        currentSubPart={questionInfo.currentSubPart}
         onBack={() => navigate("/test")}
       />
 

@@ -45,12 +45,18 @@ const Part2Section = ({
   const [showCountdown, setShowCountdown] = useState(false);
   const [countdownSeconds, setCountdownSeconds] = useState(5);
 
+  // Get all questions for Part 2
+  const getAllQuestions = () => {
+    if (section.subParts.length > 0 && section.subParts[0].questions.length > 0) {
+      return section.subParts[0].questions;
+    }
+    return [];
+  };
+
   // Get the first question for recording
   const getQuestion = () => {
-    if (section.subParts.length > 0 && section.subParts[0].questions.length > 0) {
-      return section.subParts[0].questions[0];
-    }
-    return null;
+    const questions = getAllQuestions();
+    return questions.length > 0 ? questions[0] : null;
   };
 
   // Check if question is answered
@@ -250,11 +256,25 @@ const Part2Section = ({
               <CardTitle>Konuşma</CardTitle>
             </CardHeader>
             <CardContent>
-              {question ? (
+              {getAllQuestions().length > 0 ? (
                 <div className="space-y-4">
-                  <p className="text-4xl font-bold text-gray-900 mb-6 text-center leading-relaxed">
-                    {question.questionText}
-                  </p>
+                  <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">Bütün Soruları Cevaplayın</h3>
+                    <div className="space-y-4">
+                      {getAllQuestions().map((q, index) => (
+                        <div key={q.id} className="bg-white rounded-lg p-4 border border-gray-300">
+                          <div className="flex items-start gap-3">
+                            <div className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center flex-shrink-0 font-bold">
+                              {index + 1}
+                            </div>
+                            <p className="text-lg text-gray-900 leading-relaxed">
+                              {q.questionText}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                   
                   <div className="flex justify-center gap-3">
                     {!hasRecording && !isRecording && (

@@ -162,7 +162,7 @@ const Navbar = () => {
             </div>
           </div>
 
-          <div className="flex items-center space-x-2 sm:space-x-4">
+          <div className="flex items-center space-x-2 sm:space-x-4">  
             {/* Authentication buttons or user info */}
             {isAuthenticated && user ? (
               <div className="hidden sm:flex items-center space-x-2">
@@ -172,6 +172,9 @@ const Navbar = () => {
                       variant="ghost"
                       className="flex items-center space-x-2 text-sm   cursor-pointer bg-white"
                     >
+                       <span className="text-gray-900 font-medium cursor-pointer">
+                        {user.name}
+                      </span>
                       <Avatar className="w-8 h-8">
                         <AvatarImage
                           src={user.avatarUrl || user.avatar}
@@ -184,12 +187,10 @@ const Navbar = () => {
                             .join("")}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-gray-900 font-medium cursor-pointer">
-                        {user.name}
-                      </span>
+                     
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuContent align="end" className="w-48 bg-white border-none ">
                     <DropdownMenuItem asChild>
                       <NavLink
                         to="/profile"
@@ -233,25 +234,6 @@ const Navbar = () => {
               <span className="font-semibold text-yellow-600">15U</span>
             </div>
 
-            <div className="hidden sm:flex space-x-2">
-              <a
-                href="https://t.me/new_uzb_dev"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <img
-                  src="https://cdn-icons-png.flaticon.com/512/2111/2111646.png"
-                  alt="Telegram"
-                  className="w-6 h-6 sm:w-8 sm:h-8 cursor-pointer"
-                />
-              </a>
-              <img
-                src="https://cdn-icons-png.flaticon.com/512/3955/3955024.png"
-                alt="Instagram"
-                className="w-6 h-6 sm:w-8 sm:h-8 cursor-pointer"
-              />
-            </div>
-
             <div className="lg:hidden">
               <Sheet>
                 <SheetTrigger asChild>
@@ -272,6 +254,9 @@ const Navbar = () => {
                     {isAuthenticated && user ? (
                       <div className="px-3 py-2 border-b">
                         <div className="flex items-center space-x-2 mb-3">
+                        <span className="text-gray-900 font-medium">
+                            {user.name}
+                          </span>
                           <Avatar className="w-8 h-8">
                             <AvatarImage
                               src={user.avatarUrl || user.avatar}
@@ -284,9 +269,7 @@ const Navbar = () => {
                                 .join("")}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="text-gray-900 font-medium">
-                            {user.name}
-                          </span>
+                          
                         </div>
                         <div className="space-y-2">
                           <NavLink

@@ -6,7 +6,7 @@ import axiosPrivate from "@/config/api"
 import { toast } from "sonner"
 import { MicrophoneCheck } from "./components/MicrophoneCheck"
 import ResultModal from "./components/ResultModal"
-import DisableKeys from "./components/DisableKeys"
+// import DisableKeys from "./components/DisableKeys"
 
 interface Question {
   id: string
@@ -915,7 +915,7 @@ export default function ImprovedSpeakingTest() {
       initial="initial"
       animate="animate"
     >
-      <DisableKeys />
+      {/* <DisableKeys /> */}
       
       {/* Header with section indicators */}
       <div className="flex items-center justify-between p-6">

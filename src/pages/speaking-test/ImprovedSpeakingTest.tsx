@@ -95,23 +95,18 @@ export default function ImprovedSpeakingTest() {
   const [isRecording, setIsRecording] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
   const [isPlayingInstructions, setIsPlayingInstructions] = useState(false)
+  // speaking/answer timer (seconds)
   const [timeLeft, setTimeLeft] = useState(RECORD_SECONDS_PER_QUESTION)
   const [recordingTime, setRecordingTime] = useState(0)
   const [recordings, setRecordings] = useState<Map<string, Recording>>(new Map())
+  // preparation timer (seconds)
+  const [prepSeconds, setPrepSeconds] = useState<number>(0)
+  const [isPrepRunning, setIsPrepRunning] = useState(false)
 
 
 
 
 
-  useEffect(() => {
-    let interval: NodeJS.Timeout
-    if (timeLeft > 0) {
-      interval = setInterval(() => {
-        setTimeLeft((prev) => prev - 1)
-      }, 1000)
-    }
-    return () => clearInterval(interval)
-  }, [timeLeft])
 
   // refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -122,8 +117,10 @@ export default function ImprovedSpeakingTest() {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const startSoundRef = useRef<HTMLAudioElement | null>(null)
   const endSoundRef = useRef<HTMLAudioElement | null>(null)
+  const prepIntervalRef = useRef<number | null>(null)
   const [result, setResult] = useState<any | null>(null)
   const [showResult, setShowResult] = useState(false)
+  const autoAdvanceRef = useRef<string | null>(null)
 
   useEffect(() => {
     ; (async () => {
@@ -175,6 +172,10 @@ export default function ImprovedSpeakingTest() {
       window.clearInterval(elapsedRef.current)
       elapsedRef.current = null
     }
+    if (prepIntervalRef.current) {
+      window.clearInterval(prepIntervalRef.current)
+      prepIntervalRef.current = null
+    }
   }
 
   const stopAllAudio = () => {
@@ -222,6 +223,19 @@ export default function ImprovedSpeakingTest() {
     }
     return sec.questions?.[currentQuestionIndex] ?? null
   })()
+
+  // Auto-advance guard: avoid showing empty question frames in PART1 transitions
+  useEffect(() => {
+    if (currentSection?.type === "PART1" && !currentQuestion) {
+      const key = `${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
+      if (autoAdvanceRef.current !== key) {
+        autoAdvanceRef.current = key
+        nextQuestion()
+      }
+    } else {
+      autoAdvanceRef.current = null
+    }
+  }, [currentSection?.type, currentQuestion, currentSectionIndex, currentSubPartIndex, currentQuestionIndex])
 
   // timers while recording
   useEffect(() => {
@@ -320,14 +334,14 @@ export default function ImprovedSpeakingTest() {
   }
 
   // recording controls
-  const startRecording = async () => {
+  const startRecording = async (durationSeconds: number = RECORD_SECONDS_PER_QUESTION) => {
     try {
       if (isPlayingInstructions) {
         toast.error("Talimat bitmeden kayıt başlatılamaz")
         return
       }
       playSound("start")
-      setTimeLeft(RECORD_SECONDS_PER_QUESTION)
+      setTimeLeft(durationSeconds)
       setRecordingTime(0)
       setIsPaused(false)
 
@@ -347,18 +361,20 @@ export default function ImprovedSpeakingTest() {
         clearTimers()
         const blob = new Blob(chunksRef.current, { type: supported ? "audio/webm;codecs=opus" : "audio/webm" })
         chunksRef.current = []
-        if (currentQuestion) {
-          const duration = await getBlobDuration(blob)
-          const rec: Recording = { blob, duration, questionId: currentQuestion.id }
-          setRecordings((prev) => new Map(prev).set(currentQuestion.id, rec))
-          // smooth auto-next
-          setTimeout(() => nextQuestion(), 900)
+        const duration = await getBlobDuration(blob)
+        // Use question id when available, else fallback to section id
+        const key = currentQuestion?.id || currentSection?.id || `${currentSectionIndex}`
+        const rec: Recording = { blob, duration, questionId: key }
+        setRecordings((prev) => new Map(prev).set(key, rec))
+        // smooth auto-next when there is a question-based flow
+        if (currentQuestion && currentSection?.type === "PART1") {
+        setTimeout(() => nextQuestion(), 900)
         }
         cleanupMedia()
-      }
-
-      mr.start(100)
-      setIsRecording(true)
+        }
+        
+        mr.start(100)
+        setIsRecording(true)
     } catch (e) {
       console.error("start error", e)
       toast.error("Mikrofon erişimi reddedildi veya başlatılamadı")
@@ -403,38 +419,48 @@ export default function ImprovedSpeakingTest() {
     if (!testData || !currentSection) return
 
     if (currentSection.subParts?.length) {
-      const sp = currentSection.subParts[currentSubPartIndex]
-      const qLen = sp?.questions?.length ?? 0
-      if (currentQuestionIndex < qLen - 1) {
-        setCurrentQuestionIndex((i) => i + 1)
-        resetPerQuestionState()
-        return
-      }
-      if (currentSubPartIndex < currentSection.subParts.length - 1) {
-        setCurrentSubPartIndex((i) => i + 1)
+    const sp = currentSection.subParts[currentSubPartIndex]
+    const qLen = sp?.questions?.length ?? 0
+    if (currentQuestionIndex < qLen - 1) {
+    setCurrentQuestionIndex((i) => i + 1)
+    resetPerQuestionState()
+    // auto begin preparation for PART1
+      if (currentSection.type === "PART1") {
+        setTimeout(() => beginPreparation(5, () => startRecording(30)), 0)
+    }
+    return
+    }
+    if (currentSubPartIndex < currentSection.subParts.length - 1) {
+      setCurrentSubPartIndex((i) => i + 1)
         setCurrentQuestionIndex(0)
-        resetPerQuestionState()
-        return
-      }
+      resetPerQuestionState()
+      if (currentSection.type === "PART1") {
+      setTimeout(() => beginPreparation(5, () => startRecording(30)), 0)
+    }
+    return
+    }
     } else {
-      const qLen = currentSection.questions?.length ?? 0
+        const qLen = currentSection.questions?.length ?? 0
       if (currentQuestionIndex < qLen - 1) {
-        setCurrentQuestionIndex((i) => i + 1)
-        resetPerQuestionState()
-        return
+      setCurrentQuestionIndex((i) => i + 1)
+      resetPerQuestionState()
+      if (currentSection.type === "PART1") {
+        setTimeout(() => beginPreparation(5, () => startRecording(30)), 0)
       }
+        return
+    }
     }
 
-    if (currentSectionIndex < (testData.sections?.length ?? 0) - 1) {
-      setCurrentSectionIndex((i) => i + 1)
-      setCurrentSubPartIndex(0)
-      setCurrentQuestionIndex(0)
-      setShowSectionDescription(true)
-      resetPerQuestionState()
-    } else {
-      // test finished: clean up locks & fullscreen
-      setIsTestComplete(true)
-    }
+      if (currentSectionIndex < (testData.sections?.length ?? 0) - 1) {
+        setCurrentSectionIndex((i) => i + 1)
+        setCurrentSubPartIndex(0)
+        setCurrentQuestionIndex(0)
+        setShowSectionDescription(true)
+        resetPerQuestionState()
+      } else {
+        // test finished: clean up locks & fullscreen
+        setIsTestComplete(true)
+      }
   }
 
   // when test becomes complete, remove navigation lock & exit fullscreen & remove body class
@@ -445,6 +471,32 @@ export default function ImprovedSpeakingTest() {
       setIsExamMode(false)
     }
   }, [isTestComplete])
+
+  // preparation helper
+  const beginPreparation = (seconds: number, after?: () => void) => {
+    if (prepIntervalRef.current) {
+      window.clearInterval(prepIntervalRef.current)
+      prepIntervalRef.current = null
+    }
+    setPrepSeconds(seconds)
+    setIsPrepRunning(true)
+    // beep to indicate prep timer start
+    playSound("start")
+    prepIntervalRef.current = window.setInterval(() => {
+      setPrepSeconds((prev) => {
+        if (prev <= 1) {
+          if (prepIntervalRef.current) {
+            window.clearInterval(prepIntervalRef.current)
+            prepIntervalRef.current = null
+          }
+          setIsPrepRunning(false)
+          after && after()
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+  }
 
   const startSection = () => {
     if (!testData) return
@@ -463,8 +515,18 @@ export default function ImprovedSpeakingTest() {
     resetPerQuestionState()
 
     const src = sectionAudios[section.order]
+    const handleAfterInstructions = () => {
+      if (section.type === "PART1") {
+        beginPreparation(5, () => startRecording(30))
+      } else if (section.type === "PART2" || section.type === "PART3") {
+        beginPreparation(60, () => startRecording(120))
+      } else {
+        startRecording()
+      }
+    }
+
     if (!src) {
-      startRecording()
+      handleAfterInstructions()
       return
     }
 
@@ -473,7 +535,7 @@ export default function ImprovedSpeakingTest() {
     setIsPlayingInstructions(true)
     audio.onended = () => {
       setIsPlayingInstructions(false)
-      setTimeout(() => !isRecording && startRecording(), 700)
+      setTimeout(() => !isRecording && handleAfterInstructions(), 500)
     }
     audio.onerror = () => {
       setIsPlayingInstructions(false)
@@ -821,8 +883,8 @@ export default function ImprovedSpeakingTest() {
                 </div>
               </motion.header>
             )}
-              <main className="max-w-5xl mx-auto px-6 py-10">
-      <div className="bg-white border border-gray-200 rounded-xl p-10 shadow-lg">
+              <main className="max-w-5xl mx-auto px-6 py-10 min-h-[calc(100vh-120px)] flex items-center justify-center">
+      <div className="bg-white border border-gray-200 rounded-xl p-10 shadow-lg w-full max-w-5xl">
         <div className="text-center mb-8">
           <div className="inline-flex items-center bg-gray-100 text-gray-700 px-6 py-3 rounded-lg text-lg font-semibold mb-6 border border-gray-200">
             <Info className="w-6 h-6 mr-3" />
@@ -849,59 +911,9 @@ export default function ImprovedSpeakingTest() {
     )
   }
 
-  if (!currentQuestion) {
-    return (
-      <motion.div
-        className="min-h-screen grid place-items-center"
-        initial="initial"
-        animate="animate"
-      >
-        <motion.div
-          className="text-center space-y-6 bg-white/90 backdrop-blur-sm rounded-3xl p-8 shadow-2xl"
-          whileHover={{ y: -5 }}
-        >
-          <motion.div
-            className="w-20 h-20 bg-gradient-to-br from-red-600 to-rose-600 rounded-3xl mx-auto grid place-items-center shadow-xl"
-            animate={{
-              rotate: [0, -10, 10, -10, 0],
-              scale: [1, 1.1, 1],
-            }}
-            transition={{
-              duration: 2,
-              repeat: Number.POSITIVE_INFINITY,
-              repeatDelay: 2,
-            }}
-          >
-            <span className="text-white text-3xl font-bold">!</span>
-          </motion.div>
-          <motion.h2
-            className="text-2xl font-black text-gray-900"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-          >
-            Soru Bulunamadı
-          </motion.h2>
-          <motion.p
-            className="text-gray-600 text-lg"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-          >
-            Bölüm {currentSectionIndex + 1}, Alt Bölüm {currentSubPartIndex + 1}, Soru {currentQuestionIndex + 1}
-          </motion.p>
-          <motion.button
-            initial="initial"
-            whileHover="hover"
-            whileTap="tap"
-            onClick={nextQuestion}
-            className="bg-gradient-to-r from-red-600 to-rose-600 text-white px-8 py-4 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all duration-200"
-          >
-            Sonraki Soruya Geç
-          </motion.button>
-        </motion.div>
-      </motion.div>
-    )
+  // Only guard when section itself is missing
+  if (!currentSection) {
+    return null
   }
 
   const totalQuestionsInSection = currentSection?.subParts?.length
@@ -1033,31 +1045,14 @@ export default function ImprovedSpeakingTest() {
             exit={{ opacity: 0, y: 20 }}
             className="mb-16"
           >
-            <div className="flex items-center bg-green-600 rounded-l-2xl rounded-r-2xl overflow-hidden shadow-lg">
-              <div className="bg-green-600 text-white px-8 py-4 font-bold text-2xl">QUESTION</div>
-              <div className="bg-yellow-500 text-black px-6 py-4 font-bold text-3xl">
-                {(() => {
-                  if (!testData) return 1;
-                  let questionNumber = 1;
-                  for (let i = 0; i < currentSectionIndex; i++) {
-                    const section = testData.sections[i];
-                    if (section.subParts?.length) {
-                      for (let j = 0; j < section.subParts.length; j++) {
-                        questionNumber += section.subParts[j].questions.length;
-                      }
-                    } else {
-                      questionNumber += section.questions?.length || 0;
-                    }
-                  }
-                  if (currentSection?.subParts?.length) {
-                    for (let j = 0; j < currentSubPartIndex; j++) {
-                      questionNumber += currentSection.subParts[j].questions.length;
-                    }
-                  }
-                  return questionNumber + currentQuestionIndex;
-                })()}
+            {currentSection?.type !== "PART2" && (
+              <div className="flex items-center bg-green-600 rounded-l-2xl rounded-r-2xl overflow-hidden shadow-lg">
+                <div className="bg-green-600 text-white px-8 py-4 font-bold text-2xl">QUESTION</div>
+                <div className="bg-yellow-500 text-black px-6 py-4 font-bold text-3xl">
+                  {currentQuestionIndex + 1}
+                </div>
               </div>
-            </div>
+            )}
           </motion.div>
         </AnimatePresence>
 
@@ -1077,59 +1072,89 @@ export default function ImprovedSpeakingTest() {
           </motion.div>
         ) : null}
 
-        {isPlayingInstructions ? (
+        <AnimatePresence mode="wait">
           <motion.div
+            key={currentQuestion?.id || `${currentSection?.id}-content`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ delay: 0.2 }}
             className="mb-20"
           >
-            <h2 className="text-4xl font-medium text-blue-600 text-center leading-relaxed max-w-4xl">
-              Playing instructions...
-            </h2>
-            <p className="text-xl text-gray-600 text-center mt-4">
-              Please wait while the instructions are playing
-            </p>
-          </motion.div>
-        ) : (
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentQuestion?.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ delay: 0.2 }}
-              className="mb-20"
-            >
+            {currentSection?.type === "PART2" ? (
+              <div className="max-w-3xl mx-auto bg-white p-6 rounded-xl">
+                <ul className="list-disc list-inside space-y-3 text-black">
+                  {(currentSection?.subParts?.[currentSubPartIndex]?.questions || currentSection?.questions || []).map((q) => (
+                    <li key={q.id} className="text-xl leading-relaxed">
+                      {q.questionText}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : currentSection?.type === "PART3" ? (
+              <div className="max-w-4xl mx-auto bg-white p-6 rounded-xl">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="text-xl font-bold mb-3 text-gray-900">Lehler (Avantajlar)</h3>
+                    <ul className="list-disc list-inside space-y-2 text-black">
+                      {(currentSection as any)?.points?.filter((p: any) => p.type === 'ADVANTAGE')?.flatMap((p: any) => p.example || []).sort((a: any, b: any) => (a.order||0)-(b.order||0)).map((ex: any, idx: number) => (
+                        <li key={`adv-${idx}`}>{ex.text}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold mb-3 text-gray-900">Aleyhler (Dezavantajlar)</h3>
+                    <ul className="list-disc list-inside space-y-2 text-black">
+                      {(currentSection as any)?.points?.filter((p: any) => p.type === 'DISADVANTAGE')?.flatMap((p: any) => p.example || []).sort((a: any, b: any) => (a.order||0)-(b.order||0)).map((ex: any, idx: number) => (
+                        <li key={`dis-${idx}`}>{ex.text}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            ) : (
               <h2 className="text-4xl font-medium text-gray-800 text-center leading-relaxed max-w-4xl">
                 {currentQuestion?.questionText}
               </h2>
-            </motion.div>
-          </AnimatePresence>
-        )}
-
-        <motion.button
-          onClick={isRecording ? stopRecording : startRecording}
-          disabled={isPlayingInstructions}
-          className={`w-32 h-32 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 ${
-            isRecording
-              ? "bg-red-600 hover:bg-red-700"
-              : "bg-gradient-to-br from-red-400 to-red-600 hover:from-red-500 hover:to-red-700"
-          } ${isPlayingInstructions ? "opacity-50 cursor-not-allowed" : ""}`}
-          whileHover={{ scale: isPlayingInstructions ? 1 : 1.05 }}
-          whileTap={{ scale: isPlayingInstructions ? 1 : 0.95 }}
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.4, type: "spring", stiffness: 200 }}
-        >
-          <motion.div
-            animate={isRecording ? { scale: [1, 1.2, 1] } : {}}
-            transition={{ duration: 1, repeat: isRecording ? Number.POSITIVE_INFINITY : 0 }}
-          >
-            <Mic className="w-12 h-12 text-white" />
+            )}
           </motion.div>
-        </motion.button>
+        </AnimatePresence>
 
-        {currentQuestion && recordings.has(currentQuestion.id) && (
+        <div className="relative">
+          {isRecording && !isPaused && !isPlayingInstructions && !isPrepRunning && (
+            <>
+              <span className="absolute inset-0 w-40 h-40 -left-4 -top-4 rounded-full bg-red-400 opacity-30 animate-ping" style={{ animationDuration: '2.5s' }}></span>
+              <span className="absolute inset-0 w-48 h-48 -left-8 -top-8 rounded-full bg-red-500 opacity-20 animate-ping" style={{ animationDuration: '3s' }}></span>
+            </>
+          )}
+          <motion.button
+            onClick={() => {
+              if (isPlayingInstructions || isPrepRunning) return
+              if (isRecording) stopRecording()
+              else startRecording()
+            }}
+            disabled={isPlayingInstructions || isPrepRunning}
+            className={`w-32 h-32 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 ${
+              isRecording
+                ? "bg-red-600 hover:bg-red-700"
+                : "bg-gradient-to-br from-red-400 to-red-600 hover:from-red-500 hover:to-red-700"
+            } ${(isPlayingInstructions || isPrepRunning) ? "opacity-50 cursor-not-allowed" : ""}`}
+            whileHover={{ scale: (isPlayingInstructions || isPrepRunning) ? 1 : 1.05 }}
+            whileTap={{ scale: (isPlayingInstructions || isPrepRunning) ? 1 : 0.95 }}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.4, type: "spring", stiffness: 200 }}
+          >
+            <div>
+              <Mic className="w-12 h-12 text-white" />
+            </div>
+          </motion.button>
+        </div>
+
+        {(() => {
+          const key = currentQuestion?.id || currentSection?.id || `${currentSectionIndex}`
+          return recordings.has(key)
+        })() && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1166,9 +1191,9 @@ export default function ImprovedSpeakingTest() {
 
           <motion.button
             onClick={nextQuestion}
-            disabled={isRecording || isPlayingInstructions}
+            disabled={isRecording || isPlayingInstructions || isPrepRunning}
             className={`px-8 py-3 rounded-xl font-bold transition-all duration-200 ${
-              isRecording || isPlayingInstructions
+              (isRecording || isPlayingInstructions || isPrepRunning)
                 ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                 : "bg-red-600 text-white hover:bg-red-700 shadow-lg"
             }`}
@@ -1181,19 +1206,29 @@ export default function ImprovedSpeakingTest() {
         </div>
       </main>
 
-      <motion.div
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.6 }}
-        className="absolute bottom-8 right-8"
-      >
-        <div className="text-6xl font-bold text-gray-800 font-mono">{formatTime(timeLeft)}</div>
-        {isRecording && (
-          <div className="text-2xl font-bold text-red-600 font-mono text-center mt-2">
-            REC: {formatTime(recordingTime)}
+      {!isPlayingInstructions && (
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.6 }}
+          className="absolute bottom-8 right-8"
+        >
+          <div className="text-6xl font-bold text-gray-800 font-mono">
+            {isPrepRunning ? formatTime(prepSeconds) : formatTime(timeLeft)}
           </div>
+          {isPrepRunning ? (
+          <div className="text-2xl font-bold text-blue-600 font-mono text-center mt-2">
+              Hazırlık
+          </div>
+        ) : (
+          isRecording && (
+            <div className="text-2xl font-bold text-red-600 font-mono text-center mt-2">
+              REC: {formatTime(recordingTime)}
+            </div>
+          )
         )}
-      </motion.div>
+        </motion.div>
+      )}
     </motion.div>
   )
 }

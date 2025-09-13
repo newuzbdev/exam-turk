@@ -117,6 +117,7 @@ export default function ImprovedSpeakingTest() {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const startSoundRef = useRef<HTMLAudioElement | null>(null)
   const endSoundRef = useRef<HTMLAudioElement | null>(null)
+  const questionSoundRef = useRef<HTMLAudioElement | null>(null)
   const prepIntervalRef = useRef<number | null>(null)
   const [result, setResult] = useState<any | null>(null)
   const [showResult, setShowResult] = useState(false)
@@ -138,8 +139,12 @@ export default function ImprovedSpeakingTest() {
     startSoundRef.current = new Audio(
       "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmshBziI0vPXeCsFJG7C7+WQPQ0PVKzl7axeBg4+o+HzultYFjLK4vK0V",
     )
+    // Use a crisp, public-domain beep for end-of-prep cue
     endSoundRef.current = new Audio(
-      "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmshBziI0vPXeCsFJG7C7+WQPQ0PVKzl7axeBg4+o+HzultYFjLK4vK0V",
+      "https://actions.google.com/sounds/v1/alarms/beep_short.ogg"
+    )
+    questionSoundRef.current = new Audio(
+      "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAACAgICAf39/f39/f39/f39/f39/gICAf39/f39/f39/f39/f39/gICAf39/f39/f4CAgICAgH9/f39/f39/gICAf39/f39/f39/f39/f4CAgICAf39/f39/f39/"
     )
 
     return () => {
@@ -153,9 +158,9 @@ export default function ImprovedSpeakingTest() {
   }, [testId])
 
   // utils
-  const playSound = (type: "start" | "end") => {
+  const playSound = (type: "start" | "end" | "question") => {
     try {
-      const el = type === "start" ? startSoundRef.current : endSoundRef.current
+      const el = type === "start" ? startSoundRef.current : type === "end" ? endSoundRef.current : questionSoundRef.current
       if (el) {
         el.currentTime = 0
         el.play().catch(() => { })
@@ -236,6 +241,13 @@ export default function ImprovedSpeakingTest() {
       autoAdvanceRef.current = null
     }
   }, [currentSection?.type, currentQuestion, currentSectionIndex, currentSubPartIndex, currentQuestionIndex])
+
+  // Play a short chime when a new question becomes active (outside instructions)
+  useEffect(() => {
+    if (!showSectionDescription && currentSection && !isPlayingInstructions) {
+      playSound("question")
+    }
+  }, [currentSectionIndex, currentSubPartIndex, currentQuestionIndex, showSectionDescription, isPlayingInstructions])
 
   // timers while recording
   useEffect(() => {
@@ -334,9 +346,9 @@ export default function ImprovedSpeakingTest() {
   }
 
   // recording controls
-  const startRecording = async (durationSeconds?: number) => {
+  const startRecording = async (durationSeconds?: number, allowOverride: boolean = false) => {
     try {
-      if (isPlayingInstructions) {
+      if (isPlayingInstructions && !allowOverride) {
         toast.error("Talimat bitmeden kayıt başlatılamaz")
         return
       }
@@ -409,15 +421,12 @@ export default function ImprovedSpeakingTest() {
 
   const nextQuestion = (force: boolean = false) => {
     if (!force && audioRef.current && !audioRef.current.paused) {
-      toast.error("Ses talimatı bitmeden sonraki soruya geçemezsiniz")
       return
     }
     if (!force && isPlayingInstructions) {
-      toast.error("Ses talimatı bitmeden sonraki soruya geçemezsiniz")
       return
     }
     if (!force && isRecording) {
-      toast.error("Kayıt devam ederken sonraki soruya geçemezsiniz")
       return
     }
 
@@ -443,7 +452,7 @@ export default function ImprovedSpeakingTest() {
     resetPerQuestionState()
     // auto begin preparation for PART1
       if (currentSection.type === "PART1") {
-        setTimeout(() => beginPreparation(5, () => startRecording(30)), 0)
+        setTimeout(() => beginPreparation(5, () => startRecording(30, true)), 0)
     }
     return
     }
@@ -452,7 +461,7 @@ export default function ImprovedSpeakingTest() {
         setCurrentQuestionIndex(0)
       resetPerQuestionState()
       if (currentSection.type === "PART1") {
-      setTimeout(() => beginPreparation(5, () => startRecording(30)), 0)
+      setTimeout(() => beginPreparation(5, () => startRecording(30, true)), 0)
     }
     return
     }
@@ -462,7 +471,7 @@ export default function ImprovedSpeakingTest() {
       setCurrentQuestionIndex((i) => i + 1)
       resetPerQuestionState()
       if (currentSection.type === "PART1") {
-        setTimeout(() => beginPreparation(5, () => startRecording(30)), 0)
+        setTimeout(() => beginPreparation(5, () => startRecording(30, true)), 0)
       }
         return
     }
@@ -507,6 +516,8 @@ export default function ImprovedSpeakingTest() {
             prepIntervalRef.current = null
           }
           setIsPrepRunning(false)
+          // ensure instructions flag is off before auto-start
+          setIsPlayingInstructions(false)
           // beep to indicate prep end (start speaking)
           playSound("end")
           after && after()
@@ -521,11 +532,11 @@ export default function ImprovedSpeakingTest() {
     const section = currentSection
     if (!section) return
     if (section.type === "PART1") {
-      beginPreparation(5, () => startRecording(30))
+      beginPreparation(5, () => startRecording(30, true))
     } else if (section.type === "PART2" || section.type === "PART3") {
-      beginPreparation(60, () => startRecording(120))
+      beginPreparation(60, () => startRecording(120, true))
     } else {
-      startRecording()
+      startRecording(undefined, true)
     }
   }
 
@@ -544,6 +555,9 @@ export default function ImprovedSpeakingTest() {
 
     setShowSectionDescription(false)
     resetPerQuestionState()
+
+    // Play a chime indicating the test/section question flow is starting
+    playSound("question")
 
     const src = sectionAudios[section.order]
 

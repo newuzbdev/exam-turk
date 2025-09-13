@@ -5,7 +5,7 @@ import { Mic, ArrowLeft, CheckCircle, Info, Volume2 } from "lucide-react"
 import axiosPrivate from "@/config/api"
 import { toast } from "sonner"
 import { MicrophoneCheck } from "./components/MicrophoneCheck"
-import ResultModal from "./components/ResultModal"
+// import ResultModal from "./components/ResultModal"
 // import DisableKeys from "./components/DisableKeys"
 
 interface Question {
@@ -119,8 +119,6 @@ export default function ImprovedSpeakingTest() {
   const endSoundRef = useRef<HTMLAudioElement | null>(null)
   const questionSoundRef = useRef<HTMLAudioElement | null>(null)
   const prepIntervalRef = useRef<number | null>(null)
-  const [result, setResult] = useState<any | null>(null)
-  const [showResult, setShowResult] = useState(false)
   const autoAdvanceRef = useRef<string | null>(null)
 
   useEffect(() => {
@@ -385,7 +383,7 @@ export default function ImprovedSpeakingTest() {
         setRecordings((prev) => new Map(prev).set(key, rec))
         // smooth auto-next when there is a question-based flow
         if (currentQuestion && currentSection?.type === "PART1") {
-        setTimeout(() => nextQuestion(), 900)
+          setTimeout(() => nextQuestion(true), 900)
         }
         cleanupMedia()
         }
@@ -495,6 +493,11 @@ export default function ImprovedSpeakingTest() {
       removeNavigationLock()
       exitFullscreen().catch(() => { })
       setIsExamMode(false)
+      // auto-submit and navigate to results
+      if (!isSubmitting) {
+        setIsSubmitting(true)
+        submitTest()
+      }
     }
   }, [isTestComplete])
 
@@ -666,15 +669,16 @@ export default function ImprovedSpeakingTest() {
         parts,
       })
 
-      // --- Natijani saqlash va modalni ochish
-      setResult(res.data)
-      setShowResult(true)
-
+      // --- Navigate to results page like writing test
       toast.success("Test başarıyla gönderildi!")
-      // after successful submit, release locks & exit fullscreen
+      const submissionId = res.data?.id || res.data?.submissionId
       removeNavigationLock()
       exitFullscreen().catch(() => { })
       setIsExamMode(false)
+      if (submissionId) {
+        navigate(`/speaking-test/results/${submissionId}`)
+        return
+      }
     } catch (e) {
       console.error("submit error", e)
       toast.error("Test gönderilirken hata oluştu")
@@ -772,99 +776,16 @@ export default function ImprovedSpeakingTest() {
   }
 
   if (isTestComplete) {
-    if (result && showResult) {
-      return (
-        <motion.div
-          className="min-h-screen bg-gradient-to-br from-red-50 via-white to-rose-100 flex items-center justify-center p-4"
-          initial="initial"
-          animate="animate"
-        >
-          <ResultModal
-            isOpen={showResult}
-            onClose={() => {
-              setShowResult(false), navigate("/test")
-            }}
-            result={result}
-          />
-        </motion.div>
-      )
-    }
     return (
       <motion.div
-        className="min-h-screen bg-gradient-to-br from-red-50 via-white to-rose-100 flex items-center justify-center p-4"
+        className="min-h-screen flex items-center justify-center"
         initial="initial"
         animate="animate"
       >
-        <motion.div
-          className="max-w-md w-full text-center bg-white/90 backdrop-blur-sm border border-red-100 rounded-3xl p-10 shadow-2xl"
-          whileHover={{ y: -5 }}
-        >
-          <motion.div
-            className="w-24 h-24 bg-gradient-to-br from-red-600 to-rose-600 rounded-3xl grid place-items-center mx-auto mb-8 shadow-2xl shadow-red-200"
-            animate={{
-              scale: [1, 1.1, 1],
-              rotate: [0, 5, -5, 0],
-            }}
-            transition={{
-              duration: 2,
-              repeat: Number.POSITIVE_INFINITY,
-              repeatDelay: 1,
-            }}
-          >
-            <CheckCircle className="w-12 h-12 text-white" />
-          </motion.div>
-          <motion.h1
-            className="text-3xl font-black text-gray-900 mb-3"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            Test Tamamlandı!
-          </motion.h1>
-          <motion.p
-            className="text-gray-600 mb-8 text-lg"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            {recordings.size} soru cevaplanmıştır.
-          </motion.p>
-          <motion.div
-            className="space-y-4"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-          >
-            <motion.button
-              initial="initial"
-              whileHover="hover"
-              whileTap="tap"
-              onClick={submitTest}
-              disabled={isSubmitting}
-              className="w-full bg-gradient-to-r from-red-600 to-rose-600 text-white font-black py-4 px-6 text-lg rounded-xl hover:shadow-xl disabled:opacity-50 shadow-lg transition-all duration-200"
-            >
-              {isSubmitting ? (
-                <motion.span
-                  animate={{ opacity: [1, 0.5, 1] }}
-                  transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY }}
-                >
-                  Gönderiliyor...
-                </motion.span>
-              ) : (
-                "Testi Gönder"
-              )}
-            </motion.button>
-            <motion.button
-              initial="initial"
-              whileHover="hover"
-              whileTap="tap"
-              onClick={() => navigate("/test")}
-              className="w-full border-2 border-red-600 text-red-600 font-black py-4 px-6 text-lg rounded-xl hover:bg-red-600 hover:text-white transition-all duration-200"
-            >
-              Test Sayfasına Dön
-            </motion.button>
-          </motion.div>
-        </motion.div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto" />
+          <p className="mt-4 text-gray-700">Sonuç sayfasına yönlendiriliyor...</p>
+        </div>
       </motion.div>
     )
   }

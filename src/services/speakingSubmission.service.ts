@@ -84,15 +84,29 @@ export const speakingSubmissionService = {
   },
 
   /**
-   * Format test data for submission according to API requirements
-   * @param testData - The original test data
-   * @param answers - The user's answers mapped by question ID
-   * @returns Formatted submission data
-   */
-  formatSubmissionData: (
+  * Get a speaking submission by id
+  */
+  getById: async (id: string): Promise<any | null> => {
+  try {
+    const res = await axiosPrivate.get(`/api/speaking-submission/${id}`)
+     return res.data?.data || res.data || null
+  } catch (error: any) {
+    console.error('Failed to fetch speaking submission', error)
+     toast.error('Konuşma sonucu bulunamadı')
+      return null
+    }
+  },
+ 
+   /**
+    * Format test data for submission according to API requirements
+    * @param testData - The original test data
+    * @param answers - The user's answers mapped by question ID
+    * @returns Formatted submission data
+    */
+   formatSubmissionData: (
     testData: any, 
     answers: Record<string, string>
-  ): SpeakingSubmissionData => {
+   ): SpeakingSubmissionData => {
     const parts: PartSubmission[] = [];
 
     testData.sections.forEach((section: any) => {

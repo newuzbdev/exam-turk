@@ -132,7 +132,7 @@ export default function ResultModal({ isOpen, onClose, result }: ResultModalProp
                                     </motion.div>
 
                                     <motion.p className="text-gray-700 leading-relaxed whitespace-pre-line" >
-                                        {result.aiFeedback}
+                                        {result.aiFeedback?.trim() ? result.aiFeedback : "Yanıtlar eksik veya hiç yok. Sorulara hazırlık ve pratik yapmalısınız."}
                                     </motion.p>
                                 </div>
                             </motion.div>

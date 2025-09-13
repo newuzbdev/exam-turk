@@ -1160,7 +1160,7 @@ export default function ImprovedSpeakingTest() {
                 nextQuestion(true)
               }
             }}
-            className={`px-8 py-3 rounded-xl font-bold transition-all duration-200 bg-yellow-400 text-black hover:bg-yellow-500 shadow-lg`}
+            className={`px-8 py-3 rounded-xl cursor-pointer font-bold transition-all duration-200 bg-yellow-400 text-black hover:bg-yellow-500 shadow-lg`}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6 }}

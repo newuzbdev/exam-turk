@@ -313,8 +313,8 @@ const Part3Section = ({
                 </div>
               </div>
               <div>
-                <div className="font-bold text-lg text-gray-800">iTeacher</div>
-                <div className="text-sm text-gray-600">Academy</div>
+                 <div className="font-bold text-lg text-gray-800">Turkce test</div>
+                <div className="text-sm text-gray-600">Platform</div>
               </div>
             </div>
 
@@ -516,9 +516,9 @@ const Part3Section = ({
               transition={{ duration: 0.6 }}
             >
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center">
+                <div className="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center">
                   <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                    <div className="w-4 h-4 bg-green-600 rounded-full"></div>
+                    <div className="w-4 h-4 bg-red-600 rounded-full"></div>
                   </div>
                 </div>
                 <div>

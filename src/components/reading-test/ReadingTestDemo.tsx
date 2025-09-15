@@ -516,47 +516,50 @@ export default function ReadingPage({ testId, testData }: ReadingPageProps) {
       </header>
 
       <div className="flex max-w-7xl mx-auto ">
-        <div className="w-1/2 p-6 bg-white border-r-2 border-gray-100 !h-[740px]">
-          <div className="mb-8">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-semibold">
-                PART {currentPart + 1}
-              </div>
-            </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-3">
-              {currentPartData?.title || `READING PASSAGE ${currentPart + 1}`}
-            </h1>
-            {currentPartData?.description && (
-              <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
-                <p className="text-sm text-blue-800 leading-relaxed">
-                  {currentPartData.description}
-                </p>
-              </div>
-            )}
-          </div>
-
-          {currentSections.map((section, sectionIndex) => (
-            <div key={section.id || sectionIndex} className="mb-8">
-              <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-gray-900 border-b-2 border-red-200 pb-2">
-                  <HighlightableText text={section.title} />
-                </h2>
-                <div className="text-sm leading-7 text-gray-700 space-y-5">
-                  {section.content?.split("\n\n").map((paragraph, index) => (
-                    <p
-                      key={index}
-                      className="text-justify bg-gray-50 p-4 rounded-lg border-l-4 border-gray-300"
-                    >
-                      <span className="inline-block bg-red-600 text-white w-6 h-6 rounded-full text-center text-xs font-bold mr-3 leading-6">
-                        {String.fromCharCode(65 + index)}
-                      </span>
-                      {paragraph}
-                    </p>
-                  ))}
+        <div className="w-1/2 p-6 bg-white border-r-2 border-gray-100 ">
+          <div className="h-[700px] overflow-y-auto pr-4 pb-20 space-y-8">
+            <div className="mb-8">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-semibold">
+                  PART {currentPart + 1}
                 </div>
               </div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-3">
+                {currentPartData?.title || `READING PASSAGE ${currentPart + 1}`}
+              </h1>
+              {currentPartData?.description && (
+                <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
+                  <p className="text-sm text-blue-800 leading-relaxed">
+                    {currentPartData.description}
+                  </p>
+                </div>
+              )}
             </div>
-          ))}
+
+            {currentSections.map((section, sectionIndex) => (
+              <div key={section.id || sectionIndex} className="mb-8 ">
+                <div className="space-y-6">
+                  <h2 className="text-2xl font-bold text-gray-900 border-b-2 border-red-200 pb-2">
+                     {section.title}
+                  </h2>
+                  <div className="text-sm leading-7 text-gray-700 space-y-5">
+                    {section.content?.split("\n\n").map((paragraph, index) => (
+                      <p
+                        key={index}
+                        className="text-justify bg-gray-50 p-4 rounded-lg border-l-4 border-gray-300"
+                      >
+                        <span className="inline-block bg-red-600 text-white w-6 h-6 rounded-full text-center text-xs font-bold mr-3 leading-6">
+                          {String.fromCharCode(65 + index)}
+                        </span>
+                        <HighlightableText text={paragraph} />
+                        
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
 
           <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-red-100 shadow-lg z-30">
             <div className="max-w-7xl mx-auto px-6 py-4">

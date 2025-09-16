@@ -86,7 +86,7 @@ interface ListeningTestItem {
   parts: ListeningPart[];
 }
 
-const FILE_BASE = "https://api.turkcetest.uz/"
+const FILE_BASE = "https://api.turkcetest.uz/";
 const AUTO_SAVE_KEY = "listening_test_answers_v1";
 
 const formatTime = (seconds: number) => {
@@ -107,7 +107,7 @@ function getGlobalTokenFromAxios() {
     if (auth && typeof auth === "string" && auth.startsWith("Bearer ")) {
       return auth.slice("Bearer ".length);
     }
-  } catch { }
+  } catch {}
   return (
     localStorage.getItem("accessToken") ||
     localStorage.getItem("token") ||
@@ -254,7 +254,7 @@ export default function ListeningTestPage({
         AUTO_SAVE_KEY + (testId ? `_${testId}` : ""),
         JSON.stringify(answers)
       );
-    } catch { }
+    } catch {}
   }, [answers, testId]);
 
   useEffect(() => {
@@ -354,7 +354,7 @@ export default function ListeningTestPage({
       toast.success("Javoblaringiz yuborildi. Rahmat!");
       try {
         localStorage.removeItem(AUTO_SAVE_KEY + `_${testId}`);
-      } catch { }
+      } catch {}
       navigate(`/listening-test/results/${response.testResultId}`);
     } catch (err: any) {
       console.error("submit error", err);
@@ -432,9 +432,12 @@ export default function ListeningTestPage({
 
           <div className="flex-1">
             <div className="mb-3">
-              <p className="font-semibold text-gray-900 mb-2">
-                {q.text || q.content || "Savol"}
-              </p>
+              <div className="flex justify-start items-center gap-3 mb-3">
+                <p className="font-bold text-gray-900 mb-2">{q.text}</p>
+                <p className="font-medium text-gray-500 mb-2">
+                  {q.content ? q.content : ""}
+                </p>
+              </div>
 
               <div className="flex flex-wrap items-center gap-2">
                 <Badge>
@@ -491,10 +494,11 @@ export default function ListeningTestPage({
                   return (
                     <label
                       key={ans.id}
-                      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer border transition-all ${checked
-                        ? "bg-red-50 border-red-300"
-                        : "hover:bg-gray-50 border-gray-200"
-                        }`}
+                      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer border transition-all ${
+                        checked
+                          ? "bg-red-50 border-red-300"
+                          : "hover:bg-gray-50 border-gray-200"
+                      }`}
                     >
                       <input
                         type="checkbox"
@@ -519,17 +523,17 @@ export default function ListeningTestPage({
                 {(variants.length
                   ? variants
                   : [
-                    {
-                      id: `${q.id}-true`,
-                      answer: "TRUE",
-                      variantText: "True",
-                    },
-                    {
-                      id: `${q.id}-false`,
-                      answer: "FALSE",
-                      variantText: "False",
-                    },
-                  ]
+                      {
+                        id: `${q.id}-true`,
+                        answer: "TRUE",
+                        variantText: "True",
+                      },
+                      {
+                        id: `${q.id}-false`,
+                        answer: "FALSE",
+                        variantText: "False",
+                      },
+                    ]
                 ).map((ans) => (
                   <label
                     key={ans.id}
@@ -543,7 +547,7 @@ export default function ListeningTestPage({
                       onChange={(e) => handleChangeSingle(q.id, e.target.value)}
                       className="h-4 w-4 text-red-600"
                     />
-                    <span className="font-medium">{ans.variantText}</span>
+                    <span className="font-medium">{ans.answer}</span>
                   </label>
                 ))}
               </div>
@@ -557,10 +561,11 @@ export default function ListeningTestPage({
                   return (
                     <label
                       key={ans.id}
-                      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer border transition-all ${checked
-                        ? "bg-red-50 border-red-300"
-                        : "hover:bg-gray-50 border-gray-200"
-                        }`}
+                      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer border transition-all ${
+                        checked
+                          ? "bg-red-50 border-red-300"
+                          : "hover:bg-gray-50 border-gray-200"
+                      }`}
                     >
                       <input
                         type="checkbox"
@@ -579,8 +584,6 @@ export default function ListeningTestPage({
                 })}
               </div>
             )}
-
-
 
             {type === Q.TEXT_INPUT && (
               <div className="space-y-1">
@@ -653,10 +656,11 @@ export default function ListeningTestPage({
                     el.scrollIntoView({ behavior: "smooth", block: "center" });
                 }, 80);
               }}
-              className={`text-xs md:text-sm px-2.5 py-1.5 rounded-lg border font-medium transition-all ${hasAns
-                ? "bg-green-100 border-green-300 text-green-700 hover:bg-green-200"
-                : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
-                }`}
+              className={`text-xs md:text-sm px-2.5 py-1.5 rounded-lg border font-medium transition-all ${
+                hasAns
+                  ? "bg-green-100 border-green-300 text-green-700 hover:bg-green-200"
+                  : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+              }`}
               title={`Qism ${partIdx + 1}, Savol ${idx}`}
             >
               {idx}
@@ -871,7 +875,7 @@ export default function ListeningTestPage({
                         [section.id]: !prev[section.id],
                       }))
                     }
-                    className="w-full text-left px-5 py-4 bg-gray-50 hover:bg-gray-100 transition flex items-start justify-between gap-3"
+                    className="w-full cursor-pointer text-left px-5 py-4 bg-gray-50 hover:bg-gray-100 transition flex items-start justify-between gap-3"
                   >
                     <div className="flex-1">
                       <div className="text-lg font-semibold text-gray-900">

@@ -187,7 +187,7 @@ export default function ListeningResultPage() {
                   </Badge>
                 </div>
                 <div className="flex justify-between">
-                  <span>True/False</span>
+                  <span>Doğru/Yanlış</span>
                   <Badge variant="outline" className="text-xs">
                     {
                       data.userAnswers.filter(
@@ -206,7 +206,6 @@ export default function ListeningResultPage() {
             </Card>
           </div>
 
-          {/* Detailed Answers */}
           <div className="lg:col-span-2">
             <Card className="shadow-lg border-red-200 bg-white">
               <CardHeader>

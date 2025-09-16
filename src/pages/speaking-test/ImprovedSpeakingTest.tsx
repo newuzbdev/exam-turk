@@ -97,7 +97,7 @@ export default function ImprovedSpeakingTest() {
   const [isPlayingInstructions, setIsPlayingInstructions] = useState(false)
   // speaking/answer timer (seconds)
   const [timeLeft, setTimeLeft] = useState(RECORD_SECONDS_PER_QUESTION)
-  const [recordingTime, setRecordingTime] = useState(0)
+  const [_recordingTime, setRecordingTime] = useState(0)
   const [recordings, setRecordings] = useState<Map<string, Recording>>(new Map())
   // preparation timer (seconds)
   const [prepSeconds, setPrepSeconds] = useState<number>(0)
@@ -1202,7 +1202,6 @@ export default function ImprovedSpeakingTest() {
         ) : (
           isRecording && (
             <div className="text-2xl font-bold text-red-600 font-mono text-center mt-2">
-              REC: {formatTime(recordingTime)}
             </div>
           )
         )}

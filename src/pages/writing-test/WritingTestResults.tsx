@@ -96,7 +96,7 @@ export default function WritingTestResults() {
 
             <div className="text-right">
               <div className="text-3xl font-black text-red-500">
-                {result.score || "N/A"}
+                {result.score ?? "0 "}
               </div>
               <div className="text-sm text-gray-600">Band Score</div>
             </div>
@@ -110,7 +110,7 @@ export default function WritingTestResults() {
         <div className="bg-white rounded-3xl shadow-lg border border-gray-200 p-8 mb-8 text-center">
           <div className="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
             <span className="text-white text-3xl font-bold">
-              {result.score || "N/A"}
+              {result.score ?? "0"}
             </span>
           </div>
           <h2 className="text-3xl font-bold text-black mb-2">
@@ -120,10 +120,10 @@ export default function WritingTestResults() {
             Your IELTS Writing Assessment Results
           </p>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div className="bg-gray-50 rounded-2xl p-4">
               <div className="text-2xl font-bold text-black mb-1">
-                {result.score || "N/A"}
+                {result.score ?? "0"}
               </div>
               <div className="text-sm text-gray-600">Band Score</div>
             </div>
@@ -138,10 +138,6 @@ export default function WritingTestResults() {
                 ).toLocaleDateString()}
               </div>
               <div className="text-sm text-gray-600">Completed</div>
-            </div>
-            <div className="bg-gray-50 rounded-2xl p-4">
-              <div className="text-2xl font-bold text-black mb-1">✓</div>
-              <div className="text-sm text-gray-600">Submitted</div>
             </div>
           </div>
         </div>

@@ -1,113 +1,15 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Clock, Send } from "lucide-react";
+import { Clock, Send, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import Keyboard from "react-simple-keyboard";
-import "simple-keyboard/build/css/index.css";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import writingTestService, {
   type WritingTestItem,
 } from "@/services/writingTest.service";
 import writingSubmissionService from "@/services/writingSubmission.service";
-
-// --- BEGIN: Improved Resizable for LG screens ---
-function ResizableHorizontalPanels({
-  left,
-  right,
-  minLeft = 25,
-  maxLeft = 60,
-  defaultLeft = 35,
-}: {
-  left: React.ReactNode;
-  right: React.ReactNode;
-  minLeft?: number;
-  maxLeft?: number;
-  defaultLeft?: number;
-}) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [leftPercent, setLeftPercent] = useState(defaultLeft);
-  const [dragging, setDragging] = useState(false);
-
-  const onMouseDown = (e: React.MouseEvent) => {
-    setDragging(true);
-    document.body.style.cursor = "col-resize";
-    e.preventDefault();
-  };
-
-  const onMouseMove = useCallback(
-    (e: MouseEvent) => {
-      if (!dragging || !containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      let percent = ((e.clientX - rect.left) / rect.width) * 100;
-      percent = Math.max(minLeft, Math.min(maxLeft, percent));
-      setLeftPercent(percent);
-    },
-    [dragging, minLeft, maxLeft]
-  );
-
-  const onMouseUp = useCallback(() => {
-    setDragging(false);
-    document.body.style.cursor = "";
-  }, []);
-
-  useEffect(() => {
-    if (!dragging) return;
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
-    return () => {
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
-    };
-  }, [dragging, onMouseMove, onMouseUp]);
-
-  return (
-    <div
-      ref={containerRef}
-      className="w-full flex gap-0"
-      style={{ minHeight: 480 }}
-    >
-      <div
-        className="bg-white rounded-xl border-2 border-gray-300 shadow-lg p-8 flex flex-col justify-start transition-all duration-150"
-        style={{
-          width: `calc(${leftPercent}% - 12px)`,
-          minWidth: 0,
-          transition: dragging ? "none" : "width 0.15s",
-        }}
-      >
-        {left}
-      </div>
-      <div
-        className="flex items-stretch select-none"
-        style={{
-          width: 24,
-          cursor: "col-resize",
-          userSelect: "none",
-          zIndex: 10,
-        }}
-        onMouseDown={onMouseDown}
-        aria-label="Resize panel"
-        tabIndex={-1}
-      >
-        <div className="w-6 h-full flex items-center justify-center">
-          <div className="w-2 h-24 bg-gray-300 rounded-full hover:bg-gray-400 transition-colors" />
-        </div>
-      </div>
-      <div
-        className="bg-white rounded-xl border-2 border-gray-300 shadow-lg p-8 flex-1 min-w-0 transition-all duration-150"
-        style={{
-          width: `calc(${100 - leftPercent}% - 12px)`,
-          minWidth: 0,
-          transition: dragging ? "none" : "width 0.15s",
-        }}
-      >
-        {right}
-      </div>
-    </div>
-  );
-}
-// --- END: Improved Resizable for LG screens ---
 
 interface WritingSubPart {
   id: string;
@@ -154,11 +56,6 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   const [loading, setLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState(60 * 60); // 60 minutes in seconds
   const [showSubmitModal, setShowSubmitModal] = useState(false);
-
-  // Keyboard state (only for desktop)
-  const [showKeyboard, setShowKeyboard] = useState(false);
-
-  const keyboardRef = useRef<any>(null);
 
   // Fetch test data on component mount
   useEffect(() => {
@@ -243,6 +140,114 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
     }));
   };
 
+  // Textarea ref and custom typing shortcuts like c= -> ç, i= -> ı, I= -> İ, etc.
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const handleShortcutKeyDown = (
+    e: React.KeyboardEvent<HTMLTextAreaElement>
+  ) => {
+    // Only handle when '=' is pressed and selection is collapsed
+    if (e.key !== "=") return;
+
+    const el = e.currentTarget;
+    const start = el.selectionStart ?? 0;
+    const end = el.selectionEnd ?? 0;
+    if (start !== end) return; // avoid modifying when a range is selected
+
+    const value = el.value;
+
+    const prevIndex = start - 1;
+    if (prevIndex < 0) return;
+
+    const prevChar = value[prevIndex];
+    const map: Record<string, string> = {
+      c: "ç",
+      C: "Ç",
+      g: "ğ",
+      G: "Ğ",
+      s: "ş",
+      S: "Ş",
+      o: "ö",
+      O: "Ö",
+      u: "ü",
+      U: "Ü",
+      i: "ı",
+      I: "İ",
+    };
+
+    const replacement = map[prevChar];
+    if (!replacement) return; // Not a shortcut pair -> allow default '='
+
+    // Replace previous char with the mapped one and do not insert '='
+    e.preventDefault();
+    const newValue = value.slice(0, prevIndex) + replacement + value.slice(end);
+    handleAnswerChange(newValue);
+
+    // Restore caret position right after the replaced character
+    requestAnimationFrame(() => {
+      const ta = textareaRef.current;
+      if (ta) {
+        const pos = prevIndex + 1;
+        ta.selectionStart = ta.selectionEnd = pos;
+      }
+    });
+  };
+
+  const insertChar = (ch: string) => {
+    const ta = textareaRef.current;
+    const value = answers[selectedQuestionId] || "";
+    if (!ta) {
+      handleAnswerChange(value + ch);
+      return;
+    }
+    const start = ta.selectionStart ?? value.length;
+    const end = ta.selectionEnd ?? value.length;
+    const newValue = value.slice(0, start) + ch + value.slice(end);
+    handleAnswerChange(newValue);
+    requestAnimationFrame(() => {
+      if (textareaRef.current) {
+        const pos = start + ch.length;
+        textareaRef.current.selectionStart = textareaRef.current.selectionEnd = pos;
+        textareaRef.current.focus();
+      }
+    });
+  };
+
+  const renderKeyboard = () => {
+    const upper = ["Ç", "Ğ", "İ", "Ö", "Ş", "Ü", "Â", "Î", "Û"];
+    const lower = ["ç", "ğ", "ı", "i", "ö", "ş", "ü", "â", "î", "û"];
+    return (
+      <div className="mt-3">
+        <div className="text-xs text-gray-600 mb-2">
+          <span className="font-semibold">Nasıl Kullanılır:</span> Bilgisayar klavyesiyle doğrudan yazmak için: c=, g=, s= → ç, ğ, ş; o=, u= → ö, ü; i=, I= → ı, İ. Kopyalama → [Ctrl]+[C], Yapıştırma → [Ctrl]+[V].
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {upper.map((k) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => insertChar(k)}
+              className="border border-gray-300 rounded-md px-3 py-2 text-base text-red-700 bg-white hover:bg-red-50"
+            >
+              {k}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-2 mt-2">
+          {lower.map((k) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => insertChar(k)}
+              className="border border-gray-300 rounded-md px-3 py-2 text-base text-red-700 bg-white hover:bg-red-50"
+            >
+              {k}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   const getWordCount = (text: string) => {
     return text.trim().split(/\s+/).filter(Boolean).length;
   };
@@ -258,23 +263,15 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   const wordsRemaining = Math.max(0, wordLimit - wordCount);
   const isOverLimit = wordCount > wordLimit;
 
-  const onKeyboardChange = () => {
-    // Don't call handleAnswerChange here - let onKeyPress handle individual keys
+  // Desktop bottom navigation arrows helpers
+  const totalItems = (hasSubParts ? subParts.length : questions.length) || 0;
+  const goPrev = () => {
+    if (totalItems <= 1) return;
+    setCurrentSubPartIndex((prev) => (prev > 0 ? prev - 1 : prev));
   };
-
-  const onKeyPress = (button: string) => {
-    if (button === "{shift}" || button === "{lock}") return;
-    if (button === "{tab}") return;
-    const currentText = currentAnswer;
-    if (button === "{enter}") {
-      handleAnswerChange(currentText + "\n");
-    } else if (button === "{bksp}") {
-      handleAnswerChange(currentText.slice(0, -1));
-    } else if (button === "{space}") {
-      handleAnswerChange(currentText + " ");
-    } else if (button.length === 1) {
-      handleAnswerChange(currentText + button);
-    }
+  const goNext = () => {
+    if (totalItems <= 1) return;
+    setCurrentSubPartIndex((prev) => (prev < totalItems - 1 ? prev + 1 : prev));
   };
 
   const handleSubmit = async () => {
@@ -397,7 +394,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   return (
     <div className="min-h-screen bg-gray-50 pb-60">
       {/* Fixed Header */}
-      <div className="fixed top-0 left-0 right-0 z-[999] bg-white px-4 py-4 shadow-sm border-b border-gray-200">
+      <div className="fixed top-0 left-0 right-0 z-[999] bg-white px-4 py-6 shadow-sm">
         {/* Mobile Header */}
         <div className="lg:hidden">
           <div className="flex items-center justify-between">
@@ -429,7 +426,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                 <button
                   key={idx}
                   onClick={() => setCurrentSectionIndex(idx)}
-                  className={`flex-1 px-3 py-2 rounded-md font-medium text-base transition-all ${
+                  className={`flex-1 px-4 py-3 rounded-md font-medium text-lg transition-all ${
                     idx === currentSectionIndex
                       ? "bg-red-500 text-white shadow-sm"
                       : "text-gray-600 hover:text-red-600 hover:bg-red-50"
@@ -448,22 +445,6 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
               <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
                 ALT TEST 3: YAZMA
               </h1>
-              {/* Task Tabs - Desktop */}
-              <div className="flex bg-gray-100 rounded-lg p-1">
-                {sections.map((_, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setCurrentSectionIndex(idx)}
-                    className={`px-8 py-3 rounded-md font-medium text-lg transition-all ${
-                      idx === currentSectionIndex
-                        ? "bg-red-500 text-white shadow-sm"
-                        : "text-gray-600 hover:text-red-600 hover:bg-red-50"
-                    }`}
-                  >
-                    Task {idx + 1}
-                  </button>
-                ))}
-              </div>
             </div>
             <div className="flex items-center space-x-6">
               <div className="flex items-center space-x-2 text-gray-600">
@@ -492,12 +473,12 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-4 pt-24 lg:pt-20 lg:p-8">
-        <div className="max-w-7xl mx-auto">
+      <div className="flex-1 p-4 pt-28 lg:pt-28 lg:p-8">
+        <div className="max-w-8xl mx-auto">
           {/* Mobile Layout - Questions on top */}
           <div className="lg:hidden space-y-4">
             {/* Questions Panel - Mobile Only */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mt-0">
+            <div className="bg-white rounded-xl shadow-sm p-4 mt-0">
               <h2 className="text-xl font-semibold text-gray-900 mb-2">
                 {selectedSection?.title ||
                   `WRITING TASK ${currentSectionIndex + 1}`}
@@ -506,7 +487,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                 <div className="space-y-3 text-gray-700">
                   <p className="text-base">{selectedSection.description}</p>
                   {hasSubParts && selectedSubPart && (
-                    <div className="p-3 border border-gray-200 rounded-lg bg-gray-50">
+                    <div className="p-3 rounded-lg bg-gray-50">
                       <h3 className="font-medium text-gray-900 mb-2 text-base">
                         {selectedSubPart.label ||
                           `Part ${currentSubPartIndex + 1}`}
@@ -527,7 +508,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                             {selectedSubPart.questions.map((question: any) => (
                               <div
                                 key={question.id}
-                                className="p-3 bg-gray-100 rounded border border-gray-200"
+                                className="p-3 bg-gray-100 rounded"
                               >
                                 <p className="text-gray-800 font-normal text-base">
                                   {question.text}
@@ -542,8 +523,8 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                     <div className="space-y-3">
                       {questions.map((question, idx) => (
                         <div
-                          key={question.id}
-                          className="p-3 border border-gray-200 rounded-lg bg-gray-50"
+                        key={question.id}
+                        className="p-3 rounded-lg bg-gray-50"
                         >
                           <h3 className="font-medium text-gray-900 mb-2 text-base">
                             Question {idx + 1}
@@ -571,7 +552,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
               )}
             </div>
             {/* Writing Area - Mobile Only */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mt-0">
+            <div className="bg-white rounded-xl shadow-sm p-4 mt-0">
               {(hasSubParts || hasQuestions) &&
                 (hasSubParts ? subParts : questions).length > 1 && (
                   <div className="mb-3">
@@ -583,7 +564,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                       className="w-full"
                     >
                       <TabsList
-                        className="flex w-full bg-gray-100 border border-gray-300 rounded-lg overflow-hidden p-0"
+                        className="flex w-full bg-gray-100 rounded-lg overflow-hidden p-0"
                         style={{
                           boxShadow: "none",
                         }}
@@ -612,13 +593,6 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                             }
                           `}
                             style={{
-                              borderRight:
-                                idx !==
-                                (hasSubParts
-                                  ? subParts.length - 1
-                                  : questions.length - 1)
-                                  ? "1px solid #e5e7eb"
-                                  : undefined,
                               background:
                                 currentSubPartIndex === idx
                                   ? "#ef4444"
@@ -651,34 +625,30 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                   </div>
                 )}
               <textarea
+                ref={textareaRef}
+                onKeyDown={handleShortcutKeyDown}
                 value={currentAnswer}
                 onChange={(e) => handleAnswerChange(e.target.value)}
-                placeholder="Kompozisyonunuzu buraya yazın... (Write your essay here in Turkish...)"
-                className="w-full h-56 p-4 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-gray-900 placeholder:text-gray-400 text-base"
+                placeholder="Type your essay here.."
+                className="w-full h-56 p-4 border border-gray-300 border-t-0 rounded-b-lg resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-gray-900 placeholder:text-gray-400 text-base"
                 dir="ltr"
                 lang="tr"
               />
-              <div className="mt-2 flex items-center justify-end">
-                <div
-                  className={`text-base font-medium ${
-                    isOverLimit ? "text-red-600" : "text-gray-500"
-                  }`}
-                >
-                  {wordsRemaining} words left
-                </div>
+              {/* Keyboard + Instructions under text area */}
+              {renderKeyboard()}
+              <div className="mt-2 flex items-center justify-between">
+                <div className="text-base font-medium text-gray-600">Words Count: {wordCount}</div>
               </div>
-              {/* No keyboard in mobile */}
             </div>
           </div>
 
-          {/* Desktop Layout - Questions left, textarea right, with resizable divider */}
+          {/* Desktop Layout - Questions left, textarea right, with shadcn resizable */}
           <div className="hidden lg:block">
-            <ResizableHorizontalPanels
-              left={
-                <>
+            <ResizablePanelGroup  direction="horizontal" className="w-full">
+              <ResizablePanel  defaultSize={45} minSize={25} maxSize={60} className="min-w-0 text:red-500">
+                <div className="bg-white rounded-xl shadow-md p-8 flex flex-col justify-start h-[calc(100vh-180px)] overflow-y-auto">
                   <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-                    {selectedSection?.title ||
-                      `WRITING TASK ${currentSectionIndex + 1}`}
+                    {selectedSection?.title || `WRITING TASK ${currentSectionIndex + 1}`}
                   </h2>
                   {selectedSection?.description && (
                     <div className="space-y-4 text-gray-700">
@@ -686,10 +656,9 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                         {selectedSection.description}
                       </p>
                       {hasSubParts && selectedSubPart && (
-                        <div className="p-4 border-2 border-gray-300 rounded-lg">
+                        <div className="p-4 rounded-lg bg-gray-50">
                           <h3 className="font-medium text-gray-900 mb-2 text-lg">
-                            {selectedSubPart.label ||
-                              `Part ${currentSubPartIndex + 1}`}
+                            {selectedSubPart.label || `Part ${currentSubPartIndex + 1}`}
                           </h3>
                           {selectedSubPart.question && (
                             <p className="text-gray-700 text-lg">
@@ -701,50 +670,27 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                               {selectedSubPart.description}
                             </p>
                           )}
-                          {selectedSubPart.questions &&
-                            selectedSubPart.questions.length > 0 && (
-                              <div className="mt-3 space-y-2">
-                                {selectedSubPart.questions.map(
-                                  (question: any) => (
-                                    <div
-                                      key={question.id}
-                                      className="p-3 bg-gray-100 rounded border border-gray-200"
-                                    >
-                                      <p className="text-gray-800 font-normal text-lg">
-                                        {question.text}
-                                      </p>
-                                    </div>
-                                  )
-                                )}
-                              </div>
-                            )}
+                          {selectedSubPart.questions && selectedSubPart.questions.length > 0 && (
+                            <div className="mt-3 space-y-2">
+                              {selectedSubPart.questions.map((question: any) => (
+                                <div key={question.id} className="p-3 bg-gray-100 rounded">
+                                  <p className="text-gray-800 font-normal text-lg">{question.text}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
 
                       {hasQuestions && (
                         <div className="space-y-4">
                           {questions.map((question, idx) => (
-                            <div
-                              key={question.id}
-                              className="p-4 border-2 border-gray-300 rounded-lg"
-                            >
-                              <h3 className="font-medium text-gray-900 mb-2 text-lg">
-                                Question {idx + 1}
-                              </h3>
-                              {question.text && (
-                                <p className="text-gray-700 text-lg">
-                                  {question.text}
-                                </p>
-                              )}
-                              {question.question && (
-                                <p className="text-gray-700 text-lg">
-                                  {question.question}
-                                </p>
-                              )}
+                            <div key={question.id} className="p-4 rounded-lg bg-gray-50">
+                              <h3 className="font-medium text-gray-900 mb-2 text-lg">Question {idx + 1}</h3>
+                              {question.text && <p className="text-gray-700 text-lg">{question.text}</p>}
+                              {question.question && <p className="text-gray-700 text-lg">{question.question}</p>}
                               {question.description && (
-                                <p className="text-gray-600 text-base mt-2">
-                                  {question.description}
-                                </p>
+                                <p className="text-gray-600 text-base mt-2">{question.description}</p>
                               )}
                             </div>
                           ))}
@@ -752,182 +698,117 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                       )}
                     </div>
                   )}
-                </>
-              }
-              right={
-                <>
-                  {(hasSubParts || hasQuestions) &&
-                    (hasSubParts ? subParts : questions).length > 1 && (
-                      <div className="mb-4">
-                        <Tabs
-                          value={String(currentSubPartIndex)}
-                          onValueChange={(value) =>
-                            setCurrentSubPartIndex(parseInt(value))
-                          }
-                          className="w-full"
+                </div>
+              </ResizablePanel>
+              <ResizableHandle withHandle className="mx-3" />
+              <ResizablePanel defaultSize={55}  className="min-w-0">
+                <div className="bg-white rounded-xl shadow-md p-8 flex-1 min-w-0 h-[calc(100vh-180px)] overflow-y-auto flex flex-col">
+                  {(hasSubParts || hasQuestions) && (hasSubParts ? subParts : questions).length > 1 && (
+                    <div className="mb-4">
+                      <Tabs
+                        value={String(currentSubPartIndex)}
+                        onValueChange={(value) => setCurrentSubPartIndex(parseInt(value))}
+                        className="w-full"
+                      >
+                        <TabsList
+                          className="flex w-full bg-gray-100 rounded-lg overflow-hidden p-0"
+                          style={{ boxShadow: "none" }}
                         >
-                          <TabsList
-                            className="flex w-full bg-gray-100 border border-gray-300 rounded-lg overflow-hidden p-0"
-                            style={{
-                              boxShadow: "none",
-                            }}
-                          >
-                            {(hasSubParts ? subParts : questions).map(
-                              (_, idx) => (
-                                <TabsTrigger
-                                  key={idx}
-                                  value={String(idx)}
-                                  className={`
+                          {(hasSubParts ? subParts : questions).map((_, idx) => (
+                            <TabsTrigger
+                              key={idx}
+                              value={String(idx)}
+                              className={`
                                 flex-1 px-0 py-3 text-lg font-medium border-none rounded-none
                                 transition-all
                                 relative
                                 ${idx === 0 ? "rounded-l-lg" : ""}
-                                ${
-                                  idx ===
-                                  (hasSubParts
-                                    ? subParts.length - 1
-                                    : questions.length - 1)
-                                    ? "rounded-r-lg"
-                                    : ""
-                                }
-                                ${
-                                  currentSubPartIndex === idx
-                                    ? "bg-red-500 text-white z-10"
-                                    : "text-gray-700"
-                                }
+                                ${idx === (hasSubParts ? subParts.length - 1 : questions.length - 1) ? "rounded-r-lg" : ""}
+                                ${currentSubPartIndex === idx ? "bg-red-500 text-white z-10" : "text-gray-700"}
                               `}
-                                  style={{
-                                    borderRight:
-                                      idx !==
-                                      (hasSubParts
-                                        ? subParts.length - 1
-                                        : questions.length - 1)
-                                        ? "1px solid #e5e7eb"
-                                        : undefined,
-                                    background:
-                                      currentSubPartIndex === idx
-                                        ? "#ef4444"
-                                        : "none",
-                                    color:
-                                      currentSubPartIndex === idx
-                                        ? "#fff"
-                                        : undefined,
-                                    boxShadow: "none",
-                                    minWidth: 0,
-                                    position: "relative",
-                                    zIndex:
-                                      currentSubPartIndex === idx ? 10 : 1,
-                                  }}
-                                >
-                                  {hasSubParts ? (
-                                    <span>
-                                      <span className="">
-                                        {currentSectionIndex + 1}
-                                      </span>
-                                      <span className="mx-0.5 text-gray-200">
-                                        .
-                                      </span>
-                                      <span className="">{idx + 1}</span>
-                                    </span>
-                                  ) : (
-                                    <span>Q{idx + 1}</span>
-                                  )}
-                                </TabsTrigger>
-                              )
-                            )}
-                          </TabsList>
-                        </Tabs>
-                      </div>
-                    )}
+                              style={{
+                                background: currentSubPartIndex === idx ? "#ef4444" : "none",
+                                color: currentSubPartIndex === idx ? "#fff" : undefined,
+                                boxShadow: "none",
+                                minWidth: 0,
+                                position: "relative",
+                                zIndex: currentSubPartIndex === idx ? 10 : 1,
+                              }}
+                            >
+                              {hasSubParts ? (
+                                <span>
+                                  <span className="">{currentSectionIndex + 1}</span>
+                                  <span className="mx-0.5 text-gray-200">.</span>
+                                  <span className="">{idx + 1}</span>
+                                </span>
+                              ) : (
+                                <span>Q{idx + 1}</span>
+                              )}
+                            </TabsTrigger>
+                          ))}
+                        </TabsList>
+                      </Tabs>
+                    </div>
+                  )}
+
                   <textarea
+                    ref={textareaRef}
+                    onKeyDown={handleShortcutKeyDown}
                     value={currentAnswer}
                     onChange={(e) => handleAnswerChange(e.target.value)}
-                    placeholder="Kompozisyonunuzu buraya yazın... (Write your essay here in Turkish...)"
-                    className="w-full h-96 p-6 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-gray-900 placeholder:text-gray-400 text-lg"
+                    placeholder="Type your essay here.."
+                    className="w-full min-h-[300px] h-auto flex-1 p-6 border border-gray-300 border-t-0 rounded-b-lg resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-gray-900 placeholder:text-gray-400 text-lg"
                     dir="ltr"
                     lang="tr"
                   />
+
+                  {/* Keyboard + Instructions under text area, full width, no mx-auto */}
+                  {renderKeyboard()}
+
                   <div className="mt-4 flex items-center justify-between">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="p-1"
-                      onClick={() => setShowKeyboard((v) => !v)}
-                      aria-label={
-                        showKeyboard ? "Close Keyboard" : "Open Keyboard"
-                      }
-                    >
-                      <svg
-                        width="24"
-                        height="24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth={2}
-                        viewBox="0 0 24 24"
-                      >
-                        <rect
-                          x="3"
-                          y="7"
-                          width="18"
-                          height="10"
-                          rx="2"
-                          className="stroke-current"
-                        />
-                        <path
-                          d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"
-                          className="stroke-current"
-                        />
-                      </svg>
-                    </Button>
-                    <div
-                      className={`text-lg font-medium ${
-                        isOverLimit ? "text-red-600" : "text-gray-600"
-                      }`}
-                    >
-                      Words: {wordCount} / {wordLimit} ({wordsRemaining}{" "}
-                      remaining)
-                    </div>
+                    <div className="text-lg font-medium text-gray-600">Words Count: {wordCount}</div>
                   </div>
-                  {/* Desktop Keyboard */}
-                  {showKeyboard && (
-                    <div className="mt-4">
-                      <Keyboard
-                        ref={keyboardRef}
-                        key={selectedQuestionId}
-                        onChange={onKeyboardChange}
-                        onKeyPress={onKeyPress}
-                        layoutName="default"
-                        preventMouseDownDefault={true}
-                        layout={{
-                          default: [
-                            '" 1 2 3 4 5 6 7 8 9 0 * - {bksp}',
-                            "{tab} q w e r t y u ı o p ğ ü",
-                            "{lock} a s d f g h j k l ş i {enter}",
-                            "{shift} < z x c v b n m ö ç . {shift}",
-                            ".com @ {space}",
-                          ],
-                        }}
-                        display={{
-                          "{bksp}": "⌫",
-                          "{enter}": "⏎",
-                          "{shift}": "⇧",
-                          "{tab}": "⇥",
-                          "{lock}": "⇪",
-                          "{space}": "______",
-                        }}
-                        theme="hg-theme-default hg-layout-default"
-                        physicalKeyboardHighlight={true}
-                        style={{
-                          maxWidth: 500,
-                          margin: "0 auto",
-                          fontSize: "1rem",
-                        }}
-                      />
-                    </div>
-                  )}
-                </>
-              }
-            />
+                </div>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+            {/* Bottom sticky task switcher - desktop */}
+            <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur rounded-full shadow-md px-2 py-1 z-[900]">
+              <div className="flex">
+                {sections.map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setCurrentSectionIndex(idx)}
+                    className={`px-10 py-3 rounded-full font-medium text-lg transition-all ${
+                      idx === currentSectionIndex
+                        ? "bg-red-500 text-white shadow-sm"
+                        : "text-gray-700 hover:text-red-600 hover:bg-red-50"
+                    }`}
+                  >
+                    Task {idx + 1}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Subpart navigation arrows - desktop */}
+            {(hasSubParts || hasQuestions) && (hasSubParts ? subParts.length : questions.length) > 1 && (
+              <div className="fixed bottom-4 right-4 z-[900] flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={goPrev}
+                  className="h-10 w-10 rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 flex items-center justify-center shadow-sm"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={goNext}
+                  className="h-10 w-10 rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 flex items-center justify-center shadow-sm"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

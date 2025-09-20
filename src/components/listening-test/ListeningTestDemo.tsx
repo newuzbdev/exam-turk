@@ -958,6 +958,8 @@ import ListeningPart1 from "./ui/ListeningPart1";
 import ListeningPart2 from "./ui/ListeningPart2";
 import ListeningPart3 from "./ui/ListeningPart3";
 import ListeningPart4 from "./ui/ListeningPart4";
+import ListeningPart5 from "./ui/ListeningPart5";
+import ListeningPart6 from "./ui/ListeningPart6";
 import { useState } from "react";
 
 export default function ListeningTestPage() {
@@ -988,6 +990,8 @@ export default function ListeningTestPage() {
       <ListeningPart2 />
       <ListeningPart3 />
       <ListeningPart4 />
+      <ListeningPart5 />
+      <ListeningPart6 />
     </div>
   );
 }

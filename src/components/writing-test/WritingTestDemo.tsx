@@ -57,6 +57,16 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   const [timeLeft, setTimeLeft] = useState(60 * 60); // 60 minutes in seconds
   const [showSubmitModal, setShowSubmitModal] = useState(false);
 
+  // Hide navbar and footer during writing test
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.body.classList.add("exam-mode");
+      return () => {
+        document.body.classList.remove("exam-mode");
+      };
+    }
+  }, []);
+
   // Fetch test data on component mount
   useEffect(() => {
     const load = async () => {
@@ -216,7 +226,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
     const upper = ["Ç", "Ğ", "İ", "Ö", "Ş", "Ü", "Â", "Î", "Û"];
     const lower = ["ç", "ğ", "ı", "i", "ö", "ş", "ü", "â", "î", "û"];
     return (
-      <div className="mt-3">
+      <div className="mb-3">
         <div className="text-xs text-gray-600 mb-2">
           <span className="font-semibold">Nasıl Kullanılır:</span> Bilgisayar klavyesiyle doğrudan yazmak için: c=, g=, s= → ç, ğ, ş; o=, u= → ö, ü; i=, I= → ı, İ. Kopyalama → [Ctrl]+[C], Yapıştırma → [Ctrl]+[V].
         </div>
@@ -392,9 +402,9 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-60">
+    <div className="min-h-screen bg-gray-50 pb-24">
       {/* Fixed Header */}
-      <div className="fixed top-0 left-0 right-0 z-[999] bg-white px-4 py-6 shadow-sm">
+      <div className="fixed top-0 left-0 right-0 z-[999] bg-white px-4 py-3 shadow-sm">
         {/* Mobile Header */}
         <div className="lg:hidden">
           <div className="flex items-center justify-between">
@@ -426,11 +436,10 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                 <button
                   key={idx}
                   onClick={() => setCurrentSectionIndex(idx)}
-                  className={`flex-1 px-4 py-3 rounded-md font-medium text-lg transition-all ${
-                    idx === currentSectionIndex
+                  className={`flex-1 px-4 py-3 rounded-md font-medium text-lg transition-all ${idx === currentSectionIndex
                       ? "bg-red-500 text-white shadow-sm"
                       : "text-gray-600 hover:text-red-600 hover:bg-red-50"
-                  }`}
+                    }`}
                 >
                   Task {idx + 1}
                 </button>
@@ -442,21 +451,23 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
         <div className="hidden lg:block">
           <div className="mx-12 flex items-center justify-between">
             <div className="flex items-center space-x-10">
-              <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
-               TURKISHMOCK
-              </h1>
+              <div className="bg-red-600 text-white px-3 py-1 rounded font-bold text-lg">
+                TURKISHMOCK
+              </div>
             </div>
-            <div className="flex items-center space-x-6">
-              <div className="flex items-center space-x-2 text-gray-600">
+            <div>
+                <div className="flex items-center space-x-2 text-gray-600">
                 <Clock className="h-6 w-6" />
                 <span className="font-semibold text-lg">
-                  {/* {formatTime(timeLeft)} left */}
+                  {formatTime(timeLeft)} 
                 </span>
               </div>
+            </div>
+            <div className="flex items-center space-x-6">
+            
               <div
-                className={`text-lg font-semibold ${
-                  isOverLimit ? "text-red-600" : "text-gray-700"
-                }`}
+                className={`text-lg font-semibold ${isOverLimit ? "text-red-600" : "text-gray-700"
+                  }`}
               >
                 {wordCount}/{wordLimit}
               </div>
@@ -473,7 +484,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-4 pt-28 lg:pt-28 lg:p-8">
+      <div className="flex-1 p-4 pt-20 lg:pt-20 lg:p-8">
         <div className="max-w-8xl mx-auto">
           {/* Mobile Layout - Questions on top */}
           <div className="lg:hidden space-y-4">
@@ -523,8 +534,8 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                     <div className="space-y-3">
                       {questions.map((question, idx) => (
                         <div
-                        key={question.id}
-                        className="p-3 rounded-lg bg-gray-50"
+                          key={question.id}
+                          className="p-3 rounded-lg bg-gray-50"
                         >
                           <h3 className="font-medium text-gray-900 mb-2 text-base">
                             Question {idx + 1}
@@ -578,19 +589,17 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                             transition-all
                             relative
                             ${idx === 0 ? "rounded-l-lg" : ""}
-                            ${
-                              idx ===
-                              (hasSubParts
-                                ? subParts.length - 1
-                                : questions.length - 1)
+                            ${idx ===
+                                (hasSubParts
+                                  ? subParts.length - 1
+                                  : questions.length - 1)
                                 ? "rounded-r-lg"
                                 : ""
-                            }
-                            ${
-                              currentSubPartIndex === idx
+                              }
+                            ${currentSubPartIndex === idx
                                 ? "bg-red-500 text-white z-10"
                                 : "text-gray-700"
-                            }
+                              }
                           `}
                             style={{
                               background:
@@ -612,7 +621,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                                 <span className="">
                                   {currentSectionIndex + 1}
                                 </span>
-                                <span className="mx-0.5 text-gray-200">.</span>
+                                <span className="mx-0.5 text-black">.</span>
                                 <span className="">{idx + 1}</span>
                               </span>
                             ) : (
@@ -624,18 +633,17 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                     </Tabs>
                   </div>
                 )}
+              {renderKeyboard()}
               <textarea
                 ref={textareaRef}
                 onKeyDown={handleShortcutKeyDown}
                 value={currentAnswer}
                 onChange={(e) => handleAnswerChange(e.target.value)}
                 placeholder="Type your essay here.."
-                className="w-full h-56 p-4 border border-gray-300 border-t-0 rounded-b-lg resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-gray-900 placeholder:text-gray-400 text-base"
+                className="w-full h-56 p-4 border border-gray-300  resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-gray-900 placeholder:text-gray-400 text-base"
                 dir="ltr"
                 lang="tr"
               />
-              {/* Keyboard + Instructions under text area */}
-              {renderKeyboard()}
               <div className="mt-2 flex items-center justify-between">
                 <div className="text-base font-medium text-gray-600">Words Count: {wordCount}</div>
               </div>
@@ -644,9 +652,9 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
 
           {/* Desktop Layout - Questions left, textarea right, with shadcn resizable */}
           <div className="hidden lg:block">
-            <ResizablePanelGroup  direction="horizontal" className="w-full">
-              <ResizablePanel  defaultSize={45} minSize={25} maxSize={60} className="min-w-0 text:red-500">
-                <div className="bg-white rounded-xl shadow-md p-8 flex flex-col justify-start h-[calc(100vh-180px)] overflow-y-auto">
+            <ResizablePanelGroup direction="horizontal" className="w-full">
+              <ResizablePanel defaultSize={45} minSize={25} maxSize={60} className="min-w-0 text:red-500">
+                <div className="bg-white rounded-xl shadow-md p-6 flex flex-col justify-start h-[calc(100vh-140px)] overflow-y-auto">
                   <h2 className="text-2xl font-semibold text-gray-900 mb-2">
                     {selectedSection?.title || `WRITING TASK ${currentSectionIndex + 1}`}
                   </h2>
@@ -701,8 +709,8 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                 </div>
               </ResizablePanel>
               <ResizableHandle withHandle className="mx-3" />
-              <ResizablePanel defaultSize={55}  className="min-w-0">
-                <div className="bg-white rounded-xl shadow-md p-8 flex-1 min-w-0 h-[calc(100vh-180px)] overflow-y-auto flex flex-col">
+              <ResizablePanel defaultSize={55} className="min-w-0">
+                <div className="bg-white rounded-xl shadow-md p-6 flex-1 min-w-0 h-[calc(100vh-140px)] overflow-y-auto flex flex-col">
                   {(hasSubParts || hasQuestions) && (hasSubParts ? subParts : questions).length > 1 && (
                     <div className="mb-4">
                       <Tabs
@@ -750,6 +758,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                       </Tabs>
                     </div>
                   )}
+                  {renderKeyboard()}
 
                   <textarea
                     ref={textareaRef}
@@ -757,13 +766,10 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                     value={currentAnswer}
                     onChange={(e) => handleAnswerChange(e.target.value)}
                     placeholder="Type your essay here.."
-                    className="w-full min-h-[300px] h-auto flex-1 p-6 border border-gray-300 border-t-0 rounded-b-lg resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-gray-900 placeholder:text-gray-400 text-lg"
+                    className="w-full min-h-[300px] h-auto flex-1 p-6 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-gray-900 placeholder:text-gray-400 text-lg"
                     dir="ltr"
                     lang="tr"
                   />
-
-                  {/* Keyboard + Instructions under text area, full width, no mx-auto */}
-                  {renderKeyboard()}
 
                   <div className="mt-4 flex items-center justify-between">
                     <div className="text-lg font-medium text-gray-600">Words Count: {wordCount}</div>
@@ -778,11 +784,10 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                   <button
                     key={idx}
                     onClick={() => setCurrentSectionIndex(idx)}
-                    className={`px-10 py-3 rounded-full font-medium text-lg transition-all ${
-                      idx === currentSectionIndex
+                    className={`px-10 py-3 rounded-full font-medium text-lg transition-all ${idx === currentSectionIndex
                         ? "bg-red-500 text-white shadow-sm"
                         : "text-gray-700 hover:text-red-600 hover:bg-red-50"
-                    }`}
+                      }`}
                   >
                     Task {idx + 1}
                   </button>

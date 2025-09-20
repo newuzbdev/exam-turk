@@ -440,17 +440,17 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
         </div>
         {/* Desktop Header */}
         <div className="hidden lg:block">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="mx-12 flex items-center justify-between">
             <div className="flex items-center space-x-10">
               <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
-                ALT TEST 3: YAZMA
+               TURKISHMOCK
               </h1>
             </div>
             <div className="flex items-center space-x-6">
               <div className="flex items-center space-x-2 text-gray-600">
                 <Clock className="h-6 w-6" />
                 <span className="font-semibold text-lg">
-                  {formatTime(timeLeft)} left
+                  {/* {formatTime(timeLeft)} left */}
                 </span>
               </div>
               <div

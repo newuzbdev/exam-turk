@@ -16,11 +16,11 @@ interface Section {
   questions: Question[];
 }
 
-export default function ListeningPart5() {
+export default function ListeningPart6() {
   const [selectedAnswers, setSelectedAnswers] = useState<
     Record<string, string>
   >({
-    S25: "A", // Pre-selected as shown in the image
+    S25: "A",
   });
 
   const sections: Section[] = [
@@ -28,7 +28,7 @@ export default function ListeningPart5() {
       title: "1. diyalog",
       questions: [
         {
-          id: "S24",
+          id: "S30. Dil gelişimi … ",
           text: "Karşılıklı konuşmada, salgınla ilgili hangi çıkarım yapılabilir?",
           options: [
             {
@@ -46,7 +46,7 @@ export default function ListeningPart5() {
           ],
         },
         {
-          id: "S25",
+          id: "S31. Karşılıklı konuşmada, salgınla ilgili hangi çıkarım yapılabilir?",
           text: "Karşılıklı konuşmada, salgınla ilgili hangi çıkarım yapılabilir?",
           options: [
             {
@@ -69,7 +69,7 @@ export default function ListeningPart5() {
       title: "2. diyalog",
       questions: [
         {
-          id: "S26",
+          id: "S32.Dinçer’in Günay’a karşı tavrı, konuşmanın başından itibaren nasıl şekilleniyor? ",
           text: "Dinçer'in Günay'a karşı tavrı, konuşmanın başından itibaren nasıl şekilleniyor?",
           options: [
             {
@@ -101,27 +101,20 @@ export default function ListeningPart5() {
     <div className="w-full mx-auto bg-white  border-gray-800 rounded-lg overflow-hidden">
       <div className="bg-yellow-50 border-b border-gray-300 px-6 py-4">
         <div className="text-2xl text-gray-700 leading-relaxed">
-          5. DINLEME METNİ
+          6. DINLEME METNİ
         </div>
         <p className="text-2xl text-gray-700 leading-relaxed">
-          Sorular 24-29. Aşağıdaki soruları okuyunuz ve dinleme metinlerine göre
-          doğru seçeneği (A, B ya da C) işaretleyiniz.
+          Sorular 30-35. Dinleme metnine göre doğru seçeneği (A, B ya da C)
+          işaretleyiniz.
         </p>
       </div>
       <div className="p-6">
         {sections.map((section, sectionIndex) => (
           <div key={sectionIndex} className="mb-8">
-            <div className="border-2 border-gray-800 bg-gray-100 px-4 py-2 mb-6">
-              <h2 className="font-bold text-lg">{section.title}</h2>
-            </div>
-
             {section.questions.map((question) => (
               <div key={question.id} className="mb-8">
                 <div className="flex items-start gap-4 mb-4">
                   <span className="font-bold text-lg">{question.id}.</span>
-                  <p className="font-bold text-lg leading-relaxed">
-                    {question.text}
-                  </p>
                 </div>
 
                 <div className="ml-8 space-y-3">

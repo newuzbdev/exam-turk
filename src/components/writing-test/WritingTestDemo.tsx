@@ -223,36 +223,45 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   };
 
   const renderKeyboard = () => {
-    const upper = ["Ç", "Ğ", "İ", "Ö", "Ş", "Ü", "Â", "Î", "Û"];
-    const lower = ["ç", "ğ", "ı", "i", "ö", "ş", "ü", "â", "î", "û"];
+          const turkishChars = [
+      { char: "Ç", lower: "ç", shortcut: "C=" },
+      { char: "Ğ", lower: "ğ", shortcut: "G=" },
+      { char: "İ", lower: "i", shortcut: "I=" },
+      { char: "Ö", lower: "ö", shortcut: "O=" },
+      { char: "Ş", lower: "ş", shortcut: "S=" },
+      { char: "Ü", lower: "ü", shortcut: "U=" },
+      { char: "I", lower: "ı", shortcut: "i=" },
+    ];
+    
     return (
-      <div className="mb-3">
-        <div className="text-xs text-gray-600 mb-2">
-          <span className="font-semibold">Nasıl Kullanılır:</span> Bilgisayar klavyesiyle doğrudan yazmak için: c=, g=, s= → ç, ğ, ş; o=, u= → ö, ü; i=, I= → ı, İ. Kopyalama → [Ctrl]+[C], Yapıştırma → [Ctrl]+[V].
+      <div className="mb-4 p-3 bg-gray-50 rounded-lg border">
+        <div className="text-sm text-gray-700 mb-3">
+          <span className="font-semibold">Türkçe Karakterler:</span> Klavye kısayolları: c=→ç, g=→ğ, s=→ş, o=→ö, u=→ü, i=→ı, I=→İ
         </div>
-        <div className="flex flex-wrap gap-2">
-          {upper.map((k) => (
-            <button
-              key={k}
-              type="button"
-              onClick={() => insertChar(k)}
-              className="border border-gray-300 rounded-md px-3 py-2 text-base text-red-700 bg-white hover:bg-red-50"
-            >
-              {k}
-            </button>
+        <div className="grid grid-cols-7 gap-2 max-w-md">
+          {turkishChars.map(({ char, lower, shortcut }) => (
+            <div key={char} className="flex flex-col gap-1">
+              <button
+                type="button"
+                onClick={() => insertChar(char)}
+                className="h-10 w-full border border-gray-300 rounded bg-white hover:bg-blue-50 hover:border-blue-300 text-lg font-medium text-gray-800 transition-colors flex items-center justify-center"
+                title={`Insert ${char} (or type ${shortcut})`}
+              >
+                {char}
+              </button>
+              <button
+                type="button"
+                onClick={() => insertChar(lower)}
+                className="h-10 w-full border border-gray-300 rounded bg-white hover:bg-blue-50 hover:border-blue-300 text-lg font-medium text-gray-800 transition-colors flex items-center justify-center"
+                title={`Insert ${lower} (or type ${shortcut.toLowerCase()})`}
+              >
+                {lower}
+              </button>
+            </div>
           ))}
         </div>
-        <div className="flex flex-wrap gap-2 mt-2">
-          {lower.map((k) => (
-            <button
-              key={k}
-              type="button"
-              onClick={() => insertChar(k)}
-              className="border border-gray-300 rounded-md px-3 py-2 text-base text-red-700 bg-white hover:bg-red-50"
-            >
-              {k}
-            </button>
-          ))}
+        <div className="mt-2 text-xs text-gray-500">
+          Kopyala: Ctrl+C | Yapıştır: Ctrl+V
         </div>
       </div>
     );

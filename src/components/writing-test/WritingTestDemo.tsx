@@ -223,48 +223,58 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   };
 
   const renderKeyboard = () => {
-          const turkishChars = [
-      { char: "Ç", lower: "ç", shortcut: "C=" },
-      { char: "Ğ", lower: "ğ", shortcut: "G=" },
-      { char: "İ", lower: "i", shortcut: "I=" },
-      { char: "Ö", lower: "ö", shortcut: "O=" },
-      { char: "Ş", lower: "ş", shortcut: "S=" },
-      { char: "Ü", lower: "ü", shortcut: "U=" },
-      { char: "I", lower: "ı", shortcut: "i=" },
-    ];
-    
-    return (
-      <div className="mb-4 p-3 bg-gray-50 rounded-lg border">
-        <div className="text-sm text-gray-700 mb-3">
-          <span className="font-semibold">Türkçe Karakterler:</span> Klavye kısayolları: c=→ç, g=→ğ, s=→ş, o=→ö, u=→ü, i=→ı, I=→İ
-        </div>
-        <div className="grid grid-cols-7 gap-2 max-w-md">
-          {turkishChars.map(({ char, lower, shortcut }) => (
-            <div key={char} className="flex flex-col gap-1">
-              <button
-                type="button"
-                onClick={() => insertChar(char)}
-                className="h-10 w-full border border-gray-300 rounded bg-white hover:bg-blue-50 hover:border-blue-300 text-lg font-medium text-gray-800 transition-colors flex items-center justify-center"
-                title={`Insert ${char} (or type ${shortcut})`}
-              >
-                {char}
-              </button>
-              <button
-                type="button"
-                onClick={() => insertChar(lower)}
-                className="h-10 w-full border border-gray-300 rounded bg-white hover:bg-blue-50 hover:border-blue-300 text-lg font-medium text-gray-800 transition-colors flex items-center justify-center"
-                title={`Insert ${lower} (or type ${shortcut.toLowerCase()})`}
-              >
-                {lower}
-              </button>
-            </div>
-          ))}
-        </div>
-        <div className="mt-2 text-xs text-gray-500">
-          Kopyala: Ctrl+C | Yapıştır: Ctrl+V
-        </div>
-      </div>
-    );
+  const turkishChars = [
+  { char: "Ç", lower: "ç", shortcut: "C=" },
+  { char: "Ğ", lower: "ğ", shortcut: "G=" },
+  { char: "İ", lower: "i", shortcut: "I=" },
+  { char: "Ö", lower: "ö", shortcut: "O=" },
+  { char: "Ş", lower: "ş", shortcut: "S=" },
+  { char: "Ü", lower: "ü", shortcut: "U=" },
+  { char: "I", lower: "ı", shortcut: "i=" },
+  ];
+  
+  return (
+  <div className="mt-4 p-3 bg-gray-50 rounded-lg border">
+  <div className="text-sm text-gray-700 mb-3">
+  <span className="font-semibold">Türkçe Karakterler:</span> Klavye kısayolları: c=→ç, g=→ğ, s=→ş, o=→ö, u=→ü, i=→ı, I=→İ
+  </div>
+  <div className="grid grid-cols-7 gap-2 max-w-md">
+  {turkishChars.map(({ char, lower, shortcut }) => (
+  <div key={char} className="flex flex-col gap-1">
+  <button
+  type="button"
+  onClick={() => insertChar(char)}
+  className="h-10 w-full border border-gray-300 rounded bg-white hover:bg-blue-50 hover:border-blue-300 text-lg font-medium text-gray-800 transition-colors flex items-center justify-center"
+  title={`Insert ${char} (or type ${shortcut})`}
+  >
+  {char}
+  </button>
+  <button
+  type="button"
+  onClick={() => insertChar(lower)}
+  className="h-10 w-full border border-gray-300 rounded bg-white hover:bg-blue-50 hover:border-blue-300 text-lg font-medium text-gray-800 transition-colors flex items-center justify-center"
+  title={`Insert ${lower} (or type ${shortcut.toLowerCase()})`}
+  >
+  {lower}
+  </button>
+  </div>
+  ))}
+  </div>
+  <div className="mt-2 text-xs text-gray-500">
+  Kopyala: Ctrl+C | Yapıştır: Ctrl+V
+  </div>
+  </div>
+  );
+  };
+  
+  const renderKeyboardShortcuts = () => {
+  return (
+  <div className="mt-3 p-2 bg-blue-50 rounded border border-blue-200">
+  <div className="text-xs text-blue-800">
+  <span className="font-semibold">Klavye Kısayolları:</span> c=→ç, g=→ğ, s=→ş, o=→ö, u=→ü, i=→ı, I=→İ
+  </div>
+  </div>
+  );
   };
 
   const getWordCount = (text: string) => {
@@ -493,12 +503,12 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-4 pt-20 lg:pt-20 lg:p-8">
+      <div className="flex-1 p-4 pt-24 lg:pt-20 lg:p-8">
         <div className="max-w-8xl mx-auto">
           {/* Mobile Layout - Questions on top */}
-          <div className="lg:hidden space-y-4">
+          <div className="lg:hidden space-y-3">
             {/* Questions Panel - Mobile Only */}
-            <div className="bg-white rounded-xl shadow-sm p-4 mt-0">
+            <div className="bg-white rounded-xl shadow-sm p-4">
               <h2 className="text-xl font-semibold text-gray-900 mb-2">
                 {selectedSection?.title ||
                   `WRITING TASK ${currentSectionIndex + 1}`}
@@ -642,14 +652,13 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                     </Tabs>
                   </div>
                 )}
-              {renderKeyboard()}
               <textarea
                 ref={textareaRef}
                 onKeyDown={handleShortcutKeyDown}
                 value={currentAnswer}
                 onChange={(e) => handleAnswerChange(e.target.value)}
                 placeholder="Type your essay here.."
-                className="w-full h-56 p-4 border border-gray-300  resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-gray-900 placeholder:text-gray-400 text-base"
+                className="w-full h-64 p-4 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-gray-900 placeholder:text-gray-400 text-base"
                 dir="ltr"
                 lang="tr"
               />
@@ -767,8 +776,6 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                       </Tabs>
                     </div>
                   )}
-                  {renderKeyboard()}
-
                   <textarea
                     ref={textareaRef}
                     onKeyDown={handleShortcutKeyDown}
@@ -779,6 +786,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                     dir="ltr"
                     lang="tr"
                   />
+                  {renderKeyboard()}
 
                   <div className="mt-4 flex items-center justify-between">
                     <div className="text-lg font-medium text-gray-600">Words Count: {wordCount}</div>

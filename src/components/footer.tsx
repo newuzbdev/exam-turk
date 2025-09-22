@@ -112,7 +112,7 @@ export const Footer = () => {
             <p>
               &copy; {new Date().getFullYear()} TürkTest. Tüm hakları saklıdır.
             </p>
-            <p>Created and designed by Ochilov Jaxongirmirzo</p>
+            <a href="https:t.me/new_uzb_dev">Created and designed by Ochilov Jaxongirmirzo</a>
           </div>
         </div>
       </footer>

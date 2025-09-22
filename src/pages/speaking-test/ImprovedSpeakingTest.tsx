@@ -937,7 +937,7 @@ export default function ImprovedSpeakingTest() {
           </div>
         </div>
 
-        <div className="bg-green-600 text-white px-4 py-2 rounded font-bold">MULTI LEVEL</div>
+        <div className="bg-red-600 text-white px-4 py-2 rounded font-bold">MULTI LEVEL</div>
       </div>
       {!isExamMode && (
         <motion.header

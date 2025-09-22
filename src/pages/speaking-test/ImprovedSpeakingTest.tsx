@@ -729,31 +729,31 @@ export default function ImprovedSpeakingTest() {
   if (loading) {
     return (
       <motion.div
-        className="min-h-screen  flex items-center justify-center"
+        className="min-h-screen  flex items-center justify-center px-4"
         initial="initial"
         animate="animate"
       >
         <motion.div className="text-center">
           <motion.div
-            className="w-20 h-20  rounded-3xl mx-auto mb-6 grid place-items-center shadow-2xl shadow-red-200"
+            className="w-16 h-16 sm:w-20 sm:h-20  rounded-3xl mx-auto mb-4 sm:mb-6 grid place-items-center shadow-2xl shadow-red-200"
             animate="animate"
           >
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
             >
-              <Mic className="w-10 h-10 text-white" />
+              <Mic className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
             </motion.div>
           </motion.div>
           <motion.p
-            className="text-xl font-bold text-gray-800 mb-2"
+            className="text-lg sm:text-xl font-bold text-gray-800 mb-2"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
             Test yükleniyor...
           </motion.p>
-          <div className="w-32 h-1  rounded-full mx-auto overflow-hidden">
+          <div className="w-24 h-1 sm:w-32 sm:h-1  rounded-full mx-auto overflow-hidden">
             <motion.div
               className="h-full "
               animate={{ x: ["-100%", "100%"] }}
@@ -768,16 +768,16 @@ export default function ImprovedSpeakingTest() {
   if (!testData) {
     return (
       <motion.div
-        className="min-h-screen flex items-center justify-center"
+        className="min-h-screen flex items-center justify-center px-4"
         initial="initial"
         animate="animate"
       >
         <motion.div
-          className="text-center bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-2xl border border-red-100"
+          className="text-center bg-white/80 backdrop-blur-sm rounded-3xl p-6 sm:p-8 shadow-2xl border border-red-100"
           whileHover={{ y: -5, boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)" }}
         >
           <motion.div
-            className="w-16 h-16  rounded-2xl mx-auto mb-4 grid place-items-center shadow-lg"
+            className="w-12 h-12 sm:w-16 sm:h-16  rounded-2xl mx-auto mb-4 grid place-items-center shadow-lg"
             animate={{
               rotate: [0, -10, 10, -10, 0],
               scale: [1, 1.1, 1],
@@ -788,10 +788,10 @@ export default function ImprovedSpeakingTest() {
               repeatDelay: 3,
             }}
           >
-            <span className="text-white text-2xl font-bold">!</span>
+            <span className="text-white text-xl sm:text-2xl font-bold">!</span>
           </motion.div>
           <motion.p
-            className="text-xl font-bold text-gray-800 mb-4"
+            className="text-lg sm:text-xl font-bold text-gray-800 mb-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
@@ -803,7 +803,7 @@ export default function ImprovedSpeakingTest() {
             whileHover="hover"
             whileTap="tap"
             onClick={() => navigate("/test")}
-            className="bg-gradient-to-r from-red-600 to-rose-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all duration-200"
+            className="bg-gradient-to-r from-red-600 to-rose-600 text-white px-6 py-2 sm:px-8 sm:py-3 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all duration-200 text-sm sm:text-base"
           >
             Geri Dön
           </motion.button>
@@ -835,42 +835,42 @@ export default function ImprovedSpeakingTest() {
         animate="animate"
       >
         {!micChecked ? (
-          <MicrophoneCheck onSuccess={() => setMicChecked(true)} />
-        ) : (
-          <>
-            {!isExamMode && (
-              <motion.header
-                className="sticky top-0 z-10 bg-white/80  border-b border-gray-100 shadow-sm"
-                initial={{ y: -100, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
-              >
-              </motion.header>
-            )}
-              <main className="max-w-5xl mx-auto px-6 py-10 min-h-[calc(100vh-120px)] flex items-center justify-center">
-      <div className="bg-white border border-gray-200 rounded-xl p-10 shadow-lg w-full max-w-5xl">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center bg-gray-100 text-gray-700 px-6 py-3 rounded-lg text-lg font-semibold mb-6 border border-gray-200">
-            <Info className="w-6 h-6 mr-3" />
-            {currentSection.title}
-          </div>
-          <h2 className="text-4xl font-black text-gray-900 mb-6">Bölüm Açıklaması</h2>
-          <p className="text-xl text-gray-700 leading-relaxed whitespace-pre-line max-w-4xl mx-auto">
-            {currentSection.description}
-          </p>
-        </div>
-        <div className="mt-10 text-center">
-          <button
-            onClick={startSection}
-            className="bg-red-600 hover:bg-red-700 text-white font-semibold py-4 px-8 text-lg rounded-lg hover:shadow-lg shadow-md transition-all duration-200 cursor-pointer"
+      <MicrophoneCheck onSuccess={() => setMicChecked(true)} />
+    ) : (
+      <>
+        {!isExamMode && (
+          <motion.header
+            className="sticky top-0 z-10 bg-white/80  border-b border-gray-100 shadow-sm"
+            initial={{ y: -100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
           >
-            Bölümü Başlat
-          </button>
-        </div>
-      </div>
-    </main>
-          </>
+          </motion.header>
         )}
+          <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10 min-h-[calc(100vh-120px)] flex items-center justify-center">
+  <div className="bg-white border border-gray-200 rounded-xl p-6 sm:p-10 shadow-lg w-full max-w-5xl">
+    <div className="text-center mb-6 sm:mb-8">
+      <div className="inline-flex items-center bg-gray-100 text-gray-700 px-4 py-2 sm:px-6 sm:py-3 rounded-lg text-sm sm:text-lg font-semibold mb-4 sm:mb-6 border border-gray-200">
+        <Info className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3" />
+        {currentSection.title}
+      </div>
+      <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-gray-900 mb-4 sm:mb-6">Bölüm Açıklaması</h2>
+      <p className="text-lg sm:text-xl text-gray-700 leading-relaxed whitespace-pre-line max-w-4xl mx-auto">
+        {currentSection.description}
+      </p>
+    </div>
+    <div className="mt-8 sm:mt-10 text-center">
+      <button
+        onClick={startSection}
+        className="bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 sm:py-4 sm:px-8 text-base sm:text-lg rounded-lg hover:shadow-lg shadow-md transition-all duration-200 cursor-pointer"
+      >
+        Bölümü Başlat
+      </button>
+    </div>
+  </div>
+</main>
+      </>
+    )}
       </motion.div>
     )
   }
@@ -894,17 +894,16 @@ export default function ImprovedSpeakingTest() {
       {/* <DisableKeys /> */}
       
       {/* Header with section indicators */}
-      <div className="flex items-center justify-between p-6">
+      <div className="flex flex-col sm:flex-row items-center justify-between p-8 gap-4 sm:gap-0">
         <div className="flex items-center gap-3">
-         
-                <div className="bg-red-600 text-white px-3 py-1 rounded font-bold text-lg">
-          TURKISHMOCK
-        </div>
+          <div className="bg-red-600 text-white px-4 py-3 rounded font-bold text-base sm:text-lg">
+            TURKISHMOCK
+          </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-3 flex-wrap justify-center">
           {/* Section 1.1 */}
-          <div className={`px-4 py-2 rounded-lg font-bold text-lg ${
+          <div className={`px-5 py-4 rounded-lg font-bold text-base sm:text-lg ${
             currentSectionIndex === 0 && currentSubPartIndex === 0
               ? "bg-green-600 text-white"
               : "bg-yellow-500 text-black"
@@ -912,7 +911,7 @@ export default function ImprovedSpeakingTest() {
             1.1
           </div>
           {/* Section 1.2 */}
-          <div className={`px-4 py-2 rounded-lg font-bold text-lg ${
+          <div className={`px-5 py-4 rounded-lg font-bold text-base sm:text-lg ${
             currentSectionIndex === 0 && currentSubPartIndex === 1
               ? "bg-green-600 text-white"
               : "bg-yellow-500 text-black"
@@ -920,7 +919,7 @@ export default function ImprovedSpeakingTest() {
             1.2
           </div>
           {/* Section 2 */}
-          <div className={`px-4 py-2 rounded-lg font-bold text-lg ${
+          <div className={`px-5 py-4 rounded-lg font-bold text-base sm:text-lg ${
             currentSectionIndex === 1
               ? "bg-green-600 text-white"
               : "bg-yellow-500 text-black"
@@ -928,7 +927,7 @@ export default function ImprovedSpeakingTest() {
             2
           </div>
           {/* Section 3 */}
-          <div className={`px-4 py-2 rounded-lg font-bold text-lg ${
+          <div className={`px-5 py-4 rounded-lg font-bold text-base sm:text-lg ${
             currentSectionIndex === 2
               ? "bg-green-600 text-white"
               : "bg-yellow-500 text-black"
@@ -937,7 +936,7 @@ export default function ImprovedSpeakingTest() {
           </div>
         </div>
 
-        <div className="bg-red-600 text-white px-4 py-2 rounded font-bold">MULTI LEVEL</div>
+        <div className="bg-red-600 text-white px-4 py-3 rounded font-bold text-base sm:text-base">MULTI LEVEL</div>
       </div>
       {!isExamMode && (
         <motion.header
@@ -946,7 +945,7 @@ export default function ImprovedSpeakingTest() {
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.5, ease: "easeOut" }}
         >
-          <div className="max-w-6xl mx-auto px-6 py-5">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-5">
             <div className="flex items-center justify-between">
               <motion.button
                 initial="initial"
@@ -955,8 +954,8 @@ export default function ImprovedSpeakingTest() {
                 onClick={() => navigate("/test")}
                 className="flex items-center text-red-600 hover:text-red-700 font-bold transition-colors"
               >
-                <ArrowLeft className="w-5 h-5 mr-2" />
-                <span className="text-lg">Geri</span>
+                <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                <span className="text-sm sm:text-lg">Geri</span>
               </motion.button>
               <motion.div
                 className="text-center"
@@ -964,20 +963,20 @@ export default function ImprovedSpeakingTest() {
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.2 }}
               >
-                <h1 className="text-2xl font-black text-gray-900">{testData.title}</h1>
-                <div className="flex items-center justify-center gap-3 mt-2">
+                <h1 className="text-xl sm:text-2xl font-black text-gray-900">{testData.title}</h1>
+                <div className="flex items-center justify-center gap-2 sm:gap-3 mt-2">
                   <motion.div
-                    className="px-4 py-1.5 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-full text-sm font-bold shadow-md"
+                    className="px-3 py-1 sm:px-4 sm:py-1.5 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-full text-xs sm:text-sm font-bold shadow-md"
                     whileHover={{ scale: 1.05 }}
                   >
                     {currentSection?.title}
                   </motion.div>
-                  <span className="text-sm text-gray-400">•</span>
-                  <span className="text-sm text-gray-600 font-semibold">Soru {currentQuestionIndex + 1}</span>
+                  <span className="text-xs sm:text-sm text-gray-400">•</span>
+                  <span className="text-xs sm:text-sm text-gray-600 font-semibold">Soru {currentQuestionIndex + 1}</span>
                 </div>
               </motion.div>
               <motion.div
-                className="text-lg font-bold text-gray-700 px-4 py-2 rounded-xl"
+                className="text-sm sm:text-lg font-bold text-gray-700 px-3 py-1 sm:px-4 sm:py-2 rounded-xl"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.3 }}
@@ -986,7 +985,7 @@ export default function ImprovedSpeakingTest() {
               </motion.div>
             </div>
             <motion.div
-              className="mt-4"
+              className="mt-3 sm:mt-4"
               initial={{ opacity: 0, scaleX: 0 }}
               animate={{ opacity: 1, scaleX: 1 }}
               transition={{ delay: 0.4, duration: 0.5 }}
@@ -997,25 +996,25 @@ export default function ImprovedSpeakingTest() {
         </motion.header>
       )}
          {/* question rendering part */}
-      <main className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] px-8">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={`${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`}
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className="mb-16"
-          >
-            {currentSection?.type !== "PART2" && !isPlayingInstructions && (
-              <div className="flex items-center bg-green-600 rounded-l-2xl rounded-r-2xl overflow-hidden shadow-lg">
-                <div className="bg-green-600 text-white px-8 py-4 font-bold text-2xl">QUESTION</div>
-                <div className="bg-yellow-500 text-black px-6 py-4 font-bold text-3xl">
-                  {currentQuestionIndex + 1}
-                </div>
-              </div>
-            )}
-          </motion.div>
-        </AnimatePresence>
+     <main className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] px-4 sm:px-8">
+       <AnimatePresence mode="wait">
+         <motion.div
+           key={`${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`}
+           initial={{ opacity: 0, y: -20 }}
+           animate={{ opacity: 1, y: 0 }}
+           exit={{ opacity: 0, y: 20 }}
+           className="mb-12 sm:mb-16"
+         >
+           {currentSection?.type !== "PART2" && !isPlayingInstructions && (
+             <div className="flex items-center bg-green-600 rounded-l-2xl rounded-r-2xl overflow-hidden shadow-lg">
+               <div className="bg-green-600 text-white px-4 py-2 sm:px-6 sm:py-4 font-bold text-lg sm:text-2xl">QUESTION</div>
+               <div className="bg-yellow-500 text-black px-3 py-2 sm:px-6 sm:py-4 font-bold text-xl sm:text-3xl">
+                 {currentQuestionIndex + 1}
+               </div>
+             </div>
+           )}
+         </motion.div>
+       </AnimatePresence>
 
         {!isPlayingInstructions && currentSection?.subParts?.[currentSubPartIndex]?.images?.length ? (
           <motion.div 
@@ -1041,23 +1040,23 @@ export default function ImprovedSpeakingTest() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ delay: 0.2 }}
-              className="mb-20"
+              className="mb-16 sm:mb-20"
             >
               {currentSection?.type === "PART2" ? (
-                <div className="max-w-3xl mx-auto bg-white p-6 rounded-xl">
-                  <ul className="list-disc list-inside space-y-3 text-black">
+                <div className="max-w-3xl mx-auto bg-white p-4 sm:p-6 rounded-xl">
+                  <ul className="list-disc list-inside space-y-2 sm:space-y-3 text-black">
                     {(currentSection?.subParts?.[currentSubPartIndex]?.questions || currentSection?.questions || []).map((q) => (
-                      <li key={q.id} className="text-xl leading-relaxed">
+                      <li key={q.id} className="text-lg sm:text-xl leading-relaxed">
                         {q.questionText}
                       </li>
                     ))}
                   </ul>
                 </div>
               ) : currentSection?.type === "PART3" ? (
-                <div className="max-w-4xl mx-auto bg-white p-6 rounded-xl">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="max-w-4xl mx-auto bg-white p-4 sm:p-6 rounded-xl">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                     <div>
-                      <h3 className="text-xl font-bold mb-3 text-gray-900">Lehler (Avantajlar)</h3>
+                      <h3 className="text-lg sm:text-xl font-bold mb-3 text-gray-900">Lehler (Avantajlar)</h3>
                       <ul className="list-disc list-inside space-y-2 text-black">
                         {(currentSection as any)?.points?.filter((p: any) => p.type === 'ADVANTAGE')?.flatMap((p: any) => p.example || []).sort((a: any, b: any) => (a.order||0)-(b.order||0)).map((ex: any, idx: number) => (
                           <li key={`adv-${idx}`}>{ex.text}</li>
@@ -1065,7 +1064,7 @@ export default function ImprovedSpeakingTest() {
                       </ul>
                     </div>
                     <div>
-                      <h3 className="text-xl font-bold mb-3 text-gray-900">Aleyhler (Dezavantajlar)</h3>
+                      <h3 className="text-lg sm:text-xl font-bold mb-3 text-gray-900">Aleyhler (Dezavantajlar)</h3>
                       <ul className="list-disc list-inside space-y-2 text-black">
                         {(currentSection as any)?.points?.filter((p: any) => p.type === 'DISADVANTAGE')?.flatMap((p: any) => p.example || []).sort((a: any, b: any) => (a.order||0)-(b.order||0)).map((ex: any, idx: number) => (
                           <li key={`dis-${idx}`}>{ex.text}</li>
@@ -1075,7 +1074,7 @@ export default function ImprovedSpeakingTest() {
                   </div>
                 </div>
               ) : (
-                <h2 className="text-4xl font-medium text-gray-800 text-center leading-relaxed max-w-4xl">
+                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-medium text-gray-800 text-center leading-relaxed max-w-4xl">
                   {currentQuestion?.questionText}
                 </h2>
               )}
@@ -1086,8 +1085,8 @@ export default function ImprovedSpeakingTest() {
         <div className="relative">
           {isRecording && !isPaused && !isPlayingInstructions && !isPrepRunning && (
             <>
-              <span className="absolute inset-0 w-40 h-40 -left-4 -top-4 rounded-full bg-red-400 opacity-30 animate-ping" style={{ animationDuration: '2.5s' }}></span>
-              <span className="absolute inset-0 w-48 h-48 -left-8 -top-8 rounded-full bg-red-500 opacity-20 animate-ping" style={{ animationDuration: '3s' }}></span>
+              <span className="absolute inset-0 w-32 h-32 sm:w-40 sm:h-40 -left-3 -top-3 sm:-left-4 sm:-top-4 rounded-full bg-red-400 opacity-30 animate-ping" style={{ animationDuration: '2.5s' }}></span>
+              <span className="absolute inset-0 w-36 h-36 sm:w-48 sm:h-48 -left-6 -top-6 sm:-left-8 sm:-top-8 rounded-full bg-red-500 opacity-20 animate-ping" style={{ animationDuration: '3s' }}></span>
             </>
           )}
           <motion.button
@@ -1097,7 +1096,7 @@ export default function ImprovedSpeakingTest() {
               else startRecording()
             }}
             disabled={isPlayingInstructions || isPrepRunning || isPlayingTTS}
-            className={`w-32 h-32 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 ${
+            className={`w-20 h-20 sm:w-24 sm:h-24 lg:w-32 lg:h-32 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 ${
               isRecording
                 ? "bg-red-600 hover:bg-red-700"
                 : "bg-gradient-to-br from-red-400 to-red-600 hover:from-red-500 hover:to-red-700"
@@ -1109,7 +1108,7 @@ export default function ImprovedSpeakingTest() {
             transition={{ delay: 0.4, type: "spring", stiffness: 200 }}
           >
             <div>
-              <Mic className="w-12 h-12 text-white" />
+              <Mic className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-white" />
             </div>
           </motion.button>
         </div>
@@ -1205,18 +1204,18 @@ export default function ImprovedSpeakingTest() {
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.6 }}
-          className="absolute bottom-8 right-8"
+          className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6 lg:bottom-8 lg:right-8"
         >
-          <div className="text-6xl font-bold text-gray-800 font-mono">
+          <div className="text-3xl sm:text-4xl lg:text-6xl font-bold text-gray-800 font-mono">
             {isPrepRunning ? formatTime(prepSeconds) : formatTime(timeLeft)}
           </div>
           {isPrepRunning ? (
-          <div className="text-2xl font-bold text-blue-600 font-mono text-center mt-2">
+          <div className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600 font-mono text-center mt-1 sm:mt-2">
               Hazırlık
           </div>
         ) : (
           isRecording && (
-            <div className="text-2xl font-bold text-red-600 font-mono text-center mt-2">
+            <div className="text-lg sm:text-xl lg:text-2xl font-bold text-red-600 font-mono text-center mt-1 sm:mt-2">
             </div>
           )
         )}

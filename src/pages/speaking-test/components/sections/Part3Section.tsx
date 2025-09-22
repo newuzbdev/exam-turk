@@ -106,7 +106,7 @@ const Part3Section = ({
     setShowCountdown(false);
     setCurrentPhase("speaking");
     setIsTimerRunning(true);
-    
+
     // Start recording
     const question = getQuestion();
     if (question) {
@@ -165,9 +165,8 @@ const Part3Section = ({
                   <div className="w-4 h-4 bg-green-600 rounded-full"></div>
                 </div>
               </div>
-              <div>
-                <div className="font-bold text-lg text-gray-800">iTeacher</div>
-                <div className="text-sm text-gray-600">Academy</div>
+              <div className="bg-red-600 text-white px-3 py-1 rounded font-bold text-lg">
+                TURKISHMOCK
               </div>
             </div>
 
@@ -276,9 +275,9 @@ const Part3Section = ({
               part={3}
               isActive={isTimerRunning}
             />
-            
+
             <div className="mt-4">
-              <Button 
+              <Button
                 onClick={() => {
                   setIsTimerRunning(false);
                   setCurrentPhase("instructions");
@@ -313,7 +312,7 @@ const Part3Section = ({
                 </div>
               </div>
               <div>
-                 <div className="font-bold text-lg text-gray-800">Turkce test</div>
+                <div className="font-bold text-lg text-gray-800">Turkce test</div>
                 <div className="text-sm text-gray-600">Platform</div>
               </div>
             </div>
@@ -419,7 +418,7 @@ const Part3Section = ({
                   </Button>
                 </>
               )}
-              
+
               {isRecording && isPaused && (
                 <>
                   <Button
@@ -442,15 +441,14 @@ const Part3Section = ({
 
             {/* Microphone */}
             <motion.div
-              className={`w-16 h-16 rounded-full flex items-center justify-center cursor-pointer ${
-                isRecording
-                  ? isPaused
-                    ? "bg-yellow-500"
-                    : "bg-red-500 animate-pulse"
-                  : hasRecording
-                    ? "bg-green-500"
-                    : "bg-red-500"
-              }`}
+              className={`w-16 h-16 rounded-full flex items-center justify-center cursor-pointer ${isRecording
+                ? isPaused
+                  ? "bg-yellow-500"
+                  : "bg-red-500 animate-pulse"
+                : hasRecording
+                  ? "bg-green-500"
+                  : "bg-red-500"
+                }`}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
             >
@@ -521,9 +519,8 @@ const Part3Section = ({
                     <div className="w-4 h-4 bg-red-600 rounded-full"></div>
                   </div>
                 </div>
-                <div>
-                  <div className="font-bold text-lg text-gray-800">iTeacher</div>
-                  <div className="text-sm text-gray-600">Academy</div>
+                <div className="bg-red-600 text-white px-3 py-1 rounded font-bold text-lg">
+                  TURKISHMOCK
                 </div>
               </div>
 
@@ -643,7 +640,7 @@ const Part3Section = ({
           <p className="text-green-700 mb-4">
             Bu bölümdeki konuşmanız kaydedildi.
           </p>
-          <Button 
+          <Button
             onClick={onNextSection}
             className="bg-green-600 hover:bg-green-700 text-white"
           >

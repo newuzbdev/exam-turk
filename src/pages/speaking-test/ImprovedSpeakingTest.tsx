@@ -845,36 +845,6 @@ export default function ImprovedSpeakingTest() {
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ duration: 0.5, ease: "easeOut" }}
               >
-                <div className="max-w-6xl mx-auto px-6 py-5">
-                  <div className="flex items-center justify-between">
-                    <motion.button
-                      initial="initial"
-                      whileHover="hover"
-                      whileTap="tap"
-                      onClick={() => navigate("/test")}
-                      className="flex items-center text-red-600 hover:text-red-700 font-bold transition-colors"
-                    >
-                      <ArrowLeft className="w-5 h-5 mr-2" />
-                      <span className="text-lg">Geri</span>
-                    </motion.button>
-                    <motion.h1
-                      className="text-2xl font-black text-gray-900"
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.2 }}
-                    >
-                      {testData.title}
-                    </motion.h1>
-                    <motion.div
-                      className="text-lg font-bold text-gray-700  px-4 py-2 rounded-xl"
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.3 }}
-                    >
-                      Bölüm {currentSectionIndex + 1} / {testData.sections.length}
-                    </motion.div>
-                  </div>
-                </div>
               </motion.header>
             )}
               <main className="max-w-5xl mx-auto px-6 py-10 min-h-[calc(100vh-120px)] flex items-center justify-center">
@@ -917,7 +887,7 @@ export default function ImprovedSpeakingTest() {
 
   return (
     <motion.div
-      className="min-h-screen bg-amber-50 relative overflow-hidden"
+      className="min-h-screen relative overflow-hidden"
       initial="initial"
       animate="animate"
     >
@@ -926,13 +896,10 @@ export default function ImprovedSpeakingTest() {
       {/* Header with section indicators */}
       <div className="flex items-center justify-between p-6">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center">
-            <span className="text-white font-bold text-sm">iT</span>
-          </div>
-          <div className="text-gray-800 font-bold text-lg">
-            <div>iTeacher</div>
-            <div className="text-sm font-normal">Academy</div>
-          </div>
+         
+                <div className="bg-red-600 text-white px-3 py-1 rounded font-bold text-lg">
+          TURKISHMOCK
+        </div>
         </div>
 
         <div className="flex gap-2">
@@ -1171,7 +1138,7 @@ export default function ImprovedSpeakingTest() {
             <span>Playing instructions...</span>
           </motion.div>
         )}
-
+{/* 
         {isPlayingTTS && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -1181,7 +1148,7 @@ export default function ImprovedSpeakingTest() {
             <Volume2 className="w-5 h-5" />
             <span>Playing question audio...</span>
           </motion.div>
-        )}
+        )} */}
 
         <div className="flex items-center gap-4 mt-8">
           {!isExamMode && (
@@ -1196,7 +1163,7 @@ export default function ImprovedSpeakingTest() {
             </motion.button>
           )}
 
-          <motion.button
+          {/* <motion.button
             onClick={() => {
               if (isPlayingInstructions) {
                 // Skip only the instructions, then start prep for current section
@@ -1229,7 +1196,7 @@ export default function ImprovedSpeakingTest() {
             transition={{ delay: 0.6 }}
           >
             Sonraki →
-          </motion.button>
+          </motion.button> */}
         </div>
       </main>
 

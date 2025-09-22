@@ -8,12 +8,15 @@ import { MicrophoneCheck } from "./components/MicrophoneCheck"
 // import ResultModal from "./components/ResultModal"
 // import DisableKeys from "./components/DisableKeys"
 
+const baseURL = import.meta.env.VITE_API_URL || "https://api.turkcetest.uz"
+
 interface Question {
   id: string
   questionText: string
   order: number
   subPartId?: string
   sectionId?: string
+  textToSpeechUrl?: string
 }
 interface SubPart {
   id: string
@@ -95,6 +98,7 @@ export default function ImprovedSpeakingTest() {
   const [isRecording, setIsRecording] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
   const [isPlayingInstructions, setIsPlayingInstructions] = useState(false)
+  const [isPlayingTTS, setIsPlayingTTS] = useState(false)
   // speaking/answer timer (seconds)
   const [timeLeft, setTimeLeft] = useState(RECORD_SECONDS_PER_QUESTION)
   const [_recordingTime, setRecordingTime] = useState(0)
@@ -118,6 +122,7 @@ export default function ImprovedSpeakingTest() {
   const startSoundRef = useRef<HTMLAudioElement | null>(null)
   const endSoundRef = useRef<HTMLAudioElement | null>(null)
   const questionSoundRef = useRef<HTMLAudioElement | null>(null)
+  const ttsAudioRef = useRef<HTMLAudioElement | null>(null)
   const prepIntervalRef = useRef<number | null>(null)
   const autoAdvanceRef = useRef<string | null>(null)
 
@@ -135,11 +140,11 @@ export default function ImprovedSpeakingTest() {
     })()
 
     startSoundRef.current = new Audio(
-      "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmshBziI0vPXeCsFJG7C7+WQPQ0PVKzl7axeBg4+o+HzultYFjLK4vK0V",
+      "./bell-98033.mp3",
     )
     // Use a crisp, public-domain beep for end-of-prep cue
     endSoundRef.current = new Audio(
-      "https://actions.google.com/sounds/v1/alarms/beep_short.ogg"
+      "/bell-98033.mp3"
     )
     questionSoundRef.current = new Audio(
       "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAACAgICAf39/f39/f39/f39/f39/gICAf39/f39/f39/f39/f39/gICAf39/f39/f4CAgICAgH9/f39/f39/gICAf39/f39/f39/f39/f4CAgICAf39/f39/f39/"
@@ -187,6 +192,12 @@ export default function ImprovedSpeakingTest() {
       audioRef.current.currentTime = 0
       audioRef.current = null
     }
+    if (ttsAudioRef.current) {
+      ttsAudioRef.current.pause()
+      ttsAudioRef.current.currentTime = 0
+      ttsAudioRef.current = null
+    }
+    setIsPlayingTTS(false)
   }
 
   const cleanupMedia = () => {
@@ -240,12 +251,35 @@ export default function ImprovedSpeakingTest() {
     }
   }, [currentSection?.type, currentQuestion, currentSectionIndex, currentSubPartIndex, currentQuestionIndex])
 
-  // Play a short chime when a new question becomes active (outside instructions)
+  // Play a short chime and TTS audio when a new question becomes active (outside instructions)
   useEffect(() => {
     if (!showSectionDescription && currentSection && !isPlayingInstructions) {
       playSound("question")
+
+      // Play TTS audio if available
+      if (currentQuestion?.textToSpeechUrl) {
+        const fullUrl = currentQuestion.textToSpeechUrl.startsWith('./')
+          ? `${baseURL}${currentQuestion.textToSpeechUrl.substring(1)}`
+          : currentQuestion.textToSpeechUrl
+        const ttsAudio = new Audio(fullUrl)
+        ttsAudioRef.current = ttsAudio
+        setIsPlayingTTS(true)
+        ttsAudio.onended = () => {
+          setIsPlayingTTS(false)
+          ttsAudioRef.current = null
+        }
+        ttsAudio.onerror = () => {
+          setIsPlayingTTS(false)
+          ttsAudioRef.current = null
+          toast.error("TTS audio yüklenemedi")
+        }
+        ttsAudio.play().catch(() => {
+          setIsPlayingTTS(false)
+          ttsAudioRef.current = null
+        })
+      }
     }
-  }, [currentSectionIndex, currentSubPartIndex, currentQuestionIndex, showSectionDescription, isPlayingInstructions])
+  }, [currentSectionIndex, currentSubPartIndex, currentQuestionIndex, showSectionDescription, isPlayingInstructions, currentQuestion])
 
   // timers while recording
   useEffect(() => {
@@ -422,6 +456,9 @@ export default function ImprovedSpeakingTest() {
       return
     }
     if (!force && isPlayingInstructions) {
+      return
+    }
+    if (!force && isPlayingTTS) {
       return
     }
     if (!force && isRecording) {
@@ -1092,7 +1129,7 @@ export default function ImprovedSpeakingTest() {
               if (isRecording) stopRecording()
               else startRecording()
             }}
-            disabled={isPlayingInstructions || isPrepRunning}
+            disabled={isPlayingInstructions || isPrepRunning || isPlayingTTS}
             className={`w-32 h-32 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 ${
               isRecording
                 ? "bg-red-600 hover:bg-red-700"
@@ -1135,6 +1172,17 @@ export default function ImprovedSpeakingTest() {
           </motion.div>
         )}
 
+        {isPlayingTTS && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-4 flex items-center gap-2 text-green-600 font-bold"
+          >
+            <Volume2 className="w-5 h-5" />
+            <span>Playing question audio...</span>
+          </motion.div>
+        )}
+
         <div className="flex items-center gap-4 mt-8">
           {!isExamMode && (
             <motion.button
@@ -1170,7 +1218,7 @@ export default function ImprovedSpeakingTest() {
 
           <motion.button
             onClick={() => nextQuestion(false)}
-            disabled={isRecording || isPlayingInstructions || isPrepRunning}
+            disabled={isRecording || isPlayingInstructions || isPrepRunning || isPlayingTTS}
             className={`px-8 py-3 rounded-xl font-bold transition-all duration-200 ${
               (isRecording || isPlayingInstructions || isPrepRunning)
                 ? "bg-gray-300 text-gray-500 cursor-not-allowed"

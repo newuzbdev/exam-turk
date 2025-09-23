@@ -453,11 +453,11 @@ export default function ImprovedSpeakingTest() {
         const rec: Recording = { blob, duration, questionId: key }
         setRecordings((prev) => new Map(prev).set(key, rec))
         // smooth auto-next when there is a question-based flow
-        if (currentQuestion && currentSection?.type === "PART1") {
+        if (currentQuestion) {
           setTimeout(() => nextQuestion(true), 900)
         }
         cleanupMedia()
-        }
+      }
         
         mr.start(100)
         setIsRecording(true)

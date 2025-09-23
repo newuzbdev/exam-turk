@@ -251,6 +251,41 @@ export default function ImprovedSpeakingTest() {
     }
   }, [currentSection?.type, currentQuestion, currentSectionIndex, currentSubPartIndex, currentQuestionIndex])
 
+  // Auto-play section audio when showing section description
+  useEffect(() => {
+    if (showSectionDescription && currentSection && micChecked && !isPlayingInstructions) {
+      const src = sectionAudios[currentSection.order]
+      if (src) {
+        const audio = new Audio(src)
+        audioRef.current = audio
+        setIsPlayingInstructions(true)
+        audio.onended = () => {
+          setIsPlayingInstructions(false)
+          // Start the section after audio ends
+          setIsExamMode(true)
+          addNavigationLock()
+          enterFullscreen().catch(() => {})
+          setShowSectionDescription(false)
+          resetPerQuestionState()
+          playSound("question")
+          // Start first question based on section type
+          if (currentSection.type === "PART1") {
+            beginPreparation(5, () => startRecording(30, true))
+          } else if (currentSection.type === "PART2" || currentSection.type === "PART3") {
+            beginPreparation(60, () => startRecording(120, true))
+          } else {
+            startRecording(undefined, true)
+          }
+        }
+        audio.onerror = () => {
+          setIsPlayingInstructions(false)
+          toast.error("Audio yüklenemedi")
+        }
+        audio.play().catch(() => setIsPlayingInstructions(false))
+      }
+    }
+  }, [showSectionDescription, currentSection, micChecked, isPlayingInstructions])
+
   // Play a short chime and TTS audio when a new question becomes active (outside instructions)
   useEffect(() => {
     if (!showSectionDescription && currentSection && !isPlayingInstructions) {
@@ -568,57 +603,57 @@ export default function ImprovedSpeakingTest() {
     }, 1000)
   }
 
-  const startAfterInstructionsForCurrentSection = () => {
-    const section = currentSection
-    if (!section) return
-    if (section.type === "PART1") {
-      beginPreparation(5, () => startRecording(30, true))
-    } else if (section.type === "PART2" || section.type === "PART3") {
-      beginPreparation(60, () => startRecording(120, true))
-    } else {
-      startRecording(undefined, true)
-    }
-  }
+  // const startAfterInstructionsForCurrentSection = () => {
+  //   const section = currentSection
+  //   if (!section) return
+  //   if (section.type === "PART1") {
+  //     beginPreparation(5, () => startRecording(30, true))
+  //   } else if (section.type === "PART2" || section.type === "PART3") {
+  //     beginPreparation(60, () => startRecording(120, true))
+  //   } else {
+  //     startRecording(undefined, true)
+  //   }
+  // }
 
-  const startSection = () => {
-    if (!testData) return
-    if (audioRef.current && !audioRef.current.paused) return
-    if (isPlayingInstructions) return
+  // const startSection = () => {
+  //   if (!testData) return
+  //   if (audioRef.current && !audioRef.current.paused) return
+  //   if (isPlayingInstructions) return
 
-    const section = currentSection
-    if (!section) return
+  //   const section = currentSection
+  //   if (!section) return
 
-    // enter exam mode BEFORE starting audio (user gesture)
-    setIsExamMode(true)
-    addNavigationLock()
-    enterFullscreen().catch(() => { })
+  //   // enter exam mode BEFORE starting audio (user gesture)
+  //   setIsExamMode(true)
+  //   addNavigationLock()
+  //   enterFullscreen().catch(() => { })
 
-    setShowSectionDescription(false)
-    resetPerQuestionState()
+  //   setShowSectionDescription(false)
+  //   resetPerQuestionState()
 
-    // Play a chime indicating the test/section question flow is starting
-    playSound("question")
+  //   // Play a chime indicating the test/section question flow is starting
+  //   playSound("question")
 
-    const src = sectionAudios[section.order]
+  //   const src = sectionAudios[section.order]
 
-    if (!src) {
-      startAfterInstructionsForCurrentSection()
-      return
-    }
+  //   if (!src) {
+  //     startAfterInstructionsForCurrentSection()
+  //     return
+  //   }
 
-    const audio = new Audio(src)
-    audioRef.current = audio
-    setIsPlayingInstructions(true)
-    audio.onended = () => {
-      setIsPlayingInstructions(false)
-      setTimeout(() => !isRecording && startAfterInstructionsForCurrentSection(), 500)
-    }
-    audio.onerror = () => {
-      setIsPlayingInstructions(false)
-      toast.error("Audio yüklenemedi")
-    }
-    audio.play().catch(() => setIsPlayingInstructions(false))
-  }
+  //   const audio = new Audio(src)
+  //   audioRef.current = audio
+  //   setIsPlayingInstructions(true)
+  //   audio.onended = () => {
+  //     setIsPlayingInstructions(false)
+  //     setTimeout(() => !isRecording && startAfterInstructionsForCurrentSection(), 500)
+  //   }
+  //   audio.onerror = () => {
+  //     setIsPlayingInstructions(false)
+  //     toast.error("Audio yüklenemedi")
+  //   }
+  //   audio.play().catch(() => setIsPlayingInstructions(false))
+  // }
 
   const submitTest = async () => {
     if (!testData) return
@@ -859,14 +894,14 @@ export default function ImprovedSpeakingTest() {
         {currentSection.description}
       </p>
     </div>
-    <div className="mt-8 sm:mt-10 text-center">
-      <button
-        onClick={startSection}
-        className="bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 sm:py-4 sm:px-8 text-base sm:text-lg rounded-lg hover:shadow-lg shadow-md transition-all duration-200 cursor-pointer"
-      >
-        Bölümü Başlat
-      </button>
-    </div>
+    {isPlayingInstructions && (
+      <div className="mt-8 sm:mt-10 text-center">
+        <div className="flex items-center gap-2 text-blue-600 font-bold">
+          <Volume2 className="w-5 h-5" />
+          <span>Playing section instructions...</span>
+        </div>
+      </div>
+    )}
   </div>
 </main>
       </>

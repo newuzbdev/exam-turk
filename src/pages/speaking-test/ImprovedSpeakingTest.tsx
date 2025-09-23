@@ -256,15 +256,17 @@ export default function ImprovedSpeakingTest() {
     if (showSectionDescription && currentSection && micChecked && !isPlayingInstructions) {
       const src = sectionAudios[currentSection.order]
       if (src) {
+        // Enter exam mode when audio starts playing
+        setIsExamMode(true)
+        addNavigationLock()
+        enterFullscreen().catch(() => {})
+
         const audio = new Audio(src)
         audioRef.current = audio
         setIsPlayingInstructions(true)
         audio.onended = () => {
           setIsPlayingInstructions(false)
           // Start the section after audio ends
-          setIsExamMode(true)
-          addNavigationLock()
-          enterFullscreen().catch(() => {})
           setShowSectionDescription(false)
           resetPerQuestionState()
           playSound("question")

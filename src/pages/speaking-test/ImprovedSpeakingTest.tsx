@@ -125,6 +125,11 @@ export default function ImprovedSpeakingTest() {
   const ttsAudioRef = useRef<HTMLAudioElement | null>(null)
   const prepIntervalRef = useRef<number | null>(null)
   const autoAdvanceRef = useRef<string | null>(null)
+  // Guard to ensure section instruction audio plays only once per section
+  const instructionPlayStartedRef = useRef<boolean>(false)
+  const lastInstructionSectionRef = useRef<string | null>(null)
+  // Global auto-start guard so each question (or section in PART2/3) starts exactly once
+  const autoStartKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
     ; (async () => {
@@ -254,6 +259,10 @@ export default function ImprovedSpeakingTest() {
   // Auto-play section audio when showing section description
   useEffect(() => {
     if (showSectionDescription && currentSection && micChecked && !isPlayingInstructions) {
+      // If we already started instructions for this section, don't start again
+      if (instructionPlayStartedRef.current && lastInstructionSectionRef.current === currentSection.id) {
+        return
+      }
       const src = sectionAudios[currentSection.order]
       if (src) {
         // Enter exam mode when audio starts playing
@@ -261,11 +270,21 @@ export default function ImprovedSpeakingTest() {
         addNavigationLock()
         enterFullscreen().catch(() => {})
 
+        // Stop any existing audio to avoid overlaps
+        if (audioRef.current) {
+          try {
+            audioRef.current.pause()
+            audioRef.current.currentTime = 0
+          } catch {}
+        }
         const audio = new Audio(src)
         audioRef.current = audio
         setIsPlayingInstructions(true)
+        instructionPlayStartedRef.current = true
+        lastInstructionSectionRef.current = currentSection.id
         audio.onended = () => {
           setIsPlayingInstructions(false)
+          instructionPlayStartedRef.current = false
           // Start the section after audio ends
           setShowSectionDescription(false)
           resetPerQuestionState()
@@ -281,6 +300,7 @@ export default function ImprovedSpeakingTest() {
         }
         audio.onerror = () => {
           setIsPlayingInstructions(false)
+          instructionPlayStartedRef.current = false
           toast.error("Audio yüklenemedi")
         }
         audio.play().catch(() => setIsPlayingInstructions(false))
@@ -317,6 +337,33 @@ export default function ImprovedSpeakingTest() {
       }
     }
   }, [currentSectionIndex, currentSubPartIndex, currentQuestionIndex, showSectionDescription, isPlayingInstructions, currentQuestion])
+
+  // Centralized auto-start: start prep + recording automatically when a new question becomes active
+  useEffect(() => {
+    if (showSectionDescription) return
+    if (!currentSection) return
+    if (isPlayingInstructions || isPlayingTTS) return
+    if (isRecording || isPaused || isPrepRunning) return
+
+    const sectionType = currentSection.type
+    // Use a key that changes on each question for PART1, and on section for PART2/PART3
+    const key = sectionType === "PART1"
+      ? `p1-${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
+      : `p${sectionType === "PART2" ? "2" : "3"}-${currentSectionIndex}`
+
+    if (autoStartKeyRef.current === key) return
+    autoStartKeyRef.current = key
+
+    // Begin the appropriate preparation and auto-start recording after prep
+    if (sectionType === "PART1") {
+      beginPreparation(5, () => startRecording(30, true))
+    } else if (sectionType === "PART2" || sectionType === "PART3") {
+      beginPreparation(60, () => startRecording(120, true))
+    } else {
+      // Fallback: unknown type uses defaults
+      startRecording(undefined, true)
+    }
+  }, [showSectionDescription, currentSection, currentSectionIndex, currentSubPartIndex, currentQuestionIndex, isPlayingInstructions, isPlayingTTS, isRecording, isPaused, isPrepRunning])
 
   // timers while recording
   useEffect(() => {
@@ -1059,13 +1106,48 @@ export default function ImprovedSpeakingTest() {
             initial={{ opacity: 0, scale: 0.95 }} 
             animate={{ opacity: 1, scale: 1 }}
           >
-            <motion.img
-              src={currentSection.subParts[currentSubPartIndex].images[0] || "/placeholder.svg"}
-              alt="Question image"
-              className="max-w-lg mx-auto rounded-2xl shadow-xl"
-              whileHover={{ scale: 1.02 }}
-              transition={{ duration: 0.3 }}
-            />
+            {(() => {
+              const imgs = currentSection.subParts[currentSubPartIndex].images
+              if (imgs.length === 1) {
+                return (
+                  <div className="w-full max-w-2xl mx-auto aspect-[4/3] bg-white border border-gray-200 rounded-2xl overflow-hidden flex items-center justify-center">
+                    <motion.img
+                      src={imgs[0]}
+                      alt="Question image"
+                      className="w-full h-full object-contain"
+                      whileHover={{ scale: 1.02 }}
+                      transition={{ duration: 0.3 }}
+                      onError={(e) => {
+                        const el = e.target as HTMLImageElement
+                        el.src = "https://placehold.co/800x600?text=Gorsel+Yuklenemedi"
+                      }}
+                    />
+                  </div>
+                )
+              }
+              if (imgs.length >= 2) {
+                return (
+                  <div className="w-full max-w-4xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {imgs.slice(0, 2).map((src, idx) => (
+                      <div key={`pimg-${idx}`} className="aspect-[4/3] bg-white border border-gray-200 rounded-2xl overflow-hidden flex items-center justify-center">
+                        <motion.img
+                          src={src}
+                          alt={`Question image ${idx + 1}`}
+                          className="w-full h-full object-contain"
+                          whileHover={{ scale: 1.02 }}
+                          transition={{ duration: 0.3 }}
+                          onError={(e) => {
+                            const el = e.target as HTMLImageElement
+                            el.src = "https://placehold.co/800x600?text=Gorsel+Yuklenemedi"
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )
+              }
+              return null
+            })()}
           </motion.div>
         ) : null}
 

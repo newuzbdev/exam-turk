@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import type { Section } from "@/pages/speaking-test/SpeakingTest";
 import QuestionCard from "../QuestionCard";
@@ -44,6 +44,8 @@ const Part1Section = ({
   const [countdownSeconds, setCountdownSeconds] = useState(5);
   const [answerTimer, setAnswerTimer] = useState(0);
   const [isAnswerTimerActive, setIsAnswerTimerActive] = useState(false);
+  // Guard to auto-start only once per question when entering images phase
+  const autoStartQuestionRef = useRef<string | null>(null);
 
   // Part 1 Answer Timer - 30 seconds max
   useEffect(() => {
@@ -126,6 +128,8 @@ const Part1Section = ({
         setCurrentPhase("images");
         setCurrentQuestionIndex(0);
         setCurrentImageIndex(0);
+        // Reset auto-start guard so the first images question can auto begin
+        autoStartQuestionRef.current = null;
       } else {
         // If we're at the end of all questions, move to next section
         onNextSection();
@@ -164,6 +168,19 @@ const Part1Section = ({
     setShowCountdown(true);
     setCountdownSeconds(5); // Part 1: 5 seconds preparation time
   };
+
+  // Auto-start the first question when entering images phase (1.2)
+  useEffect(() => {
+    if (currentPhase !== "images") return;
+    const q = getCurrentQuestion();
+    if (!q) return;
+    // Only if not already answered, not recording, and we haven't auto-started this question
+    if (!answeredQuestions.has(q.id) && !isRecording && autoStartQuestionRef.current !== q.id && !showCountdown) {
+      autoStartQuestionRef.current = q.id;
+      // Trigger the 5s preparation countdown, then recording starts in handleCountdownComplete
+      handlePreparationCountdown();
+    }
+  }, [currentPhase, currentQuestionIndex, answeredQuestions, isRecording, showCountdown]);
 
   // Get progress percentage
   const getProgressPercentage = () => {
@@ -331,15 +348,44 @@ const Part1Section = ({
             )}
           </div>
           <div className="flex justify-center">
-            <img
-              src={section.subParts[1]?.images[currentImageIndex] || ""}
-              alt={`Speaking test visual ${currentImageIndex + 1}`}
-              className="max-w-full h-auto rounded-lg border border-gray-300"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.src = "https://placehold.co/400x300?text=Görsel+Yüklenemedi";
-              }}
-            />
+            {(() => {
+              const imgs = section.subParts[1]?.images || [];
+              if (imgs.length === 1) {
+                return (
+                  <div className="w-full max-w-xl aspect-[4/3] bg-white border border-gray-300 rounded-lg overflow-hidden flex items-center justify-center">
+                    <img
+                      src={imgs[0]}
+                      alt={`Speaking test visual 1`}
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = "https://placehold.co/800x600?text=Görsel+Yüklenemedi";
+                      }}
+                    />
+                  </div>
+                );
+              }
+              if (imgs.length >= 2) {
+                return (
+                  <div className="w-full max-w-4xl grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {[imgs[0], imgs[1]].map((src, idx) => (
+                      <div key={`img-${idx}`} className="aspect-[4/3] bg-white border border-gray-300 rounded-lg overflow-hidden flex items-center justify-center">
+                        <img
+                          src={src}
+                          alt={`Speaking test visual ${idx + 1}`}
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = "https://placehold.co/800x600?text=Görsel+Yüklenemedi";
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                );
+              }
+              return null;
+            })()}
           </div>
         </div>
       )}

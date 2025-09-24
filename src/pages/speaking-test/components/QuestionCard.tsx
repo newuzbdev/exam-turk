@@ -52,6 +52,15 @@ const QuestionCard = ({
           if (prev <= 1) {
             clearInterval(countdownTimer);
             setShowCountdownTimer(false);
+            // After finishing a question, automatically go to next and start recording
+            // This mirrors the behavior in handleNext when showCountdownAfterNext is enabled
+            setTimeout(() => {
+              onNext();
+              // Small delay to let UI update to next question
+              setTimeout(() => {
+                onRecord();
+              }, 300);
+            }, 0);
             return 0;
           }
           return prev - 1;

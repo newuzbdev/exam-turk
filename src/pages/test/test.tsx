@@ -173,19 +173,13 @@ const TestPage = () => {
       <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Türkçe Testleri
-          </h1>
-          <p className="text-gray-600">
-            Toplam {turkishTestData?.total || 0} test bulundu
-          </p>
+
+        
         </div>
 
         {/* Test Cards with Modal */}
         <div>
-          <h2 className="text-xl font-semibold text-gray-800 mb-6">
-            Test Seçin ve Başlayın
-          </h2>
+          
           {turkishTestData?.ieltsData &&
           turkishTestData.ieltsData.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

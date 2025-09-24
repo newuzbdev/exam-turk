@@ -323,7 +323,7 @@ const Part1Section = ({
 
       {/* Image Display for Images Phase */}
       {currentPhase === "images" && section.subParts.length > 1 && section.subParts[1]?.images && section.subParts[1]?.images.length > 0 && (
-        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+        <div className="bg-gray-50 rounded-lg p-4">
           <div className="flex justify-between items-center mb-3">
             <h3 className="text-base font-medium text-gray-900">Görsel</h3>
             {section.subParts[1]?.images.length > 1 && (
@@ -352,7 +352,7 @@ const Part1Section = ({
               const imgs = section.subParts[1]?.images || [];
               if (imgs.length === 1) {
                 return (
-                  <div className="w-full max-w-xl aspect-[4/3] bg-white border border-gray-300 rounded-lg overflow-hidden flex items-center justify-center">
+                  <div className="w-full max-w-xl aspect-[4/3] bg-transparent rounded-lg overflow-hidden flex items-center justify-center">
                     <img
                       src={imgs[0]}
                       alt={`Speaking test visual 1`}
@@ -369,7 +369,7 @@ const Part1Section = ({
                 return (
                   <div className="w-full max-w-4xl grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {[imgs[0], imgs[1]].map((src, idx) => (
-                      <div key={`img-${idx}`} className="aspect-[4/3] bg-white border border-gray-300 rounded-lg overflow-hidden flex items-center justify-center">
+                      <div key={`img-${idx}`} className="aspect-[4/3] bg-transparent rounded-lg overflow-hidden flex items-center justify-center">
                         <img
                           src={src}
                           alt={`Speaking test visual ${idx + 1}`}

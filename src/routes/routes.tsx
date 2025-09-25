@@ -71,6 +71,10 @@ export const router = createBrowserRouter([
         element: <ListeningTest />,
       },
       {
+        path: "/listening-test/:testId/part/:partNumber",
+        element: <ListeningTest />,
+      },
+      {
         path: "/listening-test/results/:resultId",
         element: <ListeningTestResults />,
       },

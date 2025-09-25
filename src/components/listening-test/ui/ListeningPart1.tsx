@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface Question {
   id: number;
@@ -10,7 +10,7 @@ interface Question {
   selectedAnswer?: "A" | "B" | "C";
 }
 
-export default function ListeningPart1() {
+export default function ListeningPart1({ questions: externalQuestions }: { questions?: Question[] }) {
   const [questions, setQuestions] = useState<Question[]>([
     {
       id: 1,
@@ -82,11 +82,21 @@ export default function ListeningPart1() {
     },
   ]);
 
+  useEffect(() => {
+    if (externalQuestions && externalQuestions.length > 0) {
+      setQuestions((prev) => {
+        return externalQuestions.map((q) => ({
+          id: q.id,
+          options: q.options,
+          selectedAnswer: prev.find((p) => p.id === q.id)?.selectedAnswer,
+        }));
+      });
+    }
+  }, [externalQuestions]);
+
   const handleAnswerSelect = (questionId: number, answer: "A" | "B" | "C") => {
     setQuestions((prev) =>
-      prev.map((q) =>
-        q.id === questionId ? { ...q, selectedAnswer: answer } : q
-      )
+      prev.map((q) => (q.id === questionId ? { ...q, selectedAnswer: answer } : q))
     );
   };
 

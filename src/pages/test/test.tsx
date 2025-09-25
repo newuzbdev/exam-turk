@@ -149,17 +149,19 @@ const TestPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-100 via-gray-50 to-blue-50 p-6">
-        <div className="max-w-7xl mx-auto">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-blue-50 p-6">
+        <div className="max-w-6xl mx-auto">
           <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-64 mb-8"></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Header skeleton */}
+            <div className="mb-12 text-center">
+              <div className="h-10 bg-gray-200 rounded w-80 mx-auto mb-4"></div>
+              <div className="h-6 bg-gray-200 rounded w-96 mx-auto"></div>
+            </div>
+            
+            {/* Cards skeleton */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="bg-white rounded-lg p-6">
-                  <div className="h-40 bg-gray-200 rounded mb-4"></div>
-                  <div className="h-6 bg-gray-200 rounded mb-2"></div>
-                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                </div>
+                <div key={i} className="h-80 bg-gradient-to-br from-gray-200 to-gray-300 rounded-2xl"></div>
               ))}
             </div>
           </div>
@@ -169,20 +171,23 @@ const TestPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-100 via-gray-50 to-blue-50 p-6">
-      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-blue-50 p-6">
+      <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-
-        
+        <div className="mb-12 text-center">
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+            IELTS Practice Tests
+          </h1>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            Choose a test to begin your IELTS practice session. Each test includes all four sections: Listening, Reading, Writing, and Speaking.
+          </p>
         </div>
 
-        {/* Test Cards with Modal */}
+        {/* Test Cards */}
         <div>
-          
           {turkishTestData?.ieltsData &&
           turkishTestData.ieltsData.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {turkishTestData.ieltsData.map((test) => (
                 <MainTestCard
                   key={test.id}
@@ -199,7 +204,7 @@ const TestPage = () => {
           )}
         </div>
 
-        {/* Test Modal */}
+        {/* Test Selection Modal */}
         {currentTestForModal && (
           <TestModal
             open={showTestModal}

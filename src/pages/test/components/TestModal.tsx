@@ -1,4 +1,4 @@
-import { BookOpen, CheckCircle2, Coins, Headphones, Mic, PenTool } from "lucide-react";
+import { BookOpen, CheckCircle2, Coins, Headphones, Mic, PenTool, ArrowRight, X, Sparkles, Zap, Target, Brain, Clock, Users, Star, Play, Pause, RotateCcw } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import {
   Dialog,
@@ -158,65 +158,118 @@ const TestModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl w-[95vw] bg-[#0b0f13] text-white rounded-xl border border-white/10">
-        <div className="p-4 sm:p-6">
-          <h3 className="text-xl font-semibold mb-2">{selectedTest.title}</h3>
-          <p className="text-white/70 text-sm mb-6">
-            Choose the test types you want to take.
-          </p>
+      <DialogContent className="max-w-2xl w-[95vw] bg-white text-gray-900 rounded-xl border border-gray-200 shadow-xl">
+        {/* Header */}
+        <div className="p-6 pb-4 border-b border-gray-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-1">
+                {selectedTest.title}
+              </h2>
+              <p className="text-gray-600 text-sm">
+                Select the test sections you want to take
+              </p>
+            </div>
+            <button
+              onClick={() => onOpenChange(false)}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <X className="h-5 w-5 text-gray-500" />
+            </button>
+          </div>
+        </div>
 
+        {/* Content */}
+        <div className="p-6">
           <div className="space-y-3">
             {testSections.map((s) => {
               const Icon = s.icon;
               const available = s.tests && s.tests.length > 0;
               const selected = !!selectedMap[s.id];
+              const testCount = s.tests?.length || 0;
+              
               return (
                 <Card
                   key={s.id}
-                  className={`bg-transparent border ${
-                    selected ? "border-purple-700" : "border-white/10"
-                  } ${available ? "" : "opacity-50"}`}
+                  className={`transition-all duration-200 cursor-pointer ${
+                    selected 
+                      ? "bg-red-50 border-red-300 shadow-sm" 
+                      : "bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300"
+                  } ${!available ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
                   <button
-                    className="w-full flex items-center justify-between px-4 py-3"
+                    className="w-full p-4 text-left"
                     onClick={() => available && toggle(s.id)}
                     disabled={!available}
                   >
-                    <div className="flex items-center gap-3">
-                      <span
-                        className={`h-5 w-5 rounded-md flex items-center justify-center ${
-                          selected ? "bg-purple-700" : "bg-white/10"
-                        }`}
-                      >
-                        {selected && <CheckCircle2 className="h-4 w-4" />}
-                      </span>
-                      <Icon className="h-4 w-4 text-white/80" />
-                      <span className="font-medium tracking-wide">{s.title}</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-amber-300">
-                      <Coins className="h-4 w-4" />
-                      <span className="text-sm">{s.cost}</span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all duration-200 ${
+                            selected 
+                              ? "bg-red-600 border-red-600" 
+                              : "border-gray-300 group-hover:border-gray-400"
+                          }`}
+                        >
+                          {selected && <CheckCircle2 className="h-3 w-3 text-white" />}
+                        </div>
+                        <Icon className={`h-5 w-5 ${selected ? "text-red-600" : "text-gray-500"}`} />
+                        <div>
+                          <span className={`font-medium ${selected ? "text-red-900" : "text-gray-900"}`}>
+                            {s.title}
+                          </span>
+                          <div className="flex items-center gap-3 mt-1">
+                            <span className="text-xs text-gray-500">
+                              {s.id === "listening" ? "30-40 min" :
+                               s.id === "reading" ? "60 min" :
+                               s.id === "writing" ? "60 min" :
+                               "11-14 min"}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {testCount} test{testCount !== 1 ? 's' : ''}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-1 text-amber-600">
+                        <Coins className="h-4 w-4" />
+                        <span className="font-medium text-sm">{s.cost}</span>
+                      </div>
                     </div>
                   </button>
                 </Card>
               );
             })}
           </div>
+        </div>
 
-          <div className="flex items-center justify-between mt-6 mb-4">
-            <span className="text-white/80">Total</span>
-            <div className="flex items-center gap-1 text-amber-300">
-              <Coins className="h-4 w-4" />
-              <span className="font-semibold">{totalCoins}</span>
+        {/* Footer */}
+        <div className="p-6 pt-4 border-t border-gray-100 bg-gray-50">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-gray-700 font-medium">Total Cost</span>
+            <div className="flex items-center gap-1 text-amber-600">
+              <Coins className="h-5 w-5" />
+              <span className="text-lg font-semibold">{totalCoins}</span>
             </div>
           </div>
 
           <Button
-            className="w-full h-11 bg-purple-700 hover:bg-purple-800"
+            className="w-full h-11 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={handleCta}
+            disabled={totalCoins === 0}
           >
-            {isAuthenticated ? "Start" : "Sign Up"}
+            <span className="flex items-center gap-2">
+              {isAuthenticated ? "Start Test" : "Sign Up to Start"}
+              <ArrowRight className="h-4 w-4" />
+            </span>
           </Button>
+          
+          {!isAuthenticated && (
+            <p className="text-center text-xs text-gray-500 mt-2">
+              You need to sign up to take the test
+            </p>
+          )}
         </div>
       </DialogContent>
     </Dialog>

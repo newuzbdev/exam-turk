@@ -7,13 +7,13 @@ import ListeningPart3 from "./ui/ListeningPart3";
 import ListeningPart4 from "./ui/ListeningPart4";
 import ListeningPart5 from "./ui/ListeningPart5";
 import ListeningPart6 from "./ui/ListeningPart6";
-import { useState } from "react";
+import {  useState } from "react";
 
-export default function ListeningTestPage() {
+export default function ListeningTestPage({ testId }: { testId: string }) {
   const [audioEnabled, setAudioEnabled] = useState(true);
 
   return (
-    <div className="max-w-7xl flex flex-col mx-auto min-h-screen">
+    <div className="mx-auto flex flex-col mx-auto min-h-screen">
       <div className="bg-white border-b-2 border-gray-800 px-6 py-3 flex items-center justify-between">
         <div className="bg-red-600 text-white px-3 py-1 rounded font-bold text-lg">
           TURKISHMOCK

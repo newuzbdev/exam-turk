@@ -60,142 +60,84 @@ const MainTestCard = ({
   onTestStart,
   availableTestTypes,
 }: MainTestCardProps) => {
-  const navigate = useNavigate();
-  const [showInstructionModal, setShowInstructionModal] = useState(false);
-  const [selectedTestType, setSelectedTestType] = useState<string>("");
-
   const getAvailableTypes = () => {
     const types = [];
     if (availableTestTypes.listening.length > 0) {
       types.push({
-        name: "Dinleme",
+        name: "Listening",
         icon: Headphones,
         type: "listening",
       });
     }
     if (availableTestTypes.speaking.length > 0) {
-      types.push({ name: "Konuşma", icon: Mic, type: "speaking" });
+      types.push({ name: "Speaking", icon: Mic, type: "speaking" });
     }
     if (availableTestTypes.reading.length > 0) {
-      types.push({ name: "Okuma", icon: BookOpen, type: "reading" });
+      types.push({ name: "Reading", icon: BookOpen, type: "reading" });
     }
     if (availableTestTypes.writing.length > 0) {
-      types.push({ name: "Yazma", icon: PenTool, type: "writing" });
+      types.push({ name: "Writing", icon: PenTool, type: "writing" });
     }
     return types;
   };
 
-  const handleTestTypeClick = (testType: string) => {
-    setSelectedTestType(testType);
-    setShowInstructionModal(true);
-  };
-
-  const handleStartTestFromModal = () => {
-    // Navigate to the specific test type page
-    if (selectedTestType === "speaking") {
-      // Find the speaking test ID from available tests
-      const speakingTest = availableTestTypes.speaking[0];
-      if (speakingTest) {
-        navigate(`/speaking-test/${speakingTest.id}`);
-      } else {
-        console.error("No speaking test available");
-      }
-    } else if (selectedTestType === "writing") {
-      const writingTest = availableTestTypes.writing[0];
-      if (writingTest) {
-        navigate(`/writing-test/${writingTest.id}`);
-      } else {
-        console.error("No writing test available");
-      }
-    } else if (selectedTestType === "listening") {
-      const listeningTest = availableTestTypes.listening[0];
-      if (listeningTest) {
-        navigate(`/listening-test/${listeningTest.id}`);
-      } else {
-        console.error("No listening test available");
-      }
-    } else if (selectedTestType === "reading") {
-      const readingTest = availableTestTypes.reading[0];
-      if (readingTest) {
-        navigate(`/reading-test/${readingTest.id}`);
-      } else {
-        console.error("No reading test available");
-      }
-    } else {
-      // Navigate to the general test page for other test types
-      navigate("/test", {
-        state: {
-          selectedTestId: test.id,
-          selectedTestType: selectedTestType,
-        },
-      });
-    }
-  };
-
   const availableTypes = getAvailableTypes();
+  
   return (
-    <Card className="overflow-visible flex flex-col shadow-xl rounded-xl border border-gray-200 bg-white cursor-pointer">
-      <div className="relative flex-shrink-1">
-        <div className="w-full h-48 rounded-t-xl overflow-hidden border-b border-gray-100 relative">
-          <img
-            src="https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&h=250&fit=crop&auto=format"
-            alt="Test"
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute top-4 right-4">
-            <Badge
-              variant="secondary"
-              className="bg-white text-gray-600 shadow-md border border-gray-200"
-            >
-              <Clock className="h-4 w-4 mr-1" />
-              {availableTypes.length} Tür
-            </Badge>
-          </div>
-        </div>
+    <Card 
+      className="relative overflow-hidden bg-gradient-to-br from-purple-600 via-purple-700 to-purple-800 text-white cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-2xl"
+      onClick={() => onTestStart(test)}
+    >
+      {/* Background Pattern */}
+      <div className="absolute inset-0 opacity-10">
+        <div className="absolute top-0 left-0 w-full h-full bg-[url('data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23ffffff" fill-opacity="0.1"%3E%3Ccircle cx="7" cy="7" r="1"/%3E%3Ccircle cx="27" cy="7" r="1"/%3E%3Ccircle cx="47" cy="7" r="1"/%3E%3Ccircle cx="7" cy="27" r="1"/%3E%3Ccircle cx="27" cy="27" r="1"/%3E%3Ccircle cx="47" cy="27" r="1"/%3E%3Ccircle cx="7" cy="47" r="1"/%3E%3Ccircle cx="27" cy="47" r="1"/%3E%3Ccircle cx="47" cy="47" r="1"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')]"></div>
       </div>
 
-      <CardContent className="p-6 flex-1 flex flex-col">
-        <h3 className="text-2xl font-bold text-gray-900 mb-6">{test.title}</h3>
-
-        <div className="flex-1">
-          <div className="mb-6">
-            <p className="text-base text-gray-600 mb-4">Mevcut test türleri:</p>
-            <div className="grid grid-cols-2 gap-3">
-              {availableTypes.map((type, index) => {
-                const IconComponent = type.icon;
-                return (
-                  <div
-                    key={index}
-                    className="flex items-center gap-2 bg-gray-50 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium cursor-pointer border border-gray-200 hover:bg-gray-100 hover:border-gray-300 transition-colors"
-                    onClick={() => handleTestTypeClick(type.type)}
-                  >
-                    <IconComponent className="h-4 w-4" />
-                    <span>{type.name}</span>
-                  </div>
-                );
-              })}
+      <CardContent className="relative p-8 h-64 flex flex-col justify-between">
+        {/* Header */}
+        <div>
+          <div className="flex justify-between items-start mb-6">
+            <div>
+              <div className="text-sm font-medium opacity-90 mb-1">IELTS</div>
+              <h2 className="text-3xl font-bold">{test.title}</h2>
+            </div>
+            <div className="bg-white/20 rounded-lg p-2">
+              <BookOpen className="h-6 w-6" />
             </div>
           </div>
         </div>
 
-        {/* Main Test Start Button */}
-        <Button
-          size="default"
-          className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 mt-6 shadow-lg text-base rounded-lg"
-          onClick={() => onTestStart(test)}
-        >
-          <Play className="w-5 h-5 mr-2" />
-          Test Başla
-        </Button>
-      </CardContent>
+        {/* Available Test Types */}
+        <div className="mb-6">
+          <div className="flex flex-wrap gap-2">
+            {availableTypes.map((type, index) => {
+              const IconComponent = type.icon;
+              return (
+                <div
+                  key={index}
+                  className="flex items-center gap-1 bg-white/20 backdrop-blur-sm rounded-full px-3 py-1 text-xs font-medium"
+                >
+                  <IconComponent className="h-3 w-3" />
+                  <span>{type.name}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
-      {/* Test Instruction Modal */}
-      <TestInstructionModal
-        open={showInstructionModal}
-        onOpenChange={setShowInstructionModal}
-        testType={selectedTestType}
-        onStartTest={handleStartTestFromModal}
-      />
+        {/* Footer */}
+        <div className="flex justify-between items-center">
+          <div className="text-sm opacity-90">
+            <div className="flex items-center gap-1">
+              <Clock className="h-4 w-4" />
+              <span>Full Test: 3h</span>
+            </div>
+          </div>
+          <Badge className="bg-white/20 text-white hover:bg-white/30 border-white/30">
+            {availableTypes.length} Parts
+          </Badge>
+        </div>
+      </CardContent>
     </Card>
   );
 };

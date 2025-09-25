@@ -179,36 +179,40 @@ const TestModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl w-[95vw] max-h-[80vh] overflow-y-auto bg-white rounded-lg shadow-lg border border-gray-100">
-        <DialogHeader>
-          <DialogTitle className="text-lg font-semibold text-gray-900">
+      <DialogContent className="max-w-3xl w-[95vw] max-h-[85vh] overflow-y-auto bg-white">
+        <DialogHeader className="text-center pb-6">
+          <DialogTitle className="text-2xl font-bold text-gray-900">
             {selectedTest.title}
           </DialogTitle>
-          <p className="text-gray-600 text-xs">Bölüm seçin ve başlayın.</p>
+          <p className="text-gray-600 mt-2">Choose which test section you want to practice</p>
         </DialogHeader>
 
         <div className="space-y-6">
           {/* Full Test Option */}
-          <Card className="border border-gray-200 bg-gray-50">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
+          <Card className="border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-purple-100 hover:border-purple-300 transition-all">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <Target className="h-6 w-6 text-gray-700" />
-                  <span className="text-gray-900">Tam Test</span>
+                  <div className="p-3 bg-purple-500 rounded-full">
+                    <Target className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">Complete IELTS Test</h3>
+                    <p className="text-sm text-gray-600">All four skills in one session</p>
+                  </div>
                 </div>
-                <Badge variant="secondary" className="bg-gray-700 text-white">
-                  165 dakika
+                <Badge className="bg-purple-500 text-white text-sm px-3 py-1">
+                  3 hours
                 </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-3 mb-3">
+              </div>
+              
+              <div className="grid grid-cols-4 gap-3 mb-4">
                 {testSections.map((section) => (
                   <div
                     key={section.id}
-                    className="text-center p-2 bg-white rounded-md border border-gray-200"
+                    className="text-center p-3 bg-white rounded-lg border border-purple-200"
                   >
-                    <section.icon className="h-6 w-6 mx-auto mb-1 text-gray-600" />
+                    <section.icon className="h-5 w-5 mx-auto mb-1 text-purple-600" />
                     <div className="text-xs font-medium text-gray-900">
                       {section.title}
                     </div>
@@ -218,82 +222,122 @@ const TestModal = ({
                   </div>
                 ))}
               </div>
+              
               <Button
-                className="w-full bg-gray-700 hover:bg-gray-800 text-white font-medium py-2"
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 text-base"
                 onClick={() => {
-                  // Handle full test start
                   console.log("Starting full test");
+                  onOpenChange(false);
                 }}
               >
-                <Play className="h-4 w-4 mr-2" />
-                Tam Testi Başlat
+                <Play className="h-5 w-5 mr-2" />
+                Start Complete Test
               </Button>
             </CardContent>
           </Card>
 
           {/* Individual Sections */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {testSections.map((section) => {
-              const IconComponent = section.icon;
-              const isSelected = selectedSection === section.id;
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">
+              Or practice individual sections:
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {testSections.map((section) => {
+                const IconComponent = section.icon;
+                const isSelected = selectedSection === section.id;
+                const hasTests = section.tests.length > 0;
 
-              return (
-                <Card
-                  key={section.id}
-                  className={`cursor-pointer transition-all border border-gray-200 hover:border-gray-300 ${
-                    isSelected ? "ring-2 ring-blue-500" : ""
-                  }`}
-                  onClick={() => {
-                    if (isSelected) {
-                      setSelectedSection(null);
-                    } else {
-                      setSelectedSection(section.id);
-                      onTestTypeClick(section.id, section.tests);
-                    }
-                  }}
-                >
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="p-1.5 rounded-md bg-gray-100">
-                          <IconComponent className="h-4 w-4 text-gray-700" />
+                return (
+                  <Card
+                    key={section.id}
+                    className={`cursor-pointer transition-all duration-200 ${
+                      hasTests 
+                        ? "hover:shadow-lg border-gray-200 hover:border-gray-300" 
+                        : "opacity-50 cursor-not-allowed bg-gray-50"
+                    } ${
+                      isSelected ? "ring-2 ring-blue-500 shadow-lg" : ""
+                    }`}
+                    onClick={() => {
+                      if (!hasTests) return;
+                      if (isSelected) {
+                        setSelectedSection(null);
+                      } else {
+                        setSelectedSection(section.id);
+                        onTestTypeClick(section.id, section.tests);
+                      }
+                    }}
+                  >
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-lg ${hasTests ? 'bg-blue-100' : 'bg-gray-200'}`}>
+                            <IconComponent className={`h-5 w-5 ${hasTests ? 'text-blue-600' : 'text-gray-400'}`} />
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-gray-900">{section.title}</h4>
+                            <p className="text-sm text-gray-500">{section.duration}</p>
+                          </div>
                         </div>
-                        <span className="text-gray-900 font-medium text-sm">
-                          {section.title}
-                        </span>
-                      </div>
-                      <div className="flex gap-2">
-                        <Badge variant="outline">
-                          <Clock className="h-3 w-3 mr-1" />
-                          {section.duration}
-                        </Badge>
-                        <Badge variant="outline">
-                          <Users className="h-3 w-3 mr-1" />
-                          {section.questions}
+                        <Badge variant="outline" className={hasTests ? "" : "opacity-50"}>
+                          {section.questions} {section.questions === 1 ? 'test' : 'tests'}
                         </Badge>
                       </div>
-                    </CardTitle>
-                  </CardHeader>
 
-                  {isSelected && (
-                    <CardContent>
-                      <div className="border-t pt-4">
-                        <h4 className="font-medium text-gray-900 mb-2 text-sm">
-                          Mevcut Testler:
-                        </h4>
-                        {section.tests.length > 0 ? (
-                          renderTestsList(section.tests, section.id)
-                        ) : (
-                          <p className="text-gray-500 text-xs">
-                            Bu bölüm için test bulunmuyor.
-                          </p>
-                        )}
-                      </div>
+                      {isSelected && hasTests && (
+                        <div className="border-t pt-4 mt-4">
+                          <div className="space-y-3">
+                            {section.tests.map((test, index) => (
+                              <div
+                                key={test.id}
+                                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
+                              >
+                                <div>
+                                  <div className="font-medium text-gray-900 text-sm">
+                                    Part {index + 1}
+                                  </div>
+                                  <div className="text-sm text-gray-600">{test.title}</div>
+                                  {test.description && (
+                                    <div className="text-xs text-gray-500 mt-1">
+                                      {test.description}
+                                    </div>
+                                  )}
+                                </div>
+                                <Button
+                                  size="sm"
+                                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (section.id === "speaking") {
+                                      navigate(`/speaking-test/${test.id}`);
+                                    } else if (section.id === "writing") {
+                                      navigate(`/writing-test/${test.id}`);
+                                    } else if (section.id === "listening") {
+                                      navigate(`/listening-test/${test.id}`);
+                                    } else if (section.id === "reading") {
+                                      navigate(`/reading-test/${test.id}`);
+                                    }
+                                    onOpenChange(false);
+                                  }}
+                                >
+                                  <Play className="h-4 w-4 mr-1" />
+                                  Start
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {!hasTests && (
+                        <p className="text-center text-gray-400 text-sm mt-2">
+                          No tests available for this section
+                        </p>
+                      )}
                     </CardContent>
-                  )}
-                </Card>
-              );
-            })}
+                  </Card>
+                );
+              })}
+            </div>
           </div>
         </div>
       </DialogContent>

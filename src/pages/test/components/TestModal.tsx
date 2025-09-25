@@ -1,14 +1,5 @@
-import {
-  BookOpen,
-  Clock,
-  Headphones,
-  Mic,
-  PenTool,
-  Play,
-  Target,
-  Users,
-} from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BookOpen, CheckCircle2, Coins, Headphones, Mic, PenTool } from "lucide-react";
+import { Card } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -16,9 +7,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
 
 interface TurkishTest {
@@ -89,6 +80,18 @@ const TestModal = ({
   onTestTypeClick,
 }: TestModalProps) => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+
+  // selection state for simple checklist UI
+  const [selectedMap, setSelectedMap] = useState<Record<string, boolean>>({
+    listening: true,
+    reading: true,
+    writing: true,
+    speaking: false,
+  });
+
+  const toggle = (key: string) =>
+    setSelectedMap((p) => ({ ...p, [key]: !p[key] }));
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
 
   console.log("TestModal - Selected test:", selectedTest);
@@ -97,204 +100,123 @@ const TestModal = ({
   const testSections = [
     {
       id: "listening",
-      title: "Listening",
+      title: "LISTENING",
       icon: Headphones,
-      color: "bg-gray-600 hover:bg-gray-700",
       tests: listeningTests,
-      duration: "30 min",
-      questions: listeningTests.length,
+      cost: 3,
     },
     {
       id: "reading",
-      title: "Reading",
+      title: "READING",
       icon: BookOpen,
-      color: "bg-gray-600 hover:bg-gray-700",
       tests: readingTests,
-      duration: "60 min",
-      questions: readingTests.length,
+      cost: 3,
     },
     {
       id: "writing",
-      title: "Writing",
+      title: "WRITING",
       icon: PenTool,
-      color: "bg-gray-600 hover:bg-gray-700",
       tests: writingTests,
-      duration: "60 min",
-      questions: writingTests.length,
+      cost: 4,
     },
     {
       id: "speaking",
-      title: "Speaking",
+      title: "SPEAKING",
       icon: Mic,
-      color: "bg-gray-600 hover:bg-gray-700",
       tests: speakingTests,
-      duration: "15 min",
-      questions: speakingTests.length,
+      cost: 2,
     },
   ];
 
-  const renderTestsList = (tests: any[], testType: string) => {
-    return (
-      <div className="space-y-2">
-        {tests.map((test, index) => (
-          <div
-            key={test.id}
-            className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-3 hover:bg-gray-50"
-          >
-            <div>
-              <div className="text-sm font-semibold text-gray-900">
-                Part {index + 1}
-              </div>
-              <div className="text-sm text-gray-700">{test.title}</div>
-              {test.description && (
-                <div className="text-xs text-gray-500 mt-0.5">
-                  {test.description}
-                </div>
-              )}
-            </div>
-            <Button
-              size="sm"
-              onClick={() => {
-                if (testType === "speaking") {
-                  navigate(`/speaking-test/${test.id}`);
-                } else if (testType === "writing") {
-                  navigate(`/writing-test/${test.id}`);
-                } else if (testType === "listening") {
-                  navigate(`/listening-test/${test.id}`);
-                } else if (testType === "reading") {
-                  navigate(`/reading-test/${test.id}`);
-                } else {
-                  console.log(`Starting ${testType} test:`, test);
-                }
-              }}
-            >
-              <Play className="h-4 w-4 mr-1" />
-              Başla
-            </Button>
-          </div>
-        ))}
-      </div>
+  const totalCoins = testSections.reduce((acc, s) => {
+    const available = s.tests && s.tests.length > 0;
+    return acc + (available && selectedMap[s.id] ? s.cost : 0);
+  }, 0);
+
+  const handleCta = () => {
+    // Choose first selected and available section for navigation
+    const chosen = testSections.find(
+      (s) => selectedMap[s.id] && s.tests && s.tests.length > 0
     );
+    if (!chosen || !chosen.tests[0]) return;
+    const test = chosen.tests[0];
+    const path =
+      chosen.id === "speaking"
+        ? `/speaking-test/${test.id}`
+        : chosen.id === "writing"
+        ? `/writing-test/${test.id}`
+        : chosen.id === "listening"
+        ? `/listening-test/${test.id}`
+        : `/reading-test/${test.id}`;
+
+    if (!isAuthenticated) {
+      navigate("/signup", { state: { redirectTo: path } });
+      return;
+    }
+    navigate(path);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl w-[95vw] max-h-[80vh] overflow-y-auto bg-white rounded-lg shadow-lg border border-gray-100">
-        <DialogHeader>
-          <DialogTitle className="text-lg font-semibold text-gray-900">
-            {selectedTest.title}
-          </DialogTitle>
-          <p className="text-gray-600 text-xs">Bölüm seçin ve başlayın.</p>
-        </DialogHeader>
+      <DialogContent className="max-w-xl w-[95vw] bg-[#0b0f13] text-white rounded-xl border border-white/10">
+        <div className="p-4 sm:p-6">
+          <h3 className="text-xl font-semibold mb-2">{selectedTest.title}</h3>
+          <p className="text-white/70 text-sm mb-6">
+            Choose the test types you want to take.
+          </p>
 
-        <div className="space-y-6">
-          {/* Full Test Option */}
-          <Card className="border border-gray-200 bg-gray-50">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Target className="h-6 w-6 text-gray-700" />
-                  <span className="text-gray-900">Tam Test</span>
-                </div>
-                <Badge variant="secondary" className="bg-gray-700 text-white">
-                  165 dakika
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-3 mb-3">
-                {testSections.map((section) => (
-                  <div
-                    key={section.id}
-                    className="text-center p-2 bg-white rounded-md border border-gray-200"
-                  >
-                    <section.icon className="h-6 w-6 mx-auto mb-1 text-gray-600" />
-                    <div className="text-xs font-medium text-gray-900">
-                      {section.title}
-                    </div>
-                    <div className="text-[10px] text-gray-500">
-                      {section.duration}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <Button
-                className="w-full bg-gray-700 hover:bg-gray-800 text-white font-medium py-2"
-                onClick={() => {
-                  // Handle full test start
-                  console.log("Starting full test");
-                }}
-              >
-                <Play className="h-4 w-4 mr-2" />
-                Tam Testi Başlat
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Individual Sections */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {testSections.map((section) => {
-              const IconComponent = section.icon;
-              const isSelected = selectedSection === section.id;
-
+          <div className="space-y-3">
+            {testSections.map((s) => {
+              const Icon = s.icon;
+              const available = s.tests && s.tests.length > 0;
+              const selected = !!selectedMap[s.id];
               return (
                 <Card
-                  key={section.id}
-                  className={`cursor-pointer transition-all border border-gray-200 hover:border-gray-300 ${
-                    isSelected ? "ring-2 ring-blue-500" : ""
-                  }`}
-                  onClick={() => {
-                    if (isSelected) {
-                      setSelectedSection(null);
-                    } else {
-                      setSelectedSection(section.id);
-                      onTestTypeClick(section.id, section.tests);
-                    }
-                  }}
+                  key={s.id}
+                  className={`bg-transparent border ${
+                    selected ? "border-purple-700" : "border-white/10"
+                  } ${available ? "" : "opacity-50"}`}
                 >
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="p-1.5 rounded-md bg-gray-100">
-                          <IconComponent className="h-4 w-4 text-gray-700" />
-                        </div>
-                        <span className="text-gray-900 font-medium text-sm">
-                          {section.title}
-                        </span>
-                      </div>
-                      <div className="flex gap-2">
-                        <Badge variant="outline">
-                          <Clock className="h-3 w-3 mr-1" />
-                          {section.duration}
-                        </Badge>
-                        <Badge variant="outline">
-                          <Users className="h-3 w-3 mr-1" />
-                          {section.questions}
-                        </Badge>
-                      </div>
-                    </CardTitle>
-                  </CardHeader>
-
-                  {isSelected && (
-                    <CardContent>
-                      <div className="border-t pt-4">
-                        <h4 className="font-medium text-gray-900 mb-2 text-sm">
-                          Mevcut Testler:
-                        </h4>
-                        {section.tests.length > 0 ? (
-                          renderTestsList(section.tests, section.id)
-                        ) : (
-                          <p className="text-gray-500 text-xs">
-                            Bu bölüm için test bulunmuyor.
-                          </p>
-                        )}
-                      </div>
-                    </CardContent>
-                  )}
+                  <button
+                    className="w-full flex items-center justify-between px-4 py-3"
+                    onClick={() => available && toggle(s.id)}
+                    disabled={!available}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={`h-5 w-5 rounded-md flex items-center justify-center ${
+                          selected ? "bg-purple-700" : "bg-white/10"
+                        }`}
+                      >
+                        {selected && <CheckCircle2 className="h-4 w-4" />}
+                      </span>
+                      <Icon className="h-4 w-4 text-white/80" />
+                      <span className="font-medium tracking-wide">{s.title}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-amber-300">
+                      <Coins className="h-4 w-4" />
+                      <span className="text-sm">{s.cost}</span>
+                    </div>
+                  </button>
                 </Card>
               );
             })}
           </div>
+
+          <div className="flex items-center justify-between mt-6 mb-4">
+            <span className="text-white/80">Total</span>
+            <div className="flex items-center gap-1 text-amber-300">
+              <Coins className="h-4 w-4" />
+              <span className="font-semibold">{totalCoins}</span>
+            </div>
+          </div>
+
+          <Button
+            className="w-full h-11 bg-purple-700 hover:bg-purple-800"
+            onClick={handleCta}
+          >
+            {isAuthenticated ? "Start" : "Sign Up"}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

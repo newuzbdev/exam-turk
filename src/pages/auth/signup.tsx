@@ -8,11 +8,12 @@ import {
 } from "@/components/ui/input-otp";
 import { REGEXP_ONLY_DIGITS_AND_CHARS } from "input-otp";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
-import { NavLink, useNavigate } from "react-router";
+import { NavLink, useLocation, useNavigate } from "react-router";
 import { authService } from "@/services/auth.service";
 
 const SignUp = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [step, setStep] = useState<"options" | "phone" | "otp" | "register">(
     "options"
   );
@@ -152,7 +153,13 @@ const SignUp = () => {
       avatarUrl: registrationData.avatarUrl || "",
     };
 
-    await authService.registerUser(registrationPayload, navigate);
+    const result = await authService.registerUser(registrationPayload, navigate);
+    // After successful signup, redirect back if requested
+    const state = location.state as { redirectTo?: string } | null;
+    if (state?.redirectTo) {
+      navigate(state.redirectTo);
+      return;
+    }
     setLoading(false);
   };
 

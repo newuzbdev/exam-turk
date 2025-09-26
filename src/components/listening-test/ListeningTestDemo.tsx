@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { listeningTestService } from "@/services/listeningTest.service";
 import type { ListeningTestItem } from "@/services/listeningTest.service";
 import { Button } from "../ui/button";
+import { listeningSubmissionService } from "@/services/listeningTest.service";
+import { useNavigate } from "react-router-dom";
 
 interface UserAnswers {
   [questionId: string]: string;
@@ -12,6 +14,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
   const [userAnswers, setUserAnswers] = useState<UserAnswers>({});
   const [currentPartNumber, setCurrentPartNumber] = useState<number>(1);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchTestData = async () => {
@@ -316,6 +319,19 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
     );
   };
 
+  const handleSubmit = async () => {
+    try {
+      if (!testData?.id) return;
+      const answers = Object.entries(userAnswers).map(([questionId, userAnswer]) => ({ questionId, userAnswer }));
+      if (answers.length === 0) return;
+      const res: any = await listeningSubmissionService.submitAnswers(testData.id, answers);
+      const resultId = res?.id || res?.resultId || res?.data?.id || res?.data?.resultId;
+      if (resultId) {
+        navigate(`/listening-test/results/${resultId}`);
+      }
+    } catch {}
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -345,7 +361,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
         <div className="flex items-center gap-4">
           <div className="font-bold text-lg">10:00</div>
 
-          <Button className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 text-sm font-bold">
+          <Button onClick={handleSubmit} className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 text-sm font-bold">
             GÖNDER
           </Button>
         </div>

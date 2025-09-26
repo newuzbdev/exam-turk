@@ -13,17 +13,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { useNavigate, useParams } from "react-router-dom";
-import {
-  listeningSubmissionService,
-  type TestResultData,
-} from "@/services/listeningTest.service";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { listeningSubmissionService, type TestResultData } from "@/services/listeningTest.service";
 
 export default function ListeningResultPage() {
   const { resultId } = useParams<{ resultId: string }>();
   const [data, setData] = useState<TestResultData | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useNavigate();
+  const location = useLocation();
+  const navState: any = (location && (location as any).state) || {};
+  const summary = navState?.summary || null;
 
   useEffect(() => {
     if (!resultId) return;
@@ -34,6 +34,7 @@ export default function ListeningResultPage() {
       setLoading(false);
     })();
   }, [resultId]);
+
 
   if (loading) {
     return (
@@ -68,8 +69,7 @@ export default function ListeningResultPage() {
 
   const correctAnswers = data.userAnswers.filter((ua) => ua.isCorrect).length;
   const totalQuestions = data.userAnswers.length;
-  const accuracyPercentage =
-    totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
+  const accuracyPercentage = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
   const testDuration =
     new Date(data.completedAt).getTime() - new Date(data.startedAt).getTime();
   const durationMinutes = Math.floor(testDuration / (1000 * 60));
@@ -125,7 +125,7 @@ export default function ListeningResultPage() {
                   <Trophy className="w-10 h-10 text-red-600" />
                 </div>
                 <CardTitle className="text-3xl font-bold text-red-700">
-                  {data.score} <span className="text-lg">/ 9.0</span>
+                  {summary?.score ?? data.score} <span className="text-lg">/ 9.0</span>
                 </CardTitle>
                 <p className="text-muted-foreground">Umumiy Ball</p>
               </CardHeader>
@@ -133,13 +133,13 @@ export default function ListeningResultPage() {
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <p className="font-semibold text-green-600">
-                      {correctAnswers}
+                      {summary?.correctCount ?? correctAnswers}
                     </p>
                     <p className="text-muted-foreground">To‘g‘ri</p>
                   </div>
                   <div>
                     <p className="font-semibold text-red-600">
-                      {totalQuestions - correctAnswers}
+                      {(summary?.totalQuestions ?? totalQuestions) - (summary?.correctCount ?? correctAnswers)}
                     </p>
                     <p className="text-muted-foreground">Noto‘g‘ri</p>
                   </div>
@@ -148,15 +148,32 @@ export default function ListeningResultPage() {
                   <div className="flex justify-between text-sm">
                     <span>Aniqlik</span>
                     <span className="font-semibold">
-                      {accuracyPercentage.toFixed(1)}%
+                      {(() => {
+                        const sCorrect = summary?.correctCount ?? correctAnswers;
+                        const sTotal = summary?.totalQuestions ?? (totalQuestions || 1);
+                        return ((sCorrect / sTotal) * 100).toFixed(1);
+                      })()}%
                     </span>
                   </div>
-                  <Progress value={accuracyPercentage} className="h-2" />
+                  <Progress
+                    value={(() => {
+                      const sCorrect = summary?.correctCount ?? correctAnswers;
+                      const sTotal = summary?.totalQuestions ?? (totalQuestions || 1);
+                      return (sCorrect / sTotal) * 100;
+                    })()}
+                    className="h-2"
+                  />
                 </div>
                 <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                   <Clock className="w-4 h-4" />
                   <span>Vaqt: {durationMinutes} daqiqa</span>
                 </div>
+                {summary?.message && (
+                  <div className="text-xs text-muted-foreground">{summary.message}</div>
+                )}
+                {summary?.testResultId && (
+                  <div className="text-xs text-muted-foreground">ID: {summary.testResultId}</div>
+                )}
               </CardContent>
             </Card>
 
@@ -204,6 +221,8 @@ export default function ListeningResultPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Removed results list per requirement */}
           </div>
 
           <div className="lg:col-span-2">

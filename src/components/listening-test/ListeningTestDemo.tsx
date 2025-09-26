@@ -331,9 +331,21 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
         return;
       }
       const res: any = await listeningSubmissionService.submitAnswers(testData.id, answers);
-      const resultId = res?.id || res?.resultId || res?.data?.id || res?.data?.resultId;
+      const resultId = res?.testResultId || res?.id || res?.resultId || res?.data?.id || res?.data?.resultId;
+      const summary = {
+        score: res?.score ?? res?.data?.score,
+        correctCount: res?.correctCount ?? res?.data?.correctCount,
+        totalQuestions: res?.totalQuestions ?? res?.data?.totalQuestions,
+        message: res?.message ?? res?.data?.message,
+        testResultId: resultId,
+      };
       if (resultId) {
-        navigate(`/listening-test/results/${resultId}`);
+        // Ensure results are fetched immediately after submission
+        try {
+          await listeningSubmissionService.getExamResults(resultId);
+        } catch {}
+        navigate(`/listening-test/results/${resultId}` , { state: { summary } });
+        return;
       }
     } catch (err) {
       console.error("Listening submit error", err);

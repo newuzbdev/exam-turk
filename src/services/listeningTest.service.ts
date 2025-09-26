@@ -205,6 +205,8 @@ export const listeningSubmissionService = {
       return null;
     }
   },
+
+  // Removed per requirement: results list should not be fetched here
 };
 
 export default listeningTestService;

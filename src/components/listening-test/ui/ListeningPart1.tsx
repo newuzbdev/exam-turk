@@ -12,74 +12,8 @@ interface Question {
 
 export default function ListeningPart1({ questions: externalQuestions }: { questions?: Question[] }) {
   const [questions, setQuestions] = useState<Question[]>([
-    {
-      id: 1,
-      options: {
-        A: "Trafikte takılıp kaldım, her şey araşacına döndü.",
-        B: "İşler yolundaydı, sorunsuz geldim.",
-        C: "Yolda hiçbir sorun yaşamadım",
-      },
-      selectedAnswer: "A",
-    },
-    {
-      id: 2,
-      options: {
-        A: "Hemen çözüm buldum",
-        B: "İşler yolundaydı, sorunsuz geldim.",
-        C: "Yolda hiçbir sorun yaşamadım",
-      },
-    },
-    {
-      id: 3,
-      options: {
-        A: "Trafikte takılıp kaldım, her şey araşacına döndü.",
-        B: "İşler yolundaydı, sorunsuz geldim.",
-        C: "Yolda hiçbir sorun yaşamadım",
-      },
-      selectedAnswer: "B",
-    },
-    {
-      id: 4,
-      options: {
-        A: "Trafikte takılıp kaldım, her şey araşacına döndü.",
-        B: "İşler yolundaydı, sorunsuz geldim.",
-        C: "Yolda hiçbir sorun yaşamadım",
-      },
-      selectedAnswer: "B",
-    },
-    {
-      id: 5,
-      options: {
-        A: "Trafikte takılıp kaldım, her şey araşacına döndü.",
-        B: "İşler yolundaydı, sorunsuz geldim.",
-        C: "Yolda hiçbir sorun yaşamadım",
-      },
-      selectedAnswer: "A",
-    },
-    {
-      id: 6,
-      options: {
-        A: "Trafikte takılıp kaldım, her şey araşacına döndü.",
-        B: "İşler yolundaydı, sorunsuz geldim.",
-        C: "Yolda hiçbir sorun yaşamadım",
-      },
-    },
-    {
-      id: 7,
-      options: {
-        A: "Trafikte takılıp kaldım, her şey araşacına döndü.",
-        B: "İşler yolundaydı, sorunsuz geldim.",
-        C: "Yolda hiçbir sorun yaşamadım",
-      },
-    },
-    {
-      id: 8,
-      options: {
-        A: "Trafikte takılıp kaldım, her şey araşacına döndü.",
-        B: "İşler yolundaydı, sorunsuz geldim.",
-        C: "Yolda hiçbir sorun yaşamadım",
-      },
-    },
+
+
   ]);
 
   useEffect(() => {

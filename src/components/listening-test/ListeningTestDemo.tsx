@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { listeningTestService } from "@/services/listeningTest.service";
 import type { ListeningTestItem } from "@/services/listeningTest.service";
+import { Button } from "../ui/button";
 
 interface UserAnswers {
   [questionId: string]: string;
@@ -214,11 +215,11 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
     return (
       <div key={`bolum-${bolum}`} className="w-full mx-auto bg-white border-gray-800 rounded-lg overflow-hidden">
         {/* Static Yellow Header */}
-        <div className="bg-yellow-200 border-2 border-yellow-400 px-6 py-4">
+        <div className="bg-yellow-50  px-6 py-4">
           <h2 className="text-2xl font-bold text-gray-800 mb-2">
             BÖLÜM {bolum} - DİNLEME METNİ
           </h2>
-          <p className="text-xl text-gray-700 leading-relaxed whitespace-pre-line">
+          <p className="text-base text-gray-700 leading-relaxed whitespace-pre-line">
             {staticHeader || "Header not found"}
           </p>
         </div>
@@ -336,11 +337,22 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
-      <div className="max-w-6xl mx-auto p-6">
-        {/* Test Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">{testData.title}</h1>
+        <div className="bg-white px-6 py-3 flex items-center justify-between border-b border-gray-200">
+        <div className="bg-red-600 text-white px-3 py-1 rounded font-bold text-lg">
+          TURKISHMOCK
         </div>
+        <div className="font-bold text-2xl">Listening</div>
+        <div className="flex items-center gap-4">
+          <div className="font-bold text-lg">10:00</div>
+
+          <Button className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 text-sm font-bold">
+            GÖNDER
+          </Button>
+        </div>
+      </div>
+      <div className=" mx-auto p-6">
+        {/* Test Header */}
+   
 
         {/* Current Part */}
         {renderPart(bolum)}

@@ -321,15 +321,23 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
 
   const handleSubmit = async () => {
     try {
-      if (!testData?.id) return;
+      if (!testData?.id) {
+        console.error("No testId found for submission");
+        return;
+      }
       const answers = Object.entries(userAnswers).map(([questionId, userAnswer]) => ({ questionId, userAnswer }));
-      if (answers.length === 0) return;
+      if (answers.length === 0) {
+        // Require at least one answer to submit
+        return;
+      }
       const res: any = await listeningSubmissionService.submitAnswers(testData.id, answers);
       const resultId = res?.id || res?.resultId || res?.data?.id || res?.data?.resultId;
       if (resultId) {
         navigate(`/listening-test/results/${resultId}`);
       }
-    } catch {}
+    } catch (err) {
+      console.error("Listening submit error", err);
+    }
   };
 
   if (loading) {

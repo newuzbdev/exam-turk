@@ -9,7 +9,7 @@ interface AudioPlayerProps {
 
 export const AudioPlayer = ({ src, onAudioEnded }: AudioPlayerProps) => {
   const [volume, setVolume] = useState(0.7);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [_isPlaying, setIsPlaying] = useState(false);
   const [showPlayButton, setShowPlayButton] = useState(true);
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -134,11 +134,7 @@ export const AudioPlayer = ({ src, onAudioEnded }: AudioPlayerProps) => {
       </div>
       
       {/* Status indicator */}
-      {isPlaying && (
-        <div className="text-xs text-green-600 font-bold">
-          ▶ Playing
-        </div>
-      )}
+     
     </div>
   );
 };

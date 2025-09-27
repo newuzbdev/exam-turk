@@ -270,20 +270,20 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
       return (
         <div key={`bolum-${bolum}`} className="w-full mx-auto bg-white border-gray-800 rounded-lg overflow-hidden">
           {/* Part 3 Layout: Questions on left, Answer options on right */}
-          <div className="flex">
+          <div className="flex min-h-[400px]">
             {/* Left side - Questions */}
-            <div className="w-1/2 p-4 border-r border-gray-300">
-              <div className="space-y-4">
+            <div className="w-1/2 p-3 border-r border-gray-300">
+              <div className="space-y-2">
                 {questions.map((question, index) => {
                   const currentQuestionNumber = questionNumber + index;
                   return (
-                    <div key={question.id} className="flex items-center gap-2">
-                      <span className="font-bold text-base">S{currentQuestionNumber}.</span>
-                      <span className="text-base">1. konuşmacı ...</span>
+                    <div key={question.id} className="flex items-center gap-2 py-1">
+                      <span className="font-bold text-lg">S{currentQuestionNumber}.</span>
+                      <span className="text-lg">1. konuşmacı ...</span>
                       <select
                         value={userAnswers[question.id] || ""}
                         onChange={(e) => handleAnswerSelect(question.id, e.target.value)}
-                        className="border border-gray-400 rounded px-2 py-1 text-sm"
+                        className="border border-gray-400 rounded px-2 py-1 text-base"
                       >
                         <option value="">Seç</option>
                         {answerOptions.map((option) => (
@@ -299,14 +299,14 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
             </div>
 
             {/* Right side - Answer options */}
-            <div className="w-1/2 p-4">
-              <div className="space-y-3">
+            <div className="w-1/2 p-3">
+              <div className="space-y-2">
                 {answerOptions.map((option) => (
-                  <div key={option.letter} className="flex items-start gap-2">
-                    <div className="text-base flex items-center justify-center font-bold bg-white">
+                  <div key={option.letter} className="flex items-start gap-2 py-1">
+                    <div className="text-lg flex items-center justify-center font-bold bg-white">
                       {option.letter})
                     </div>
-                    <p className="text-base text-gray-700 leading-relaxed flex-1">
+                    <p className="text-lg text-gray-700 leading-relaxed flex-1">
                       {option.text}
                     </p>
                   </div>
@@ -625,7 +625,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
-        <div className="bg-white px-6 py-3 border-b border-gray-200">
+        <div className="bg-white px-6 py-3 border-2 border-gray-300 rounded-lg mx-4 mt-4 shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <div className="bg-red-600 text-white px-3 py-1 rounded font-bold text-lg">
               TURKISHMOCK
@@ -651,11 +651,11 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
           </div>
           
           {/* Description Section - Close to header */}
-          <div className="mt-2 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-            <h3 className="text-lg font-bold text-gray-800 mb-1">
+          <div className="mt-2 p-5 bg-yellow-50 rounded-lg border border-yellow-300">
+            <h3 className="text-2xl font-bold text-gray-800 mb-3">
               BÖLÜM {bolum} - DİNLEME METNİ
             </h3>
-            <p className="text-sm text-gray-700 leading-relaxed">
+            <p className="text-lg text-gray-700 leading-relaxed">
               {getStaticHeader(bolum)}
             </p>
           </div>

@@ -518,34 +518,76 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
   };
 
   const renderTabs = () => {
-    // Always render 6 bölüm tabs, map to existing parts by number
-    const partNumbers = [1, 2, 3, 4, 5, 6];
-    return (
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-300 p-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex justify-center gap-2 flex-wrap">
-            {partNumbers.map((num) => {
-              const partQuestions = getQuestionsForPartNumber(num);
-              const answeredInPart = partQuestions.filter(q => userAnswers[q.id]).length;
-              const isActive = currentPartNumber === num;
+    // Create dynamic sections with question numbers
+    const createSections = () => {
+      const sections = [];
+      let questionNumber = 1;
+      
+      for (let partNum = 1; partNum <= 6; partNum++) {
+        const partQuestions = getQuestionsForPartNumber(partNum);
+        const questionNumbers = [];
+        
+        for (let i = 0; i < partQuestions.length; i++) {
+          questionNumbers.push(questionNumber + i);
+        }
+        
+        sections.push({
+          number: partNum,
+          questions: questionNumbers,
+          partQuestions: partQuestions
+        });
+        
+        questionNumber += partQuestions.length;
+      }
+      
+      return sections;
+    };
 
+    const sections = createSections();
+
+    return (
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-800 p-3">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex justify-center gap-2 flex-nowrap overflow-x-auto">
+            {sections.map((section) => {
+              const isActive = currentPartNumber === section.number;
+              
               return (
-                <button
-                  key={`bolum-${num}`}
-                  onClick={() => setCurrentPartNumber(num)}
-                  className={`px-4 py-2 rounded-lg border-2 font-medium transition-colors ${
-                    isActive
-                      ? "bg-blue-500 text-white border-blue-500"
-                      : answeredInPart > 0
-                      ? "bg-green-100 text-green-700 border-green-300"
-                      : "bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200"
+                <div 
+                  key={section.number} 
+                  className={`text-center border-2 rounded-lg p-2 min-w-fit cursor-pointer transition-colors ${
+                    isActive 
+                      ? "border-blue-500 bg-blue-50" 
+                      : "border-gray-300 bg-gray-50 hover:bg-gray-100"
                   }`}
+                  onClick={() => setCurrentPartNumber(section.number)}
                 >
-                  <div className="text-sm font-bold">Bölüm {num}</div>
-                  <div className="text-xs">
-                    {answeredInPart}/{partQuestions.length} soru
+                  <div className="flex gap-1 mb-1 justify-center">
+                    {section.questions.map((q) => {
+                      const questionId = section.partQuestions[q - section.questions[0]]?.id;
+                      const isAnswered = questionId && userAnswers[questionId];
+                      const isFirstQuestion = q === section.questions[0];
+                      
+                      return (
+                        <div
+                          key={q}
+                          className={`w-6 h-6 rounded-full border-2 border-gray-800 flex items-center justify-center text-xs font-bold ${
+                            isFirstQuestion 
+                              ? "bg-green-400" 
+                              : isAnswered 
+                              ? "bg-green-300" 
+                              : "bg-white"
+                          }`}
+                        >
+                          {q}
+                        </div>
+                      );
+                    })}
                   </div>
-                </button>
+                  <div className="text-xs font-bold">
+                    {section.number}. BÖLÜM
+                  </div>
+                </div>
               );
             })}
           </div>

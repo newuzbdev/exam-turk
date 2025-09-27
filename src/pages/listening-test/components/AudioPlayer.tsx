@@ -1,90 +1,144 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Play, Pause, } from "lucide-react";
+import { Volume2, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface AudioPlayerProps {
   src: string;
+  onAudioEnded: () => void;
 }
 
-export const AudioPlayer = ({ src }: AudioPlayerProps) => {
+export const AudioPlayer = ({ src, onAudioEnded }: AudioPlayerProps) => {
+  const [volume, setVolume] = useState(0.7);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
+  const [showPlayButton, setShowPlayButton] = useState(true);
   const audioRef = useRef<HTMLAudioElement>(null);
 
+  // Debug: Log the src when component mounts
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    // Vaqtni yangilash
-    const handleTimeUpdate = () => {
-      setCurrentTime(audio.currentTime);
-    };
-
-    // Davomiylikni o'rnatish
-    const handleLoadedMetadata = () => {
-      setDuration(audio.duration);
-    };
-
-    // Tinglovchilarni qo'shish
-    audio.addEventListener("timeupdate", handleTimeUpdate);
-    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
-
-    // Komponent yo'q qilinganda tinglovchilarni tozalash
-    return () => {
-      audio.removeEventListener("timeupdate", handleTimeUpdate);
-      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
-    };
+    console.log("AudioPlayer mounted with src:", src);
   }, [src]);
 
-  // Tugmalarni boshqarish
-  const handlePlayPause = () => {
+  // Auto-play when component mounts
+  useEffect(() => {
     const audio = audioRef.current;
+    if (audio && src) {
+      console.log("Attempting auto-play...");
+      
+      const tryAutoPlay = async () => {
+        try {
+          await audio.play();
+          console.log("Auto-play successful!");
+          setIsPlaying(true);
+          setShowPlayButton(false);
+        } catch (error) {
+          console.log("Auto-play failed, showing play button:", error);
+          setShowPlayButton(true);
+        }
+      };
+
+      // Try to play after a small delay to ensure audio is loaded
+      setTimeout(tryAutoPlay, 500);
+    }
+  }, [src]);
+
+  // Simple play function
+  const playAudio = async () => {
+    console.log("Play button clicked!");
+    const audio = audioRef.current;
+    console.log("Audio element:", audio);
+    console.log("Audio src:", audio?.src);
+    
     if (audio) {
-      if (isPlaying) {
-        audio.pause();
-      } else {
-        audio.play();
+      try {
+        console.log("Attempting to play audio...");
+        await audio.play();
+        console.log("Audio started playing!");
+        setIsPlaying(true);
+        setShowPlayButton(false);
+      } catch (error) {
+        console.error("Play failed:", error);
       }
-      setIsPlaying(!isPlaying);
+    } else {
+      console.error("No audio element found!");
     }
   };
 
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle audio ended event
+  useEffect(() => {
     const audio = audioRef.current;
     if (audio) {
-      const newTime = parseFloat(e.target.value);
-      audio.currentTime = newTime;
-      setCurrentTime(newTime);
+      const handleEnded = () => {
+        onAudioEnded();
+      };
+      audio.addEventListener('ended', handleEnded);
+      return () => audio.removeEventListener('ended', handleEnded);
     }
-  };
+  }, [onAudioEnded]);
 
-  // Vaqtni formatlash
-  const formatTime = (time: number) => {
-    const minutes = Math.floor(time / 60);
-    const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  // Volume control
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVolume = parseFloat(e.target.value);
+    const audio = audioRef.current;
+    if (audio) {
+      audio.volume = newVolume;
+      setVolume(newVolume);
+    }
   };
 
   return (
-    <div className="flex items-center gap-4 p-4 border rounded-lg bg-gray-50">
-      <audio ref={audioRef} src={src} preload="metadata" />
-      <Button variant="ghost" size="icon" onClick={handlePlayPause}>
-        {isPlaying ? <Pause /> : <Play />}
-      </Button>
-      <div className="flex-1">
+    <div className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-lg">
+      <audio 
+        ref={audioRef} 
+        src={src} 
+        preload="auto"
+        onLoadStart={() => console.log("Audio load started")}
+        onLoadedData={() => console.log("Audio data loaded")}
+        onCanPlay={() => console.log("Audio can play")}
+        onError={(e) => console.error("Audio error:", e)}
+        onEnded={() => {
+          console.log("Audio ended");
+          setIsPlaying(false);
+          onAudioEnded();
+        }}
+      />
+      
+      {/* Play Button */}
+      {showPlayButton && (
+        <Button 
+          onClick={playAudio}
+          size="sm"
+          className="h-6 w-6 p-0 bg-blue-500 hover:bg-blue-600"
+        >
+          <Play className="h-3 w-3" />
+        </Button>
+      )}
+      
+      {/* Volume Slider */}
+      <div className="flex items-center gap-2">
+        <Volume2 className="h-4 w-4 text-gray-600" />
         <input
           type="range"
           min="0"
-          max={duration || 0}
-          value={currentTime}
-          onChange={handleSeek}
-          className="w-full h-2 rounded-lg appearance-none bg-gray-200 cursor-pointer"
+          max="1"
+          step="0.1"
+          value={volume}
+          onChange={handleVolumeChange}
+          className="w-16 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+          style={{
+            background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${volume * 100}%, #e5e7eb ${volume * 100}%, #e5e7eb 100%)`
+          }}
         />
+        <span className="text-xs text-gray-600 min-w-[25px]">
+          {Math.round(volume * 100)}%
+        </span>
       </div>
-      <div className="text-sm font-mono text-gray-600">
-        {formatTime(currentTime)} / {formatTime(duration)}
-      </div>
+      
+      {/* Status indicator */}
+      {isPlaying && (
+        <div className="text-xs text-green-600 font-bold">
+          ▶ Playing
+        </div>
+      )}
     </div>
   );
 };

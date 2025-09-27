@@ -4,6 +4,7 @@ import type { ListeningTestItem } from "@/services/listeningTest.service";
 import { Button } from "../ui/button";
 import { listeningSubmissionService } from "@/services/listeningTest.service";
 import { useNavigate } from "react-router-dom";
+import { AudioPlayer } from "@/pages/listening-test/components/AudioPlayer";
 
 interface UserAnswers {
   [questionId: string]: string;
@@ -14,6 +15,8 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
   const [userAnswers, setUserAnswers] = useState<UserAnswers>({});
   const [currentPartNumber, setCurrentPartNumber] = useState<number>(1);
   const [loading, setLoading] = useState(true);
+  const [timeLeft, setTimeLeft] = useState<number>(600); // 10 minutes in seconds
+  const [timerActive, setTimerActive] = useState<boolean>(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -32,6 +35,43 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
       fetchTestData();
     }
   }, [testId]);
+
+  // Timer effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    
+    if (timerActive && timeLeft > 0) {
+      interval = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            setTimerActive(false);
+            // Auto submit when time runs out
+            handleSubmit();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [timerActive, timeLeft]);
+
+  // Handle audio ended - start timer
+  const handleAudioEnded = () => {
+    setTimerActive(true);
+  };
+
+  // Format time display
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+  };
 
   const handleAnswerSelect = (questionId: string, answer: string) => {
     setUserAnswers(prev => ({
@@ -215,6 +255,81 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
 
     const staticHeader = getStaticHeader(bolum);
 
+    // Special layout for Part 4 (image matching questions)
+    if (bolum === 4) {
+      const imageUrl = questions.find(q => q.imageUrl)?.imageUrl;
+      
+      return (
+        <div key={`bolum-${bolum}`} className="w-full mx-auto bg-white border-gray-800 rounded-lg overflow-hidden">
+          {/* Static Yellow Header */}
+          <div className="bg-yellow-50 px-6 py-4">
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">
+              BÖLÜM {bolum} - DİNLEME METNİ
+            </h2>
+            <p className="text-base text-gray-700 leading-relaxed whitespace-pre-line">
+              {staticHeader || "Header not found"}
+            </p>
+          </div>
+
+          {/* Part 4 Layout: Image on left, Questions on right */}
+          <div className="flex">
+            {/* Left side - Image */}
+            <div className="w-1/2 border-r border-gray-300 p-4">
+              {imageUrl ? (
+                <img 
+                  src={`https://api.turkcetest.uz/${imageUrl}`} 
+                  alt="Map for questions 19-23" 
+                  className="w-full max-w-[500px] mx-auto"
+                  onError={(e) => {
+                    const el = e.target as HTMLImageElement;
+                    el.src = "https://placehold.co/800x600?text=Görsel+Yüklenemedi";
+                  }}
+                />
+              ) : (
+                <div className="w-full h-64 bg-gray-100 flex items-center justify-center text-gray-500">
+                  Görsel bulunamadı
+                </div>
+              )}
+            </div>
+
+            {/* Right side - Questions */}
+            <div className="w-1/2 p-4">
+              <div className="flex flex-col justify-center items-start space-y-3">
+                {questions.length === 0 && (
+                  <div className="text-center text-gray-600 py-6">Bu bölüm için soru bulunamadı.</div>
+                )}
+                {questions.map((question, index) => {
+                  const currentQuestionNumber = questionNumber + index;
+                  return (
+                    <div key={question.id} className="flex items-center gap-3 w-full">
+                      <span className="font-bold text-lg">S{currentQuestionNumber}.</span>
+                      <span className="text-lg flex-1">{question.text}</span>
+                      <select
+                        className="border border-gray-400 rounded px-2 py-1 text-sm min-w-[60px]"
+                        value={userAnswers[question.id] || ""}
+                        onChange={(e) => handleAnswerSelect(question.id, e.target.value)}
+                      >
+                        <option value="">Seç</option>
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="C">C</option>
+                        <option value="D">D</option>
+                        <option value="E">E</option>
+                        <option value="F">F</option>
+                        <option value="G">G</option>
+                        <option value="H">H</option>
+                      </select>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Default layout for other parts
     return (
       <div key={`bolum-${bolum}`} className="w-full mx-auto bg-white border-gray-800 rounded-lg overflow-hidden">
         {/* Static Yellow Header */}
@@ -373,26 +488,36 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
-        <div className="bg-white px-6 py-3 flex items-center justify-between border-b border-gray-200">
-        <div className="bg-red-600 text-white px-3 py-1 rounded font-bold text-lg">
-          TURKISHMOCK
+        <div className="bg-white px-6 py-3 border-b border-gray-200">
+          <div className="flex items-center justify-between mb-3">
+            <div className="bg-red-600 text-white px-3 py-1 rounded font-bold text-lg">
+              TURKISHMOCK
+            </div>
+            <div className="font-bold text-2xl">Listening</div>
+            <div className="flex items-center gap-4">
+              <div className={`font-bold text-lg ${timerActive ? 'text-red-600' : 'text-gray-600'}`}>
+                {timerActive ? formatTime(timeLeft) : '10:00'}
+              </div>
+              
+              {/* Volume Control inline with timer */}
+              {testData?.audioUrl && (
+                <AudioPlayer 
+                  src={`https://api.turkcetest.uz${testData.audioUrl}`} 
+                  onAudioEnded={handleAudioEnded}
+                />
+              )}
+              
+              <Button onClick={handleSubmit} className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 text-sm font-bold">
+                GÖNDER
+              </Button>
+            </div>
+          </div>
         </div>
-        <div className="font-bold text-2xl">Listening</div>
-        <div className="flex items-center gap-4">
-          <div className="font-bold text-lg">10:00</div>
-
-          <Button onClick={handleSubmit} className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 text-sm font-bold">
-            GÖNDER
-          </Button>
+        
+        <div className="mx-auto p-6">
+          {/* Current Part */}
+          {renderPart(bolum)}
         </div>
-      </div>
-      <div className=" mx-auto p-6">
-        {/* Test Header */}
-   
-
-        {/* Current Part */}
-        {renderPart(bolum)}
-      </div>
       
       {/* Bottom Tabs */}
       {renderTabs()}

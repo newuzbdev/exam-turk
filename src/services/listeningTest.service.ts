@@ -48,6 +48,7 @@ export interface ListeningPart {
 }
 
 export interface ListeningTestItem {
+  audioUrl: any;
   id: string;
   title: string;
   type?: string;
@@ -188,16 +189,28 @@ export const listeningSubmissionService = {
   },
 
   getExamResults: async (
-    testResulId: string
+    testResultId: string
   ): Promise<TestResultData | null> => {
     try {
+      console.log("Fetching exam results for testResultId:", testResultId);
       const res = await axiosPrivate.get("/api/exam/user-answers", {
-        params: { testResulId },
+        params: { testResulId: testResultId }, // API expects testResulId (with typo)
       });
-      const data = extractData<TestResultData[]>(res);
-      if (Array.isArray(data) && data.length > 0) {
-        return data[0]; 
+      console.log("Raw API response:", res);
+      
+      const data = extractData<TestResultData>(res);
+      console.log("Extracted data:", data);
+      
+      // Handle both single object and array responses
+      if (data && typeof data === 'object') {
+        if (Array.isArray(data)) {
+          console.log("Data is array, returning first item");
+          return data.length > 0 ? data[0] : null;
+        }
+        console.log("Data is single object, returning as is");
+        return data as TestResultData;
       }
+      console.log("No valid data found");
       return null;
     } catch (error) {
       console.error("getExamResults error:", error);

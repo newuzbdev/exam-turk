@@ -15,11 +15,20 @@ export default function ListeningResultPage() {
   const summary = navState?.summary || null;
 
   useEffect(() => {
-    if (!resultId) return;
+    if (!resultId) {
+      console.log("No resultId provided to results page");
+      return;
+    }
+    console.log("Fetching results for resultId:", resultId);
     (async () => {
       setLoading(true);
-      const res = await listeningSubmissionService.getExamResults(resultId);
-      setData(res);
+      try {
+        const res = await listeningSubmissionService.getExamResults(resultId);
+        console.log("Results fetched:", res);
+        setData(res);
+      } catch (error) {
+        console.error("Error fetching results:", error);
+      }
       setLoading(false);
     })();
   }, [resultId]);
@@ -37,7 +46,7 @@ export default function ListeningResultPage() {
   };
 
   // Transform data to match the table format
-  const examData = data?.userAnswers.map((ua, index) => {
+  const examData = data?.userAnswers?.map((ua, index) => {
     const correctAnswer = ua.question.answers.find(a => a.correct);
     return {
       no: index + 1,
@@ -47,9 +56,16 @@ export default function ListeningResultPage() {
     };
   }) || [];
 
+  // If we don't have detailed data but have summary, show a basic message
+  const hasDetailedData = data && data.userAnswers && data.userAnswers.length > 0;
+  const hasSummaryData = summary && summary.score !== undefined;
+
   const score = summary?.score ?? data?.score ?? 0;
   const userName = "JAXONGIRMIRZO"; // You can get this from user context or API
   const currentDate = new Date().toISOString().replace('T', ' ').substring(0, 19) + " GMT+5";
+
+  // Debug logging
+  console.log("Results page state:", { resultId, data, summary, loading });
 
   if (loading) {
     return (
@@ -58,6 +74,94 @@ export default function ListeningResultPage() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading results...</p>
         </div>
+      </div>
+    );
+  }
+
+  // If no data is available, show error message
+  if (!data && !summary) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-red-600 mb-4">Results Not Found</h2>
+          <p className="text-muted-foreground mb-4">
+            Unable to load test results. Please check the result ID and try again.
+          </p>
+          <div className="flex items-center gap-3">
+            <Input
+              value={reportId}
+              onChange={(e) => setReportId(e.target.value)}
+              className="w-48"
+              placeholder="Enter report ID"
+            />
+            <Button 
+              onClick={handleGetReport}
+              className="bg-red-600 hover:bg-red-700 text-white px-6"
+            >
+              Get Report
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If we have summary but no detailed data, show basic results
+  if (!hasDetailedData && hasSummaryData) {
+    return (
+      <div className="max-w-6xl mx-auto space-y-6 p-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold text-foreground">Exam results</h1>
+          <div className="flex items-center gap-3">
+            <Input
+              value={reportId}
+              onChange={(e) => setReportId(e.target.value)}
+              className="w-48"
+              placeholder="Enter report ID"
+            />
+            <Button 
+              onClick={handleGetReport}
+              className="bg-red-600 hover:bg-red-700 text-white px-6"
+            >
+              Get Report
+            </Button>
+          </div>
+        </div>
+
+        {/* Report Info */}
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div className="flex items-center gap-6">
+            <span>Report ID: {reportId}</span>
+            <span>Name: {userName}</span>
+          </div>
+          <span>Date: {currentDate}</span>
+        </div>
+
+        {/* Listening Score */}
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold text-foreground">Listening score: {score}</h2>
+        </div>
+
+        {/* Basic Results Message */}
+        <Card className="overflow-hidden rounded-lg border border-gray-200">
+          <CardContent className="p-6">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold text-foreground mb-2">Test Completed Successfully</h3>
+              <p className="text-muted-foreground mb-4">
+                Your test has been submitted and scored. Detailed question-by-question results are being processed.
+              </p>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <p className="text-green-800 font-medium">Score: {score}</p>
+                {summary?.totalQuestions && (
+                  <p className="text-green-700 text-sm mt-1">
+                    Total Questions: {summary.totalQuestions}
+                  </p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }

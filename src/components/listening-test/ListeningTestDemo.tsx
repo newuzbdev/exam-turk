@@ -5,6 +5,7 @@ import { Button } from "../ui/button";
 import { listeningSubmissionService } from "@/services/listeningTest.service";
 import { useNavigate } from "react-router-dom";
 import { AudioPlayer } from "@/pages/listening-test/components/AudioPlayer";
+import { toast } from "sonner";
 
 interface UserAnswers {
   [questionId: string]: string;
@@ -446,7 +447,11 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
         return;
       }
       const res: any = await listeningSubmissionService.submitAnswers(testData.id, answers);
+      console.log("Submission response:", res); // Debug log
+      
       const resultId = res?.testResultId || res?.id || res?.resultId || res?.data?.id || res?.data?.resultId;
+      console.log("Extracted resultId:", resultId); // Debug log
+      
       const summary = {
         score: res?.score ?? res?.data?.score,
         correctCount: res?.correctCount ?? res?.data?.correctCount,
@@ -454,13 +459,20 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
         message: res?.message ?? res?.data?.message,
         testResultId: resultId,
       };
+      
       if (resultId) {
+        console.log("Navigating to results with ID:", resultId); // Debug log
         // Ensure results are fetched immediately after submission
         try {
           await listeningSubmissionService.getExamResults(resultId);
-        } catch {}
+        } catch (error) {
+          console.error("Error fetching results immediately:", error);
+        }
         navigate(`/listening-test/results/${resultId}` , { state: { summary } });
         return;
+      } else {
+        console.error("No resultId found in submission response:", res);
+        toast.error("Test natijalari olinmadi. Qaytadan urinib ko'ring.");
       }
     } catch (err) {
       console.error("Listening submit error", err);

@@ -282,14 +282,14 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
           {/* Part 3 Layout: Questions on left, Answer options on right */}
           <div className="flex">
             {/* Left side - Questions */}
-            <div className="w-1/2 p-6 border-r border-gray-300">
-              <div className="space-y-6">
+            <div className="w-1/2 p-4 border-r border-gray-300">
+              <div className="space-y-4">
                 {questions.map((question, index) => {
                   const currentQuestionNumber = questionNumber + index;
                   return (
-                    <div key={question.id} className="flex items-center gap-3">
-                      <span className="font-bold text-lg">S{currentQuestionNumber}.</span>
-                      <span className="text-lg">1. konuşmacı ...</span>
+                    <div key={question.id} className="flex items-center gap-2">
+                      <span className="font-bold text-base">S{currentQuestionNumber}.</span>
+                      <span className="text-base">1. konuşmacı ...</span>
                       <select
                         value={userAnswers[question.id] || ""}
                         onChange={(e) => handleAnswerSelect(question.id, e.target.value)}
@@ -309,14 +309,14 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
             </div>
 
             {/* Right side - Answer options */}
-            <div className="w-1/2 p-6">
-              <div className="space-y-4">
+            <div className="w-1/2 p-4">
+              <div className="space-y-3">
                 {answerOptions.map((option) => (
-                  <div key={option.letter} className="flex items-start gap-3">
-                    <div className="text-lg flex items-center justify-center font-bold bg-white">
+                  <div key={option.letter} className="flex items-start gap-2">
+                    <div className="text-base flex items-center justify-center font-bold bg-white">
                       {option.letter})
                     </div>
-                    <p className="text-lg text-gray-700 leading-relaxed flex-1">
+                    <p className="text-base text-gray-700 leading-relaxed flex-1">
                       {option.text}
                     </p>
                   </div>
@@ -397,6 +397,57 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                 })}
               </div>
             </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Special layout for Part 5 (group questions into dialogs)
+    if (bolum === 5) {
+      return (
+        <div key={`bolum-${bolum}`} className="w-full mx-auto bg-white border-gray-800 rounded-lg overflow-hidden">
+          {/* Static Yellow Header */}
+          <div className="bg-yellow-50 px-6 py-4">
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">
+              BÖLÜM {bolum} - DİNLEME METNİ
+            </h2>
+            <p className="text-base text-gray-700 leading-relaxed whitespace-pre-line">
+              {staticHeader || "Header not found"}
+            </p>
+          </div>
+
+          {/* Questions grouped by dialogs */}
+          <div className="p-6">
+            {questions.length === 0 && (
+              <div className="text-center text-gray-600 py-6">Bu bölüm için soru bulunamadı.</div>
+            )}
+            {questions.map((question, index) => {
+              const currentQuestionNumber = questionNumber + index;
+              const dialogNumber = Math.floor(index / 2) + 1;
+              const isFirstInDialog = index % 2 === 0;
+              const isLastInDialog = index % 2 === 1;
+              
+              return (
+                <div key={question.id}>
+                  {/* Dialog Header - show before first question of each dialog */}
+                  {isFirstInDialog && (
+                    <div className="border-2 border-gray-800 bg-gray-100 px-3 py-1 mb-4 mt-4 first:mt-0 w-[70%]">
+                      <h3 className="font-bold text-sm text-left">{dialogNumber}. diyalog</h3>
+                    </div>
+                  )}
+                  
+                  {/* Question */}
+                  <div className="mb-8">
+                    {renderQuestion(question, currentQuestionNumber)}
+                  </div>
+                  
+                  {/* Dialog Separator - show after second question of each dialog */}
+                  {isLastInDialog && index < questions.length - 1 && (
+                    <div className="border-t-2 border-gray-300 my-8"></div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       );

@@ -256,6 +256,78 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
 
     const staticHeader = getStaticHeader(bolum);
 
+    // Special layout for Part 3 (questions on left, answer options on right)
+    if (bolum === 3) {
+      const answerOptions = [
+        { letter: "A", text: "Terapi merkezinin tanıtım reklamı verilmiştir" },
+        { letter: "B", text: "Manav ürünlerinin fiyatlarında indirim fırsatı" },
+        { letter: "C", text: "Kara yolu seferleri düzenlendiğine dair bilgiler var" },
+        { letter: "D", text: "İvedilik söz konusudur." },
+        { letter: "E", text: "Kara yolu ulaşım aracıyla ilgili uyarı niteliğindedir" },
+        { letter: "F", text: "Mesai zamanı belirtilmiştir." }
+      ];
+
+      return (
+        <div key={`bolum-${bolum}`} className="w-full mx-auto bg-white border-gray-800 rounded-lg overflow-hidden">
+          {/* Static Yellow Header */}
+          <div className="bg-yellow-50 px-6 py-4">
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">
+              BÖLÜM {bolum} - DİNLEME METNİ
+            </h2>
+            <p className="text-base text-gray-700 leading-relaxed whitespace-pre-line">
+              {staticHeader || "Header not found"}
+            </p>
+          </div>
+
+          {/* Part 3 Layout: Questions on left, Answer options on right */}
+          <div className="flex">
+            {/* Left side - Questions */}
+            <div className="w-1/2 p-6 border-r border-gray-300">
+              <div className="space-y-6">
+                {questions.map((question, index) => {
+                  const currentQuestionNumber = questionNumber + index;
+                  return (
+                    <div key={question.id} className="flex items-center gap-3">
+                      <span className="font-bold text-lg">S{currentQuestionNumber}.</span>
+                      <span className="text-lg">1. konuşmacı ...</span>
+                      <select
+                        value={userAnswers[question.id] || ""}
+                        onChange={(e) => handleAnswerSelect(question.id, e.target.value)}
+                        className="border border-gray-400 rounded px-2 py-1 text-sm"
+                      >
+                        <option value="">Seç</option>
+                        {answerOptions.map((option) => (
+                          <option key={option.letter} value={option.letter}>
+                            {option.letter}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Right side - Answer options */}
+            <div className="w-1/2 p-6">
+              <div className="space-y-4">
+                {answerOptions.map((option) => (
+                  <div key={option.letter} className="flex items-start gap-3">
+                    <div className="text-lg flex items-center justify-center font-bold bg-white">
+                      {option.letter})
+                    </div>
+                    <p className="text-lg text-gray-700 leading-relaxed flex-1">
+                      {option.text}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     // Special layout for Part 4 (image matching questions)
     if (bolum === 4) {
       const imageUrl = questions.find(q => q.imageUrl)?.imageUrl;

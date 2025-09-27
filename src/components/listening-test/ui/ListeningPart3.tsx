@@ -58,22 +58,20 @@ export default function ListeningPart3() {
               <div key={question.id} className="flex items-center gap-3">
                 <span className="font-bold text-lg">S{question.id}.</span>
                 <span className="text-lg">1. konuşmacı ...</span>
-                <div className="relative">
-                  <select
-                    value={question.selectedAnswer || ""}
-                    onChange={(e) =>
-                      handleAnswerSelect(question.id, e.target.value)
-                    }
-                    className="border border-gray-400 rounded px-3  text-lg bg-white min-w-[60px]"
-                  >
-                    <option value="">Seç</option>
-                    {answerOptions.map((option) => (
-                      <option key={option.letter} value={option.letter}>
-                        {option.letter}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <select
+                  value={question.selectedAnswer || ""}
+                  onChange={(e) =>
+                    handleAnswerSelect(question.id, e.target.value)
+                  }
+                  className="border border-gray-400 rounded px-2 py-1 text-sm"
+                >
+                  <option value="">Seç</option>
+                  {answerOptions.map((option) => (
+                    <option key={option.letter} value={option.letter}>
+                      {option.letter}
+                    </option>
+                  ))}
+                </select>
               </div>
             ))}
           </div>
@@ -83,7 +81,7 @@ export default function ListeningPart3() {
           <div className="space-y-4">
             {answerOptions.map((option) => (
               <div key={option.letter} className="flex items-start gap-3">
-                <div className="text-lg  flex items-center justify-center font-bold bg-white">
+                <div className="text-lg flex items-center justify-center font-bold bg-white">
                   {option.letter})
                 </div>
                 <p className="text-lg text-gray-700 leading-relaxed flex-1">

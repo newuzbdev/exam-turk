@@ -269,16 +269,6 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
 
       return (
         <div key={`bolum-${bolum}`} className="w-full mx-auto bg-white border-gray-800 rounded-lg overflow-hidden">
-          {/* Static Yellow Header */}
-          <div className="bg-yellow-50 px-6 py-4">
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">
-              BÖLÜM {bolum} - DİNLEME METNİ
-            </h2>
-            <p className="text-base text-gray-700 leading-relaxed whitespace-pre-line">
-              {staticHeader || "Header not found"}
-            </p>
-          </div>
-
           {/* Part 3 Layout: Questions on left, Answer options on right */}
           <div className="flex">
             {/* Left side - Questions */}
@@ -334,16 +324,6 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
       
       return (
         <div key={`bolum-${bolum}`} className="w-full mx-auto bg-white border-gray-800 rounded-lg overflow-hidden">
-          {/* Static Yellow Header */}
-          <div className="bg-yellow-50 px-6 py-4">
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">
-              BÖLÜM {bolum} - DİNLEME METNİ
-            </h2>
-            <p className="text-base text-gray-700 leading-relaxed whitespace-pre-line">
-              {staticHeader || "Header not found"}
-            </p>
-          </div>
-
           {/* Part 4 Layout: Image on left, Questions on right */}
           <div className="flex">
             {/* Left side - Image */}
@@ -406,16 +386,6 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
     if (bolum === 5) {
       return (
         <div key={`bolum-${bolum}`} className="w-full mx-auto bg-white border-gray-800 rounded-lg overflow-hidden">
-          {/* Static Yellow Header */}
-          <div className="bg-yellow-50 px-6 py-4">
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">
-              BÖLÜM {bolum} - DİNLEME METNİ
-            </h2>
-            <p className="text-base text-gray-700 leading-relaxed whitespace-pre-line">
-              {staticHeader || "Header not found"}
-            </p>
-          </div>
-
           {/* Questions grouped by dialogs */}
           <div className="p-6">
             {questions.length === 0 && (
@@ -456,16 +426,6 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
     // Default layout for other parts
     return (
       <div key={`bolum-${bolum}`} className="w-full mx-auto bg-white border-gray-800 rounded-lg overflow-hidden">
-        {/* Static Yellow Header */}
-        <div className="bg-yellow-50  px-6 py-4">
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">
-            BÖLÜM {bolum} - DİNLEME METNİ
-          </h2>
-          <p className="text-base text-gray-700 leading-relaxed whitespace-pre-line">
-            {staticHeader || "Header not found"}
-          </p>
-        </div>
-
         {/* Questions */}
         <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -688,6 +648,16 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                 GÖNDER
               </Button>
             </div>
+          </div>
+          
+          {/* Description Section - Close to header */}
+          <div className="mt-2 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+            <h3 className="text-lg font-bold text-gray-800 mb-1">
+              BÖLÜM {bolum} - DİNLEME METNİ
+            </h3>
+            <p className="text-sm text-gray-700 leading-relaxed">
+              {getStaticHeader(bolum)}
+            </p>
           </div>
         </div>
         

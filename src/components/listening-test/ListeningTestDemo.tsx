@@ -269,21 +269,22 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
 
       return (
         <div key={`bolum-${bolum}`} className="w-full mx-auto bg-white border-gray-800 rounded-lg overflow-hidden">
-          {/* Part 3 Layout: Questions on left, Answer options on right */}
-          <div className="flex min-h-[400px]">
-            {/* Left side - Questions */}
-            <div className="w-1/2 p-3 border-r border-gray-300">
+          {/* Mobile Layout - Stacked */}
+          <div className="block lg:hidden">
+            {/* Questions Section */}
+            <div className="p-3 border-b border-gray-300">
+              <h4 className="text-base font-bold text-gray-800 mb-3">Sorular</h4>
               <div className="space-y-2">
                 {questions.map((question, index) => {
                   const currentQuestionNumber = questionNumber + index;
                   return (
                     <div key={question.id} className="flex items-center gap-2 py-1">
-                      <span className="font-bold text-lg">S{currentQuestionNumber}.</span>
-                      <span className="text-lg">1. konuşmacı ...</span>
+                      <span className="font-bold text-sm">S{currentQuestionNumber}.</span>
+                      <span className="text-sm flex-1">1. konuşmacı ...</span>
                       <select
                         value={userAnswers[question.id] || ""}
                         onChange={(e) => handleAnswerSelect(question.id, e.target.value)}
-                        className="border border-gray-400 rounded px-2 py-1 text-base"
+                        className="border border-gray-400 rounded px-2 py-1 text-xs min-w-[60px]"
                       >
                         <option value="">Seç</option>
                         {answerOptions.map((option) => (
@@ -298,19 +299,70 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
               </div>
             </div>
 
-            {/* Right side - Answer options */}
-            <div className="w-1/2 p-3">
+            {/* Answer Options Section */}
+            <div className="p-3">
+              <h4 className="text-base font-bold text-gray-800 mb-3">Seçenekler</h4>
               <div className="space-y-2">
                 {answerOptions.map((option) => (
                   <div key={option.letter} className="flex items-start gap-2 py-1">
-                    <div className="text-lg flex items-center justify-center font-bold bg-white">
-                      {option.letter})
+                    <div className="text-sm flex items-center justify-center font-bold bg-gray-100 rounded-full w-6 h-6 flex-shrink-0">
+                      {option.letter}
                     </div>
-                    <p className="text-lg text-gray-700 leading-relaxed flex-1">
+                    <p className="text-sm text-gray-700 leading-relaxed flex-1">
                       {option.text}
                     </p>
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop Layout - Fixed */}
+          <div className="hidden lg:block">
+            <div className="flex min-h-[400px]">
+              {/* Left side - Questions */}
+              <div className="w-1/2 p-4 border-r border-gray-300">
+                <div className="space-y-3">
+                  <h4 className="text-lg font-bold text-gray-800 mb-3">Sorular</h4>
+                  {questions.map((question, index) => {
+                    const currentQuestionNumber = questionNumber + index;
+                    return (
+                      <div key={question.id} className="flex items-center gap-3 py-2">
+                        <span className="font-bold text-lg">S{currentQuestionNumber}.</span>
+                        <span className="text-lg">1. konuşmacı ...</span>
+                        <select
+                          value={userAnswers[question.id] || ""}
+                          onChange={(e) => handleAnswerSelect(question.id, e.target.value)}
+                          className="border border-gray-400 rounded px-3 py-1 text-base ml-auto"
+                        >
+                          <option value="">Seç</option>
+                          {answerOptions.map((option) => (
+                            <option key={option.letter} value={option.letter}>
+                              {option.letter}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Right side - Answer options */}
+              <div className="w-1/2 p-4">
+                <div className="space-y-3">
+                  <h4 className="text-lg font-bold text-gray-800 mb-3">Seçenekler</h4>
+                  {answerOptions.map((option) => (
+                    <div key={option.letter} className="flex items-start gap-3 py-2">
+                      <div className="text-lg flex items-center justify-center font-bold bg-gray-100 rounded-full w-8 h-8 flex-shrink-0">
+                        {option.letter}
+                      </div>
+                      <p className="text-lg text-gray-700 leading-relaxed flex-1">
+                        {option.text}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -324,41 +376,45 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
       
       return (
         <div key={`bolum-${bolum}`} className="w-full mx-auto bg-white border-gray-800 rounded-lg overflow-hidden">
-          {/* Part 4 Layout: Image on left, Questions on right */}
-          <div className="flex">
-            {/* Left side - Image */}
-            <div className="w-1/2 border-r border-gray-300 p-4">
+          {/* Mobile Layout - Stacked */}
+          <div className="block lg:hidden">
+            {/* Image Section */}
+            <div className="p-3 border-b border-gray-300">
+              <h4 className="text-base font-bold text-gray-800 mb-3">Harita</h4>
+              <div className="flex justify-center">
               {imageUrl ? (
                 <img 
                   src={`https://api.turkcetest.uz/${imageUrl}`} 
                   alt="Map for questions 19-23" 
-                  className="w-full max-w-[500px] mx-auto"
+                    className="w-full max-w-[400px] h-auto"
                   onError={(e) => {
                     const el = e.target as HTMLImageElement;
-                    el.src = "https://placehold.co/800x600?text=Görsel+Yüklenemedi";
+                      el.src = "https://placehold.co/400x300?text=Görsel+Yüklenemedi";
                   }}
                 />
               ) : (
-                <div className="w-full h-64 bg-gray-100 flex items-center justify-center text-gray-500">
+                  <div className="w-full h-48 bg-gray-100 flex items-center justify-center text-gray-500 rounded-lg">
                   Görsel bulunamadı
                 </div>
               )}
+              </div>
             </div>
 
-            {/* Right side - Questions */}
-            <div className="w-1/2 p-4">
-              <div className="flex flex-col justify-center items-start space-y-3">
+            {/* Questions Section */}
+            <div className="p-3">
+              <h4 className="text-base font-bold text-gray-800 mb-3">Sorular</h4>
                 {questions.length === 0 && (
-                  <div className="text-center text-gray-600 py-6">Bu bölüm için soru bulunamadı.</div>
+                <div className="text-center text-gray-600 py-4">Bu bölüm için soru bulunamadı.</div>
                 )}
+              <div className="space-y-2">
                 {questions.map((question, index) => {
                   const currentQuestionNumber = questionNumber + index;
                   return (
-                    <div key={question.id} className="flex items-center gap-3 w-full">
-                      <span className="font-bold text-lg">S{currentQuestionNumber}.</span>
-                      <span className="text-lg flex-1">{question.text}</span>
+                    <div key={question.id} className="flex items-center gap-2 w-full py-1">
+                      <span className="font-bold text-sm">S{currentQuestionNumber}.</span>
+                      <span className="text-sm flex-1">{question.text}</span>
                       <select
-                        className="border border-gray-400 rounded px-2 py-1 text-sm min-w-[60px]"
+                        className="border border-gray-400 rounded px-2 py-1 text-xs min-w-[60px]"
                         value={userAnswers[question.id] || ""}
                         onChange={(e) => handleAnswerSelect(question.id, e.target.value)}
                       >
@@ -375,6 +431,67 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop Layout - Fixed */}
+          <div className="hidden lg:block">
+            <div className="flex min-h-[500px]">
+              {/* Left side - Image */}
+              <div className="w-3/5 border-r border-gray-300 p-4 flex flex-col">
+                <h4 className="text-lg font-bold text-gray-800 mb-3">Harita</h4>
+                <div className="flex-1 flex items-center justify-center">
+                  {imageUrl ? (
+                    <img 
+                      src={`https://api.turkcetest.uz/${imageUrl}`} 
+                      alt="Map for questions 19-23" 
+                      className="w-full h-auto max-h-[400px] object-contain"
+                      onError={(e) => {
+                        const el = e.target as HTMLImageElement;
+                        el.src = "https://placehold.co/800x600?text=Görsel+Yüklenemedi";
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-64 bg-gray-100 flex items-center justify-center text-gray-500 rounded-lg">
+                      Görsel bulunamadı
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Right side - Questions */}
+              <div className="w-2/5 p-4">
+                <div className="space-y-4">
+                  <h4 className="text-lg font-bold text-gray-800 mb-3">Sorular</h4>
+                  {questions.length === 0 && (
+                    <div className="text-center text-gray-600 py-6">Bu bölüm için soru bulunamadı.</div>
+                  )}
+                  {questions.map((question, index) => {
+                    const currentQuestionNumber = questionNumber + index;
+                    return (
+                      <div key={question.id} className="flex items-center gap-3 w-full py-2">
+                        <span className="font-bold text-lg">S{currentQuestionNumber}.</span>
+                        <span className="text-lg flex-1">{question.text}</span>
+                        <select
+                          className="border border-gray-400 rounded px-3 py-2 text-base min-w-[80px]"
+                          value={userAnswers[question.id] || ""}
+                          onChange={(e) => handleAnswerSelect(question.id, e.target.value)}
+                        >
+                          <option value="">Seç</option>
+                          <option value="A">A</option>
+                          <option value="B">B</option>
+                          <option value="C">C</option>
+                          <option value="D">D</option>
+                          <option value="E">E</option>
+                          <option value="F">F</option>
+                          <option value="G">G</option>
+                          <option value="H">H</option>
+                        </select>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>
@@ -506,8 +623,63 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
     const sections = createSections();
 
     return (
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-800 p-3">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-800 p-2 sm:p-3">
         <div className="max-w-7xl mx-auto">
+          {/* Mobile Layout - Scrollable */}
+          <div className="block lg:hidden">
+            <div className="flex gap-1 overflow-x-auto pb-2">
+              {sections.map((section) => {
+                const isActive = currentPartNumber === section.number;
+                
+                return (
+                  <div 
+                    key={section.number} 
+                    className={`text-center border-2 rounded-lg p-2 min-w-[80px] cursor-pointer transition-colors flex-shrink-0 ${
+                      isActive 
+                        ? "border-blue-500 bg-blue-50" 
+                        : "border-gray-300 bg-gray-50 hover:bg-gray-100"
+                    }`}
+                    onClick={() => setCurrentPartNumber(section.number)}
+                  >
+                    <div className="flex gap-1 mb-1 justify-center flex-wrap">
+                      {section.questions.slice(0, 4).map((q) => {
+                        const questionId = section.partQuestions[q - section.questions[0]]?.id;
+                        const isAnswered = questionId && userAnswers[questionId];
+                        
+                        return (
+                          <div
+                            key={q}
+                            className={`w-4 h-4 rounded-full border border-gray-800 flex items-center justify-center text-xs font-bold ${
+                              isAnswered 
+                                ? "bg-green-300" 
+                                : "bg-white"
+                            }`}
+                          >
+                            {q}
+                          </div>
+                        );
+                      })}
+                      {section.questions.length > 4 && (
+                        <div className="w-4 h-4 rounded-full border border-gray-800 flex items-center justify-center text-xs font-bold bg-gray-200">
+                          +{section.questions.length - 4}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-xs font-bold">
+                      {section.number}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            
+            <div className="text-center text-xs text-gray-600 mt-1">
+              {Object.keys(userAnswers).length} / {getTotalQuestions()} soru
+            </div>
+          </div>
+
+          {/* Desktop Layout */}
+          <div className="hidden lg:block">
           <div className="flex justify-center gap-2 flex-nowrap overflow-x-auto">
             {sections.map((section) => {
               const isActive = currentPartNumber === section.number;
@@ -523,21 +695,18 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                   onClick={() => setCurrentPartNumber(section.number)}
                 >
                   <div className="flex gap-1 mb-1 justify-center">
-                    {section.questions.map((q) => {
-                      const questionId = section.partQuestions[q - section.questions[0]]?.id;
-                      const isAnswered = questionId && userAnswers[questionId];
-                      const isFirstQuestion = q === section.questions[0];
+                      {section.questions.map((q) => {
+                        const questionId = section.partQuestions[q - section.questions[0]]?.id;
+                        const isAnswered = questionId && userAnswers[questionId];
                       
                       return (
                         <div
                           key={q}
-                          className={`w-6 h-6 rounded-full border-2 border-gray-800 flex items-center justify-center text-xs font-bold ${
-                            isFirstQuestion 
-                              ? "bg-green-400" 
-                              : isAnswered 
-                              ? "bg-green-300" 
-                              : "bg-white"
-                          }`}
+                            className={`w-6 h-6 rounded-full border-2 border-gray-800 flex items-center justify-center text-xs font-bold ${
+                              isAnswered 
+                                ? "bg-green-500" 
+                                : "bg-white"
+                            }`}
                         >
                           {q}
                         </div>
@@ -552,8 +721,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
             })}
           </div>
           
-          <div className="text-center text-sm text-gray-600 mt-2">
-            Toplam {Object.keys(userAnswers).length} / {getTotalQuestions()} soru cevaplandı
+    
           </div>
         </div>
       </div>
@@ -624,9 +792,26 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
   const bolum = currentPartNumber;
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
-        <div className="bg-white px-6 py-3 border-2 border-gray-300 rounded-lg mx-4 mt-4 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
+    <div className="min-h-screen bg-gray-50 pb-40">
+        <div className="bg-white px-3 sm:px-6 py-3 border-2 border-gray-300 rounded-lg mx-2 sm:mx-4 mt-2 sm:mt-4">
+          {/* Mobile Header - Single Line Layout */}
+          <div className="block lg:hidden mb-3">
+            <div className="flex items-center justify-between">
+              <div className="bg-red-600 text-white px-2 py-1 rounded font-bold text-sm">
+                TURKISHMOCK
+              </div>
+              <div className="font-bold text-base">Listening</div>
+              <div className={`font-bold text-sm ${timerActive ? 'text-red-600' : 'text-gray-600'}`}>
+                {timerActive ? formatTime(timeLeft) : '10:00'}
+              </div>
+              <Button onClick={handleSubmit} className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 text-xs font-bold">
+                GÖNDER
+              </Button>
+            </div>
+          </div>
+
+          {/* Desktop Header - Horizontal Layout */}
+          <div className="hidden lg:flex items-center justify-between mb-3">
             <div className="bg-red-600 text-white px-3 py-1 rounded font-bold text-lg">
               TURKISHMOCK
             </div>
@@ -650,18 +835,18 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
             </div>
           </div>
           
-          {/* Description Section - Close to header */}
-          <div className="mt-2 p-5 bg-yellow-50 rounded-lg border border-yellow-300">
-            <h3 className="text-2xl font-bold text-gray-800 mb-3">
+          {/* Description Section - Responsive */}
+          <div className="mt-2 p-3 sm:p-5 bg-yellow-50 rounded-lg border border-yellow-300">
+            <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 mb-2 sm:mb-3">
               BÖLÜM {bolum} - DİNLEME METNİ
             </h3>
-            <p className="text-lg text-gray-700 leading-relaxed">
+            <p className="text-sm sm:text-base lg:text-lg text-gray-700 leading-relaxed">
               {getStaticHeader(bolum)}
             </p>
           </div>
         </div>
         
-        <div className="mx-auto p-6">
+        <div className="mx-auto p-6 pb-12">
           {/* Current Part */}
           {renderPart(bolum)}
         </div>

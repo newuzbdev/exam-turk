@@ -175,10 +175,10 @@ const Part2Section = ({
           
           <div className="bg-white rounded-lg p-6 mb-6 border border-blue-200">
             <p className="text-xl leading-relaxed text-gray-800">
-              Size bir konu kartı verilecek. 1 dakika hazırlanabilir ve not alabilirsiniz. 
-              Sonra konu hakkında 1-2 dakika konuşacaksınız.
+              Bu bölümde size bir resim gösterilecek ve üç soru sorulacaktır. Konuşmaya başlamadan önce hazırlanmanız için bir dakikanız olacaktır. 
+              Bu süre zarfında not alabilir ve düşünebilirsiniz. Sonra resim hakkında 1-2 dakika konuşacaksınız.
               <br /><br />
-              <strong>IELTS Formatı:</strong> Konu kartındaki tüm noktaları ele alın.
+              <strong>IELTS Formatı:</strong> Resimdeki tüm önemli detayları ele alın.
             </p>
           </div>
 

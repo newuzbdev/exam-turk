@@ -249,10 +249,10 @@ const Part1Section = ({
           
           <div className="bg-white rounded-lg p-6 mb-6 border border-orange-200">
             <p className="text-xl leading-relaxed text-gray-800">
-              Bu bölümde sinavci kendinizi tanıtmanızı isteyecek ve tanıdık konular hakkında 
-              sorular soracak. Ev, aile, iş, eğitim ve ilgi alanlarınız gibi konular olabilir.
+              Birinci bölüm iki kısımdan oluşmaktadır. Önce size kendiniz ve ilgi alanlarınız hakkında üç kısa soru sorulacaktır. 
+              Sonra size bir resim gösterilecek ve bu resim hakkında üç soru sorulacaktır. Konuşmaya başlamadan önce hazırlanmanız için beş saniyeniz olacaktır.
               <br /><br />
-              <strong>IELTS Formatı:</strong> Kısa, doğal cevaplar verin (30-45 saniye).
+              <strong>IELTS Formatı:</strong> Kısa, doğal cevaplar verin (30 saniye).
             </p>
           </div>
 

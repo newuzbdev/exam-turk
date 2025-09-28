@@ -52,6 +52,18 @@ const sectionAudios: Record<number, string> = {
   3: "/speakingpart3.mp3",
 }
 
+// Static section descriptions
+const getSectionDescription = (sectionTitle: string): string => {
+  if (sectionTitle.includes("Section 1") || sectionTitle.includes("Part 1")) {
+    return "Birinci bölüm iki kısımdan oluşmaktadır. Önce size kendiniz ve ilgi alanlarınız hakkında üç kısa soru sorulacaktır. Sonra size bir resim gösterilecek ve bu resim hakkında üç soru sorulacaktır. Konuşmaya başlamadan önce hazırlanmanız için beş saniyeniz olacaktır."
+  } else if (sectionTitle.includes("Section 2") || sectionTitle.includes("Part 2")) {
+    return "Bu bölümde size bir resim gösterilecek ve üç soru sorulacaktır. Konuşmaya başlamadan önce hazırlanmanız için bir dakikanız olacaktır. Bu süre zarfında not alabilir ve düşünebilirsiniz. Sonra resim hakkında 1-2 dakika konuşacaksınız."
+  } else if (sectionTitle.includes("Section 3") || sectionTitle.includes("Part 3")) {
+    return "Bu bölümde belirli bir konu hakkında iki dakikalık bir konuşma yapmanız gerekmektedir. Ekranda konu ve bu konunun lehinde ve aleyhinde listelenmiş maddeler gösterilecektir. Hazırlanmanız için bir dakikanız olacaktır. Bu süre zarfında not alabilir ve düşünebilirsiniz. Sonra konu hakkında 2 dakika konuşacaksınız."
+  }
+  return "Bu bölümde konuşma testi yapılacaktır."
+}
+
 
 
 // Simple Progress component
@@ -914,7 +926,7 @@ export default function ImprovedSpeakingTest() {
       </div>
       <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-gray-900 mb-4 sm:mb-6">Bölüm Açıklaması</h2>
       <p className="text-lg sm:text-xl text-gray-700 leading-relaxed whitespace-pre-line max-w-4xl mx-auto">
-        {currentSection.description}
+        {getSectionDescription(currentSection.title)}
       </p>
     </div>
     {isPlayingInstructions && (

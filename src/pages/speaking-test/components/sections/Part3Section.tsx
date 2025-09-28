@@ -497,7 +497,8 @@ const Part3Section = ({
         </h2>
         <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
           <p className="text-lg font-medium text-purple-800 whitespace-pre-line">
-            {section.description}
+            Bu bölümde belirli bir konu hakkında iki dakikalık bir konuşma yapmanız gerekmektedir. Ekranda konu ve bu konunun lehinde ve aleyhinde listelenmiş maddeler gösterilecektir. 
+            Hazırlanmanız için bir dakikanız olacaktır. Bu süre zarfında not alabilir ve düşünebilirsiniz. Sonra konu hakkında 2 dakika konuşacaksınız.
           </p>
         </div>
       </div>

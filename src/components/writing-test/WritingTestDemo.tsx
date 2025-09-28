@@ -446,44 +446,51 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
       <div className="fixed top-0 left-0 right-0 z-[999] bg-white px-4 py-3 shadow-sm">
         {/* Mobile Header */}
         <div className="lg:hidden">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
+          {/* Top Row - Title, Timer (center), Submit */}
+          <div className="flex items-center justify-between mb-3">
+            <h1 className="text-xl font-bold text-gray-900 tracking-tight">
               YAZMA TEST
             </h1>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center text-gray-600">
-                <Clock className="h-5 w-5 mr-1" />
-                <span className="text-base font-semibold">
-                  {formatTime(timeLeft)}
-                </span>
-              </div>
-              <div className="ml-2 text-base text-gray-700 font-semibold">
-                {wordCount}/{wordLimit}
-              </div>
-              <Button
-                onClick={() => setShowSubmitModal(true)}
-                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 text-base font-semibold"
-              >
-                Submit
-              </Button>
+            
+            {/* Timer in center */}
+            <div className="flex items-center text-gray-600 bg-gray-100 px-3 py-1 rounded">
+              <Clock className="h-4 w-4 mr-1" />
+              <span className="text-sm font-semibold">
+                {formatTime(timeLeft)}
+              </span>
+            </div>
+            
+            {/* Submit button */}
+            <Button
+              onClick={() => setShowSubmitModal(true)}
+              className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 text-xs font-semibold rounded-lg"
+            >
+              <Send className="h-3 w-3 mr-1" />
+              Submit
+            </Button>
+          </div>
+          
+          {/* Second Row - Word Count */}
+          <div className="flex items-center justify-center mb-3">
+            <div className={`text-sm font-semibold px-3 py-1 rounded ${isOverLimit ? "text-red-600 bg-red-50" : "text-gray-700 bg-gray-100"}`}>
+              {wordCount}/{wordLimit} kelime
             </div>
           </div>
-          {/* Mobile Task Tabs */}
-          <div className="mt-3">
-            <div className="flex bg-gray-100 rounded-lg p-1">
-              {sections.map((_, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setCurrentSectionIndex(idx)}
-                  className={`flex-1 px-4 py-3 rounded-md font-medium text-lg transition-all ${idx === currentSectionIndex
-                      ? "bg-red-500 text-white shadow-sm"
-                      : "text-gray-600 hover:text-red-600 hover:bg-red-50"
-                    }`}
-                >
-                  Task {idx + 1}
-                </button>
-              ))}
-            </div>
+          
+          {/* Mobile Task Tabs - Smaller height */}
+          <div className="flex bg-gray-100 rounded-lg p-0.5">
+            {sections.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => setCurrentSectionIndex(idx)}
+                className={`flex-1 px-3 py-1.5 rounded-md font-medium text-sm transition-all ${idx === currentSectionIndex
+                    ? "bg-red-500 text-white shadow-sm"
+                    : "text-gray-600 hover:text-red-600 hover:bg-red-50"
+                  }`}
+              >
+                Part {idx + 1}
+              </button>
+            ))}
           </div>
         </div>
         {/* Desktop Header */}
@@ -601,6 +608,27 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                 </div>
               )}
             </div>
+            {/* Questions Display - Mobile Only */}
+            {questions.length > 0 && (
+              <div className="bg-white rounded-xl shadow-sm p-4 mb-4">
+                <h2 className="text-xl font-semibold text-gray-900 mb-3">
+                  {selectedSection?.title || `WRITING TASK ${currentSectionIndex + 1}`}
+                </h2>
+                <div className="space-y-3">
+                  {questions.map((question, idx) => (
+                    <div key={question.id} className="p-3 rounded-lg bg-gray-50 border border-gray-200">
+                      <h3 className="font-medium text-gray-900 mb-2 text-base">Question {idx + 1}</h3>
+                      <p className="text-gray-700 text-base">{question.text}</p>
+                      {question.question && <p className="text-gray-700 text-base">{question.question}</p>}
+                      {question.description && (
+                        <p className="text-gray-600 text-sm mt-1">{question.description}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Writing Area - Mobile Only */}
             <div className="bg-white rounded-xl shadow-sm p-4 mt-0">
               {showTabs && (

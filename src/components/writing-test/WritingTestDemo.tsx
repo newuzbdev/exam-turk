@@ -301,8 +301,13 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   };
 
   const getWordLimit = () => {
-    if (currentSectionIndex === 1) return 300; // Part 2 (Task 2)
-    return 200; // Part 1 (Task 1) - both 1.1 and 1.2
+    if (currentSectionIndex === 1) return 200; // Part 2 (Task 2)
+    // Part 1 (Task 1) - check subPart
+    if (hasSubParts) {
+      if (currentSubPartIndex === 0) return 50; // 1.1
+      if (currentSubPartIndex === 1) return 150; // 1.2
+    }
+    return 200; // Default fallback
   };
 
   const currentAnswer = answers[selectedQuestionId] || "";
@@ -470,10 +475,15 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
             </Button>
           </div>
           
-          {/* Second Row - Word Count */}
+          {/* Second Row - Word Count with Part Info */}
           <div className="flex items-center justify-center mb-3">
             <div className={`text-sm font-semibold px-3 py-1 rounded ${isOverLimit ? "text-red-600 bg-red-50" : "text-gray-700 bg-gray-100"}`}>
               {wordCount}/{wordLimit} kelime
+              {hasSubParts ? (
+                currentSubPartIndex === 0 ? " (Part 1.1)" : " (Part 1.2)"
+              ) : (
+                " (Part 2)"
+              )}
             </div>
           </div>
           
@@ -703,9 +713,6 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                 dir="ltr"
                 lang="tr"
               />
-              <div className="mt-2 flex items-center justify-between">
-                <div className="text-base font-medium text-gray-600">Words Count: {wordCount}</div>
-              </div>
             </div>
           </div>
 
@@ -830,9 +837,6 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                   />
                   {renderKeyboard()}
 
-                  <div className="mt-4 flex items-center justify-between">
-                    <div className="text-lg font-medium text-gray-600">Words Count: {wordCount}</div>
-                  </div>
                 </div>
               </ResizablePanel>
             </ResizablePanelGroup>

@@ -156,9 +156,9 @@ export default function ImprovedSpeakingTest() {
     })()
 
     startSoundRef.current = new Audio(
-      "/bell-98033.mp3",
+      "/start.wav",
     )
-    // Use a crisp, public-domain beep for end-of-prep cue
+    // Use bell sound for when user stops speaking
     endSoundRef.current = new Audio(
       "/bell-98033.mp3"
     )
@@ -182,10 +182,19 @@ export default function ImprovedSpeakingTest() {
     try {
       const el = type === "start" ? startSoundRef.current : type === "end" ? endSoundRef.current : questionSoundRef.current
       if (el) {
+        // Stop any currently playing audio of the same type
+        el.pause()
         el.currentTime = 0
-        el.play().catch(() => { })
+        console.log(`Playing ${type} sound`)
+        el.play().catch((error) => {
+          console.error(`Error playing ${type} sound:`, error)
+        })
+      } else {
+        console.error(`Audio element for ${type} not found`)
       }
-    } catch { }
+    } catch (error) {
+      console.error(`Error in playSound for ${type}:`, error)
+    }
   }
 
   const clearTimers = () => {
@@ -320,13 +329,11 @@ export default function ImprovedSpeakingTest() {
     }
   }, [showSectionDescription, currentSection, micChecked, isPlayingInstructions])
 
-  // Play a short chime and TTS audio when a new question becomes active (outside instructions)
+  // Play TTS audio when a new question becomes active (outside instructions)
   useEffect(() => {
-    if (!showSectionDescription && currentSection && !isPlayingInstructions) {
-      playSound("question")
-
-      // Play TTS audio if available
-      if (currentQuestion?.textToSpeechUrl) {
+    if (!showSectionDescription && currentSection && !isPlayingInstructions && currentQuestion) {
+      // Play TTS audio if available (skip for Part 2)
+      if (currentQuestion?.textToSpeechUrl && currentSection?.type !== "PART2") {
         const fullUrl = currentQuestion.textToSpeechUrl.startsWith('./')
           ? `${baseURL}${currentQuestion.textToSpeechUrl.substring(1)}`
           : currentQuestion.textToSpeechUrl
@@ -495,6 +502,9 @@ export default function ImprovedSpeakingTest() {
         
         mr.start(100)
         setIsRecording(true)
+        // Play start.wav when user starts speaking
+        console.log("Starting recording, playing start sound")
+        playSound("start")
     } catch (e) {
       console.error("start error", e)
       toast.error("Mikrofon erişimi reddedildi veya başlatılamadı")
@@ -514,6 +524,9 @@ export default function ImprovedSpeakingTest() {
     } catch { }
     setIsRecording(false)
     setIsPaused(false)
+    // Play bell when user finishes speaking
+    console.log("Stopping recording, playing bell sound")
+    playSound("end")
   }
 
   const resetPerQuestionState = () => {
@@ -964,49 +977,47 @@ export default function ImprovedSpeakingTest() {
       {/* <DisableKeys /> */}
       
       {/* Header with section indicators */}
-      <div className="flex flex-col sm:flex-row items-center justify-between p-8 gap-4 sm:gap-0">
-        <div className="flex items-center gap-3">
-          <div className="bg-red-600 text-white px-4 py-3 rounded font-bold text-base sm:text-lg">
-            TURKISHMOCK
+      <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
+        <div className="bg-red-600 text-white px-3 py-1 rounded font-bold text-lg">
+          TURKISHMOCK
+        </div>
+        <div className="font-bold text-2xl">Speaking</div>
+        <div className="flex items-center gap-4">
+          <div className="flex gap-2">
+            {/* Section 1.1 */}
+            <div className={`px-3 py-1 rounded font-bold text-sm ${
+              currentSectionIndex === 0 && currentSubPartIndex === 0
+                ? "bg-green-600 text-white"
+                : "bg-gray-200 text-gray-700"
+            }`}>
+              1.1
+            </div>
+            {/* Section 1.2 */}
+            <div className={`px-3 py-1 rounded font-bold text-sm ${
+              currentSectionIndex === 0 && currentSubPartIndex === 1
+                ? "bg-green-600 text-white"
+                : "bg-gray-200 text-gray-700"
+            }`}>
+              1.2
+            </div>
+            {/* Section 2 */}
+            <div className={`px-3 py-1 rounded font-bold text-sm ${
+              currentSectionIndex === 1
+                ? "bg-green-600 text-white"
+                : "bg-gray-200 text-gray-700"
+            }`}>
+              2
+            </div>
+            {/* Section 3 */}
+            <div className={`px-3 py-1 rounded font-bold text-sm ${
+              currentSectionIndex === 2
+                ? "bg-green-600 text-white"
+                : "bg-gray-200 text-gray-700"
+            }`}>
+              3
+            </div>
           </div>
         </div>
-
-        <div className="flex gap-3 flex-wrap justify-center">
-          {/* Section 1.1 */}
-          <div className={`px-5 py-4 rounded-lg font-bold text-base sm:text-lg ${
-            currentSectionIndex === 0 && currentSubPartIndex === 0
-              ? "bg-green-600 text-white"
-              : "bg-yellow-500 text-black"
-          }`}>
-            1.1
-          </div>
-          {/* Section 1.2 */}
-          <div className={`px-5 py-4 rounded-lg font-bold text-base sm:text-lg ${
-            currentSectionIndex === 0 && currentSubPartIndex === 1
-              ? "bg-green-600 text-white"
-              : "bg-yellow-500 text-black"
-          }`}>
-            1.2
-          </div>
-          {/* Section 2 */}
-          <div className={`px-5 py-4 rounded-lg font-bold text-base sm:text-lg ${
-            currentSectionIndex === 1
-              ? "bg-green-600 text-white"
-              : "bg-yellow-500 text-black"
-          }`}>
-            2
-          </div>
-          {/* Section 3 */}
-          <div className={`px-5 py-4 rounded-lg font-bold text-base sm:text-lg ${
-            currentSectionIndex === 2
-              ? "bg-green-600 text-white"
-              : "bg-yellow-500 text-black"
-          }`}>
-            3
-          </div>
-        </div>
-
-        <div className="bg-red-600 text-white px-4 py-3 rounded font-bold text-base sm:text-base">MULTI LEVEL</div>
       </div>
       {!isExamMode && (
         <motion.header
@@ -1076,10 +1087,9 @@ export default function ImprovedSpeakingTest() {
            className="mb-12 sm:mb-16"
          >
            {currentSection?.type !== "PART2" && !isPlayingInstructions && (
-             <div className="flex items-center bg-green-600 rounded-l-2xl rounded-r-2xl overflow-hidden shadow-lg">
-               <div className="bg-green-600 text-white px-4 py-2 sm:px-6 sm:py-4 font-bold text-lg sm:text-2xl">QUESTION</div>
-               <div className="bg-yellow-500 text-black px-3 py-2 sm:px-6 sm:py-4 font-bold text-xl sm:text-3xl">
-                 {currentQuestionIndex + 1}
+             <div className="text-center">
+               <div className="text-black font-bold text-2xl sm:text-3xl">
+                 QUESTION {currentQuestionIndex + 1}
                </div>
              </div>
            )}

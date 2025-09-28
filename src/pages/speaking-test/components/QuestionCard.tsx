@@ -145,15 +145,11 @@ const QuestionCard = ({
           </div>
         </div>
         
-        <div className="bg-gray-50 rounded-lg p-8 mb-8">
-          {/* Question with large text */}
-          <h3 className="text-4xl font-bold text-gray-900 mb-6 text-center leading-relaxed">
+        {/* Question with large text - Centered and Black */}
+        <div className="mb-8">
+          <h3 className="text-4xl font-bold text-black mb-6 text-center leading-relaxed">
             {question.questionText}
           </h3>
-          
-          <div className="text-center text-xl text-gray-600 mt-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-            <p className="font-medium">💡 Net ve anlaşılır bir şekilde cevap verin</p>
-          </div>
         </div>
 
         <div className="flex justify-center gap-4 mb-6">

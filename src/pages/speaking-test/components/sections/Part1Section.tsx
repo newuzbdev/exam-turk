@@ -169,7 +169,7 @@ const Part1Section = ({
     setCountdownSeconds(5); // Part 1: 5 seconds preparation time
   };
 
-  // Auto-start the first question when entering images phase (1.2)
+  // Auto-start questions when entering images phase (1.2) or when moving to next question
   useEffect(() => {
     if (currentPhase !== "images") return;
     const q = getCurrentQuestion();
@@ -181,6 +181,21 @@ const Part1Section = ({
       handlePreparationCountdown();
     }
   }, [currentPhase, currentQuestionIndex, answeredQuestions, isRecording, showCountdown]);
+
+  // Auto-start next question after current question is answered (for 1.2 section)
+  useEffect(() => {
+    if (currentPhase !== "images") return;
+    const q = getCurrentQuestion();
+    if (!q) return;
+    
+    // If current question is answered and we're not at the last question, auto-start next
+    if (answeredQuestions.has(q.id) && currentQuestionIndex < getTotalQuestionsInPhase() - 1) {
+      // Move to next question
+      setCurrentQuestionIndex(prev => prev + 1);
+      // Reset auto-start guard for the new question
+      autoStartQuestionRef.current = null;
+    }
+  }, [answeredQuestions, currentPhase, currentQuestionIndex]);
 
   // Get progress percentage
   const getProgressPercentage = () => {

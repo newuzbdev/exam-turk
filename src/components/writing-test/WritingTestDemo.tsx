@@ -108,7 +108,21 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
 
   const selectedSection = sections[currentSectionIndex];
   const subParts = selectedSection?.subParts || [];
-  const questions = selectedSection?.questions || [];
+  
+  // Extract questions - check both section level and subPart level
+  const questions = useMemo(() => {
+    // First check if section has questions directly
+    if (selectedSection?.questions && selectedSection.questions.length > 0) {
+      return selectedSection.questions;
+    }
+    // If no section-level questions, check subParts
+    if (subParts.length > 0) {
+      const currentSubPart = subParts[currentSubPartIndex];
+      return currentSubPart?.questions || [];
+    }
+    return [];
+  }, [selectedSection, subParts, currentSubPartIndex]);
+  
   const hasSubParts = subParts.length > 0;
   const hasQuestions = questions.length > 0;
   const selectedSubPart = hasSubParts
@@ -117,6 +131,11 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   const selectedQuestion = hasQuestions
     ? questions[currentSubPartIndex]
     : undefined;
+  
+  // Determine what items to show in tabs
+  const tabItems = hasSubParts ? subParts : questions;
+  const showTabs = tabItems.length > 1;
+  
 
   // Always default to 0 for subpart index if not set
   useEffect(() => {
@@ -420,6 +439,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
     );
   }
 
+
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       {/* Fixed Header */}
@@ -583,8 +603,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
             </div>
             {/* Writing Area - Mobile Only */}
             <div className="bg-white rounded-xl shadow-sm p-4 mt-0">
-              {(hasSubParts || hasQuestions) &&
-                (hasSubParts ? subParts : questions).length > 1 && (
+              {showTabs && (
                   <div className="mb-3">
                     <Tabs
                       value={String(currentSubPartIndex)}
@@ -599,7 +618,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                           boxShadow: "none",
                         }}
                       >
-                        {(hasSubParts ? subParts : questions).map((_, idx) => (
+                        {tabItems.map((_, idx) => (
                           <TabsTrigger
                             key={idx}
                             value={String(idx)}
@@ -608,13 +627,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                             transition-all
                             relative
                             ${idx === 0 ? "rounded-l-lg" : ""}
-                            ${idx ===
-                                (hasSubParts
-                                  ? subParts.length - 1
-                                  : questions.length - 1)
-                                ? "rounded-r-lg"
-                                : ""
-                              }
+                            ${idx === (tabItems.length - 1) ? "rounded-r-lg" : ""}
                             ${currentSubPartIndex === idx
                                 ? "bg-red-500 text-white z-10"
                                 : "text-gray-700"
@@ -676,8 +689,24 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                   <h2 className="text-2xl font-semibold text-gray-900 mb-2">
                     {selectedSection?.title || `WRITING TASK ${currentSectionIndex + 1}`}
                   </h2>
+                  {/* Questions Display - Always show */}
+                  {questions.length > 0 && (
+                    <div className="space-y-4 mt-4">
+                      {questions.map((question, idx) => (
+                        <div key={question.id} className="p-4 rounded-lg bg-gray-50 border border-gray-200">
+                          <h3 className="font-medium text-gray-900 mb-2 text-lg">Question {idx + 1}</h3>
+                          <p className="text-gray-700 text-lg">{question.text}</p>
+                          {question.question && <p className="text-gray-700 text-lg">{question.question}</p>}
+                          {question.description && (
+                            <p className="text-gray-600 text-base mt-2">{question.description}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   {selectedSection?.description && (
-                    <div className="space-y-4 text-gray-700">
+                    <div className="space-y-4 text-gray-700 mt-4">
                       <p className="font-normal text-lg">
                         {selectedSection.description}
                       </p>
@@ -707,21 +736,6 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                           )}
                         </div>
                       )}
-
-                      {hasQuestions && (
-                        <div className="space-y-4">
-                          {questions.map((question, idx) => (
-                            <div key={question.id} className="p-4 rounded-lg bg-gray-50">
-                              <h3 className="font-medium text-gray-900 mb-2 text-lg">Question {idx + 1}</h3>
-                              {question.text && <p className="text-gray-700 text-lg">{question.text}</p>}
-                              {question.question && <p className="text-gray-700 text-lg">{question.question}</p>}
-                              {question.description && (
-                                <p className="text-gray-600 text-base mt-2">{question.description}</p>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>
@@ -729,7 +743,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
               <ResizableHandle withHandle className="mx-3" />
               <ResizablePanel defaultSize={55} className="min-w-0">
                 <div className="bg-white rounded-xl shadow-md p-6 flex-1 min-w-0 h-[calc(100vh-140px)] overflow-y-auto flex flex-col">
-                  {(hasSubParts || hasQuestions) && (hasSubParts ? subParts : questions).length > 1 && (
+                  {showTabs && (
                     <div className="mb-4">
                       <Tabs
                         value={String(currentSubPartIndex)}
@@ -740,7 +754,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                           className="flex w-full bg-gray-100 rounded-lg overflow-hidden p-0"
                           style={{ boxShadow: "none" }}
                         >
-                          {(hasSubParts ? subParts : questions).map((_, idx) => (
+                          {tabItems.map((_, idx) => (
                             <TabsTrigger
                               key={idx}
                               value={String(idx)}
@@ -749,7 +763,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                                 transition-all
                                 relative
                                 ${idx === 0 ? "rounded-l-lg" : ""}
-                                ${idx === (hasSubParts ? subParts.length - 1 : questions.length - 1) ? "rounded-r-lg" : ""}
+                                ${idx === (tabItems.length - 1) ? "rounded-r-lg" : ""}
                                 ${currentSubPartIndex === idx ? "bg-red-500 text-white z-10" : "text-gray-700"}
                               `}
                               style={{

@@ -1,15 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { useLocation, useParams } from "react-router-dom";
-import { listeningSubmissionService, type TestResultData } from "@/services/listeningTest.service";
+import { listeningSubmissionService, listeningTestService, type ListeningTestItem, type TestResultData } from "@/services/listeningTest.service";
 
 export default function ListeningResultPage() {
   const { resultId } = useParams<{ resultId: string }>();
   const [data, setData] = useState<TestResultData | null>(null);
   const [loading, setLoading] = useState(true);
   const [reportId, setReportId] = useState(resultId || "");
+  const [testData, setTestData] = useState<ListeningTestItem | null>(null);
   const location = useLocation();
   const navState: any = (location && (location as any).state) || {};
   const summary = navState?.summary || null;
@@ -26,6 +27,15 @@ export default function ListeningResultPage() {
         const res = await listeningSubmissionService.getExamResults(resultId);
         console.log("Results fetched:", res);
         setData(res);
+        // Try to fetch full test to render all questions
+        if (res?.testId) {
+          try {
+            const td = await listeningTestService.getTestWithFullData(res.testId);
+            setTestData(td);
+          } catch (e) {
+            console.warn("Failed to fetch test for results rendering", e);
+          }
+        }
       } catch (error) {
         console.error("Error fetching results:", error);
       }
@@ -50,17 +60,55 @@ export default function ListeningResultPage() {
     const correctAnswer = ua.question.answers.find(a => a.correct);
     return {
       no: index + 1,
-      userAnswer: ua.userAnswer || "",
+      userAnswer: ua.userAnswer || "Not selected",
       correctAnswer: correctAnswer?.variantText || correctAnswer?.answer || "",
       result: ua.isCorrect ? "Correct" : "Wrong"
     };
   }) || [];
+
+  // Build full results using original test structure to show unanswered as Not selected
+  const fullExamData = useMemo(() => {
+    if (!testData) return null;
+    const userAnswerByQ: Record<string, { userAnswer?: string; isCorrect?: boolean }> = {};
+    (data?.userAnswers || []).forEach(ua => {
+      userAnswerByQ[ua.questionId] = { userAnswer: ua.userAnswer, isCorrect: ua.isCorrect };
+    });
+    const rows: { no: number; userAnswer: string; correctAnswer: string; result: string }[] = [];
+    let counter = 1;
+    (testData.parts || []).forEach(p => {
+      (p.sections || []).forEach(s => {
+        (s.questions || []).forEach(q => {
+          const ua = userAnswerByQ[q.id] || {};
+          const correct = (q.answers || []).find(a => a.correct);
+          rows.push({
+            no: counter++,
+            userAnswer: ua.userAnswer || "Not selected",
+            correctAnswer: (correct?.variantText || correct?.answer || "") as string,
+            result: ua.userAnswer ? (ua.isCorrect ? "Correct" : "Wrong") : "Not selected",
+          });
+        });
+      });
+    });
+    return rows;
+  }, [testData, data]);
 
   // If we don't have detailed data but have summary, show a basic message
   const hasDetailedData = data && data.userAnswers && data.userAnswers.length > 0;
   const hasSummaryData = summary && summary.score !== undefined;
 
   const score = summary?.score ?? data?.score ?? 0;
+  const computedCorrectFromFull = useMemo(() => {
+    if (fullExamData) return fullExamData.filter(r => r.result === "Correct").length;
+    if (hasDetailedData) return (data!.userAnswers || []).filter(u => u.isCorrect).length;
+    return undefined;
+  }, [fullExamData, hasDetailedData, data]);
+  const computedTotalFromFull = useMemo(() => {
+    if (fullExamData) return fullExamData.length;
+    if (hasDetailedData) return (data!.userAnswers || []).length;
+    return undefined;
+  }, [fullExamData, hasDetailedData, data]);
+  const correctCount = summary?.correctCount ?? computedCorrectFromFull;
+  const totalQuestions = summary?.totalQuestions ?? computedTotalFromFull;
   const userName = "JAXONGIRMIRZO"; // You can get this from user context or API
   const currentDate = new Date().toISOString().replace('T', ' ').substring(0, 19) + " GMT+5";
 
@@ -140,7 +188,13 @@ export default function ListeningResultPage() {
 
         {/* Listening Score */}
         <div className="mb-6">
-          <h2 className="text-xl font-semibold text-foreground">Listening score: {score}</h2>
+        <h2 className="text-xl font-semibold text-foreground">Listening score: {score}
+          {typeof correctCount === "number" && typeof totalQuestions === "number" && (
+            <span className="ml-3 text-base text-muted-foreground">(
+              {correctCount} / {totalQuestions} correct
+            )</span>
+          )}
+        </h2>
         </div>
 
         {/* Basic Results Message */}
@@ -198,7 +252,13 @@ export default function ListeningResultPage() {
 
       {/* Listening Score */}
       <div className="mb-6">
-        <h2 className="text-xl font-semibold text-foreground">Listening score: {score}</h2>
+        <h2 className="text-xl font-semibold text-foreground">Listening score: {score}
+          {typeof correctCount === "number" && typeof totalQuestions === "number" && (
+            <span className="ml-3 text-base text-muted-foreground">(
+              {correctCount} / {totalQuestions} correct
+            )</span>
+          )}
+        </h2>
       </div>
 
       {/* Results Table */}
@@ -215,19 +275,21 @@ export default function ListeningResultPage() {
                 </tr>
               </thead>
               <tbody>
-                {examData.map((item, index) => (
+                {(fullExamData || examData).map((item, index) => (
                   <tr
                     key={item.no}
                     className={`border-b border-gray-200 last:border-b-0 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
                   >
                     <td className="px-4 py-3 text-gray-700 font-medium">{item.no}</td>
-                    <td className="px-4 py-3 text-gray-600">{item.userAnswer || ""}</td>
+                    <td className="px-4 py-3 text-gray-600">{item.userAnswer || "Not selected"}</td>
                     <td className="px-4 py-3 text-gray-800 font-medium">{item.correctAnswer}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                         item.result === "Correct" 
                           ? "bg-green-100 text-green-800" 
-                          : "bg-red-100 text-red-800"
+                          : item.result === "Wrong" 
+                            ? "bg-red-100 text-red-800"
+                            : "bg-gray-100 text-gray-700"
                       }`}>
                         {item.result}
                       </span>

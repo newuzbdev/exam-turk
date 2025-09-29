@@ -18,6 +18,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
   const [loading, setLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState<number>(600); // 10 minutes in seconds
   const [timerActive, setTimerActive] = useState<boolean>(false);
+  const [isExamMode, setIsExamMode] = useState<boolean>(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -36,6 +37,54 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
       fetchTestData();
     }
   }, [testId]);
+
+  // Enter fullscreen and lock navigation (exam mode)
+  useEffect(() => {
+    const addNavigationLock = () => {
+      // Prevent back navigation within the test
+      const handlePopState = () => {
+        window.history.pushState(null, "", window.location.href);
+        toast.error("Sınav sırasında geri gidemezsiniz");
+      };
+      window.history.pushState(null, "", window.location.href);
+      window.addEventListener("popstate", handlePopState);
+
+      // Warn on refresh/close
+      const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+        e.preventDefault();
+        e.returnValue = "";
+      };
+      window.addEventListener("beforeunload", handleBeforeUnload);
+
+      return () => {
+        window.removeEventListener("popstate", handlePopState);
+        window.removeEventListener("beforeunload", handleBeforeUnload);
+      };
+    };
+
+    const enterFullscreen = async () => {
+      try {
+        const el: any = document.documentElement as any;
+        if (el.requestFullscreen) await el.requestFullscreen();
+        else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
+        else if (el.msRequestFullscreen) await el.msRequestFullscreen();
+      } catch {}
+    };
+
+    const cleanupNav = addNavigationLock();
+    setIsExamMode(true);
+    enterFullscreen();
+
+    return () => {
+      setIsExamMode(false);
+      if (document.fullscreenElement) {
+        try {
+          document.exitFullscreen().catch(() => {});
+        } catch {}
+      }
+      cleanupNav?.();
+    };
+  }, []);
 
   // Timer effect
   useEffect(() => {
@@ -808,6 +857,15 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                 GÖNDER
               </Button>
             </div>
+            {/* Mobile: inline audio to auto-start on page entry */}
+            {testData?.audioUrl && (
+              <div className="mt-2 flex justify-center">
+                <AudioPlayer 
+                  src={`https://api.turkcetest.uz${testData.audioUrl}`} 
+                  onAudioEnded={handleAudioEnded}
+                />
+              </div>
+            )}
           </div>
 
           {/* Desktop Header - Horizontal Layout */}

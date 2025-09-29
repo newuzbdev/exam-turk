@@ -370,7 +370,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
           {/* Desktop Layout - Resizable */}
           <div className="hidden lg:block">
             <ResizablePanelGroup direction="horizontal" className="w-full min-h-[400px]">
-              <ResizablePanel defaultSize={50} minSize={30} maxSize={70}>
+              <ResizablePanel defaultSize={50} minSize={5} maxSize={95}>
                 <div className="p-4 border-r border-gray-300 h-full overflow-y-auto">
                   <div className="space-y-3">
                     <h4 className="text-lg font-bold text-gray-800 mb-3">Sorular</h4>
@@ -399,7 +399,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                 </div>
               </ResizablePanel>
               <ResizableHandle withHandle />
-              <ResizablePanel defaultSize={50} minSize={30}>
+              <ResizablePanel defaultSize={50} minSize={5}>
                 <div className="p-4 h-full overflow-y-auto">
                   <div className="space-y-3">
                     <h4 className="text-lg font-bold text-gray-800 mb-3">Seçenekler</h4>
@@ -490,7 +490,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
           {/* Desktop Layout - Resizable */}
           <div className="hidden lg:block">
             <ResizablePanelGroup direction="horizontal" className="w-full min-h-[500px]">
-              <ResizablePanel defaultSize={60} minSize={40} maxSize={80}>
+              <ResizablePanel defaultSize={60} minSize={5} maxSize={95}>
                 <div className="border-r border-gray-300 p-4 h-full flex flex-col">
                   <h4 className="text-lg font-bold text-gray-800 mb-3">Harita</h4>
                   <div className="flex-1 flex items-center justify-center">
@@ -513,7 +513,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                 </div>
               </ResizablePanel>
               <ResizableHandle withHandle />
-              <ResizablePanel defaultSize={40} minSize={20}>
+              <ResizablePanel defaultSize={40} minSize={5}>
                 <div className="p-4 h-full overflow-y-auto">
                   <div className="space-y-4">
                     <h4 className="text-lg font-bold text-gray-800 mb-3">Sorular</h4>
@@ -789,9 +789,9 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
         return;
       }
       const answers = Object.entries(userAnswers).map(([questionId, userAnswer]) => ({ questionId, userAnswer }));
+      // Allow submission even with zero answers; backend may create result with 0 answered
       if (answers.length === 0) {
-        // Require at least one answer to submit
-        return;
+        toast.warning("Hiç cevap seçmediniz. Yine de gönderiliyor...");
       }
       const res: any = await listeningSubmissionService.submitAnswers(testData.id, answers);
       console.log("Submission response:", res); // Debug log

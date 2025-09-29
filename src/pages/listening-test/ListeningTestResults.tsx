@@ -157,33 +157,47 @@ export default function ListeningResultPage() {
   // If we have summary but no detailed data, show basic results
   if (!hasDetailedData && hasSummaryData) {
     return (
-      <div className="max-w-6xl mx-auto space-y-6 p-6">
+      <div className="max-w-6xl mx-auto space-y-5 p-4 sm:p-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-foreground">Exam results</h1>
-          <div className="flex items-center gap-3">
-            <Input
-              value={reportId}
-              onChange={(e) => setReportId(e.target.value)}
-              className="w-48"
-              placeholder="Enter report ID"
-            />
-            <Button 
-              onClick={handleGetReport}
-              className="bg-red-600 hover:bg-red-700 text-white px-6"
-            >
-              Get Report
-            </Button>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-xl sm:text-3xl font-bold text-foreground">Exam results</h1>
+          <div className="w-full sm:w-auto">
+            <div className="flex items-center gap-2">
+              <Input
+                value={reportId}
+                onChange={(e) => setReportId(e.target.value)}
+                className="flex-1 sm:flex-none sm:w-64 h-9"
+                placeholder="Enter report ID"
+              />
+              <Button 
+                onClick={handleGetReport}
+                className="bg-red-600 hover:bg-red-700 text-white h-9 px-4 sm:px-5"
+              >
+                Get
+              </Button>
+            </div>
           </div>
         </div>
 
-        {/* Report Info */}
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <div className="flex items-center gap-6">
-            <span>Report ID: {reportId}</span>
-            <span>Name: {userName}</span>
+        {/* Report Meta */}
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 sm:p-4">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] sm:text-xs font-medium text-gray-600">Report ID</span>
+              <Button
+                variant="outline"
+                className="h-8 px-2 py-1 text-xs"
+                onClick={() => navigator.clipboard.writeText(reportId || "")}
+              >
+                Copy
+              </Button>
+            </div>
+            <div className="text-xs sm:text-sm break-all text-gray-800">{reportId}</div>
+            <div className="flex items-center justify-between text-[11px] sm:text-sm text-gray-600">
+              <span>Name: {userName}</span>
+              <span>{currentDate}</span>
+            </div>
           </div>
-          <span>Date: {currentDate}</span>
         </div>
 
         {/* Listening Score */}
@@ -197,25 +211,67 @@ export default function ListeningResultPage() {
         </h2>
         </div>
 
-        {/* Basic Results Message */}
-        <Card className="overflow-hidden rounded-lg border border-gray-200">
-          <CardContent className="p-6">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-foreground mb-2">Test Completed Successfully</h3>
-              <p className="text-muted-foreground mb-4">
-                Your test has been submitted and scored. Detailed question-by-question results are being processed.
-              </p>
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <p className="text-green-800 font-medium">Score: {score}</p>
-                {summary?.totalQuestions && (
-                  <p className="text-green-700 text-sm mt-1">
-                    Total Questions: {summary.totalQuestions}
-                  </p>
-                )}
+        {/* Prefer full table using original test structure to include Not selected rows */}
+        {fullExamData ? (
+          <Card className="overflow-hidden rounded-lg border border-gray-200">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-green-600 text-white">
+                      <th className="px-4 py-3 text-left font-medium rounded-tl-lg">No.</th>
+                      <th className="px-4 py-3 text-left font-medium">User Answer</th>
+                      <th className="px-4 py-3 text-left font-medium">Correct Answer</th>
+                      <th className="px-4 py-3 text-left font-medium rounded-tr-lg">Result</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fullExamData.map((item, index) => (
+                      <tr
+                        key={item.no}
+                        className={`border-b border-gray-200 last:border-b-0 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
+                      >
+                        <td className="px-4 py-3 text-gray-700 font-medium">{item.no}</td>
+                        <td className="px-4 py-3 text-gray-600">{item.userAnswer || "Not selected"}</td>
+                        <td className="px-4 py-3 text-gray-800 font-medium">{item.correctAnswer}</td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            item.result === "Correct" 
+                              ? "bg-green-100 text-green-800" 
+                              : item.result === "Wrong" 
+                                ? "bg-red-100 text-red-800"
+                                : "bg-gray-100 text-gray-700"
+                          }`}>
+                            {item.result}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="overflow-hidden rounded-lg border border-gray-200">
+            <CardContent className="p-6">
+              <div className="text-center">
+                <h3 className="text-lg font-semibold text-foreground mb-2">Test Completed Successfully</h3>
+                <p className="text-muted-foreground mb-4">
+                  Your test has been submitted and scored. Detailed question-by-question results are being processed.
+                </p>
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <p className="text-green-800 font-medium">Score: {score}</p>
+                  {summary?.totalQuestions && (
+                    <p className="text-green-700 text-sm mt-1">
+                      Total Questions: {summary.totalQuestions}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     );
   }

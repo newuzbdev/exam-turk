@@ -790,9 +790,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
       }
       const answers = Object.entries(userAnswers).map(([questionId, userAnswer]) => ({ questionId, userAnswer }));
       // Allow submission even with zero answers; backend may create result with 0 answered
-      if (answers.length === 0) {
-        toast.warning("Hiç cevap seçmediniz. Yine de gönderiliyor...");
-      }
+    
       const res: any = await listeningSubmissionService.submitAnswers(testData.id, answers);
       console.log("Submission response:", res); // Debug log
       

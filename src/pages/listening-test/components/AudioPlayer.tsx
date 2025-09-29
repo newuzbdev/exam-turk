@@ -41,6 +41,16 @@ export const AudioPlayer = ({ src, onAudioEnded }: AudioPlayerProps) => {
     }
   }, [src]);
 
+  // Keep the underlying audio element in sync with React volume state
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.volume = volume;
+      // Explicitly toggle muted for browsers that optimize zero volume
+      audio.muted = volume === 0;
+    }
+  }, [volume]);
+
   // Simple play function
   const playAudio = async () => {
     console.log("Play button clicked!");
@@ -81,6 +91,7 @@ export const AudioPlayer = ({ src, onAudioEnded }: AudioPlayerProps) => {
     const audio = audioRef.current;
     if (audio) {
       audio.volume = newVolume;
+      audio.muted = newVolume === 0;
       setVolume(newVolume);
     }
   };

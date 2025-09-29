@@ -6,6 +6,7 @@ import { listeningSubmissionService } from "@/services/listeningTest.service";
 import { useNavigate } from "react-router-dom";
 import { AudioPlayer } from "@/pages/listening-test/components/AudioPlayer";
 import { toast } from "sonner";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 
 interface UserAnswers {
   [questionId: string]: string;
@@ -366,54 +367,56 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
             </div>
           </div>
 
-          {/* Desktop Layout - Fixed */}
+          {/* Desktop Layout - Resizable */}
           <div className="hidden lg:block">
-            <div className="flex min-h-[400px]">
-              {/* Left side - Questions */}
-              <div className="w-1/2 p-4 border-r border-gray-300">
-                <div className="space-y-3">
-                  <h4 className="text-lg font-bold text-gray-800 mb-3">Sorular</h4>
-                  {questions.map((question, index) => {
-                    const currentQuestionNumber = questionNumber + index;
-                    return (
-                      <div key={question.id} className="flex items-center gap-3 py-2">
-                        <span className="font-bold text-lg">S{currentQuestionNumber}.</span>
-                        <span className="text-lg">1. konuşmacı ...</span>
-                        <select
-                          value={userAnswers[question.id] || ""}
-                          onChange={(e) => handleAnswerSelect(question.id, e.target.value)}
-                          className="border border-gray-400 rounded px-3 py-1 text-base ml-auto"
-                        >
-                          <option value="">Seç</option>
-                          {answerOptions.map((option) => (
-                            <option key={option.letter} value={option.letter}>
-                              {option.letter}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    );
-                  })}
+            <ResizablePanelGroup direction="horizontal" className="w-full min-h-[400px]">
+              <ResizablePanel defaultSize={50} minSize={30} maxSize={70}>
+                <div className="p-4 border-r border-gray-300 h-full overflow-y-auto">
+                  <div className="space-y-3">
+                    <h4 className="text-lg font-bold text-gray-800 mb-3">Sorular</h4>
+                    {questions.map((question, index) => {
+                      const currentQuestionNumber = questionNumber + index;
+                      return (
+                        <div key={question.id} className="flex items-center gap-3 py-2">
+                          <span className="font-bold text-lg">S{currentQuestionNumber}.</span>
+                          <span className="text-lg">1. konuşmacı ...</span>
+                          <select
+                            value={userAnswers[question.id] || ""}
+                            onChange={(e) => handleAnswerSelect(question.id, e.target.value)}
+                            className="border border-gray-400 rounded px-3 py-1 text-base ml-auto"
+                          >
+                            <option value="">Seç</option>
+                            {answerOptions.map((option) => (
+                              <option key={option.letter} value={option.letter}>
+                                {option.letter}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-
-              {/* Right side - Answer options */}
-              <div className="w-1/2 p-4">
-                <div className="space-y-3">
-                  <h4 className="text-lg font-bold text-gray-800 mb-3">Seçenekler</h4>
-                  {answerOptions.map((option) => (
-                    <div key={option.letter} className="flex items-start gap-3 py-2">
-                      <div className="text-lg flex items-center justify-center font-bold bg-gray-100 rounded-full w-8 h-8 flex-shrink-0">
-                        {option.letter}
+              </ResizablePanel>
+              <ResizableHandle withHandle />
+              <ResizablePanel defaultSize={50} minSize={30}>
+                <div className="p-4 h-full overflow-y-auto">
+                  <div className="space-y-3">
+                    <h4 className="text-lg font-bold text-gray-800 mb-3">Seçenekler</h4>
+                    {answerOptions.map((option) => (
+                      <div key={option.letter} className="flex items-start gap-3 py-2">
+                        <div className="text-lg flex items-center justify-center font-bold bg-gray-100 rounded-full w-8 h-8 flex-shrink-0">
+                          {option.letter}
+                        </div>
+                        <p className="text-lg text-gray-700 leading-relaxed flex-1">
+                          {option.text}
+                        </p>
                       </div>
-                      <p className="text-lg text-gray-700 leading-relaxed flex-1">
-                        {option.text}
-                      </p>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </div>
+              </ResizablePanel>
+            </ResizablePanelGroup>
           </div>
         </div>
       );
@@ -484,65 +487,67 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
             </div>
           </div>
 
-          {/* Desktop Layout - Fixed */}
+          {/* Desktop Layout - Resizable */}
           <div className="hidden lg:block">
-            <div className="flex min-h-[500px]">
-              {/* Left side - Image */}
-              <div className="w-3/5 border-r border-gray-300 p-4 flex flex-col">
-                <h4 className="text-lg font-bold text-gray-800 mb-3">Harita</h4>
-                <div className="flex-1 flex items-center justify-center">
-                  {imageUrl ? (
-                    <img 
-                      src={`https://api.turkcetest.uz/${imageUrl}`} 
-                      alt="Map for questions 19-23" 
-                      className="w-full h-auto max-h-[400px] object-contain"
-                      onError={(e) => {
-                        const el = e.target as HTMLImageElement;
-                        el.src = "https://placehold.co/800x600?text=Görsel+Yüklenemedi";
-                      }}
-                    />
-                  ) : (
-                    <div className="w-full h-64 bg-gray-100 flex items-center justify-center text-gray-500 rounded-lg">
-                      Görsel bulunamadı
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Right side - Questions */}
-              <div className="w-2/5 p-4">
-                <div className="space-y-4">
-                  <h4 className="text-lg font-bold text-gray-800 mb-3">Sorular</h4>
-                  {questions.length === 0 && (
-                    <div className="text-center text-gray-600 py-6">Bu bölüm için soru bulunamadı.</div>
-                  )}
-                  {questions.map((question, index) => {
-                    const currentQuestionNumber = questionNumber + index;
-                    return (
-                      <div key={question.id} className="flex items-center gap-3 w-full py-2">
-                        <span className="font-bold text-lg">S{currentQuestionNumber}.</span>
-                        <span className="text-lg flex-1">{question.text}</span>
-                        <select
-                          className="border border-gray-400 rounded px-3 py-2 text-base min-w-[80px]"
-                          value={userAnswers[question.id] || ""}
-                          onChange={(e) => handleAnswerSelect(question.id, e.target.value)}
-                        >
-                          <option value="">Seç</option>
-                          <option value="A">A</option>
-                          <option value="B">B</option>
-                          <option value="C">C</option>
-                          <option value="D">D</option>
-                          <option value="E">E</option>
-                          <option value="F">F</option>
-                          <option value="G">G</option>
-                          <option value="H">H</option>
-                        </select>
+            <ResizablePanelGroup direction="horizontal" className="w-full min-h-[500px]">
+              <ResizablePanel defaultSize={60} minSize={40} maxSize={80}>
+                <div className="border-r border-gray-300 p-4 h-full flex flex-col">
+                  <h4 className="text-lg font-bold text-gray-800 mb-3">Harita</h4>
+                  <div className="flex-1 flex items-center justify-center">
+                    {imageUrl ? (
+                      <img 
+                        src={`https://api.turkcetest.uz/${imageUrl}`} 
+                        alt="Map for questions 19-23" 
+                        className="w-full h-auto max-h-[400px] object-contain"
+                        onError={(e) => {
+                          const el = e.target as HTMLImageElement;
+                          el.src = "https://placehold.co/800x600?text=Görsel+Yüklenemedi";
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-64 bg-gray-100 flex items-center justify-center text-gray-500 rounded-lg">
+                        Görsel bulunamadı
                       </div>
-                    );
-                  })}
+                    )}
+                  </div>
                 </div>
-              </div>
-            </div>
+              </ResizablePanel>
+              <ResizableHandle withHandle />
+              <ResizablePanel defaultSize={40} minSize={20}>
+                <div className="p-4 h-full overflow-y-auto">
+                  <div className="space-y-4">
+                    <h4 className="text-lg font-bold text-gray-800 mb-3">Sorular</h4>
+                    {questions.length === 0 && (
+                      <div className="text-center text-gray-600 py-6">Bu bölüm için soru bulunamadı.</div>
+                    )}
+                    {questions.map((question, index) => {
+                      const currentQuestionNumber = questionNumber + index;
+                      return (
+                        <div key={question.id} className="flex items-center gap-3 w-full py-2">
+                          <span className="font-bold text-lg">S{currentQuestionNumber}.</span>
+                          <span className="text-lg flex-1">{question.text}</span>
+                          <select
+                            className="border border-gray-400 rounded px-3 py-2 text-base min-w-[80px]"
+                            value={userAnswers[question.id] || ""}
+                            onChange={(e) => handleAnswerSelect(question.id, e.target.value)}
+                          >
+                            <option value="">Seç</option>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                            <option value="D">D</option>
+                            <option value="E">E</option>
+                            <option value="F">F</option>
+                            <option value="G">G</option>
+                            <option value="H">H</option>
+                          </select>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </ResizablePanel>
+            </ResizablePanelGroup>
           </div>
         </div>
       );

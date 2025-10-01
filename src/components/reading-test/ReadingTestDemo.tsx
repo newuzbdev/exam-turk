@@ -233,27 +233,78 @@ export default function ReadingPage({ testId }: { testId: string }) {
               return (
                 <div className="space-y-6">
                   {numbered.map((q, idx) => {
-                    const qNum = 7 + idx;
+                    const qNum = 7 + idx; // kept for alt text only
+                    const renderContent = () => {
+                      const raw = q.content || "";
+                      if (!raw) return null;
+                      const nodes: any[] = [];
+                      // Matches in priority order: markdown image, http(s) image, uploads path (with optional @ and query)
+                      const pattern = /!\[[^\]]*\]\(([^)]+)\)|@?(https?:\/\/[^\s)]+?\.(?:png|jpg|jpeg|gif|webp)(?:\?[^\s)]*)?)|@?(?:^|\s)(\/??uploads\/[\w\-./]+?\.(?:png|jpg|jpeg|gif|webp)(?:\?[^\s)]*)?)/gi;
+                      let lastIndex = 0;
+                      let match: RegExpExecArray | null;
+                      while ((match = pattern.exec(raw)) !== null) {
+                        const start = match.index;
+                        if (start > lastIndex) {
+                          const textChunk = raw.slice(lastIndex, start).trim();
+                          if (textChunk) nodes.push(<p key={`t-${lastIndex}`} className="mb-2">{textChunk}</p>);
+                        }
+                        const urlFromMd = match[1];
+                        const urlFromHttp = match[2];
+                        const urlFromUploads = match[3];
+                        let src = urlFromMd || urlFromHttp || urlFromUploads || "";
+                        src = src.replace(/^\(|\)/g, "");
+                        if (/^(?:\/)?uploads\//i.test(src)) {
+                          src = `https://api.turkcetest.uz/${src.replace(/^\//, '')}`;
+                        }
+                        if (src) {
+                          nodes.push(
+                            <img
+                              key={`i-${start}`}
+                              src={src}
+                              alt={`S${qNum} görseli`}
+                              className="w-full h-auto object-contain border border-gray-200 rounded my-2"
+                              onError={(e) => {
+                                const el = e.target as HTMLImageElement;
+                                el.style.display = "none";
+                              }}
+                            />
+                          );
+                        }
+                        lastIndex = pattern.lastIndex;
+                      }
+                      if (lastIndex < raw.length) {
+                        const tail = raw.slice(lastIndex).trim();
+                        if (tail) nodes.push(<p key={`t-tail`} className="mb-2">{tail}</p>);
+                      }
+                      return nodes.length ? <div className="text-[13px] leading-6 text-gray-800 font-serif text-justify">{nodes}</div> : null;
+                    };
                     return (
-                      <div key={q.id} className="flex items-start gap-4">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-lg">S.{qNum}</span>
-                          <select
-                            value={answers[q.id] || ""}
-                            onChange={(e) => handleAnswerChange(q.id, e.target.value)}
-                            className="w-20 bg-white border border-gray-400 rounded px-2 py-1 h-9"
-                          >
-                            <option value="" />
-                            {optionList.map((opt) => (
-                              <option key={opt.variantText} value={opt.variantText}>
-                                {opt.variantText}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="flex-1 border-2 border-black rounded-lg p-4 bg-[#f5f5f0]">
-                          {q.text && <h3 className="font-bold text-center mb-2">{q.text}</h3>}
-                          {q.content && <p className="text-sm leading-relaxed whitespace-pre-line">{q.content}</p>}
+                      <div key={q.id} className="bg-white">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            {q.text && (
+                              <h3 className="font-semibold mb-2 leading-snug italic text-gray-900">
+                                {q.text}
+                              </h3>
+                            )}
+                            {renderContent()}
+                          </div>
+                          <div className="shrink-0 pt-1">
+                            <label className="sr-only" htmlFor={`select-${q.id}`}>Seçenek</label>
+                            <select
+                              id={`select-${q.id}`}
+                              value={answers[q.id] || ""}
+                              onChange={(e) => handleAnswerChange(q.id, e.target.value)}
+                              className="w-24 bg-white border border-gray-400 rounded px-2 py-1 h-8 text-sm"
+                            >
+                              <option value="" />
+                              {optionList.map((opt) => (
+                                <option key={opt.variantText} value={opt.variantText}>
+                                  {opt.variantText}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
                       </div>
                     );

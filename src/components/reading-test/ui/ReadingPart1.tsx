@@ -48,50 +48,6 @@ export default function ReadingPart1() {
 
                 <div className="space-y-4">
                   <h3 className="text-center font-bold text-lg">Takvimler</h3>
-
-                  <div className="text-sm leading-relaxed space-y-4">
-                    <p>
-                      Batıl inançlar, bilimsel bir temele dayanmayan, ancak birçok insanın günlük yaşamında etkili olan
-                      inanışlardır. Tarih boyunca insanlar, doğa olaylarını ve açıklayamadıkları durumları{" "}
-                      <span className="inline-block w-20 mx-1"></span> (S1) güçlerle
-                      ilişkilendirmişlerdir. Bu inançlar, nesilden nesle aktarılmış ve günümüzde bile varlığını
-                      sürdürmektedir.
-                    </p>
-
-                    <p>
-                      En yaygın batıl inançlardan biri, kara kedinin önünden geçmesinin{" "}
-                      <span className="inline-block w-20 mx-1"></span> (S2) getireceğine
-                      inanılmasıdır. Bunun kökeni Orta Çağ'a dayanır; o dönemde kara kedilerin cadılarla
-                      ilişkilendirildiği düşünülürdü.
-                    </p>
-
-                    <p>
-                      Batıl inançlar sadece kötü şansla ilgili değildir; bazıları iyi şans getirdiğine inanılan
-                      ritüelleri de içerir. Örneğin, nazar boncuğu takmak, kişiyi kötü enerjilerden koruduğuna inanılan
-                      yaygın bir gelenektir. Nazar inancı, eski Türk kültürüne dayansa da, günümüzde Türkiye'nin{" "}
-                      <span className="inline-block w-20 mx-1"></span> (S3) birçok farklı
-                      kültürde de yaygındır.
-                    </p>
-
-                    <p>
-                      Batıl inançların insanlar üzerindeki etkisi oldukça{" "}
-                      <span className="inline-block w-20 mx-1"></span> (S4). Özellikle önemli
-                      kararlar alınırken ya da yeni bir işe başlanırken bu inançlar dikkate alınabilir.
-                    </p>
-
-                    <p>
-                      Örneğin, yeni bir eve taşınmadan önce eve tuz dökmenin kötü ruhları uzaklaştıracağına inanılır.
-                      Benzer şekilde, merdiven altından geçmenin kötü şans getirdiğine dair inanış da hâlâ birçok insan
-                      tarafından dikkate alınmaktadır.
-                    </p>
-
-                    <p>
-                      Günümüzde bilimin ilerlemesiyle batıl inançların{" "}
-                      <span className="inline-block w-20 mx-1"></span> (S5) alanı azalmış
-                      olsa da, bu <span className="inline-block w-20 mx-1"></span> (S6)
-                      inançlar kültürel mirasın bir parçası olarak yaşamaya devam etmektedir.
-                    </p>
-                  </div>
                 </div>
               </div>
 

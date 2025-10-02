@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "../ui/button";
-import { readingTestService, readingSubmissionService, type ReadingTestItem } from "@/services/readingTest.service";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "../ui/resizable";
+import { readingTestService, type ReadingTestItem } from "@/services/readingTest.service";
 
 export default function ReadingPage({ testId }: { testId: string }) {
   const [timeLeft, setTimeLeft] = useState(60 * 60);
@@ -9,7 +10,6 @@ export default function ReadingPage({ testId }: { testId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [currentPartNumber, setCurrentPartNumber] = useState<number>(1);
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -99,9 +99,9 @@ export default function ReadingPage({ testId }: { testId: string }) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-40">
+    <div className="min-h-screen bg-gray-50">
       {/* Header (Listening style) */}
-      <div className="bg-white px-6 py-3 border-b-2 border-gray-200 flex items-center justify-between sticky top-0 z-10">
+      <div className="bg-white px-6 py-3 border-b-2 border-gray-200 flex items-center justify-between sticky top-0 z-50">
         <div className="bg-red-600 text-white px-3 py-1 rounded font-bold text-lg">TURKISHMOCK</div>
         <div className="font-bold text-2xl">{testData?.title || "Reading"}</div>
         <div className="flex items-center gap-4">
@@ -130,28 +130,34 @@ export default function ReadingPage({ testId }: { testId: string }) {
 
       {/* Dynamic Part Content */}
       {!isLoading && !error && testData && currentPartNumber === 1 && (
-        <div className="flex border-2 border-black m-2 bg-white">
-          {/* Left: Passage */}
-          <div className="flex-1 p-6 border-r-2 border-black overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">1. OKUMA METNİ.</h2>
-            <p className="mb-6 leading-relaxed">
-              {getStaticHeader(1)}
-            </p>
+        <div className="mx-2 pb-24">
+          <ResizablePanelGroup direction="horizontal" className="h-[calc(100vh-250px)] rounded-lg border border-gray-300 shadow-lg">
+            {/* Left: Passage */}
+            <ResizablePanel defaultSize={60} minSize={30} className="bg-green-50">
+              <div className="h-full p-6 overflow-y-auto">
+                <h2 className="text-xl font-bold mb-4">1. OKUMA METNİ.</h2>
+                <p className="mb-6 leading-relaxed">
+                  {getStaticHeader(1)}
+                </p>
 
-            {(() => {
-              const part1 = (testData.parts || []).find((p) => p.number === 1) || (testData.parts || [])[0];
-              const section1 = part1?.sections && part1.sections[0];
-              const content = section1?.content || "";
-              return (
-                <div className="space-y-4 leading-relaxed">
-                  <p className="whitespace-pre-line">{content}</p>
-                </div>
-              );
-            })()}
-          </div>
+                {(() => {
+                  const part1 = (testData.parts || []).find((p) => p.number === 1) || (testData.parts || [])[0];
+                  const section1 = part1?.sections && part1.sections[0];
+                  const content = section1?.content || "";
+                  return (
+                    <div className="space-y-4 leading-relaxed">
+                      <p className="whitespace-pre-line">{content}</p>
+                    </div>
+                  );
+                })()}
+              </div>
+            </ResizablePanel>
 
-          {/* Right: Answers */}
-          <div className="w-full max-w-[400px] bg-[#f5f5f0] p-6 flex flex-col">
+            <ResizableHandle withHandle={true} className="bg-gray-300 hover:bg-gray-400 transition-colors" />
+
+            {/* Right: Answers */}
+            <ResizablePanel defaultSize={40} minSize={20} className="bg-white">
+              <div className="h-full p-6 flex flex-col">
             {(() => {
               const part1 = (testData.parts || []).find((p) => p.number === 1) || (testData.parts || [])[0];
               const section1 = part1?.sections && part1.sections[0];
@@ -201,152 +207,218 @@ export default function ReadingPage({ testId }: { testId: string }) {
                 </>
               );
             })()}
-          </div>
+              </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
         </div>
       )}
 
       {!isLoading && !error && testData && currentPartNumber === 2 && (
-        <div className="flex border-2 border-black m-2 bg-white">
-          {/* Left: Questions 7–14 with selects */}
-          <div className="flex-1 p-6 border-r-2 border-black overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">2. OKUMA METNİ.</h2>
-            <p className="mb-6 leading-relaxed">
-              {getStaticHeader(2)}
-            </p>
+        <div className="mx-2 h-[calc(100vh-200px)]">
+          <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border border-gray-300 shadow-lg">
+            {/* Left: Questions 7–14 with selects */}
+            <ResizablePanel defaultSize={50} minSize={30} className="bg-gray-50">
+              <div className="h-full p-6 overflow-y-auto">
+                <h2 className="text-xl font-bold mb-4">2. OKUMA METNİ.</h2>
+                <p className="mb-6 leading-relaxed">
+                  {getStaticHeader(2)}
+                </p>
 
-            {(() => {
-              const part2 = (testData.parts || []).find((p) => p.number === 2) || (testData.parts || [])[1];
-              const sections = part2?.sections || [];
-              // Build options list across part 2 sections (A..J)
-              const optionMap = new Map<string, { variantText: string; answer: string }>();
-              sections.forEach((s) => (s.questions || []).forEach((q) => (q.answers || []).forEach((a) => {
-                if (a.variantText && !optionMap.has(a.variantText)) {
-                  optionMap.set(a.variantText, { variantText: a.variantText, answer: a.answer });
-                }
-              })));
-              const optionList = Array.from(optionMap.values()).sort((a, b) => a.variantText.localeCompare(b.variantText));
+                {(() => {
+                  const part2 = (testData.parts || []).find((p) => p.number === 2) || (testData.parts || [])[1];
+                  const sections = part2?.sections || [];
+                  // Build options list across part 2 sections (A..J)
+                  const optionMap = new Map<string, { variantText: string; answer: string }>();
+                  sections.forEach((s) => (s.questions || []).forEach((q) => (q.answers || []).forEach((a) => {
+                    if (a.variantText && !optionMap.has(a.variantText)) {
+                      optionMap.set(a.variantText, { variantText: a.variantText, answer: a.answer });
+                    }
+                  })));
+                  const optionList = Array.from(optionMap.values()).sort((a, b) => a.variantText.localeCompare(b.variantText));
 
-              // Flatten questions and take first 8 for this matching task (backend numbers 1..8 per section)
-              const allQuestions = sections.flatMap((s) => s.questions || []);
-              const numbered = allQuestions.slice(0, 8);
+                  // Flatten questions and take first 8 for this matching task (backend numbers 1..8 per section)
+                  const allQuestions = sections.flatMap((s) => s.questions || []);
+                  const numbered = allQuestions.slice(0, 8);
 
-              return (
-                <div className="space-y-6">
-                  {numbered.map((q, idx) => {
-                    const qNum = 7 + idx; // kept for alt text only
-                    const renderContent = () => {
-                      const raw = q.content || "";
-                      if (!raw) return null;
-                      const nodes: any[] = [];
-                      // Matches in priority order: markdown image, http(s) image, uploads path (with optional @ and query)
-                      const pattern = /!\[[^\]]*\]\(([^)]+)\)|@?(https?:\/\/[^\s)]+?\.(?:png|jpg|jpeg|gif|webp)(?:\?[^\s)]*)?)|@?(?:^|\s)(\/??uploads\/[\w\-./]+?\.(?:png|jpg|jpeg|gif|webp)(?:\?[^\s)]*)?)/gi;
-                      let lastIndex = 0;
-                      let match: RegExpExecArray | null;
-                      while ((match = pattern.exec(raw)) !== null) {
-                        const start = match.index;
-                        if (start > lastIndex) {
-                          const textChunk = raw.slice(lastIndex, start).trim();
-                          if (textChunk) nodes.push(<p key={`t-${lastIndex}`} className="mb-2">{textChunk}</p>);
-                        }
-                        const urlFromMd = match[1];
-                        const urlFromHttp = match[2];
-                        const urlFromUploads = match[3];
-                        let src = urlFromMd || urlFromHttp || urlFromUploads || "";
-                        src = src.replace(/^\(|\)/g, "");
-                        if (/^(?:\/)?uploads\//i.test(src)) {
-                          src = `https://api.turkcetest.uz/${src.replace(/^\//, '')}`;
-                        }
-                        if (src) {
-                          nodes.push(
-                            <img
-                              key={`i-${start}`}
-                              src={src}
-                              alt={`S${qNum} görseli`}
-                              className="w-full h-auto object-contain border border-gray-200 rounded my-2"
-                              onError={(e) => {
-                                const el = e.target as HTMLImageElement;
-                                el.style.display = "none";
-                              }}
-                            />
-                          );
-                        }
-                        lastIndex = pattern.lastIndex;
-                      }
-                      if (lastIndex < raw.length) {
-                        const tail = raw.slice(lastIndex).trim();
-                        if (tail) nodes.push(<p key={`t-tail`} className="mb-2">{tail}</p>);
-                      }
-                      return nodes.length ? <div className="text-[13px] leading-6 text-gray-800 font-serif text-justify">{nodes}</div> : null;
-                    };
-                    return (
-                      <div key={q.id} className="bg-white">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            {q.text && (
-                              <h3 className="font-semibold mb-2 leading-snug italic text-gray-900">
-                                {q.text}
-                              </h3>
-                            )}
-                            {renderContent()}
+                  return (
+                    <div className="space-y-6">
+                      {numbered.map((q, idx) => {
+                        const qNum = 7 + idx; // kept for alt text only
+                        const renderContent = () => {
+                          const raw = q.content || "";
+                          if (!raw) return null;
+                          const nodes: any[] = [];
+                          // Matches in priority order: markdown image, http(s) image, uploads path (with optional @ and query)
+                          const pattern = /!\[[^\]]*\]\(([^)]+)\)|@?(https?:\/\/[^\s)]+?\.(?:png|jpg|jpeg|gif|webp)(?:\?[^\s)]*)?)|@?(?:^|\s)(\/??uploads\/[\w\-./]+?\.(?:png|jpg|jpeg|gif|webp)(?:\?[^\s)]*)?)/gi;
+                          let lastIndex = 0;
+                          let match: RegExpExecArray | null;
+                          while ((match = pattern.exec(raw)) !== null) {
+                            const start = match.index;
+                            if (start > lastIndex) {
+                              const textChunk = raw.slice(lastIndex, start).trim();
+                              if (textChunk) nodes.push(<p key={`t-${lastIndex}`} className="mb-2">{textChunk}</p>);
+                            }
+                            const urlFromMd = match[1];
+                            const urlFromHttp = match[2];
+                            const urlFromUploads = match[3];
+                            let src = urlFromMd || urlFromHttp || urlFromUploads || "";
+                            src = src.replace(/^\(|\)/g, "");
+                            if (/^(?:\/)?uploads\//i.test(src)) {
+                              src = `https://api.turkcetest.uz/${src.replace(/^\//, '')}`;
+                            }
+                            if (src) {
+                              nodes.push(
+                                <img
+                                  key={`i-${start}`}
+                                  src={src}
+                                  alt={`S${qNum} görseli`}
+                                  className="w-full max-w-[520px] h-auto max-h-[340px] object-contain border border-gray-200 rounded my-2 mx-auto"
+                                  onError={(e) => {
+                                    const el = e.target as HTMLImageElement;
+                                    el.style.display = "none";
+                                  }}
+                                />
+                              );
+                            }
+                            lastIndex = pattern.lastIndex;
+                          }
+                          if (lastIndex < raw.length) {
+                            const tail = raw.slice(lastIndex).trim();
+                            if (tail) nodes.push(<p key={`t-tail`} className="mb-2">{tail}</p>);
+                          }
+                          return nodes.length ? <div className="text-[13px] leading-6 text-gray-800 font-serif text-justify">{nodes}</div> : null;
+                        };
+                        // Prefer rendering image if provided for the question
+                        const makeImageSrc = (u: string) => {
+                          let src = u.trim();
+                          if (/^(?:\/)?uploads\//i.test(src)) {
+                            src = `https://api.turkcetest.uz/${src.replace(/^\//, '')}`;
+                          }
+                          return src;
+                        };
+                        const hasImage = typeof q.imageUrl === 'string' && q.imageUrl.length > 0;
+
+                        return (
+                          <div key={q.id} className="bg-transparent rounded-xl p-6">
+                            <div className="flex items-start gap-4">
+                              {hasImage ? (
+                                <div className="w-full">
+                                  <div className="flex items-center justify-between mb-4">
+                                    <div className="text-xl font-bold text-gray-800">S{qNum}</div>
+                                    <select
+                                      id={`select-${q.id}`}
+                                      value={answers[q.id] || ""}
+                                      onChange={(e) => handleAnswerChange(q.id, e.target.value)}
+                                      className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm"
+                                    >
+                                      <option value="">Seçiniz</option>
+                                      {optionList.map((opt) => (
+                                        <option key={opt.variantText} value={opt.variantText}>
+                                          {opt.variantText}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                  <div className="flex items-center justify-start mb-4">
+                                    <div className="relative">
+                                      <img
+                                        src={makeImageSrc(q.imageUrl as string)}
+                                        alt={`S${qNum} görseli`}
+                                        className="w-[400px] h-[300px] object-contain rounded-xl shadow-md border-2 border-gray-100"
+                                        onError={(e) => {
+                                          const el = e.target as HTMLImageElement;
+                                          el.style.display = 'none';
+                                        }}
+                                      />
+                                      <div className="absolute inset-0 rounded-xl bg-gradient-to-t from-black/5 to-transparent pointer-events-none"></div>
+                                    </div>
+                                  </div>
+                                  {q.text && (
+                                    <div className="text-center">
+                                      <p className="text-sm text-gray-600 italic bg-gray-50 px-4 py-2 rounded-lg">{q.text}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <>
+                                  <div className="flex-1">
+                                    {q.text && (
+                                      <h3 className="font-semibold mb-2 leading-snug italic text-gray-900">
+                                        {q.text}
+                                      </h3>
+                                    )}
+                                    {renderContent()}
+                                  </div>
+                                  <div className="shrink-0 pt-1">
+                                    <label className="sr-only" htmlFor={`select-${q.id}`}>Seçenek</label>
+                                    <select
+                                      id={`select-${q.id}`}
+                                      value={answers[q.id] || ""}
+                                      onChange={(e) => handleAnswerChange(q.id, e.target.value)}
+                                      className="w-24 bg-white border border-gray-400 rounded px-2 py-1 h-8 text-sm"
+                                    >
+                                      <option value="" />
+                                      {optionList.map((opt) => (
+                                        <option key={opt.variantText} value={opt.variantText}>
+                                          {opt.variantText}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                </>
+                              )}
+                            </div>
                           </div>
-                          <div className="shrink-0 pt-1">
-                            <label className="sr-only" htmlFor={`select-${q.id}`}>Seçenek</label>
-                            <select
-                              id={`select-${q.id}`}
-                              value={answers[q.id] || ""}
-                              onChange={(e) => handleAnswerChange(q.id, e.target.value)}
-                              className="w-24 bg-white border border-gray-400 rounded px-2 py-1 h-8 text-sm"
-                            >
-                              <option value="" />
-                              {optionList.map((opt) => (
-                                <option key={opt.variantText} value={opt.variantText}>
-                                  {opt.variantText}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })()}
-          </div>
-
-          {/* Right: Options legend A..J */}
-          <div className="w-full max-w-[450px] bg-[#f5f5f0] p-8 flex flex-col overflow-y-auto">
-            {(() => {
-              const part2 = (testData.parts || []).find((p) => p.number === 2) || (testData.parts || [])[1];
-              const sections = part2?.sections || [];
-              const optionMap = new Map<string, { variantText: string; answer: string }>();
-              sections.forEach((s) => (s.questions || []).forEach((q) => (q.answers || []).forEach((a) => {
-                if (a.variantText && !optionMap.has(a.variantText)) {
-                  optionMap.set(a.variantText, { variantText: a.variantText, answer: a.answer });
-                }
-              })));
-              const optionList = Array.from(optionMap.values()).sort((a, b) => a.variantText.localeCompare(b.variantText));
-
-              return (
-                <div className="space-y-3 flex-1">
-                  {optionList.map((opt) => (
-                    <div key={opt.variantText} className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-full border-2 border-black flex items-center justify-center font-bold bg-white flex-shrink-0">
-                        {opt.variantText}
-                      </div>
-                      <span className="text-base leading-relaxed pt-1">{opt.answer}</span>
+                        );
+                      })}
                     </div>
-                  ))}
+                  );
+                })()}
+              </div>
+            </ResizablePanel>
+
+            <ResizableHandle withHandle={true} className="bg-gray-300 hover:bg-gray-400 transition-colors" />
+
+            {/* Right: Options legend A..J - Fixed Sidebar */}
+            <ResizablePanel defaultSize={50} minSize={25} className="bg-white">
+              <div className="h-full flex flex-col">
+             
+                <div className="flex-1 p-4 overflow-hidden">
+                    {(() => {
+                      const part2 = (testData.parts || []).find((p) => p.number === 2) || (testData.parts || [])[1];
+                      const sections = part2?.sections || [];
+                      const optionMap = new Map<string, { variantText: string; answer: string }>();
+                      sections.forEach((s) => (s.questions || []).forEach((q) => (q.answers || []).forEach((a) => {
+                        if (a.variantText && !optionMap.has(a.variantText)) {
+                          optionMap.set(a.variantText, { variantText: a.variantText, answer: a.answer });
+                        }
+                      })));
+                      const optionList = Array.from(optionMap.values()).sort((a, b) => a.variantText.localeCompare(b.variantText));
+
+                      return (
+                        <div className="space-y-2">
+                          {optionList.map((opt) => (
+                            <div key={opt.variantText} className="flex items-start gap-2 p-2 bg-white rounded hover:bg-gray-50 transition-all duration-200 border border-gray-200">
+                              <div className="w-6 h-6 rounded-full border-2 border-gray-400 flex items-center justify-center font-bold bg-white text-gray-700 flex-shrink-0 text-xs">
+                                {opt.variantText}
+                              </div>
+                              <span className="text-lg leading-tight text-gray-800 pt-0.5 font-medium">{opt.answer}</span>
+                            </div>
+                          ))}
+
+                        </div>
+                      );
+                    })()}
                 </div>
-              );
-            })()}
-          </div>
+              </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
         </div>
       )}
 
       {/* Footer Tabs for Bölüm switching (like Listening) */}
       {!isLoading && !error && testData && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-800 p-2 sm:p-3">
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-800 p-2 sm:p-3 z-50">
           <div className="max-w-7xl mx-auto">
             <div className="flex justify-center gap-2 flex-nowrap overflow-x-auto">
               {(() => {

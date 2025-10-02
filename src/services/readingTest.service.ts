@@ -17,6 +17,7 @@ export interface ReadingQuestion {
   number?: number;
   text?: string | null;
   content?: string | null;
+  imageUrl?: string | null;
   type: string;
   answers?: ReadingAnswer[];
   createdAt?: string;
@@ -70,6 +71,7 @@ export interface UserAnswerResult {
     sectionId: string;
     number: number;
     content: string | null;
+    imageUrl?: string | null;
     text: string;
     type: string;
     createdAt: string;

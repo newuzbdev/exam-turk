@@ -347,6 +347,216 @@ export default function ReadingPage({ testId }: { testId: string }) {
         </div>
       )}
 
+      {!isLoading && !error && testData && currentPartNumber === 4 && (
+        <div className="mx-2 h-[calc(100vh-200px)]">
+          <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border border-gray-300 shadow-lg">
+            {/* Left: Passage content for Part 4 */}
+            <ResizablePanel defaultSize={55} minSize={30} className="bg-[#fffef5]">
+              <div className="h-full p-6 overflow-y-auto">
+                <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-300 mb-4">
+                  <h3 className="text-xl font-bold text-gray-800">4. OKUMA METNİ.</h3>
+                  <p className="text-base text-gray-800">21-29. sorular için aşağıdaki metni okuyunuz</p>
+                </div>
+                {(() => {
+                  const part4 = (testData.parts || []).find((p) => p.number === 4) || (testData.parts || [])[3];
+                  const section = part4?.sections?.[0];
+                  const content = section?.content || "";
+                  const titleFromTest = part4?.title || "";
+                  return (
+                    <div className="space-y-4">
+                      {titleFromTest && (
+                        <h4 className="font-bold text-center text-lg">{titleFromTest}</h4>
+                      )}
+                      <div className="text-base leading-7 space-y-3 font-serif text-justify whitespace-pre-line">
+                        {content}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </ResizablePanel>
+
+            <ResizableHandle withHandle={true} className="bg-gray-300 hover:bg-gray-400 transition-colors" />
+
+            {/* Right: Questions and static instructions */}
+            <ResizablePanel defaultSize={45} minSize={25} className="bg-white">
+              <div className="h-full p-6 overflow-y-auto">
+                <div className="space-y-6">
+                  <p className="text-xl font-semibold font-serif">Sorular 21-24. Metne göre doğru seçeneği (A, B, C veya D) işaretleyiniz.</p>
+
+                  {(() => {
+                    const part4 = (testData.parts || []).find((p) => p.number === 4) || (testData.parts || [])[3];
+                    const section = part4?.sections?.[0];
+                    const allQuestions = (section?.questions || []).slice();
+                    // In many datasets, question.number resets per part. Map by order: first 4 => 21–24, next 5 => 25–29
+                    const firstBlock = allQuestions.slice(0, 4);
+                    const secondBlock = allQuestions.slice(4, 9);
+
+                    const renderQuestion = (q: any, globalIdx: number) => {
+                      const options = (q.answers || [])
+                        .filter((a: any) => typeof a.variantText === 'string' && a.variantText.length)
+                        .sort((a: any, b: any) => String(a.variantText).localeCompare(String(b.variantText)));
+                      const displayNumber = 21 + globalIdx;
+                      return (
+                        <div key={q.id} className="space-y-3 pb-6 border-b border-gray-200">
+                          <h4 className="font-semibold text-base">S{displayNumber}. {q.text || q.content || ""}</h4>
+                          <div className="space-y-2">
+                            {options.map((opt: any) => (
+                              <label key={opt.id || opt.variantText} className="flex items-center gap-3 cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name={q.id}
+                                  value={String(opt.variantText)}
+                                  checked={(answers[q.id] || "") === String(opt.variantText)}
+                                  onChange={(e) => handleAnswerChange(q.id, e.target.value)}
+                                  className="accent-black"
+                                />
+                                <div className="flex items-center justify-center w-8 h-8 rounded-full border-2 border-black font-bold text-base">
+                                  {String(opt.variantText)}
+                                </div>
+                                <span className="text-base">{opt.answer || opt.text || ""}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    };
+
+                    return (
+                      <>
+                        {/* S21-24 */}
+                        {firstBlock.map((q, i) => renderQuestion(q, i))}
+
+                        {/* Static instructions for S25-29 */}
+                        <div className="space-y-3 pt-4">
+                          <p className="text-xl font-bold font-serif">
+                            Sorular 25-29. Sorulardaki cümleler metne göre DOĞRU, YANLIŞ ya da VERİLMEMİŞ olabilir. İlgili seçeneği işaretleyiniz.
+                          </p>
+                          <div className="text-base space-y-1 text-gray-700 font-serif">
+                            <p>DOĞRU – cümle, metindeki bilgilerle uygun ve/veya tutarlıysa,</p>
+                            <p>YANLIŞ – cümle, metindeki bilgilerle tutarsız ve/veya çelişkiliyse,</p>
+                            <p>VERİLMEMİŞ – cümle, metindeki bilgilerde yer almıyor ve/veya belirtilmemişse.</p>
+                          </div>
+                        </div>
+
+                        {/* S25-29 */}
+                        {secondBlock.map((q, i) => renderQuestion(q, 4 + i))}
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        </div>
+      )}
+
+      {!isLoading && !error && testData && currentPartNumber === 5 && (
+        <div className="mx-2 h-[calc(100vh-200px)]">
+          <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border border-gray-300 shadow-lg">
+            {/* Left: Passage with paragraphs A–E each separated with space */}
+            <ResizablePanel defaultSize={55} minSize={30} className="bg-gray-50">
+              <div className="h-full p-6 overflow-y-auto">
+                {(() => {
+                  const part5 = (testData.parts || []).find((p) => p.number === 5) || (testData.parts || [])[4];
+                  const section = part5?.sections?.[0];
+                  const raw = String(section?.content || "");
+                  // Parse blocks starting with A) .. E)
+                  const blocks: Array<{ letter: string; text: string }> = [];
+                  const regex = /\n?\s*([A-E])\)\s*/g;
+                  let lastIndex = 0;
+                  let match: RegExpExecArray | null;
+                  while ((match = regex.exec(raw)) !== null) {
+                    const letter = match[1];
+                    const start = match.index + match[0].length;
+                    if (blocks.length > 0) {
+                      // Cap previous block text at current match start
+                      blocks[blocks.length - 1].text = raw.slice(lastIndex, match.index).trim();
+                    }
+                    blocks.push({ letter, text: "" });
+                    lastIndex = start;
+                  }
+                  if (blocks.length) {
+                    blocks[blocks.length - 1].text = raw.slice(lastIndex).trim();
+                  } else if (raw.trim()) {
+                    blocks.push({ letter: "", text: raw.trim() });
+                  }
+
+                  return (
+                    <div className="space-y-6">
+                      {blocks.map((b, idx) => (
+                        <div key={`${b.letter || 'content'}-${idx}`} className="bg-white rounded-lg p-4 border border-gray-200">
+                          {b.letter && (
+                            <div className="flex items-center gap-3 mb-2">
+                              <div className="w-8 h-8 rounded-full border-2 border-gray-700 flex items-center justify-center font-bold text-base">
+                                {b.letter}
+                              </div>
+                              <div className="font-bold">Paragraf</div>
+                            </div>
+                          )}
+                          <div className="text-base leading-7 font-serif whitespace-pre-line text-justify">
+                            {b.text}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+            </ResizablePanel>
+
+            <ResizableHandle withHandle={true} className="bg-gray-300 hover:bg-gray-400 transition-colors" />
+
+            {/* Right: Questions 30–35 with options */}
+            <ResizablePanel defaultSize={45} minSize={25} className="bg-white">
+              <div className="h-full p-6 overflow-y-auto">
+                {(() => {
+                  const part5 = (testData.parts || []).find((p) => p.number === 5) || (testData.parts || [])[4];
+                  const section = part5?.sections?.[0];
+                  const allQuestions = (section?.questions || []).slice();
+
+                  const renderQuestion = (q: any, idx: number) => {
+                    const options = (q.answers || [])
+                      .filter((a: any) => typeof a.variantText === 'string' && a.variantText.length)
+                      .sort((a: any, b: any) => String(a.variantText).localeCompare(String(b.variantText)));
+                    const displayNumber = 30 + idx;
+                    return (
+                      <div key={q.id} className="space-y-3 pb-6 border-b border-gray-200">
+                        <h4 className="font-semibold text-base">S{displayNumber}. {q.text || q.content || ""}</h4>
+                        <div className="space-y-2">
+                          {options.map((opt: any) => (
+                            <label key={opt.id || opt.variantText} className="flex items-center gap-3 cursor-pointer">
+                              <input
+                                type="radio"
+                                name={q.id}
+                                value={String(opt.variantText)}
+                                checked={(answers[q.id] || "") === String(opt.variantText)}
+                                onChange={(e) => handleAnswerChange(q.id, e.target.value)}
+                                className="accent-black"
+                              />
+                              <div className="flex items-center justify-center w-8 h-8 rounded-full border-2 border-black font-bold text-base">
+                                {String(opt.variantText)}
+                              </div>
+                              <span className="text-base">{opt.answer || opt.text || ""}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  };
+
+                  return (
+                    <div className="space-y-6">
+                      {allQuestions.map((q, i) => renderQuestion(q, i))}
+                    </div>
+                  );
+                })()}
+              </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        </div>
+      )}
+
       {!isLoading && !error && testData && currentPartNumber === 2 && (
         <div className="mx-2 h-[calc(100vh-200px)]">
           <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border border-gray-300 shadow-lg">

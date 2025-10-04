@@ -98,6 +98,9 @@ export default function ReadingPage({ testId }: { testId: string }) {
     if (partNumber === 3) {
       return "Sorular 15-20. Aşağıdaki başlıkları (A–H) ve paragrafları (15–20) okuyunuz. Her paragraf için uygun başlığı seçiniz.";
     }
+    if (partNumber === 5) {
+      return "Sorular 30-35. sorular için aşağıdaki metni okuyunuz.";
+    }
     return "";
   };
 
@@ -138,11 +141,6 @@ export default function ReadingPage({ testId }: { testId: string }) {
             {/* Left: Passage */}
             <ResizablePanel defaultSize={60} minSize={30} className="bg-green-50">
               <div className="h-full p-6 overflow-y-auto">
-                <h2 className="text-xl font-bold mb-4">1. OKUMA METNİ.</h2>
-                <p className="mb-6 leading-relaxed">
-                  {getStaticHeader(1)}
-                </p>
-
                 {(() => {
                   const part1 = (testData.parts || []).find((p) => p.number === 1) || (testData.parts || [])[0];
                   const section1 = part1?.sections && part1.sections[0];
@@ -222,11 +220,6 @@ export default function ReadingPage({ testId }: { testId: string }) {
             {/* Left: Paragraphs 15–20, select above text with green bg */}
             <ResizablePanel defaultSize={60} minSize={30} className="bg-green-50">
               <div className="h-full p-6 overflow-y-auto">
-                <h2 className="text-xl font-bold mb-4">3. OKUMA METNİ.</h2>
-                <p className="mb-6 leading-relaxed">
-                  {getStaticHeader(3)}
-                </p>
-
                 {(() => {
                   const part3 = (testData.parts || []).find((p) => p.number === 3) || (testData.parts || [])[2];
                   const sections = part3?.sections || [];
@@ -563,11 +556,6 @@ export default function ReadingPage({ testId }: { testId: string }) {
             {/* Left: Questions 7–14 with selects */}
             <ResizablePanel defaultSize={50} minSize={30} className="bg-gray-50">
               <div className="h-full p-6 overflow-y-auto">
-                <h2 className="text-xl font-bold mb-4">2. OKUMA METNİ.</h2>
-                <p className="mb-6 leading-relaxed">
-                  {getStaticHeader(2)}
-                </p>
-
                 {(() => {
                   const part2 = (testData.parts || []).find((p) => p.number === 2) || (testData.parts || [])[1];
                   const sections = part2?.sections || [];

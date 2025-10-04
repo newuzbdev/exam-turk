@@ -395,19 +395,27 @@ export default function ReadingPage({ testId }: { testId: string }) {
                           <h4 className="font-semibold text-base">S{displayNumber}. {q.text || q.content || ""}</h4>
                           <div className="space-y-2">
                             {options.map((opt: any) => (
-                              <label key={opt.id || opt.variantText} className="flex items-center gap-3 cursor-pointer">
+                              <label key={opt.id || opt.variantText} className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                <div className="flex items-center justify-center w-8 h-8 mt-0.5">
+                                  <span className="font-bold mr-2">{String(opt.variantText)})</span>
+                                  <div className="relative">
+                                    <div className="w-5 h-5 mt-1 border-2 border-gray-400 rounded-full bg-white"></div>
+                                    {(answers[q.id] || "") === String(opt.variantText) && (
+                                      <div className="absolute mt-1 inset-0 w-5 h-5 bg-green-500 rounded-full border-2 border-green-600"></div>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex-1">
+                                  <span className="text-base text-gray-700 ml-1">{opt.answer || opt.text || ""}</span>
+                                </div>
                                 <input
                                   type="radio"
                                   name={q.id}
                                   value={String(opt.variantText)}
                                   checked={(answers[q.id] || "") === String(opt.variantText)}
                                   onChange={(e) => handleAnswerChange(q.id, e.target.value)}
-                                  className="accent-black"
+                                  className="sr-only"
                                 />
-                                <div className="flex items-center justify-center w-8 h-8 rounded-full border-2 border-black font-bold text-base">
-                                  {String(opt.variantText)}
-                                </div>
-                                <span className="text-base">{opt.answer || opt.text || ""}</span>
                               </label>
                             ))}
                           </div>

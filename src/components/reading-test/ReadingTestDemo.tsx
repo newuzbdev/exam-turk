@@ -142,7 +142,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
         <div className="mx-2 pb-24 max-h-[calc(100vh-120px)] overflow-y-auto overscroll-contain pr-2">
           <ResizablePanelGroup direction="horizontal" className="rounded-lg border border-gray-300 shadow-lg">
             {/* Left: Passage */}
-            <ResizablePanel defaultSize={60} minSize={30} className="bg-green-50">
+            <ResizablePanel defaultSize={60} minSize={30} className="bg-[#fffef5]">
               <div className="h-full p-6 overflow-visible pb-32">
                 {(() => {
                   const part1 = (testData.parts || []).find((p) => p.number === 1) || (testData.parts || [])[0];
@@ -221,7 +221,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
         <div className="mx-2 h-[calc(100vh-200px)]">
           <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border border-gray-300 shadow-lg">
             {/* Left: Paragraphs 15–20, select above text with green bg */}
-            <ResizablePanel defaultSize={60} minSize={30} className="bg-green-50">
+            <ResizablePanel defaultSize={60} minSize={30} className="bg-[#fffef5]">
               <div className="h-full p-6 overflow-y-auto pb-24">
                 {(() => {
                   const part3 = (testData.parts || []).find((p) => p.number === 3) || (testData.parts || [])[2];
@@ -456,7 +456,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
         <div className="mx-2 h-[calc(100vh-200px)]">
           <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border border-gray-300 shadow-lg">
             {/* Left: Passage with paragraphs A–E each separated with space */}
-            <ResizablePanel defaultSize={55} minSize={30} className="bg-green-50">
+            <ResizablePanel defaultSize={55} minSize={30} className="bg-[#fffef5]">
               <div className="h-full p-6 overflow-y-auto pb-24">
                 {(() => {
                   const part5 = (testData.parts || []).find((p) => p.number === 5) || (testData.parts || [])[4];
@@ -546,9 +546,24 @@ export default function ReadingPage({ testId }: { testId: string }) {
                     );
                   };
 
+                  // Static instruction headers
+                  const firstBlock = allQuestions.slice(0, 3); // 30-32
+                  const secondBlock = allQuestions.slice(3, 5); // 33-35
                   return (
                     <div className="space-y-6">
-                      {allQuestions.map((q, i) => renderQuestion(q, i))}
+                      <div className="space-y-2">
+                        <p className="text-xl font-semibold font-serif">
+                          Sorular 30-32. Metne göre doğru seçeneği (A, B, C veya D) işaretleyiniz.
+                        </p>
+                      </div>
+                      {firstBlock.map((q, i) => renderQuestion(q, i))}
+
+                      <div className="space-y-2 pt-2">
+                        <p className="text-xl font-semibold font-serif">
+                          Sorular 33-35. Aşağıdaki cümleleri (33-35) okuyunuz. Cümlelerin hangi paragraflara (A-E) ait olduğunu bulunuz. Seçilmemesi gereken İKİ paragraf bulunmaktadır.
+                        </p>
+                      </div>
+                      {secondBlock.map((q, i) => renderQuestion(q, 3 + i))}
                     </div>
                   );
                 })()}
@@ -562,7 +577,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
         <div className="mx-2 h-[calc(100vh-200px)]">
           <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border border-gray-300 shadow-lg">
             {/* Left: Questions 7–14 with selects */}
-            <ResizablePanel defaultSize={50} minSize={30} className="bg-gray-50">
+            <ResizablePanel defaultSize={50} minSize={30} className="bg-[#fffef5]">
               <div className="h-full p-6 overflow-y-auto pb-24">
                 {(() => {
                   const part2 = (testData.parts || []).find((p) => p.number === 2) || (testData.parts || [])[1];
@@ -660,17 +675,16 @@ export default function ReadingPage({ testId }: { testId: string }) {
                                     </select>
                                   </div>
                                   <div className="flex items-center justify-start mb-4">
-                                    <div className="relative">
+                                    <div className="relative bg-white rounded-xl border border-gray-200 shadow-sm p-3">
                                       <img
                                         src={makeImageSrc(q.imageUrl as string)}
                                         alt={`S${qNum} görseli`}
-                                        className="w-[400px] h-[300px] object-contain rounded-xl shadow-md border-2 border-gray-100"
+                                        className="w-full max-w-[520px] h-auto max-h-[340px] object-contain bg-white"
                                         onError={(e) => {
                                           const el = e.target as HTMLImageElement;
                                           el.style.display = 'none';
                                         }}
                                       />
-                                      <div className="absolute inset-0 rounded-xl bg-gradient-to-t from-black/5 to-transparent pointer-events-none"></div>
                                     </div>
                                   </div>
                                   {q.text && (

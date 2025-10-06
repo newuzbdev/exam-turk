@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "../ui/button";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "../ui/resizable";
-import { readingTestService, type ReadingTestItem } from "@/services/readingTest.service";
+import { readingTestService, readingSubmissionService, type ReadingTestItem } from "@/services/readingTest.service";
 
 export default function ReadingPage({ testId }: { testId: string }) {
+  const navigate = useNavigate();
   const [timeLeft, setTimeLeft] = useState(60 * 60);
   const [testData, setTestData] = useState<ReadingTestItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -84,6 +86,34 @@ export default function ReadingPage({ testId }: { testId: string }) {
     return `${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
+  const handleSubmit = async () => {
+    try {
+      if (!testData?.id) {
+        console.error("No testId found for submission");
+        return;
+      }
+      const payload = Object.entries(answers).map(([questionId, userAnswer]) => ({ questionId, userAnswer }));
+      const res: any = await readingSubmissionService.submitAnswers(testData.id, payload);
+      const resultId = res?.testResultId || res?.id || res?.resultId || res?.data?.id || res?.data?.resultId;
+      const summary = {
+        score: res?.score ?? res?.data?.score,
+        correctCount: res?.correctCount ?? res?.data?.correctCount,
+        totalQuestions: res?.totalQuestions ?? res?.data?.totalQuestions,
+        message: res?.message ?? res?.data?.message,
+        testResultId: resultId,
+        testId: testData.id,
+      } as any;
+      if (resultId) {
+        try { await readingSubmissionService.getExamResults(resultId); } catch {}
+        navigate(`/reading-test/results/${resultId}`, { state: { summary } });
+      } else {
+        console.error("No resultId found in reading submission response:", res);
+      }
+    } catch (error) {
+      console.error("Reading submit error", error);
+    }
+  };
+
   const handleAnswerChange = (questionId: string, value: string) => {
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
   };
@@ -115,7 +145,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
         <div className="font-bold text-2xl">{testData?.title || "Reading"}</div>
         <div className="flex items-center gap-4">
           <div className="font-bold text-lg">{formatTime(timeLeft)}</div>
-          <Button className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 text-sm font-bold">GÖNDER</Button>
+          <Button onClick={handleSubmit} className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 text-sm font-bold">GÖNDER</Button>
         </div>
       </div>
 

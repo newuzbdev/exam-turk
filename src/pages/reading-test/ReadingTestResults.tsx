@@ -1,303 +1,392 @@
-import {
-  ArrowLeft,
-  BookOpen,
-  CheckCircle,
-  Clock,
-  TrendingUp,
-  Trophy,
-  XCircle,
-} from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-
-import { Badge } from "@/components/ui/badge";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { motion } from "framer-motion";
-import {
-  readingSubmissionService,
-  type TestResultData,
-} from "@/services/readingTest.service";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { useLocation, useParams } from "react-router-dom";
+import { readingSubmissionService, readingTestService, type ReadingTestItem, type TestResultData } from "@/services/readingTest.service";
 
 export default function ReadingTestResults() {
   const { resultId } = useParams<{ resultId: string }>();
   const [data, setData] = useState<TestResultData | null>(null);
   const [loading, setLoading] = useState(true);
-  const router = useNavigate();
+  const [reportId, setReportId] = useState(resultId || "");
+  const [testData, setTestData] = useState<ReadingTestItem | null>(null);
+  const location = useLocation();
+  const navState: any = (location && (location as any).state) || {};
+  const summary = navState?.summary || null;
 
   useEffect(() => {
-    if (!resultId) return;
+    if (!resultId) {
+      return;
+    }
     (async () => {
       setLoading(true);
-      const res = await readingSubmissionService.getExamResults(resultId);
-      setData(res);
+      try {
+        const res = await readingSubmissionService.getExamResults(resultId);
+        setData(res);
+        const effectiveTestId = res?.testId || summary?.testId;
+        if (effectiveTestId) {
+          try {
+            const td = await readingTestService.getTestWithFullData(effectiveTestId);
+            setTestData(td);
+          } catch {}
+        }
+      } catch (error) {
+        console.error("Error fetching results:", error);
+      }
       setLoading(false);
     })();
   }, [resultId]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen  flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Natijalar yuklanmoqda...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!data) {
-    return (
-      <div className="min-h-screen  flex items-center justify-center">
-        <Card className="p-8 text-center shadow-lg border-red-300 bg-white">
-          <XCircle className="w-12 h-12 text-red-600 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Natijalar topilmadi</h2>
-          <p className="text-muted-foreground mb-4">
-            Iltimos, qaytadan urinib ko'ring
-          </p>
-          <Button
-            onClick={() => router("/tests")}
-            className="bg-red-600 hover:bg-red-700 text-white"
-          >
-            Testlarga qaytish
-          </Button>
-        </Card>
-      </div>
-    );
-  }
-
-  const correctAnswers = data.userAnswers.filter((ua) => ua.isCorrect).length;
-  const totalQuestions = data.userAnswers.length;
-  const accuracyPercentage =
-    totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
-  const testDuration =
-    new Date(data.completedAt).getTime() - new Date(data.startedAt).getTime();
-  const durationMinutes = Math.floor(testDuration / (1000 * 60));
-
-  const getScoreBadge = (score: number) => {
-    if (score >= 8)
-      return { text: "Excellent", color: "bg-green-600 text-white" };
-    if (score >= 6.5)
-      return { text: "Good", color: "bg-yellow-500 text-white" };
-    return { text: "Needs Improvement", color: "bg-red-600 text-white" };
+  const handleGetReport = async () => {
+    if (!reportId) return;
+    setLoading(true);
+    try {
+      const res = await readingSubmissionService.getExamResults(reportId);
+      setData(res);
+    } catch (error) {
+      console.error("Error fetching report:", error);
+    }
+    setLoading(false);
   };
 
-  const scoreBadge = getScoreBadge(data.score);
+  const examData = data?.userAnswers?.map((ua, index) => {
+    const correctAnswer = ua.question.answers.find(a => a.correct);
+    return {
+      no: index + 1,
+      userAnswer: ua.userAnswer || "Not selected",
+      correctAnswer: correctAnswer?.variantText || correctAnswer?.answer || "",
+      result: ua.isCorrect ? "Correct" : "Wrong"
+    };
+  }) || [];
 
-  return (
-    <div className="min-h-screen  ">
-      <header className="bg-white border-b border-red-200 shadow-sm">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+  const fullExamData = useMemo(() => {
+    if (!testData) return null;
+    const byId: Record<string, { userAnswer?: string; isCorrect?: boolean }> = {};
+    const byNumber: Record<number, { userAnswer?: string; isCorrect?: boolean }> = {};
+    const byText: Record<string, { userAnswer?: string; isCorrect?: boolean }> = {};
+    const detailed = (data?.userAnswers || []);
+    detailed.forEach(ua => {
+      if (ua?.questionId) byId[ua.questionId] = { userAnswer: ua.userAnswer, isCorrect: ua.isCorrect };
+      const num = ua?.question?.number;
+      if (typeof num === 'number') byNumber[num] = { userAnswer: ua.userAnswer, isCorrect: ua.isCorrect };
+      const txt = (ua?.question?.text || ua?.question?.content || '').toString().trim().toLowerCase();
+      if (txt) byText[txt] = { userAnswer: ua.userAnswer, isCorrect: ua.isCorrect };
+    });
+
+    let flatQuestions: any[] = [];
+    (testData.parts || []).forEach(p => (p.sections || []).forEach(s => (s.questions || []).forEach(q => flatQuestions.push(q))));
+    // Prefer ordering by question.number if present
+    flatQuestions = flatQuestions.sort((a, b) => {
+      const na = typeof a.number === 'number' ? a.number : 1e9;
+      const nb = typeof b.number === 'number' ? b.number : 1e9;
+      if (na !== nb) return na - nb;
+      return 0;
+    });
+
+    const rows: { no: number; userAnswer: string; correctAnswer: string; result: string; _qid?: string }[] = [];
+    const usedDetailed = new Set<number>();
+
+    for (let i = 0; i < flatQuestions.length; i++) {
+      const q = flatQuestions[i];
+      const correct = (q.answers || []).find((a: any) => a.correct);
+      let ua = byId[q.id];
+      if (!ua && typeof q.number === 'number') ua = byNumber[q.number];
+      if (!ua) {
+        const key = (q.text || q.content || '').toString().trim().toLowerCase();
+        if (key && byText[key]) ua = byText[key];
+      }
+      if (!ua) {
+        // Try to match by index to at least show selected ones if ordering matches
+        if (detailed[i]) {
+          ua = { userAnswer: detailed[i].userAnswer, isCorrect: detailed[i].isCorrect };
+          usedDetailed.add(i);
+        }
+      }
+      const userAnswer = ua?.userAnswer || "Not selected";
+      const result = ua?.userAnswer ? (ua?.isCorrect ? "Correct" : "Wrong") : "Not selected";
+      rows.push({
+        no: (typeof q.number === 'number' ? q.number : (i + 1)),
+        userAnswer,
+        correctAnswer: String(correct?.variantText || correct?.answer || ""),
+        result,
+        _qid: q.id,
+      });
+    }
+
+    // Append any remaining detailed answers that didn't match by id/number/index
+    for (let i = 0; i < detailed.length; i++) {
+      if (usedDetailed.has(i)) continue;
+      const ua = detailed[i];
+      if (!ua) continue;
+      // Skip if we already have a row with this questionId
+      if (ua.questionId && rows.some(r => r._qid === ua.questionId)) continue;
+      const cAns = (ua.question?.answers || []).find((a: any) => a.correct);
+      rows.push({
+        no: typeof ua.question?.number === 'number' ? ua.question.number : (rows.length + 1),
+        userAnswer: ua.userAnswer || "Not selected",
+        correctAnswer: String(cAns?.variantText || cAns?.answer || ""),
+        result: ua.userAnswer ? (ua.isCorrect ? "Correct" : "Wrong") : "Not selected",
+      });
+    }
+
+    // Sort by No. at the end for consistent display
+    return rows
+      .map(({ _qid, ...rest }) => rest)
+      .sort((a, b) => a.no - b.no);
+  }, [testData, data]);
+
+  const hasDetailedData = data && data.userAnswers && data.userAnswers.length > 0;
+  const hasSummaryData = summary && summary.score !== undefined;
+
+  const score = summary?.score ?? data?.score ?? 0;
+  const computedCorrectFromFull = useMemo(() => {
+    if (fullExamData) return fullExamData.filter(r => r.result === "Correct").length;
+    if (hasDetailedData) return (data!.userAnswers || []).filter(u => u.isCorrect).length;
+    return undefined;
+  }, [fullExamData, hasDetailedData, data]);
+  const computedTotalFromFull = useMemo(() => {
+    if (fullExamData) return fullExamData.length;
+    if (hasDetailedData) return (data!.userAnswers || []).length;
+    return undefined;
+  }, [fullExamData, hasDetailedData, data]);
+  const correctCount = summary?.correctCount ?? computedCorrectFromFull;
+  const totalQuestions = summary?.totalQuestions ?? computedTotalFromFull;
+  const userName = "JAXONGIRMIRZO";
+  const currentDate = new Date().toISOString().replace('T', ' ').substring(0, 19) + " GMT+5";
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading results...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data && !summary) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-red-600 mb-4">Results Not Found</h2>
+          <p className="text-muted-foreground mb-4">
+            Unable to load test results. Please check the result ID and try again.
+          </p>
+          <div className="flex items-center gap-3">
+            <Input
+              value={reportId}
+              onChange={(e) => setReportId(e.target.value)}
+              className="w-48"
+              placeholder="Enter report ID"
+            />
+            <Button 
+              onClick={handleGetReport}
+              className="bg-red-600 hover:bg-red-700 text-white px-6"
+            >
+              Get Report
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasDetailedData && hasSummaryData) {
+    return (
+      <div className="max-w-6xl mx-auto space-y-5 p-4 sm:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-xl sm:text-3xl font-bold text-foreground">Exam results</h1>
+          <div className="w-full sm:w-auto">
+            <div className="flex items-center gap-2">
+              <Input
+                value={reportId}
+                onChange={(e) => setReportId(e.target.value)}
+                className="flex-1 sm:flex-none sm:w-64 h-9"
+                placeholder="Enter report ID"
+              />
+              <Button 
+                onClick={handleGetReport}
+                className="bg-red-600 hover:bg-red-700 text-white h-9 px-4 sm:px-5"
+              >
+                Get
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 sm:p-4">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] sm:text-xs font-medium text-gray-600">Report ID</span>
               <Button
                 variant="outline"
-                size="sm"
-                onClick={() => router(-1)}
-                className="flex items-center gap-2 border-red-300 text-red-600 "
+                className="h-8 px-2 py-1 text-xs"
+                onClick={() => navigator.clipboard.writeText(reportId || "")}
               >
-                <ArrowLeft className="w-4 h-4" />
-                Orqaga
+                Copy
               </Button>
-              <div>
-                <h1 className="text-2xl font-bold text-red-700">
-                  Reading Test Natijalari
-                </h1>
-                <p className="text-muted-foreground text-sm">
-                  IELTS uslubida hisobot
-                </p>
-              </div>
             </div>
-            <Badge className={`${scoreBadge.color} px-3 py-1 rounded-full`}>
-              {scoreBadge.text}
-            </Badge>
+            <div className="text-xs sm:text-sm break-all text-gray-800">{reportId}</div>
+            <div className="flex items-center justify-between text-[11px] sm:text-sm text-gray-600">
+              <span>Name: {userName}</span>
+              <span>{currentDate}</span>
+            </div>
           </div>
         </div>
-      </header>
 
-      <div className="container mx-auto px-4 py-8 bg-white">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Score Overview */}
-          <div className="lg:col-span-1 ">
-            <Card className="text-center shadow-lg border-red-200 bg-white">
-              <CardHeader>
-                <div className="mx-auto w-20 h-20  rounded-full flex items-center justify-center mb-4">
-                  <Trophy className="w-10 h-10 text-red-600" />
-                </div>
-                <CardTitle className="text-3xl font-bold text-red-700">
-                  {data.score} <span className="text-lg">/ 9.0</span>
-                </CardTitle>
-                <p className="text-muted-foreground">Umumiy Ball</p>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="font-semibold text-green-600">
-                      {correctAnswers}
-                    </p>
-                    <p className="text-muted-foreground">To‘g‘ri</p>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-red-600">
-                      {totalQuestions - correctAnswers}
-                    </p>
-                    <p className="text-muted-foreground">Noto‘g‘ri</p>
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between text-sm">
-                    <span>Aniqlik</span>
-                    <span className="font-semibold">
-                      {accuracyPercentage.toFixed(1)}%
-                    </span>
-                  </div>
-                  <Progress value={accuracyPercentage} className="h-2" />
-                </div>
-                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                  <Clock className="w-4 h-4" />
-                  <span>Vaqt: {durationMinutes} daqiqa</span>
-                </div>
-              </CardContent>
-            </Card>
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold text-foreground">Reading score: {score}
+            {typeof correctCount === "number" && typeof totalQuestions === "number" && (
+              <span className="ml-3 text-base text-muted-foreground">(
+                {correctCount} / {totalQuestions} correct
+              )</span>
+            )}
+          </h2>
+        </div>
 
-            {/* Performance Insights */}
-            <Card className="mt-6 shadow-lg border-red-200 bg-white">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg text-red-700">
-                  <TrendingUp className="w-5 h-5 text-red-600" />
-                  Tahlil
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span>Multiple Choice</span>
-                  <Badge variant="outline" className="text-xs">
-                    {
-                      data.userAnswers.filter(
-                        (ua) =>
-                          ua.question.type === "MULTIPLE_CHOICE" && ua.isCorrect
-                      ).length
-                    }
-                    /
-                    {
-                      data.userAnswers.filter(
-                        (ua) => ua.question.type === "MULTIPLE_CHOICE"
-                      ).length
-                    }
-                  </Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span>True/False</span>
-                  <Badge variant="outline" className="text-xs">
-                    {
-                      data.userAnswers.filter(
-                        (ua) =>
-                          ua.question.type === "TRUE_FALSE" && ua.isCorrect
-                      ).length
-                    }
-                    /
-                    {
-                      data.userAnswers.filter(
-                        (ua) => ua.question.type === "TRUE_FALSE"
-                      ).length
-                    }
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Detailed Answers */}
-          <div className="lg:col-span-2">
-            <Card className="shadow-lg border-red-200 bg-white">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-red-700">
-                  <BookOpen className="w-5 h-5 text-red-600" />
-                  Batafsil Javoblar
-                </CardTitle>
-                <p className="text-muted-foreground text-sm">
-                  Har bir savol uchun sizning javobingiz va to‘g‘ri javob
+        {fullExamData ? (
+          <Card className="overflow-hidden rounded-lg border border-gray-200">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-green-600 text-white">
+                      <th className="px-4 py-3 text-left font-medium rounded-tl-lg">No.</th>
+                      <th className="px-4 py-3 text-left font-medium">User Answer</th>
+                      <th className="px-4 py-3 text-left font-medium">Correct Answer</th>
+                      <th className="px-4 py-3 text-left font-medium rounded-tr-lg">Result</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fullExamData.map((item, index) => (
+                      <tr
+                        key={item.no}
+                        className={`border-b border-gray-200 last:border-b-0 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
+                      >
+                        <td className="px-4 py-3 text-gray-700 font-medium">{item.no}</td>
+                        <td className="px-4 py-3 text-gray-600">{item.userAnswer || "Not selected"}</td>
+                        <td className="px-4 py-3 text-gray-800 font-medium">{item.correctAnswer}</td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            item.result === "Correct" 
+                              ? "bg-green-100 text-green-800" 
+                              : item.result === "Wrong" 
+                                ? "bg-red-100 text-red-800"
+                                : "bg-gray-100 text-gray-700"
+                          }`}>
+                            {item.result}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="overflow-hidden rounded-lg border border-gray-200">
+            <CardContent className="p-6">
+              <div className="text-center">
+                <h3 className="text-lg font-semibold text-foreground mb-2">Test Completed Successfully</h3>
+                <p className="text-muted-foreground mb-4">
+                  Your test has been submitted and scored. Detailed question-by-question results are being processed.
                 </p>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {data.userAnswers.map((ua) => (
-                    <Card
-                      key={ua.id}
-                      className={`border-l-4 ${
-                        ua.isCorrect
-                          ? "border-green-500 bg-green-50"
-                          : "border-red-500 bg-red-50"
-                      } shadow-sm`}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex gap-2">
-                            <Badge variant="outline" className="text-xs">
-                              Savol {ua.question.number}
-                            </Badge>
-                            <Badge className="text-xs bg-red-100 text-red-700 border border-red-300">
-                              {ua.question.type.replace("_", " ")}
-                            </Badge>
-                          </div>
-                          {ua.isCorrect ? (
-                            <CheckCircle className="w-5 h-5 text-green-600" />
-                          ) : (
-                            <XCircle className="w-5 h-5 text-red-600" />
-                          )}
-                        </div>
-                        <h4 className="font-semibold text-foreground mb-3">
-                          {ua.question.text}
-                        </h4>
-                        <div className="space-y-2">
-                          <p
-                            className={`text-sm font-medium ${
-                              ua.isCorrect ? "text-green-700" : "text-red-700"
-                            }`}
-                          >
-                            Sizning javob: {ua.userAnswer}
-                          </p>
-                          {!ua.isCorrect && ua.question.answers.length > 0 && (
-                            <p className="text-sm font-medium text-green-700">
-                              To‘g‘ri javob:{" "}
-                              {ua.question.answers
-                                .filter((a) => a.correct)
-                                .map((a) => a.answer)
-                                .join(", ")}
-                            </p>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <p className="text-green-800 font-medium">Score: {score}</p>
+                  {summary?.totalQuestions && (
+                    <p className="text-green-700 text-sm mt-1">
+                      Total Questions: {summary.totalQuestions}
+                    </p>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-          className="flex justify-center gap-4 mt-8"
-        >
-          <Button
-            variant="outline"
-            onClick={() => router("/test")}
-            className="border-red-300 text-red-600 hover:bg-red-50"
-          >
-            Boshqa testlar
-          </Button>
-          <Button
-            className="bg-red-600 hover:bg-red-700 text-white"
-            onClick={() => window.print()}
-          >
-            Natijani chop etish
-          </Button>
-        </motion.div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
+    );
+  }
+
+  return (
+    <div className="max-w-6xl mx-auto space-y-6 p-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold text-foreground">Exam results</h1>
+        <div className="flex items-center gap-3">
+          <Input
+            value={reportId}
+            onChange={(e) => setReportId(e.target.value)}
+            className="w-48"
+            placeholder="Enter report ID"
+          />
+          <Button 
+            onClick={handleGetReport}
+            className="bg-red-600 hover:bg-red-700 text-white px-6"
+          >
+            Get Report
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between text-sm text-muted-foreground">
+        <div className="flex items-center gap-6">
+          <span>Report ID: {reportId}</span>
+          <span>Name: {userName}</span>
+        </div>
+        <span>Date: {currentDate}</span>
+      </div>
+
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold text-foreground">Reading score: {score}
+          {typeof correctCount === "number" && typeof totalQuestions === "number" && (
+            <span className="ml-3 text-base text-muted-foreground">(
+              {correctCount} / {totalQuestions} correct
+            )</span>
+          )}
+        </h2>
+      </div>
+
+      <Card className="overflow-hidden rounded-lg border border-gray-200">
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-green-600 text-white">
+                  <th className="px-4 py-3 text-left font-medium rounded-tl-lg">No.</th>
+                  <th className="px-4 py-3 text-left font-medium">User Answer</th>
+                  <th className="px-4 py-3 text-left font-medium">Correct Answer</th>
+                  <th className="px-4 py-3 text-left font-medium rounded-tr-lg">Result</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(fullExamData || examData).map((item, index) => (
+                  <tr
+                    key={item.no}
+                    className={`border-b border-gray-200 last:border-b-0 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
+                  >
+                    <td className="px-4 py-3 text-gray-700 font-medium">{item.no}</td>
+                    <td className="px-4 py-3 text-gray-600">{item.userAnswer || "Not selected"}</td>
+                    <td className="px-4 py-3 text-gray-800 font-medium">{item.correctAnswer}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        item.result === "Correct" 
+                          ? "bg-green-100 text-green-800" 
+                          : item.result === "Wrong" 
+                            ? "bg-red-100 text-red-800"
+                            : "bg-gray-100 text-gray-700"
+                      }`}>
+                        {item.result}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

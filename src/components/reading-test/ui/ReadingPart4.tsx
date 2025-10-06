@@ -23,11 +23,6 @@ export default function ReadingPart4() {
         <ResizablePanelGroup direction="horizontal" className="items-stretch">
           <ResizablePanel defaultSize={66} minSize={40}>
             <div className="space-y-4">
-              <div>
-                <h2 className="text-lg font-bold mb-4">4. OKUMA METNİ.</h2>
-                <p className="text-sm leading-relaxed mb-6">21-29. sorular için aşağıdaki metni okuyunuz;</p>
-              </div>
-
               <div className="space-y-4">
                 <h3 className="text-center font-bold text-lg">Dünüyle Bugünüyle Halk Oyunları ve Dans</h3>
                 <div className="text-sm leading-relaxed space-y-4">

@@ -191,12 +191,23 @@ export const readingSubmissionService = {
     testResulId: string
   ): Promise<TestResultData | null> => {
     try {
+      // Backend expects testResultId; keep legacy param for backward compatibility
       const res = await axiosPrivate.get("/api/exam/user-answers", {
-        params: { testResulId },
+        params: { testResultId: testResulId, testResulId },
       });
-      const data = extractData<TestResultData[]>(res);
-      if (Array.isArray(data) && data.length > 0) {
-        return data[0];
+      const raw = extractData<any>(res);
+      // Accept multiple shapes: array, object, or nested data
+      if (Array.isArray(raw)) {
+        return (raw[0] as TestResultData) ?? null;
+      }
+      if (raw && typeof raw === "object") {
+        if (Array.isArray(raw.data)) {
+          return (raw.data[0] as TestResultData) ?? null;
+        }
+        // If it looks like a single result object
+        if (raw.userAnswers || raw.id || raw.testId) {
+          return raw as TestResultData;
+        }
       }
       return null;
     } catch (error) {

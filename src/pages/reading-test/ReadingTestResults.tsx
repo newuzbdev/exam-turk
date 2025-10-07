@@ -140,16 +140,26 @@ export default function ReadingTestResults() {
   const hasSummaryData = summary && summary.score !== undefined;
 
   const score = summary?.score ?? data?.score ?? 0;
+  // Prefer reconstructed rows, but if most are "Not selected", fall back to raw API rows
+  const finalRows = useMemo(() => {
+    if (fullExamData && fullExamData.length) {
+      const notSelectedCount = fullExamData.filter(r => !r.userAnswer || r.userAnswer === "Not selected").length;
+      const ratio = notSelectedCount / fullExamData.length;
+      if (ratio <= 0.5) return fullExamData;
+      // Too many missing matches -> use raw mapping
+    }
+    return examData;
+  }, [fullExamData, examData]);
   const computedCorrectFromFull = useMemo(() => {
-    if (fullExamData) return fullExamData.filter(r => r.result === "Correct").length;
+    if (finalRows) return finalRows.filter(r => r.result === "Correct").length;
     if (hasDetailedData) return (data!.userAnswers || []).filter(u => u.isCorrect).length;
     return undefined;
-  }, [fullExamData, hasDetailedData, data]);
+  }, [finalRows, hasDetailedData, data]);
   const computedTotalFromFull = useMemo(() => {
-    if (fullExamData) return fullExamData.length;
+    if (finalRows) return finalRows.length;
     if (hasDetailedData) return (data!.userAnswers || []).length;
     return undefined;
-  }, [fullExamData, hasDetailedData, data]);
+  }, [finalRows, hasDetailedData, data]);
   const correctCount = summary?.correctCount ?? computedCorrectFromFull;
   const totalQuestions = summary?.totalQuestions ?? computedTotalFromFull;
   const userName = "JAXONGIRMIRZO";
@@ -246,7 +256,7 @@ export default function ReadingTestResults() {
           </h2>
         </div>
 
-        {fullExamData ? (
+        {finalRows && finalRows.length ? (
           <Card className="overflow-hidden rounded-lg border border-gray-200">
             <CardContent className="p-0">
               <div className="overflow-x-auto">
@@ -260,7 +270,7 @@ export default function ReadingTestResults() {
                     </tr>
                   </thead>
                   <tbody>
-                    {fullExamData.map((item, index) => (
+                    {finalRows.map((item, index) => (
                       <tr
                         key={item.no}
                         className={`border-b border-gray-200 last:border-b-0 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}

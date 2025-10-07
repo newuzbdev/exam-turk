@@ -317,7 +317,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
       ];
 
       return (
-        <div key={`bolum-${bolum}`} className="w-full mx-auto bg-white border-gray-800 rounded-lg overflow-hidden">
+        <div key={`bolum-${bolum}`} className="w-full mx-auto bg-white border-gray-800 rounded-lg overflow-hidden pb-28 md:pb-36 lg:pb-40">
           {/* Mobile Layout - Stacked */}
           <div className="block lg:hidden">
             {/* Questions Section */}
@@ -426,7 +426,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
       const imageUrl = questions.find(q => q.imageUrl)?.imageUrl;
       
       return (
-        <div key={`bolum-${bolum}`} className="w-full mx-auto bg-white border-gray-800 rounded-lg overflow-hidden">
+        <div key={`bolum-${bolum}`} className="w-full mx-auto bg-white border-gray-800 rounded-lg overflow-hidden pb-28 md:pb-36 lg:pb-40">
           {/* Mobile Layout - Stacked */}
           <div className="block lg:hidden">
             {/* Image Section */}
@@ -676,7 +676,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
     const sections = createSections();
 
     return (
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-800 p-2 sm:p-3">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-800 p-2 sm:p-3 z-50 shadow-[0_-2px_8px_rgba(0,0,0,0.06)]">
         <div className="max-w-7xl mx-auto">
           {/* Mobile Layout - Scrollable */}
           <div className="block lg:hidden">

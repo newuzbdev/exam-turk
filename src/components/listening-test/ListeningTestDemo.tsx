@@ -19,7 +19,8 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
   const [loading, setLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState<number>(600); // 10 minutes in seconds
   const [timerActive, setTimerActive] = useState<boolean>(false);
-  const [isExamMode, setIsExamMode] = useState<boolean>(false);
+  // Removed exam-mode body lock for listening; keep state local if needed later
+  
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -73,11 +74,9 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
     };
 
     const cleanupNav = addNavigationLock();
-    setIsExamMode(true);
     enterFullscreen();
 
     return () => {
-      setIsExamMode(false);
       if (document.fullscreenElement) {
         try {
           document.exitFullscreen().catch(() => {});
@@ -304,7 +303,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
       questionNumber += getQuestionsForPartNumber(i).length;
     }
 
-    const staticHeader = getStaticHeader(bolum);
+    
 
     // Special layout for Part 3 (questions on left, answer options on right)
     if (bolum === 3) {
@@ -844,8 +843,8 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
   const bolum = currentPartNumber;
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-40">
-        <div className="bg-white px-3 sm:px-6 py-3 border-2 border-gray-300 rounded-lg mx-2 sm:mx-4 mt-2 sm:mt-4">
+    <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
+        <div className="bg-white px-3 sm:px-6 py-3 border-2 border-gray-300 rounded-lg mt-2 sm:mt-4">
           {/* Mobile Header - Single Line Layout */}
           <div className="block lg:hidden mb-3">
             <div className="flex items-center justify-between">
@@ -907,8 +906,8 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
           </div>
         </div>
         
-        <div className="mx-auto p-6 pb-12">
-          {/* Current Part */}
+        {/* Internal scroll to keep content accessible while exam-mode locks body scroll */}
+        <div className="flex-1 overflow-y-auto p-6 pb-28">
           {renderPart(bolum)}
         </div>
       

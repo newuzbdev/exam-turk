@@ -6,7 +6,7 @@ interface Question {
   selectedAnswer?: "correct" | "incorrect";
 }
 
-export default function ListeningPart1() {
+export default function ListeningPart2() {
   const [questions, setQuestions] = useState<Question[]>([
     {
       id: 9,

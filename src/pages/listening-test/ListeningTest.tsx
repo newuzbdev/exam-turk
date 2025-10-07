@@ -5,6 +5,7 @@ import { useEffect } from "react";
 export default function ListeningTestPage() {
     const { testId } = useParams<{ testId: string }>();
     const navigate = useNavigate();
+    // Re-enable exam mode to hide navbar/footer for listening
     useEffect(() => {
         if (typeof document !== "undefined") {
           document.body.classList.add("exam-mode");
@@ -14,7 +15,7 @@ export default function ListeningTestPage() {
             document.body.classList.remove("exam-mode");
           }
         };
-      }, []);
+    }, []);
     if (!testId) {
         navigate("/test");
         return null;

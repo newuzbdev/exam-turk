@@ -294,7 +294,22 @@ export default function ImprovedSpeakingTest() {
     const sec = currentSection
     if (!sec) return null
     if (sec.subParts?.length) {
-      return sec.subParts[currentSubPartIndex]?.questions?.[currentQuestionIndex] ?? null
+      const questions = sec.subParts[currentSubPartIndex]?.questions
+      if (questions) {
+        // Sort questions by order field to ensure correct sequence
+        const sortedQuestions = [...questions].sort((a, b) => a.order - b.order)
+        const question = sortedQuestions[currentQuestionIndex] ?? null
+        
+        console.log("Current question (sorted):", {
+          questionIndex: currentQuestionIndex,
+          questionOrder: question?.order,
+          questionText: question?.questionText?.substring(0, 50) + "...",
+          totalQuestions: sortedQuestions.length
+        })
+        
+        return question
+      }
+      return null
     }
     return sec.questions?.[currentQuestionIndex] ?? null
   })()
@@ -305,7 +320,10 @@ export default function ImprovedSpeakingTest() {
       const key = `${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
       if (autoAdvanceRef.current !== key) {
         autoAdvanceRef.current = key
-        nextQuestion()
+        // Add a small delay to prevent rapid successive calls
+        setTimeout(() => {
+          nextQuestion()
+        }, 50)
       }
     } else {
       autoAdvanceRef.current = null
@@ -465,7 +483,9 @@ export default function ImprovedSpeakingTest() {
     }
   }, [currentSectionIndex, currentSubPartIndex, currentQuestionIndex, showSectionDescription, isPlayingInstructions, currentQuestion])
 
-  // Ensure PART1 questions auto-start (e.g., after 1.2 first question finishes)
+  // Removed duplicate auto-advance effect to prevent loops
+
+  // Direct auto-start when question changes in PART1
   useEffect(() => {
     if (
       !showSectionDescription &&
@@ -477,23 +497,29 @@ export default function ImprovedSpeakingTest() {
       !isPrepRunning
     ) {
       const key = `${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
-      // Only auto-start if we haven't already started prep for this key (e.g., from instruction end)
+      console.log(`🎯 Question changed effect: Starting preparation for question ${currentQuestionIndex + 1}`)
+      
+      // Only start if we haven't already started for this question
       if (prepStartedKeyRef.current !== key) {
+        // Clear any existing preparation
+        if (prepIntervalRef.current) {
+          window.clearInterval(prepIntervalRef.current)
+          prepIntervalRef.current = null
+        }
+        
+        // Start preparation with a small delay to prevent loops
         prepStartedKeyRef.current = key
-        beginPreparation(5, () => startRecording(30, true))
+        setTimeout(() => {
+          beginPreparation(5, () => {
+            console.log(`🎤 Auto-starting recording for question ${currentQuestionIndex + 1}`)
+            startRecording(30, true)
+          })
+        }, 100)
+      } else {
+        console.log(`⚠️ Preparation already started for question ${currentQuestionIndex + 1}`)
       }
     }
-  }, [
-    showSectionDescription,
-    currentSection,
-    currentQuestion,
-    currentSectionIndex,
-    currentSubPartIndex,
-    currentQuestionIndex,
-    isPlayingInstructions,
-    isRecording,
-    isPrepRunning,
-  ])
+  }, [currentQuestionIndex, currentSubPartIndex, currentSectionIndex])
 
   // Removed centralized auto-start to prevent double hazırlık
 
@@ -621,6 +647,7 @@ export default function ImprovedSpeakingTest() {
 
       mr.ondataavailable = (e) => e.data?.size && chunksRef.current.push(e.data)
       mr.onstop = async () => {
+        console.log(`🔔 Recording stopped for question ${currentQuestionIndex + 1}`)
         // bell to indicate answer end
         playSound("end")
         clearTimers()
@@ -631,8 +658,19 @@ export default function ImprovedSpeakingTest() {
         const key = currentQuestion?.id || currentSection?.id || `${currentSectionIndex}`
         const rec: Recording = { blob, duration, questionId: key }
         setRecordings((prev) => new Map(prev).set(key, rec))
-        // Always advance flow after recording stops (handles PART2 with no per-question object)
-        setTimeout(() => nextQuestion(true), 600)
+        
+        // For PART1, automatically advance to next question after recording
+        if (currentSection?.type === "PART1") {
+          console.log(`🎯 PART1: Recording finished for question ${currentQuestionIndex + 1}, auto-advancing in 800ms...`)
+          setTimeout(() => {
+            console.log(`🚀 Calling nextQuestion(true) for auto-advance`)
+            nextQuestion(true)
+          }, 800) // Slightly longer delay to ensure bell sound finishes
+        } else {
+          // For other parts, use shorter delay
+          console.log(`🎯 Other part: Recording finished, auto-advancing in 600ms...`)
+          setTimeout(() => nextQuestion(true), 600)
+        }
         cleanupMedia()
       }
         
@@ -668,23 +706,45 @@ export default function ImprovedSpeakingTest() {
     setTimeLeft(RECORD_SECONDS_PER_QUESTION)
     setRecordingTime(0)
     setIsPaused(false)
+    // Clear any existing preparation state
+    if (prepIntervalRef.current) {
+      window.clearInterval(prepIntervalRef.current)
+      prepIntervalRef.current = null
+    }
+    setIsPrepRunning(false)
+    setPrepSeconds(0)
   }
 
   const nextQuestion = (force: boolean = false) => {
+    console.log(`🔄 nextQuestion called with force: ${force}`)
+    console.log(`Current state:`, {
+      isPlayingInstructions,
+      isRecording,
+      isPrepRunning,
+      currentQuestionIndex,
+      currentSubPartIndex,
+      currentSectionType: currentSection?.type
+    })
+    
     if (!force && audioRef.current && !audioRef.current.paused) {
+      console.log('❌ Audio still playing, skipping nextQuestion')
       return
     }
     if (!force && isPlayingInstructions) {
+      console.log('❌ Instructions playing, skipping nextQuestion')
       return
     }
     if (!force && isPlayingTTS) {
+      console.log('❌ TTS playing, skipping nextQuestion')
       return
     }
     if (!force && isRecording) {
+      console.log('❌ Recording in progress, skipping nextQuestion')
       return
     }
 
     if (force) {
+      console.log('🛑 Force mode: stopping all ongoing processes')
       // stop any ongoing audio/instructions/prep/recording before skipping
       stopAllAudio()
       setIsPlayingInstructions(false)
@@ -696,25 +756,34 @@ export default function ImprovedSpeakingTest() {
       if (isRecording) stopRecording()
     }
 
-    if (!testData || !currentSection) return
+    if (!testData || !currentSection) {
+      console.log('❌ No test data or current section')
+      return
+    }
 
     if (currentSection.subParts?.length) {
       const sp = currentSection.subParts[currentSubPartIndex]
-      const qLen = sp?.questions?.length ?? 0
-      // Next question within same subpart
-      if (currentQuestionIndex < qLen - 1) {
-        const nextIdx = currentQuestionIndex + 1
-        setCurrentQuestionIndex(nextIdx)
-        resetPerQuestionState()
-        // Begin preparation ONCE for the next question in PART1
-        if (currentSection.type === "PART1") {
-          const key = `${currentSectionIndex}-${currentSubPartIndex}-${nextIdx}`
-          if (prepStartedKeyRef.current !== key) {
-            prepStartedKeyRef.current = key
-            setTimeout(() => beginPreparation(5, () => startRecording(30, true)), 0)
+      const questions = sp?.questions
+      if (questions) {
+        // Sort questions by order field to ensure correct sequence
+        const sortedQuestions = [...questions].sort((a, b) => a.order - b.order)
+        const qLen = sortedQuestions.length
+        // Next question within same subpart
+        if (currentQuestionIndex < qLen - 1) {
+          const nextIdx = currentQuestionIndex + 1
+          console.log(`🎯 Advancing to question ${nextIdx + 1} in PART1.${currentSubPartIndex + 1}`)
+          setCurrentQuestionIndex(nextIdx)
+          resetPerQuestionState()
+          
+          // For PART1, let the auto-advance effect handle the preparation
+          // This ensures proper state management and prevents conflicts
+          if (currentSection.type === "PART1") {
+            const key = `${currentSectionIndex}-${currentSubPartIndex}-${nextIdx}`
+            console.log(`🔄 Question advanced, auto-advance effect should trigger for question ${nextIdx + 1}`)
+            // Don't clear the prep key - let the effect handle it
           }
+          return
         }
-        return
       }
       // Move to next subpart
       if (currentSubPartIndex < currentSection.subParts.length - 1) {
@@ -778,31 +847,41 @@ export default function ImprovedSpeakingTest() {
 
   // preparation helper
   const beginPreparation = (seconds: number, after?: () => void) => {
+    // Clear any existing preparation timer
     if (prepIntervalRef.current) {
       window.clearInterval(prepIntervalRef.current)
       prepIntervalRef.current = null
     }
-    setPrepSeconds(seconds)
-    setIsPrepRunning(true)
-    // no bell at prep start; bell will play when prep ends
-    prepIntervalRef.current = window.setInterval(() => {
-      setPrepSeconds((prev) => {
-        if (prev <= 1) {
-          if (prepIntervalRef.current) {
-            window.clearInterval(prepIntervalRef.current)
-            prepIntervalRef.current = null
+    
+    // Reset preparation state
+    setIsPrepRunning(false)
+    setPrepSeconds(0)
+    
+    // Small delay to ensure state is reset
+    setTimeout(() => {
+      setPrepSeconds(seconds)
+      setIsPrepRunning(true)
+      
+      // no bell at prep start; bell will play when prep ends
+      prepIntervalRef.current = window.setInterval(() => {
+        setPrepSeconds((prev) => {
+          if (prev <= 1) {
+            if (prepIntervalRef.current) {
+              window.clearInterval(prepIntervalRef.current)
+              prepIntervalRef.current = null
+            }
+            setIsPrepRunning(false)
+            // ensure instructions flag is off before auto-start
+            setIsPlayingInstructions(false)
+            // bell to indicate prep end (start speaking)
+            playSound("start")
+            after && after()
+            return 0
           }
-          setIsPrepRunning(false)
-          // ensure instructions flag is off before auto-start
-          setIsPlayingInstructions(false)
-          // bell to indicate prep end (start speaking)
-          playSound("start")
-          after && after()
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
+          return prev - 1
+        })
+      }, 1000)
+    }, 50)
   }
 
   // const startAfterInstructionsForCurrentSection = () => {

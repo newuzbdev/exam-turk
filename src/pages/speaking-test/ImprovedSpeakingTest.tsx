@@ -144,6 +144,7 @@ export default function ImprovedSpeakingTest() {
   const prepIntervalRef = useRef<number | null>(null)
   const autoAdvanceRef = useRef<string | null>(null)
   const autoStartKeyRef = useRef<string | null>(null)
+  const prepStartedKeyRef = useRef<string | null>(null)
   // Guard to ensure section instruction audio plays only once per section
   const instructionPlayStartedRef = useRef<boolean>(false)
   const lastInstructionSectionRef = useRef<string | null>(null)
@@ -367,8 +368,12 @@ export default function ImprovedSpeakingTest() {
           playSound("question")
           // Start first question based on section type
           if (currentSection.type === "PART1") {
+            // Start hazırlık ONCE here and remember this key to avoid duplicates
+            const key = `${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
+            prepStartedKeyRef.current = key
             beginPreparation(5, () => startRecording(30, true))
           } else if (currentSection.type === "PART2" || currentSection.type === "PART3") {
+            autoStartKeyRef.current = `${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
             beginPreparation(60, () => startRecording(120, true))
           } else {
             startRecording(undefined, true)
@@ -411,6 +416,9 @@ export default function ImprovedSpeakingTest() {
             playSound("question")
             // Start first question based on section type
             if (currentSection.type === "PART1") {
+              // start prep only once via the same path as instruction-present case
+              const key = `${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
+              prepStartedKeyRef.current = key
               beginPreparation(5, () => startRecording(30, true))
             } else if (currentSection.type === "PART2" || currentSection.type === "PART3") {
               beginPreparation(60, () => startRecording(120, true))
@@ -469,8 +477,9 @@ export default function ImprovedSpeakingTest() {
       !isPrepRunning
     ) {
       const key = `${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
-      if (autoStartKeyRef.current !== key) {
-        autoStartKeyRef.current = key
+      // Only auto-start if we haven't already started prep for this key (e.g., from instruction end)
+      if (prepStartedKeyRef.current !== key) {
+        prepStartedKeyRef.current = key
         beginPreparation(5, () => startRecording(30, true))
       }
     }
@@ -622,10 +631,8 @@ export default function ImprovedSpeakingTest() {
         const key = currentQuestion?.id || currentSection?.id || `${currentSectionIndex}`
         const rec: Recording = { blob, duration, questionId: key }
         setRecordings((prev) => new Map(prev).set(key, rec))
-        // smooth auto-next when there is a question-based flow
-        if (currentQuestion) {
-          setTimeout(() => nextQuestion(true), 900)
-        }
+        // Always advance flow after recording stops (handles PART2 with no per-question object)
+        setTimeout(() => nextQuestion(true), 600)
         cleanupMedia()
       }
         
@@ -692,36 +699,52 @@ export default function ImprovedSpeakingTest() {
     if (!testData || !currentSection) return
 
     if (currentSection.subParts?.length) {
-    const sp = currentSection.subParts[currentSubPartIndex]
-    const qLen = sp?.questions?.length ?? 0
-    if (currentQuestionIndex < qLen - 1) {
-    setCurrentQuestionIndex((i) => i + 1)
-    resetPerQuestionState()
-    // auto begin preparation for PART1
-      if (currentSection.type === "PART1") {
-        setTimeout(() => beginPreparation(5, () => startRecording(30, true)), 0)
-    }
-    return
-    }
-    if (currentSubPartIndex < currentSection.subParts.length - 1) {
-      setCurrentSubPartIndex((i) => i + 1)
-        setCurrentQuestionIndex(0)
-      resetPerQuestionState()
-      if (currentSection.type === "PART1") {
-      setTimeout(() => beginPreparation(5, () => startRecording(30, true)), 0)
-    }
-    return
-    }
-    } else {
-        const qLen = currentSection.questions?.length ?? 0
+      const sp = currentSection.subParts[currentSubPartIndex]
+      const qLen = sp?.questions?.length ?? 0
+      // Next question within same subpart
       if (currentQuestionIndex < qLen - 1) {
-      setCurrentQuestionIndex((i) => i + 1)
-      resetPerQuestionState()
-      if (currentSection.type === "PART1") {
-        setTimeout(() => beginPreparation(5, () => startRecording(30, true)), 0)
-      }
+        const nextIdx = currentQuestionIndex + 1
+        setCurrentQuestionIndex(nextIdx)
+        resetPerQuestionState()
+        // Begin preparation ONCE for the next question in PART1
+        if (currentSection.type === "PART1") {
+          const key = `${currentSectionIndex}-${currentSubPartIndex}-${nextIdx}`
+          if (prepStartedKeyRef.current !== key) {
+            prepStartedKeyRef.current = key
+            setTimeout(() => beginPreparation(5, () => startRecording(30, true)), 0)
+          }
+        }
         return
-    }
+      }
+      // Move to next subpart
+      if (currentSubPartIndex < currentSection.subParts.length - 1) {
+        const nextSp = currentSubPartIndex + 1
+        setCurrentSubPartIndex(nextSp)
+        setCurrentQuestionIndex(0)
+        resetPerQuestionState()
+        // For PART1 subpart transition, show description/instructions (1.2) first; prep will start after audio
+        if (currentSection.type === "PART1") {
+          setShowSectionDescription(true)
+          // clear prep-start guard; it will be set at instruction end
+          prepStartedKeyRef.current = null
+        }
+        return
+      }
+    } else {
+      const qLen = currentSection.questions?.length ?? 0
+      if (currentQuestionIndex < qLen - 1) {
+        const nextIdx = currentQuestionIndex + 1
+        setCurrentQuestionIndex(nextIdx)
+        resetPerQuestionState()
+        if (currentSection.type === "PART1") {
+          const key = `${currentSectionIndex}-0-${nextIdx}`
+          if (prepStartedKeyRef.current !== key) {
+            prepStartedKeyRef.current = key
+            setTimeout(() => beginPreparation(5, () => startRecording(30, true)), 0)
+          }
+        }
+        return
+      }
     }
 
       if (currentSectionIndex < (testData.sections?.length ?? 0) - 1) {
@@ -730,6 +753,9 @@ export default function ImprovedSpeakingTest() {
         setCurrentQuestionIndex(0)
         setShowSectionDescription(true)
         resetPerQuestionState()
+        // clear any prep-start guards for new section
+        prepStartedKeyRef.current = null
+        autoStartKeyRef.current = null
       } else {
         // test finished: clean up locks & fullscreen
         setIsTestComplete(true)
@@ -1060,15 +1086,16 @@ export default function ImprovedSpeakingTest() {
         )}
           <SimpleTextDisplay
             text={(() => {
-              // Get instruction for current section/subpart
-              const instruction = shouldShowInstruction(currentSectionIndex, currentSubPartIndex);
-              
-              // If audio is playing, show instruction text, otherwise show section description
-              if (isPlayingInstructions && instruction) {
-                return instruction.instructionText;
+              const instruction = shouldShowInstruction(currentSectionIndex, currentSubPartIndex)
+              // If instruction audio is playing, show its text
+              if (isPlayingInstructions && instruction) return instruction.instructionText
+              // For PART1 subpart 2, always show 1.2 text
+              if (currentSection.type === "PART1" && currentSubPartIndex === 1) {
+                const p12 = getInstructionForSection(currentSection.order, 2)
+                if (p12) return p12.instructionText
               }
-              
-              return getSectionDescription(currentSection.title);
+              // Fallback to generic description
+              return getSectionDescription(currentSection.title)
             })()}
             isPlaying={isPlayingInstructions}
           />

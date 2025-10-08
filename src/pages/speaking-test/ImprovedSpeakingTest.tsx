@@ -5,6 +5,7 @@ import { Mic, ArrowLeft, CheckCircle, Info, Volume2 } from "lucide-react"
 import axiosPrivate from "@/config/api"
 import { toast } from "sonner"
 import { MicrophoneCheck } from "./components/MicrophoneCheck"
+import { getInstructionForSection, type SpeakingInstruction } from "@/config/speakingInstructions"
 // import ResultModal from "./components/ResultModal"
 // import DisableKeys from "./components/DisableKeys"
 
@@ -118,6 +119,9 @@ export default function ImprovedSpeakingTest() {
   // preparation timer (seconds)
   const [prepSeconds, setPrepSeconds] = useState<number>(0)
   const [isPrepRunning, setIsPrepRunning] = useState(false)
+  
+  // instruction state
+  const [completedInstructions, setCompletedInstructions] = useState<Set<string>>(new Set())
 
 
 
@@ -254,6 +258,34 @@ export default function ImprovedSpeakingTest() {
     }
   }
 
+
+  // Check if instruction should be shown for current section
+  const shouldShowInstruction = (sectionIndex: number, subPartIndex?: number) => {
+    const section = testData?.sections?.[sectionIndex]
+    if (!section) return false
+
+    // For PART1, check both subparts
+    if (section.type === "PART1") {
+      const instruction1 = getInstructionForSection(section.order, 1)
+      const instruction2 = getInstructionForSection(section.order, 2)
+      
+      if (subPartIndex === 0 && instruction1 && !completedInstructions.has(instruction1.id)) {
+        return instruction1
+      }
+      if (subPartIndex === 1 && instruction2 && !completedInstructions.has(instruction2.id)) {
+        return instruction2
+      }
+    } else {
+      // For other sections, check main instruction
+      const instruction = getInstructionForSection(section.order)
+      if (instruction && !completedInstructions.has(instruction.id)) {
+        return instruction
+      }
+    }
+    
+    return null
+  }
+
   const currentSection = testData?.sections?.[currentSectionIndex]
   const currentQuestion: Question | null = (() => {
     const sec = currentSection
@@ -277,16 +309,14 @@ export default function ImprovedSpeakingTest() {
     }
   }, [currentSection?.type, currentQuestion, currentSectionIndex, currentSubPartIndex, currentQuestionIndex])
 
-  // Auto-play section audio when showing section description
+  // Play instruction audio in background when section description is shown
   useEffect(() => {
     if (showSectionDescription && currentSection && micChecked && !isPlayingInstructions) {
-      // If we already started instructions for this section, don't start again
-      if (instructionPlayStartedRef.current && lastInstructionSectionRef.current === currentSection.id) {
-        return
-      }
-      const src = sectionAudios[currentSection.order]
-      if (src) {
-        // Enter exam mode when audio starts playing
+      // Get instruction for current section/subpart
+      const instruction = shouldShowInstruction(currentSectionIndex, currentSubPartIndex)
+      
+      if (instruction) {
+        // Enter exam mode when instruction starts
         setIsExamMode(true)
         addNavigationLock()
         enterFullscreen().catch(() => {})
@@ -298,12 +328,35 @@ export default function ImprovedSpeakingTest() {
             audioRef.current.currentTime = 0
           } catch {}
         }
-        const audio = new Audio(src)
+        
+        // Play instruction audio directly
+        console.log("Loading audio from path:", instruction.audioPath)
+        const audio = new Audio(instruction.audioPath)
         audioRef.current = audio
         setIsPlayingInstructions(true)
         instructionPlayStartedRef.current = true
         lastInstructionSectionRef.current = currentSection.id
+        
+        audio.onloadstart = () => {
+          console.log("Audio load started for:", instruction.audioPath)
+        }
+        
+        audio.oncanplay = () => {
+          console.log("Audio can play:", instruction.audioPath)
+        }
+        
+        audio.onerror = (e) => {
+          console.error("Audio error:", e)
+          console.error("Audio error details:", audio.error)
+          console.error("Audio network state:", audio.networkState)
+          console.error("Audio ready state:", audio.readyState)
+          setIsPlayingInstructions(false)
+          instructionPlayStartedRef.current = false
+          toast.error("Audio yüklenemedi: " + (audio.error?.message || "Unknown error"))
+        }
+        
         audio.onended = () => {
+          console.log("Audio ended:", instruction.audioPath)
           setIsPlayingInstructions(false)
           instructionPlayStartedRef.current = false
           // Start the section after audio ends
@@ -319,15 +372,60 @@ export default function ImprovedSpeakingTest() {
             startRecording(undefined, true)
           }
         }
-        audio.onerror = () => {
+        
+        audio.play().catch((error) => {
+          console.error("Audio play failed:", error)
+          console.error("Error name:", error.name)
+          console.error("Error message:", error.message)
           setIsPlayingInstructions(false)
-          instructionPlayStartedRef.current = false
-          toast.error("Audio yüklenemedi")
+        })
+      } else {
+        // No instruction needed, proceed with old flow
+        const src = sectionAudios[currentSection.order]
+        if (src) {
+          // Enter exam mode when audio starts playing
+          setIsExamMode(true)
+          addNavigationLock()
+          enterFullscreen().catch(() => {})
+
+          // Stop any existing audio to avoid overlaps
+          if (audioRef.current) {
+            try {
+              audioRef.current.pause()
+              audioRef.current.currentTime = 0
+            } catch {}
+          }
+          const audio = new Audio(src)
+          audioRef.current = audio
+          setIsPlayingInstructions(true)
+          instructionPlayStartedRef.current = true
+          lastInstructionSectionRef.current = currentSection.id
+          audio.onended = () => {
+            setIsPlayingInstructions(false)
+            instructionPlayStartedRef.current = false
+            // Start the section after audio ends
+            setShowSectionDescription(false)
+            resetPerQuestionState()
+            playSound("question")
+            // Start first question based on section type
+            if (currentSection.type === "PART1") {
+              beginPreparation(5, () => startRecording(30, true))
+            } else if (currentSection.type === "PART2" || currentSection.type === "PART3") {
+              beginPreparation(60, () => startRecording(120, true))
+            } else {
+              startRecording(undefined, true)
+            }
+          }
+          audio.onerror = () => {
+            setIsPlayingInstructions(false)
+            instructionPlayStartedRef.current = false
+            toast.error("Audio yüklenemedi")
+          }
+          audio.play().catch(() => setIsPlayingInstructions(false))
         }
-        audio.play().catch(() => setIsPlayingInstructions(false))
       }
     }
-  }, [showSectionDescription, currentSection, micChecked, isPlayingInstructions])
+  }, [showSectionDescription, currentSection, micChecked, isPlayingInstructions, currentSectionIndex, currentSubPartIndex])
 
   // Play TTS audio when a new question becomes active (outside instructions)
   useEffect(() => {
@@ -931,7 +1029,6 @@ export default function ImprovedSpeakingTest() {
           </motion.header>
         )}
           <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10 min-h-[calc(100vh-120px)] flex items-center justify-center">
-  <div className="bg-white border border-gray-200 rounded-xl p-6 sm:p-10 shadow-lg w-full max-w-5xl">
     <div className="text-center mb-6 sm:mb-8">
       <div className="inline-flex items-center bg-gray-100 text-gray-700 px-4 py-2 sm:px-6 sm:py-3 rounded-lg text-sm sm:text-lg font-semibold mb-4 sm:mb-6 border border-gray-200">
         <Info className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3" />
@@ -939,18 +1036,13 @@ export default function ImprovedSpeakingTest() {
       </div>
       <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-gray-900 mb-4 sm:mb-6">Bölüm Açıklaması</h2>
       <p className="text-lg sm:text-xl text-gray-700 leading-relaxed whitespace-pre-line max-w-4xl mx-auto">
-        {getSectionDescription(currentSection.title)}
+        {(() => {
+          // Get instruction for current section/subpart
+          const instruction = shouldShowInstruction(currentSectionIndex, currentSubPartIndex);
+          return instruction?.instructionText || getSectionDescription(currentSection.title);
+        })()}
       </p>
     </div>
-    {isPlayingInstructions && (
-      <div className="mt-8 sm:mt-10 text-center">
-        <div className="flex items-center gap-2 text-blue-600 font-bold">
-          <Volume2 className="w-5 h-5" />
-          <span>Playing section instructions...</span>
-        </div>
-      </div>
-    )}
-  </div>
 </main>
       </>
     )}
@@ -1336,6 +1428,7 @@ export default function ImprovedSpeakingTest() {
         )}
         </motion.div>
       )}
+
 
     </motion.div>
   )

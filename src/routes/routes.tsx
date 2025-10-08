@@ -15,6 +15,8 @@ import TestPage from "@/pages/test/test";
 import WritingTest from "@/pages/writing-test/WritingTest";
 import WritingTestResults from "@/pages/writing-test/WritingTestResults";
 import SpeakingTestResults from "@/pages/speaking-test/SpeakingTestResults";
+import AudioTestSimple from "@/components/speaking-test/AudioTestSimple";
+import AudioDebug from "@/components/speaking-test/AudioDebug";
 import { createBrowserRouter } from "react-router";
 
 export const router = createBrowserRouter([
@@ -89,6 +91,14 @@ export const router = createBrowserRouter([
       {
         path: "/reading-test/results/:resultId",
         element: <ReadingTestResults />,
+      },
+      {
+        path: "/audio-test",
+        element: <AudioTestSimple />,
+      },
+      {
+        path: "/audio-debug",
+        element: <AudioDebug />,
       }
     ],
   },

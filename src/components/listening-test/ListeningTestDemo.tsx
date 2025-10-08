@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { AudioPlayer } from "@/pages/listening-test/components/AudioPlayer";
 import { toast } from "sonner";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import { ConfirmationModal } from "../ui/confirmation-modal";
 
 interface UserAnswers {
   [questionId: string]: string;
@@ -19,6 +20,8 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
   const [loading, setLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState<number>(600); // 10 minutes in seconds
   const [timerActive, setTimerActive] = useState<boolean>(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   // Removed exam-mode body lock for listening; keep state local if needed later
   
   const navigate = useNavigate();
@@ -783,6 +786,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
 
   const handleSubmit = async () => {
     try {
+      setIsSubmitting(true);
       if (!testData?.id) {
         console.error("No testId found for submission");
         return;
@@ -820,7 +824,18 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
       }
     } catch (err) {
       console.error("Listening submit error", err);
+    } finally {
+      setIsSubmitting(false);
     }
+  };
+
+  const handleSubmitClick = () => {
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmSubmit = () => {
+    setShowConfirmModal(false);
+    handleSubmit();
   };
 
   if (loading) {
@@ -855,7 +870,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
               <div className={`font-bold text-sm ${timerActive ? 'text-red-600' : 'text-gray-600'}`}>
                 {timerActive ? formatTime(timeLeft) : '10:00'}
               </div>
-              <Button onClick={handleSubmit} className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 text-xs font-bold">
+              <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 text-xs font-bold">
                 GÖNDER
               </Button>
             </div>
@@ -889,7 +904,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                 />
               )}
               
-              <Button onClick={handleSubmit} className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 text-sm font-bold">
+              <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 text-sm font-bold">
                 GÖNDER
               </Button>
             </div>
@@ -913,6 +928,18 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
       
       {/* Bottom Tabs */}
       {renderTabs()}
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={handleConfirmSubmit}
+        title="Testi Gönder"
+        message="Testi göndermek istediğinizden emin misiniz? Bu işlem geri alınamaz."
+        confirmText="Evet, Gönder"
+        cancelText="İptal"
+        isLoading={isSubmitting}
+      />
     </div>
   );
 }

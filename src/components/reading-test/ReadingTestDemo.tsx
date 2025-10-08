@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../ui/button";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "../ui/resizable";
+import { ConfirmationModal } from "../ui/confirmation-modal";
 import { readingTestService, readingSubmissionService, type ReadingTestItem } from "@/services/readingTest.service";
 
 export default function ReadingPage({ testId }: { testId: string }) {
@@ -12,6 +13,8 @@ export default function ReadingPage({ testId }: { testId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [currentPartNumber, setCurrentPartNumber] = useState<number>(1);
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -88,6 +91,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
 
   const handleSubmit = async () => {
     try {
+      setIsSubmitting(true);
       if (!testData?.id) {
         console.error("No testId found for submission");
         return;
@@ -111,7 +115,18 @@ export default function ReadingPage({ testId }: { testId: string }) {
       }
     } catch (error) {
       console.error("Reading submit error", error);
+    } finally {
+      setIsSubmitting(false);
     }
+  };
+
+  const handleSubmitClick = () => {
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmSubmit = () => {
+    setShowConfirmModal(false);
+    handleSubmit();
   };
 
   const handleAnswerChange = (questionId: string, value: string) => {
@@ -145,7 +160,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
         <div className="font-bold text-2xl">{testData?.title || "Reading"}</div>
         <div className="flex items-center gap-4">
           <div className="font-bold text-lg">{formatTime(timeLeft)}</div>
-          <Button onClick={handleSubmit} className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 text-sm font-bold">GÖNDER</Button>
+          <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 text-sm font-bold">GÖNDER</Button>
         </div>
       </div>
 
@@ -860,6 +875,18 @@ export default function ReadingPage({ testId }: { testId: string }) {
       {/* Hook GÖNDER to submit current answers */}
 
       {/* Footer navigation removed for now (building from Part 1 only) */}
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={handleConfirmSubmit}
+        title="Testi Gönder"
+        message="Testi göndermek istediğinizden emin misiniz? Bu işlem geri alınamaz."
+        confirmText="Evet, Gönder"
+        cancelText="İptal"
+        isLoading={isSubmitting}
+      />
     </div>
   );
 }

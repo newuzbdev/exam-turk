@@ -6,6 +6,7 @@ import axiosPrivate from "@/config/api"
 import { toast } from "sonner"
 import { MicrophoneCheck } from "./components/MicrophoneCheck"
 import { getInstructionForSection, type SpeakingInstruction } from "@/config/speakingInstructions"
+import SimpleTextDisplay from "@/components/speaking-test/SimpleTextDisplay"
 // import ResultModal from "./components/ResultModal"
 // import DisableKeys from "./components/DisableKeys"
 
@@ -142,6 +143,7 @@ export default function ImprovedSpeakingTest() {
   const ttsAudioRef = useRef<HTMLAudioElement | null>(null)
   const prepIntervalRef = useRef<number | null>(null)
   const autoAdvanceRef = useRef<string | null>(null)
+  const autoStartKeyRef = useRef<string | null>(null)
   // Guard to ensure section instruction audio plays only once per section
   const instructionPlayStartedRef = useRef<boolean>(false)
   const lastInstructionSectionRef = useRef<string | null>(null)
@@ -455,6 +457,35 @@ export default function ImprovedSpeakingTest() {
     }
   }, [currentSectionIndex, currentSubPartIndex, currentQuestionIndex, showSectionDescription, isPlayingInstructions, currentQuestion])
 
+  // Ensure PART1 questions auto-start (e.g., after 1.2 first question finishes)
+  useEffect(() => {
+    if (
+      !showSectionDescription &&
+      currentSection &&
+      currentSection.type === "PART1" &&
+      currentQuestion &&
+      !isPlayingInstructions &&
+      !isRecording &&
+      !isPrepRunning
+    ) {
+      const key = `${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
+      if (autoStartKeyRef.current !== key) {
+        autoStartKeyRef.current = key
+        beginPreparation(5, () => startRecording(30, true))
+      }
+    }
+  }, [
+    showSectionDescription,
+    currentSection,
+    currentQuestion,
+    currentSectionIndex,
+    currentSubPartIndex,
+    currentQuestionIndex,
+    isPlayingInstructions,
+    isRecording,
+    isPrepRunning,
+  ])
+
   // Removed centralized auto-start to prevent double hazırlık
 
   // timers while recording
@@ -600,9 +631,8 @@ export default function ImprovedSpeakingTest() {
         
         mr.start(100)
         setIsRecording(true)
-        // Play start.wav when user starts speaking
-        console.log("Starting recording, playing start sound")
-        playSound("start")
+        // Recording begins after preparation end bell; do not play an extra start sound here
+        console.log("Recording started")
     } catch (e) {
       console.error("start error", e)
       toast.error("Mikrofon erişimi reddedildi veya başlatılamadı")
@@ -1019,7 +1049,7 @@ export default function ImprovedSpeakingTest() {
       <MicrophoneCheck onSuccess={() => setMicChecked(true)} />
     ) : (
       <>
-        {!isExamMode && (
+        {!isExamMode && !isPlayingInstructions && (
           <motion.header
             className="sticky top-0 z-10 bg-white/80  border-b border-gray-100 shadow-sm"
             initial={{ y: -100, opacity: 0 }}
@@ -1028,22 +1058,20 @@ export default function ImprovedSpeakingTest() {
           >
           </motion.header>
         )}
-          <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10 min-h-[calc(100vh-120px)] flex items-center justify-center">
-    <div className="text-center mb-6 sm:mb-8">
-      <div className="inline-flex items-center bg-gray-100 text-gray-700 px-4 py-2 sm:px-6 sm:py-3 rounded-lg text-sm sm:text-lg font-semibold mb-4 sm:mb-6 border border-gray-200">
-        <Info className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3" />
-        {currentSection.title}
-      </div>
-      <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-gray-900 mb-4 sm:mb-6">Bölüm Açıklaması</h2>
-      <p className="text-lg sm:text-xl text-gray-700 leading-relaxed whitespace-pre-line max-w-4xl mx-auto">
-        {(() => {
-          // Get instruction for current section/subpart
-          const instruction = shouldShowInstruction(currentSectionIndex, currentSubPartIndex);
-          return instruction?.instructionText || getSectionDescription(currentSection.title);
-        })()}
-      </p>
-    </div>
-</main>
+          <SimpleTextDisplay
+            text={(() => {
+              // Get instruction for current section/subpart
+              const instruction = shouldShowInstruction(currentSectionIndex, currentSubPartIndex);
+              
+              // If audio is playing, show instruction text, otherwise show section description
+              if (isPlayingInstructions && instruction) {
+                return instruction.instructionText;
+              }
+              
+              return getSectionDescription(currentSection.title);
+            })()}
+            isPlaying={isPlayingInstructions}
+          />
       </>
     )}
       </motion.div>

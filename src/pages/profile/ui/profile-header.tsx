@@ -125,28 +125,38 @@ const ProfileHeader = () => {
                       Profili Düzenle
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="bg-white">
+                  <DialogContent className="bg-white border-gray-200 shadow-xl">
                     <DialogHeader>
-                      <DialogTitle>Profili Düzenle</DialogTitle>
+                      <DialogTitle className="text-gray-900">Profili Düzenle</DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="text-sm text-gray-700">Ad</label>
-                        <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-700">Ad</label>
+                        <Input 
+                          value={form.name} 
+                          onChange={(e) => setForm({ ...form, name: e.target.value })}
+                          className="border-gray-300 focus:border-gray-300 focus:ring-0 focus:outline-none focus:shadow-none"
+                        />
                       </div>
-                      <div>
-                        <label className="text-sm text-gray-700">Kullanıcı adı</label>
-                        <Input value={form.userName} onChange={(e) => setForm({ ...form, userName: e.target.value })} />
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-700">Kullanıcı adı</label>
+                        <Input 
+                          value={form.userName} 
+                          onChange={(e) => setForm({ ...form, userName: e.target.value })}
+                          className="border-gray-300 focus:border-gray-300 focus:ring-0 focus:outline-none focus:shadow-none"
+                        />
                       </div>
-                      <div>
-                        <label className="text-sm text-gray-700">Profil Fotoğrafı</label>
-                        <div className="space-y-2">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-700">Profil Fotoğrafı</label>
+                        <div className="space-y-3">
                           {avatarPreview || form.avatarUrl ? (
-                            <img 
-                              src={avatarPreview || (form.avatarUrl?.startsWith('http') ? form.avatarUrl : `https://api.turkcetest.uz/${form.avatarUrl}`)} 
-                              alt="Önizleme" 
-                              className="w-24 h-24 rounded-full object-cover border" 
-                            />
+                            <div className="flex justify-center">
+                              <img 
+                                src={avatarPreview || (form.avatarUrl?.startsWith('http') ? form.avatarUrl : `https://api.turkcetest.uz/${form.avatarUrl}`)} 
+                                alt="Önizleme" 
+                                className="w-24 h-24 rounded-full object-cover border-2 border-gray-200 shadow-sm" 
+                              />
+                            </div>
                           ) : null}
                           <Input
                             type="file"
@@ -161,13 +171,20 @@ const ProfileHeader = () => {
                                 setAvatarPreview("");
                               }
                             }}
+                            className="border-gray-300 focus:border-gray-300 focus:ring-0 focus:outline-none focus:shadow-none"
                           />
                         </div>
                       </div>
-                      <div className="flex justify-end gap-2 pt-2">
-                        <Button variant="outline" onClick={() => setEditOpen(false)}>İptal</Button>
+                      <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setEditOpen(false)}
+                          className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                        >
+                          İptal
+                        </Button>
                         <Button
-                          className="bg-red-600 hover:bg-red-700 text-white"
+                          className="bg-red-600 hover:bg-red-700 text-white px-6"
                           onClick={async () => {
                             if (!user?.id) return;
                             try {

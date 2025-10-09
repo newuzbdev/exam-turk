@@ -4,11 +4,17 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserPlus, Calendar, Star, Pencil } from "lucide-react";
 import { useState, useEffect } from "react";
 import { authService } from "@/services/auth.service";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const ProfileHeader = () => {
   const [isFollowing, setIsFollowing] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [editOpen, setEditOpen] = useState(false);
+  const [form, setForm] = useState<{ name: string; userName: string; avatarUrl: string }>({ name: "", userName: "", avatarUrl: "" });
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string>("");
 
     useEffect(() => {
       const fetchUserData = async () => {
@@ -29,6 +35,7 @@ const ProfileHeader = () => {
               totalPoints: 0,
               bio: "Türkçe dil ve kültürünü öğrenmeye tutkulu.",
             });
+            setForm({ name: userData.name || "", userName: userData.username || userData.userName || "", avatarUrl: userData.avatarUrl || userData.avatar || "" });
           }
         } catch (error) {
           console.error("Profile - Error fetching user data:", error);
@@ -78,7 +85,11 @@ const ProfileHeader = () => {
             <div className="flex flex-col items-center md:items-start">
               <Avatar className="w-32 h-32 border-4 border-white shadow-lg">
                 <AvatarImage
-                  src={user.avatarUrl || user.avatar}
+                  src={user.avatarUrl || user.avatar ? 
+                    (user.avatarUrl || user.avatar).startsWith('http') ? 
+                      (user.avatarUrl || user.avatar) : 
+                      `https://api.turkcetest.uz/${user.avatarUrl || user.avatar}` 
+                    : undefined}
                   alt={user.name}
                 />
                 <AvatarFallback className="text-2xl font-semibold text-red-700">
@@ -103,13 +114,81 @@ const ProfileHeader = () => {
                   </p>
                   <p className="text-gray-700 leading-relaxed">{user.bio}</p>
                 </div>
-                <Button
-                  variant="outline"
-                  className="bg-red-500 text-white hover:bg-red-600"
-                >
-                  <Pencil className="w-4 h-4 mr-2" />
-                  Profili Düzenle
-                </Button>
+                <Dialog open={editOpen} onOpenChange={setEditOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="bg-red-500 text-white hover:bg-red-600"
+                      onClick={() => setEditOpen(true)}
+                    >
+                      <Pencil className="w-4 h-4 mr-2" />
+                      Profili Düzenle
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="bg-white">
+                    <DialogHeader>
+                      <DialogTitle>Profili Düzenle</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-sm text-gray-700">Ad</label>
+                        <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                      </div>
+                      <div>
+                        <label className="text-sm text-gray-700">Kullanıcı adı</label>
+                        <Input value={form.userName} onChange={(e) => setForm({ ...form, userName: e.target.value })} />
+                      </div>
+                      <div>
+                        <label className="text-sm text-gray-700">Profil Fotoğrafı</label>
+                        <div className="space-y-2">
+                          {avatarPreview || form.avatarUrl ? (
+                            <img 
+                              src={avatarPreview || (form.avatarUrl?.startsWith('http') ? form.avatarUrl : `https://api.turkcetest.uz/${form.avatarUrl}`)} 
+                              alt="Önizleme" 
+                              className="w-24 h-24 rounded-full object-cover border" 
+                            />
+                          ) : null}
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0] || null;
+                              setAvatarFile(file);
+                              if (file) {
+                                const url = URL.createObjectURL(file);
+                                setAvatarPreview(url);
+                              } else {
+                                setAvatarPreview("");
+                              }
+                            }}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-2 pt-2">
+                        <Button variant="outline" onClick={() => setEditOpen(false)}>İptal</Button>
+                        <Button
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                          onClick={async () => {
+                            if (!user?.id) return;
+                            try {
+                              const updated = await authService.updateUser(
+                                user.id,
+                                { name: form.name, userName: form.userName, avatarUrl: form.avatarUrl },
+                                { avatarFile }
+                              );
+                              setUser({ ...user, ...updated, username: updated.userName || updated.username, avatarUrl: updated.avatarUrl || updated.avatar });
+                              setEditOpen(false);
+                              setAvatarFile(null);
+                              setAvatarPreview("");
+                            } catch {}
+                          }}
+                        >
+                          Kaydet
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
 
               <div className="flex flex-wrap gap-6 text-sm">

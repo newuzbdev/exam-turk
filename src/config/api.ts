@@ -5,7 +5,7 @@ const baseURL = import.meta.env.VITE_API_URL || "https://api.turkcetest.uz";
 
 const axiosPrivate = axios.create({
   baseURL,
-  withCredentials: true,
+  // withCredentials: true,
 });
 
 // Request interceptor

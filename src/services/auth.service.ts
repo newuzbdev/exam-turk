@@ -62,6 +62,56 @@ export const authService = {
     return phoneWithPrefix;
   },
 
+  // Upload avatar file and return URL or path
+  uploadAvatar: async (file: File): Promise<string> => {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await axiosPrivate.post(`/api/file/upload`, form);
+    const data = res?.data || {};
+    const uploadedUrl = data.url || data.fileUrl || data.path || data.avatarUrl || (data.data && (data.data.url || data.data.path)) || "";
+    return String(uploadedUrl);
+  },
+
+  // Update user profile
+  updateUser: async (
+    userId: string,
+    updates: Partial<{
+      name: string;
+      userName: string;
+      avatarUrl: string;
+      phoneNumber: string;
+      email: string | null;
+    }>,
+    options?: { avatarFile?: File | null }
+  ): Promise<any> => {
+    try {
+      const hasFile = !!options?.avatarFile;
+      let effectiveUpdates = { ...(updates || {}) } as any;
+      if (hasFile && options?.avatarFile) {
+        const uploadedUrl = await authService.uploadAvatar(options.avatarFile);
+        if (uploadedUrl) {
+          effectiveUpdates.avatarUrl = uploadedUrl;
+        }
+      }
+      const res = await axiosPrivate.patch(`${authEndPoint.user}/${userId}`, effectiveUpdates);
+      const updatedUser = res?.data || updates;
+      try {
+        if (updatedUser?.id) {
+          SecureStorage.setSessionItem("userId", updatedUser.id);
+        }
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("auth:user", { detail: updatedUser }));
+        }
+      } catch {}
+      toast.success("Profil güncellendi");
+      return updatedUser;
+    } catch (error: any) {
+      console.error("Update user error:", error);
+      toast.error(error?.response?.data?.message || "Profil güncellenemedi");
+      throw error;
+    }
+  },
+
   // Helper function to store tokens securely
   storeTokens: (accessToken: string, refreshToken?: string): void => {
     // Store tokens in sessionStorage instead of localStorage for better security
@@ -319,6 +369,11 @@ export const authService = {
         try {
           const userResponse = await authService.getCurrentUser();
           if (userResponse) {
+            try {
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(new CustomEvent("auth:user", { detail: userResponse }));
+              }
+            } catch {}
             toast.success(`Kayıt başarılı! Hoş geldiniz ${userResponse.name}!`);
             navigate("/", { replace: true });
 
@@ -336,6 +391,47 @@ export const authService = {
           return { success: true, shouldNavigate: true };
         }
       } else {
+        // If backend returned the created user, use it directly to update UI
+        const createdUser = (response.data && (response.data.user || response.data)) as any;
+        if (createdUser && createdUser.id && (createdUser.name || createdUser.userName)) {
+          try {
+            SecureStorage.setSessionItem("userId", createdUser.id);
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("auth:user", { detail: createdUser }));
+            }
+          } catch {}
+          toast.success(`Kayıt başarılı! Hoş geldiniz ${createdUser.name || createdUser.userName}!`);
+          navigate("/", { replace: true });
+          return { success: true, shouldNavigate: true };
+        }
+
+        // Otherwise, perform a silent login using provided credentials to obtain tokens
+        try {
+          const loginResp = await axiosPrivate.post(authEndPoint.login, {
+            name: data.name,
+            password: data.password,
+          });
+          if (loginResp?.data?.accessToken) {
+            authService.storeTokens(loginResp.data.accessToken, loginResp.data.refreshToken);
+            // Fetch user and notify app
+            try {
+              const userResponse = await authService.getCurrentUser();
+              if (userResponse?.id) {
+                SecureStorage.setSessionItem("userId", userResponse.id);
+              }
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(new CustomEvent("auth:user", { detail: userResponse }));
+              }
+            } catch {}
+            toast.success("Kayıt başarılı! Hoş geldiniz!");
+            navigate("/", { replace: true });
+            return { success: true, shouldNavigate: true };
+          }
+        } catch (e) {
+          // Swallow and continue to generic success
+        }
+
+        // Fallback: generic success without user hydration
         toast.success("Kayıt başarılı");
         navigate("/", { replace: true });
         return { success: true, shouldNavigate: true };

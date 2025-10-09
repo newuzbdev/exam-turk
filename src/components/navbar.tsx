@@ -177,7 +177,11 @@ const Navbar = () => {
                       </span>
                       <Avatar className="w-8 h-8">
                         <AvatarImage
-                          src={user.avatarUrl || user.avatar}
+                          src={user.avatarUrl || user.avatar ? 
+                            (user.avatarUrl || user.avatar).startsWith('http') ? 
+                              (user.avatarUrl || user.avatar) : 
+                              `https://api.turkcetest.uz/${user.avatarUrl || user.avatar}` 
+                            : undefined}
                           alt={user.name}
                         />
                         <AvatarFallback className="text-xs font-semibold text-red-700">
@@ -259,7 +263,11 @@ const Navbar = () => {
                           </span>
                           <Avatar className="w-8 h-8">
                             <AvatarImage
-                              src={user.avatarUrl || user.avatar}
+                              src={user.avatarUrl || user.avatar ? 
+                                (user.avatarUrl || user.avatar).startsWith('http') ? 
+                                  (user.avatarUrl || user.avatar) : 
+                                  `https://api.turkcetest.uz/${user.avatarUrl || user.avatar}` 
+                                : undefined}
                               alt={user.name}
                             />
                             <AvatarFallback className="text-xs font-semibold text-red-700">

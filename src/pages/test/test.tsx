@@ -5,6 +5,7 @@ import TestModal from "./components/TestModal";
 import MainTestCard from "./components/MainTestCard";
 import EmptyState from "./components/EmptyState";
 import { useLocation } from "react-router-dom";
+import { authService } from "@/services/auth.service";
 
 interface TurkishTest {
   id: string;
@@ -97,7 +98,12 @@ const TestPage = () => {
         }
       } catch (error: any) {
         console.error("Error fetching Turkish test data:", error);
-        toast.error("Türkçe testleri yüklenemedi");
+        const { accessToken } = authService.getStoredTokens();
+        if (accessToken) {
+          toast.error("Türkçe testleri yüklenemedi");
+        } else {
+          // Unauthenticated visitor; suppress toast and token-required requests
+        }
       } finally {
         setLoading(false);
       }

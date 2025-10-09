@@ -145,7 +145,7 @@ axiosCookie.interceptors.response.use(
       try {
         console.log("🔄 Attempting to refresh access token using HttpOnly cookies...");
         // backend refresh endpointini chaqiramiz
-        await axios.post(`${baseURL}/api/user/refresh`, {}, { withCredentials: true });
+        await axios.post(`${baseURL}/api/user/refresh`, {},);
 
         console.log("✅ Token successfully refreshed");
         // refresh muvaffaqiyatli bo‘lsa original requestni qayta yuboramiz

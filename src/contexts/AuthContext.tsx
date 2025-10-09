@@ -142,12 +142,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const handler = () => {
       refreshUser();
     };
+    // Listen for direct user payload after signup
+    const userHandler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as any;
+      if (detail) {
+        setUser(detail);
+        setIsAuthenticated(true);
+      } else {
+        refreshUser();
+      }
+    };
     if (typeof window !== "undefined") {
       window.addEventListener("auth:tokens", handler);
+      window.addEventListener("auth:user", userHandler as EventListener);
     }
     return () => {
       if (typeof window !== "undefined") {
         window.removeEventListener("auth:tokens", handler);
+        window.removeEventListener("auth:user", userHandler as EventListener);
       }
     };
   }, []);

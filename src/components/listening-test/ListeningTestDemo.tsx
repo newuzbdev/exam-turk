@@ -22,6 +22,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
   const [timerActive, setTimerActive] = useState<boolean>(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLg, setIsLg] = useState<boolean>(false);
   // Removed exam-mode body lock for listening; keep state local if needed later
   
   const navigate = useNavigate();
@@ -42,6 +43,28 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
       fetchTestData();
     }
   }, [testId]);
+
+  // Track screen size (lg breakpoint: 1024px)
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const set = () => setIsLg(mq.matches);
+    set();
+    try {
+      mq.addEventListener('change', set);
+    } catch {
+      // Safari
+      // @ts-ignore
+      mq.addListener(set);
+    }
+    return () => {
+      try {
+        mq.removeEventListener('change', set);
+      } catch {
+        // @ts-ignore
+        mq.removeListener(set);
+      }
+    };
+  }, []);
 
   // Enter fullscreen and lock navigation (exam mode)
   useEffect(() => {
@@ -131,6 +154,13 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
       ...prev,
       [questionId]: answer
     }));
+  };
+
+  const goToNextBolum = () => {
+    setCurrentPartNumber((prev) => Math.min(6, prev + 1));
+  };
+  const goToPrevBolum = () => {
+    setCurrentPartNumber((prev) => Math.max(1, prev - 1));
   };
 
   const getTotalQuestions = () => {
@@ -887,8 +917,13 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
               <div className={`font-bold text-lg ${timerActive ? 'text-red-600' : 'text-gray-600'}`}>
                 {timerActive ? formatTime(timeLeft) : '10:00'}
               </div>
-              
-              {/* Audio player moved to a shared area below header */}
+              {/* Single Audio Player rendered only when isLg is true in this spot */}
+              {isLg && testData?.audioUrl && (
+                <AudioPlayer
+                  src={`https://api.turkcetest.uz/${testData.audioUrl}`}
+                  onAudioEnded={handleAudioEnded}
+                />
+              )}
               
               <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 text-sm font-bold">
                 GÖNDER
@@ -896,22 +931,14 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
             </div>
           </div>
 
-          {/* Shared Audio Player (single instance for all breakpoints) */}
-          {testData?.audioUrl && (
-            <div className="mt-2 flex justify-center lg:justify-end">
-              <AudioPlayer 
-                src={`https://api.turkcetest.uz/${testData.audioUrl}`} 
-                onAudioEnded={handleAudioEnded}
-              />
-            </div>
-          )}
+          {/* Mobile: no volume changer per request */}
           
           {/* Description Section - Responsive */}
           <div className="mt-2 p-3 sm:p-5 bg-yellow-50 rounded-lg border border-yellow-300">
-            <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 mb-2 sm:mb-3">
+            <h3 className="text-base sm:text-lg lg:text-2xl font-bold text-gray-800 mb-2 sm:mb-3">
               BÖLÜM {bolum} - DİNLEME METNİ
             </h3>
-            <p className="text-sm sm:text-base lg:text-lg text-gray-700 leading-relaxed">
+            <p className="text-xs sm:text-sm lg:text-lg text-gray-700 leading-relaxed">
               {getStaticHeader(bolum)}
             </p>
           </div>
@@ -922,8 +949,26 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
           {renderPart(bolum)}
         </div>
       
-      {/* Bottom Tabs */}
-      {renderTabs()}
+      {/* Bottom Tabs - desktop only */}
+      <div className="hidden lg:block">{renderTabs()}</div>
+
+      {/* Mobile: Prev/Next bölüm controls fixed bottom */}
+      <div className="lg:hidden fixed bottom-2 right-2 left-2 flex justify-between gap-2 px-2 pointer-events-none">
+        <Button 
+          onClick={goToPrevBolum}
+          disabled={currentPartNumber <= 1}
+          className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold px-4 py-2 pointer-events-auto disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          Önceki Bölüm
+        </Button>
+        <Button 
+          onClick={goToNextBolum}
+          disabled={currentPartNumber >= 6}
+          className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 pointer-events-auto disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          Sonraki Bölüm
+        </Button>
+      </div>
 
       {/* Confirmation Modal */}
       <ConfirmationModal

@@ -138,6 +138,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     checkAuth();
+    // Listen for token changes to refresh user
+    const handler = () => {
+      refreshUser();
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("auth:tokens", handler);
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("auth:tokens", handler);
+      }
+    };
   }, []);
 
   const value: AuthContextType = {

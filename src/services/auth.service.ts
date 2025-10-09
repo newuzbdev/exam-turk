@@ -71,6 +71,13 @@ export const authService = {
       SecureStorage.setSessionItem("refreshToken", refreshToken);
     }
 
+    // Notify app that auth tokens changed so contexts can refresh
+    try {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("auth:tokens"));
+      }
+    } catch {}
+
     // Alternative: Use encrypted storage (still not as secure as httpOnly cookies)
     // SecureStorage.setEncryptedItem("accessToken", accessToken);
     // if (refreshToken) {
@@ -265,16 +272,17 @@ export const authService = {
       }
 
       // OTP verified but user doesn't exist, proceed to registration
-      if (
-        response.data.message === "Kod muvaffaqiyatli tasdiqlandi" ||
-        response.data.message?.includes("tasdiqlandi")
-      ) {
+      const message: string = String(response?.data?.message || "");
+      const statusOk = response.status === 200;
+      const messageIndicatesSuccess = /verified|doğruland/i.test(message) || message.includes("tasdiqlandi");
+
+      if (statusOk || messageIndicatesSuccess) {
         toast.success("OTP doğrulandı - Kayıt formunu doldurun");
         return { success: true, phoneNumber: phoneWithPrefix };
-      } else {
-        toast.error("OTP doğrulanamadı");
-        return { success: false };
       }
+
+      toast.error("OTP doğrulanamadı");
+      return { success: false };
     } catch (error: any) {
       toast.error(error.response?.data?.message || "OTP doğrulanamadı");
       return { success: false };

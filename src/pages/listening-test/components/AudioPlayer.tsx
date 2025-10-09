@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Volume2, Play } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Volume2 } from "lucide-react";
 
 interface AudioPlayerProps {
   src: string;
@@ -10,7 +9,7 @@ interface AudioPlayerProps {
 export const AudioPlayer = ({ src, onAudioEnded }: AudioPlayerProps) => {
   const [volume, setVolume] = useState(0.7);
   const [_isPlaying, setIsPlaying] = useState(false);
-  const [showPlayButton, setShowPlayButton] = useState(true);
+  const [showPlayButton, setShowPlayButton] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   // Debug: Log the src when component mounts
@@ -26,19 +25,51 @@ export const AudioPlayer = ({ src, onAudioEnded }: AudioPlayerProps) => {
       
       const tryAutoPlay = async () => {
         try {
+          // Ensure audio is loaded before playing
+          if (audio.readyState < 2) {
+            audio.load();
+            await new Promise((resolve) => {
+              audio.addEventListener('canplay', resolve, { once: true });
+            });
+          }
+          
           await audio.play();
           console.log("Auto-play successful!");
           setIsPlaying(true);
           setShowPlayButton(false);
         } catch (error) {
-          console.log("Auto-play failed, showing play button:", error);
-          setShowPlayButton(true);
+          console.log("Auto-play failed:", error);
+          // Don't show play button, just keep trying
+          setShowPlayButton(false);
+          // Retry after a longer delay
+          setTimeout(tryAutoPlay, 2000);
         }
       };
 
       // Try to play after a small delay to ensure audio is loaded
       setTimeout(tryAutoPlay, 500);
     }
+  }, [src]);
+
+  // Add click handler to trigger audio on user interaction
+  useEffect(() => {
+    const handleUserInteraction = () => {
+      const audio = audioRef.current;
+      if (audio && src && audio.paused) {
+        audio.play().catch(console.error);
+      }
+    };
+
+    // Add event listeners for user interaction
+    document.addEventListener('click', handleUserInteraction, { once: true });
+    document.addEventListener('keydown', handleUserInteraction, { once: true });
+    document.addEventListener('touchstart', handleUserInteraction, { once: true });
+
+    return () => {
+      document.removeEventListener('click', handleUserInteraction);
+      document.removeEventListener('keydown', handleUserInteraction);
+      document.removeEventListener('touchstart', handleUserInteraction);
+    };
   }, [src]);
 
   // Keep the underlying audio element in sync with React volume state
@@ -51,27 +82,6 @@ export const AudioPlayer = ({ src, onAudioEnded }: AudioPlayerProps) => {
     }
   }, [volume]);
 
-  // Simple play function
-  const playAudio = async () => {
-    console.log("Play button clicked!");
-    const audio = audioRef.current;
-    console.log("Audio element:", audio);
-    console.log("Audio src:", audio?.src);
-    
-    if (audio) {
-      try {
-        console.log("Attempting to play audio...");
-        await audio.play();
-        console.log("Audio started playing!");
-        setIsPlaying(true);
-        setShowPlayButton(false);
-      } catch (error) {
-        console.error("Play failed:", error);
-      }
-    } else {
-      console.error("No audio element found!");
-    }
-  };
 
   // Handle audio ended event
   useEffect(() => {
@@ -113,16 +123,6 @@ export const AudioPlayer = ({ src, onAudioEnded }: AudioPlayerProps) => {
         }}
       />
       
-      {/* Play Button */}
-      {showPlayButton && (
-        <Button 
-          onClick={playAudio}
-          size="sm"
-          className="h-6 w-6 p-0 bg-blue-500 hover:bg-blue-600"
-        >
-          <Play className="h-3 w-3" />
-        </Button>
-      )}
       
       {/* Volume Slider */}
       <div className="flex items-center gap-2">

@@ -878,7 +878,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
             {testData?.audioUrl && (
               <div className="mt-2 flex justify-center">
                 <AudioPlayer 
-                  src={`https://api.turkcetest.uz${testData.audioUrl}`} 
+                  src={`https://api.turkcetest.uz/${testData.audioUrl}`} 
                   onAudioEnded={handleAudioEnded}
                 />
               </div>
@@ -899,7 +899,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
               {/* Volume Control inline with timer */}
               {testData?.audioUrl && (
                 <AudioPlayer 
-                  src={`https://api.turkcetest.uz${testData.audioUrl}`} 
+                  src={`https://api.turkcetest.uz/${testData.audioUrl}`} 
                   onAudioEnded={handleAudioEnded}
                 />
               )}

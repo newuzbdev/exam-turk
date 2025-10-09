@@ -952,22 +952,29 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
       {/* Bottom Tabs - desktop only */}
       <div className="hidden lg:block">{renderTabs()}</div>
 
-      {/* Mobile: Prev/Next bölüm controls fixed bottom */}
-      <div className="lg:hidden fixed bottom-2 right-2 left-2 flex justify-between gap-2 px-2 pointer-events-none">
-        <Button 
-          onClick={goToPrevBolum}
-          disabled={currentPartNumber <= 1}
-          className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold px-4 py-2 pointer-events-auto disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          Önceki Bölüm
-        </Button>
-        <Button 
-          onClick={goToNextBolum}
-          disabled={currentPartNumber >= 6}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 pointer-events-auto disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          Sonraki Bölüm
-        </Button>
+      {/* Mobile: Prev/Next bölüm controls fixed bottom with center indicator */}
+      <div className="lg:hidden fixed bottom-2 right-2 left-2 grid grid-cols-3 items-center gap-2 px-2 pointer-events-none">
+        <div className="justify-self-start">
+          <Button 
+            onClick={goToPrevBolum}
+            disabled={currentPartNumber <= 1}
+            className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold px-3 py-2 pointer-events-auto disabled:opacity-60 disabled:cursor-not-allowed text-sm"
+          >
+            Önceki
+          </Button>
+        </div>
+        <div className="justify-self-center text-xs font-bold pointer-events-none">
+          {currentPartNumber}. BÖLÜM
+        </div>
+        <div className="justify-self-end">
+          <Button 
+            onClick={goToNextBolum}
+            disabled={currentPartNumber >= 6}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-2 pointer-events-auto disabled:opacity-60 disabled:cursor-not-allowed text-sm"
+          >
+            Sonraki
+          </Button>
+        </div>
       </div>
 
       {/* Confirmation Modal */}

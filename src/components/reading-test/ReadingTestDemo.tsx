@@ -129,6 +129,32 @@ export default function ReadingPage({ testId }: { testId: string }) {
     handleSubmit();
   };
 
+  const handleNextPart = () => {
+    const ordered = (testData?.parts || [])
+      .map((p) => p.number || 0)
+      .filter((n) => n > 0)
+      .sort((a, b) => a - b);
+    const unique = Array.from(new Set(ordered));
+    if (!unique.length) return;
+    const idx = unique.indexOf(currentPartNumber);
+    const next = idx >= 0 && idx < unique.length - 1 ? unique[idx + 1] : unique[idx] ?? unique[0];
+    setCurrentPartNumber(next);
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handlePrevPart = () => {
+    const ordered = (testData?.parts || [])
+      .map((p) => p.number || 0)
+      .filter((n) => n > 0)
+      .sort((a, b) => a - b);
+    const unique = Array.from(new Set(ordered));
+    if (!unique.length) return;
+    const idx = unique.indexOf(currentPartNumber);
+    const prev = idx > 0 ? unique[idx - 1] : unique[0];
+    setCurrentPartNumber(prev);
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleAnswerChange = (questionId: string, value: string) => {
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
   };
@@ -155,12 +181,21 @@ export default function ReadingPage({ testId }: { testId: string }) {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header (Listening style) */}
-      <div className="bg-white px-6 py-3 border-b-2 border-gray-200 flex items-center justify-between sticky top-0 z-50">
-        <div className="bg-red-600 text-white px-3 py-1 rounded font-bold text-lg">TURKISHMOCK</div>
-        <div className="font-bold text-2xl">{testData?.title || "Reading"}</div>
-        <div className="flex items-center gap-4">
-          <div className="font-bold text-lg">{formatTime(timeLeft)}</div>
-          <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 text-sm font-bold">GÖNDER</Button>
+      <div className="bg-white px-3 sm:px-6 py-2 sm:py-3 border-b-2 border-gray-200 grid grid-cols-3 items-center sticky top-0 z-50 gap-2">
+        <div className="justify-self-start">
+          <div className="bg-red-600 text-white px-2 sm:px-3 py-0.5 sm:py-1 rounded font-bold text-base sm:text-lg">TURKISHMOCK</div>
+        </div>
+        <div className="min-w-0 text-center mx-1 sm:mx-4">
+          <div className="font-bold truncate text-base sm:text-2xl leading-tight">
+            {/* {testData?.title || "Reading"} */}
+            Reading
+          </div>
+        </div>
+        <div className="justify-self-end">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <div className="font-bold text-sm sm:text-lg">{formatTime(timeLeft)}</div>
+            <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 text-white px-3 sm:px-4 py-1 text-xs sm:text-sm font-bold">GÖNDER</Button>
+          </div>
         </div>
       </div>
 
@@ -185,6 +220,8 @@ export default function ReadingPage({ testId }: { testId: string }) {
       {/* Dynamic Part Content */}
       {!isLoading && !error && testData && currentPartNumber === 1 && (
         <div className="mx-2 pb-24 max-h-[calc(100vh-120px)] overflow-y-auto overscroll-contain pr-2">
+          {/* Desktop/Tablet: side-by-side */}
+          <div className="hidden sm:block">
           <ResizablePanelGroup direction="horizontal" className="rounded-lg border border-gray-300 shadow-lg">
             {/* Left: Passage */}
             <ResizablePanel defaultSize={60} minSize={30} className="bg-[#fffef5]">
@@ -259,11 +296,73 @@ export default function ReadingPage({ testId }: { testId: string }) {
               </div>
             </ResizablePanel>
           </ResizablePanelGroup>
+          </div>
+
+          {/* Mobile: stacked */}
+          <div className="sm:hidden">
+            {(() => {
+              const part1 = (testData.parts || []).find((p) => p.number === 1) || (testData.parts || [])[0];
+              const section1 = part1?.sections && part1.sections[0];
+              const content = section1?.content || "";
+              const questions = (section1?.questions || []).slice(0, 6);
+              const optionMap = new Map<string, { variantText: string; answer: string }>();
+              (section1?.questions || []).forEach((q) => {
+                (q.answers || []).forEach((a) => {
+                  if (a.variantText && !optionMap.has(a.variantText)) {
+                    optionMap.set(a.variantText, { variantText: a.variantText, answer: a.answer });
+                  }
+                });
+              });
+              const optionList = Array.from(optionMap.values()).sort((a, b) => a.variantText.localeCompare(b.variantText));
+              return (
+                <div className="rounded-lg border border-gray-300 shadow-lg overflow-hidden">
+                  <div className="bg-[#fffef5] p-4">
+                    <div className="space-y-4 leading-relaxed">
+                      <p className="whitespace-pre-line text-[15px] leading-7 text-gray-900">{content}</p>
+                    </div>
+                  </div>
+                  <div className="bg-white p-4 space-y-5">
+                    <div className="space-y-3">
+                      {questions.map((q, idx) => (
+                        <div key={q.id} className="flex items-center gap-3">
+                          <label className="font-bold">S{idx + 1}.</label>
+                          <select
+                            value={answers[q.id] || ""}
+                            onChange={(e) => handleAnswerChange(q.id, e.target.value)}
+                            className="w-full bg-white border border-gray-400 rounded px-2 py-2 text-sm"
+                          >
+                            <option value="">Seçiniz</option>
+                            {optionList.map((opt) => (
+                              <option key={opt.variantText} value={opt.variantText}>
+                                {opt.variantText}) {opt.answer}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="space-y-2">
+                      {optionList.map((opt) => (
+                        <div key={opt.variantText} className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full border-2 border-black flex items-center justify-center font-bold bg-white text-sm">
+                            {opt.variantText}
+                          </div>
+                          <span className="text-sm">{opt.answer}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
         </div>
       )}
 
       {!isLoading && !error && testData && currentPartNumber === 3 && (
         <div className="mx-2 h-[calc(100vh-200px)]">
+          {/* Desktop/Tablet: side-by-side */}
+          <div className="hidden sm:block">
           <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border border-gray-300 shadow-lg">
             {/* Left: Paragraphs 15–20, select above text with green bg */}
             <ResizablePanel defaultSize={60} minSize={30} className="bg-[#fffef5]">
@@ -385,11 +484,85 @@ export default function ReadingPage({ testId }: { testId: string }) {
               </div>
             </ResizablePanel>
           </ResizablePanelGroup>
+          </div>
+          {/* Mobile: stacked */}
+          <div className="sm:hidden">
+            {(() => {
+              const part3 = (testData.parts || []).find((p) => p.number === 3) || (testData.parts || [])[2];
+              const sections = part3?.sections || [];
+              const paragraphSection = sections.find((s) => (s.questions || []).length > 0);
+              const paragraphQuestions = (paragraphSection?.questions || []).sort((a, b) => (a.number || 0) - (b.number || 0));
+              const optionMap = new Map<string, { letter: string; text: string }>();
+              (sections || []).forEach((s) => (s.questions || []).forEach((q) => (q.answers || []).forEach((a) => {
+                if (a.variantText && a.answer && !optionMap.has(a.variantText)) {
+                  optionMap.set(a.variantText, { letter: a.variantText, text: a.answer });
+                }
+              })));
+              if (optionMap.size === 0 && sections[0]?.content) {
+                const lines = String(sections[0].content).split(/\n+/);
+                lines.forEach((line) => {
+                  const m = line.trim().match(/^([A-H])\)\s*(.+)$/);
+                  if (m) {
+                    const letter = m[1];
+                    const text = m[2];
+                    if (!optionMap.has(letter)) optionMap.set(letter, { letter, text });
+                  }
+                });
+              }
+              const optionList = Array.from(optionMap.values()).sort((a, b) => a.letter.localeCompare(b.letter));
+              const romans = ["I", "II", "III", "IV", "V", "VI"];
+              return (
+                <div className="rounded-lg border border-gray-300 shadow-lg overflow-hidden">
+                  <div className="bg-[#fffef5] p-4">
+                    <div className="space-y-4">
+                      {paragraphQuestions.map((q, idx) => {
+                        const displayNum = (typeof q.number === 'number' ? q.number : 0) + 14;
+                        const label = `S${displayNum}. ${romans[idx]}. paragraf`;
+                        const displayText = q.text || q.content || "";
+                        return (
+                          <div key={q.id} className="rounded-xl p-2 bg-white/50">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="text-base font-bold text-gray-800">{label}</div>
+                              <select
+                                value={answers[q.id] || ""}
+                                onChange={(e) => handleAnswerChange(q.id, e.target.value)}
+                                className="bg-white border border-gray-400 rounded px-2 py-1 text-sm"
+                              >
+                                <option value="">Seçiniz</option>
+                                {optionList.map((opt) => (
+                                  <option key={opt.letter} value={opt.letter}>{opt.letter}</option>
+                                ))}
+                              </select>
+                            </div>
+                            {displayText && (
+                              <p className="text-[15px] leading-7 text-gray-800 font-serif text-justify whitespace-pre-line">{displayText}</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="bg-white p-4 space-y-2">
+                    {optionList.map((opt) => (
+                      <div key={opt.letter} className="flex items-start gap-3 p-2 bg-white rounded border border-gray-200">
+                        <div className="w-7 h-7 rounded-full border-2 border-gray-400 flex items-center justify-center font-bold bg-white text-gray-700 flex-shrink-0 text-xs">
+                          {opt.letter}
+                        </div>
+                        <span className="text-sm leading-snug text-gray-800 pt-0.5">{opt.text}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
         </div>
       )}
 
       {!isLoading && !error && testData && currentPartNumber === 4 && (
         <div className="mx-2 h-[calc(100vh-200px)]">
+          {/* Desktop/Tablet: side-by-side */}
+          <div className="hidden sm:block">
           <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border border-gray-300 shadow-lg">
             {/* Left: Passage content for Part 4 */}
             <ResizablePanel defaultSize={55} minSize={30} className="bg-[#fffef5]">
@@ -494,11 +667,75 @@ export default function ReadingPage({ testId }: { testId: string }) {
               </div>
             </ResizablePanel>
           </ResizablePanelGroup>
+          </div>
+          {/* Mobile: stacked */}
+          <div className="sm:hidden">
+            {(() => {
+              const part4 = (testData.parts || []).find((p) => p.number === 4) || (testData.parts || [])[3];
+              const section = part4?.sections?.[0];
+              const content = section?.content || "";
+              const allQuestions = (section?.questions || []).slice();
+              const firstBlock = allQuestions.slice(0, 4);
+              const secondBlock = allQuestions.slice(4, 9);
+              const renderQuestion = (q: any, globalIdx: number) => {
+                const options = (q.answers || [])
+                  .filter((a: any) => typeof a.variantText === 'string' && a.variantText.length)
+                  .sort((a: any, b: any) => String(a.variantText).localeCompare(String(b.variantText)));
+                const displayNumber = 21 + globalIdx;
+                return (
+                  <div key={q.id} className="space-y-2 pb-4 border-b border-gray-200">
+                    <h4 className="font-semibold text-sm">S{displayNumber}. {q.text || q.content || ""}</h4>
+                    <div className="space-y-1">
+                      {options.map((opt: any) => (
+                        <label key={opt.id || opt.variantText} className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name={q.id}
+                            value={String(opt.variantText)}
+                            checked={(answers[q.id] || "") === String(opt.variantText)}
+                            onChange={(e) => handleAnswerChange(q.id, e.target.value)}
+                            className="accent-black"
+                          />
+                          <span className="font-bold mr-1">{String(opt.variantText)})</span>
+                          <span className="text-sm text-gray-700">{opt.answer || opt.text || ""}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                );
+              };
+              return (
+                <div className="rounded-lg border border-gray-300 shadow-lg overflow-hidden">
+                  <div className="bg-[#fffef5] p-4">
+                    <div className="text-[15px] leading-7 space-y-3 font-serif text-justify whitespace-pre-line">
+                      {content}
+                    </div>
+                  </div>
+                  <div className="bg-white p-4 space-y-4">
+                    {firstBlock.map((q, i) => renderQuestion(q, i))}
+                    <div className="space-y-1">
+                      <p className="text-base font-bold font-serif">
+                        Sorular 25-29. Sorulardaki cümleler metne göre DOĞRU, YANLIŞ ya da VERİLMEMİŞ olabilir. İlgili seçeneği işaretleyiniz.
+                      </p>
+                      <div className="text-sm space-y-1 text-gray-700 font-serif">
+                        <p>DOĞRU – cümle, metindeki bilgilerle uygun ve/veya tutarlıysa,</p>
+                        <p>YANLIŞ – cümle, metindeki bilgilerle tutarsız ve/veya çelişkiliyse,</p>
+                        <p>VERİLMEMİŞ – cümle, metindeki bilgilerde yer almıyor ve/veya belirtilmemişse.</p>
+                      </div>
+                    </div>
+                    {secondBlock.map((q, i) => renderQuestion(q, 4 + i))}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
         </div>
       )}
 
       {!isLoading && !error && testData && currentPartNumber === 5 && (
         <div className="mx-2 h-[calc(100vh-200px)]">
+          {/* Desktop/Tablet: side-by-side */}
+          <div className="hidden sm:block">
           <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border border-gray-300 shadow-lg">
             {/* Left: Passage with paragraphs A–E each separated with space */}
             <ResizablePanel defaultSize={55} minSize={30} className="bg-[#fffef5]">
@@ -615,11 +852,107 @@ export default function ReadingPage({ testId }: { testId: string }) {
               </div>
             </ResizablePanel>
           </ResizablePanelGroup>
+          </div>
+          {/* Mobile: stacked */}
+          <div className="sm:hidden">
+            {(() => {
+              const part5 = (testData.parts || []).find((p) => p.number === 5) || (testData.parts || [])[4];
+              const section = part5?.sections?.[0];
+              const raw = String(section?.content || "");
+              const blocks: Array<{ letter: string; text: string }> = [];
+              const regex = /\n?\s*([A-E])\)\s*/g;
+              let lastIndex = 0;
+              let match: RegExpExecArray | null;
+              while ((match = regex.exec(raw)) !== null) {
+                const letter = match[1];
+                const start = match.index + match[0].length;
+                if (blocks.length > 0) {
+                  blocks[blocks.length - 1].text = raw.slice(lastIndex, match.index).trim();
+                }
+                blocks.push({ letter, text: "" });
+                lastIndex = start;
+              }
+              if (blocks.length) {
+                blocks[blocks.length - 1].text = raw.slice(lastIndex).trim();
+              } else if (raw.trim()) {
+                blocks.push({ letter: "", text: raw.trim() });
+              }
+              const allQuestions = (section?.questions || []).slice();
+              const renderQuestion = (q: any, idx: number) => {
+                const options = (q.answers || [])
+                  .filter((a: any) => typeof a.variantText === 'string' && a.variantText.length)
+                  .sort((a: any, b: any) => String(a.variantText).localeCompare(String(b.variantText)));
+                const displayNumber = 30 + idx;
+                return (
+                  <div key={q.id} className="space-y-2 pb-4 border-b border-gray-200">
+                    <h4 className="font-semibold text-sm">S{displayNumber}. {q.text || q.content || ""}</h4>
+                    <div className="space-y-1">
+                      {options.map((opt: any) => (
+                        <label key={opt.id || opt.variantText} className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name={q.id}
+                            value={String(opt.variantText)}
+                            checked={(answers[q.id] || "") === String(opt.variantText)}
+                            onChange={(e) => handleAnswerChange(q.id, e.target.value)}
+                            className="accent-black"
+                          />
+                          <div className="flex items-center justify-center w-7 h-7 rounded-full border-2 border-black font-bold text-xs">
+                            {String(opt.variantText)}
+                          </div>
+                          <span className="text-sm">{opt.answer || opt.text || ""}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                );
+              };
+              const firstBlock = allQuestions.slice(0, 3);
+              const secondBlock = allQuestions.slice(3, 5);
+              return (
+                <div className="rounded-lg border border-gray-300 shadow-lg overflow-hidden">
+                  <div className="bg-[#fffef5] p-4 space-y-4">
+                    {blocks.map((b, idx) => (
+                      <div key={`${b.letter || 'content'}-${idx}`} className="bg-white rounded-lg p-3 border border-gray-200">
+                        {b.letter && (
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-7 h-7 rounded-full border-2 border-gray-700 flex items-center justify-center font-bold text-xs">
+                              {b.letter}
+                            </div>
+                            <div className="font-bold text-sm">Paragraf</div>
+                          </div>
+                        )}
+                        <div className="text-[15px] leading-7 font-serif whitespace-pre-line text-justify">
+                          {b.text}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="bg-white p-4 space-y-4">
+                    <div className="space-y-1">
+                      <p className="text-base font-semibold font-serif">
+                        Sorular 30-32. Metne göre doğru seçeneği (A, B, C veya D) işaretleyiniz.
+                      </p>
+                    </div>
+                    {firstBlock.map((q, i) => renderQuestion(q, i))}
+                    <div className="space-y-1 pt-1">
+                      <p className="text-base font-semibold font-serif">
+                        Sorular 33-35. Aşağıdaki cümleleri (33-35) okuyunuz. Cümlelerin hangi paragraflara (A-E) ait olduğunu bulunuz. Seçilmemesi gereken İKİ paragraf bulunmaktadır.
+                      </p>
+                    </div>
+                    {secondBlock.map((q, i) => renderQuestion(q, 3 + i))}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
         </div>
       )}
 
       {!isLoading && !error && testData && currentPartNumber === 2 && (
         <div className="mx-2 h-[calc(100vh-200px)]">
+          {/* Desktop/Tablet: side-by-side */}
+          <div className="hidden sm:block">
           <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border border-gray-300 shadow-lg">
             {/* Left: Questions 7–14 with selects */}
             <ResizablePanel defaultSize={50} minSize={30} className="bg-[#fffef5]">
@@ -812,63 +1145,204 @@ export default function ReadingPage({ testId }: { testId: string }) {
               </div>
             </ResizablePanel>
           </ResizablePanelGroup>
+          </div>
+          {/* Mobile: stacked */}
+          <div className="sm:hidden">
+            {(() => {
+              const part2 = (testData.parts || []).find((p) => p.number === 2) || (testData.parts || [])[1];
+              const sections = part2?.sections || [];
+              const optionMap = new Map<string, { variantText: string; answer: string }>();
+              sections.forEach((s) => (s.questions || []).forEach((q) => (q.answers || []).forEach((a) => {
+                if (a.variantText && !optionMap.has(a.variantText)) {
+                  optionMap.set(a.variantText, { variantText: a.variantText, answer: a.answer });
+                }
+              })));
+              const optionList = Array.from(optionMap.values()).sort((a, b) => a.variantText.localeCompare(b.variantText));
+              const allQuestions = sections.flatMap((s) => s.questions || []);
+              const numbered = allQuestions.slice(0, 8);
+              const makeImageSrc = (u: string) => {
+                let src = u.trim();
+                if (/^(?:\/)?uploads\//i.test(src)) {
+                  src = `https://api.turkcetest.uz/${src.replace(/^\//, '')}`;
+                }
+                return src;
+              };
+              const renderContent = (raw: string, qNum: number) => {
+                if (!raw) return null;
+                const nodes: any[] = [];
+                const pattern = /!\[[^\]]*\]\(([^)]+)\)|@?(https?:\/\/[^\s)]+?\.(?:png|jpg|jpeg|gif|webp)(?:\?[^\s)]*)?)|@?(?:^|\s)(\/??uploads\/[\w\-./]+?\.(?:png|jpg|jpeg|gif|webp)(?:\?[^\s)]*)?)/gi;
+                let lastIndex = 0;
+                let match: RegExpExecArray | null;
+                while ((match = pattern.exec(raw)) !== null) {
+                  const start = match.index;
+                  if (start > lastIndex) {
+                    const textChunk = raw.slice(lastIndex, start).trim();
+                    if (textChunk) nodes.push(<p key={`t-${lastIndex}`} className="mb-2">{textChunk}</p>);
+                  }
+                  const urlFromMd = match[1];
+                  const urlFromHttp = match[2];
+                  const urlFromUploads = match[3];
+                  let src = urlFromMd || urlFromHttp || urlFromUploads || "";
+                  src = src.replace(/^\(|\)$/g, "");
+                  if (/^(?:\/)?uploads\//i.test(src)) {
+                    src = `https://api.turkcetest.uz/${src.replace(/^\//, '')}`;
+                  }
+                  if (src) {
+                    nodes.push(
+                      <img
+                        key={`i-${start}`}
+                        src={src}
+                        alt={`S${qNum} görseli`}
+                        className="w-full h-auto object-contain border border-gray-200 rounded my-2"
+                        onError={(e) => {
+                          const el = e.target as HTMLImageElement;
+                          el.style.display = "none";
+                        }}
+                      />
+                    );
+                  }
+                  lastIndex = pattern.lastIndex;
+                }
+                if (lastIndex < raw.length) {
+                  const tail = raw.slice(lastIndex).trim();
+                  if (tail) nodes.push(<p key={`t-tail`} className="mb-2">{tail}</p>);
+                }
+                return nodes.length ? <div className="text-[13px] leading-6 text-gray-800 font-serif text-justify">{nodes}</div> : null;
+              };
+              return (
+                <div className="rounded-lg border border-gray-300 shadow-lg overflow-hidden">
+                  <div className="bg-white p-4 space-y-5">
+                    {numbered.map((q, idx) => {
+                      const qNum = 7 + idx;
+                      const hasImage = typeof q.imageUrl === 'string' && q.imageUrl.length > 0;
+                      return (
+                        <div key={q.id} className="bg-transparent rounded-xl">
+                          <div className="flex items-start gap-3">
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="text-base font-bold text-gray-800">S{qNum}</div>
+                                <select
+                                  value={answers[q.id] || ""}
+                                  onChange={(e) => handleAnswerChange(q.id, e.target.value)}
+                                  className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
+                                >
+                                  <option value="">Seçiniz</option>
+                                  {optionList.map((opt) => (
+                                    <option key={opt.variantText} value={opt.variantText}>{opt.variantText}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              {hasImage ? (
+                                <div className="relative bg-white rounded-xl border border-gray-200 p-3 mb-2">
+                                  <img
+                                    src={makeImageSrc(q.imageUrl as string)}
+                                    alt={`S${qNum} görseli`}
+                                    className="w-full h-auto object-contain"
+                                    onError={(e) => {
+                                      const el = e.target as HTMLImageElement;
+                                      el.style.display = 'none';
+                                    }}
+                                  />
+                                </div>
+                              ) : (
+                                <>
+                                  {q.text && (
+                                    <h3 className="font-semibold mb-2 leading-snug italic text-gray-900 text-sm">{q.text}</h3>
+                                  )}
+                                  {renderContent(q.content || "", qNum)}
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="bg-white p-4 border-t border-gray-200">
+                    <div className="space-y-2">
+                      {optionList.map((opt) => (
+                        <div key={opt.variantText} className="flex items-start gap-2 p-2 bg-white rounded border border-gray-200">
+                          <div className="w-6 h-6 rounded-full border-2 border-gray-400 flex items-center justify-center font-bold bg-white text-gray-700 flex-shrink-0 text-xs">
+                            {opt.variantText}
+                          </div>
+                          <span className="text-sm leading-tight text-gray-800 pt-0.5">{opt.answer}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
         </div>
       )}
 
-      {/* Footer Tabs for Bölüm switching (like Listening) */}
+      {/* Footer navigation: Tabs on lg+, mobile controls on <lg */}
       {!isLoading && !error && testData && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-800 p-2 sm:p-3 z-50">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex justify-center gap-2 flex-nowrap overflow-x-auto">
-              {(() => {
-                const parts = (testData.parts || []).map((p) => p.number || 0).filter((n) => n > 0).sort((a, b) => a - b);
-                const uniqueParts = Array.from(new Set(parts));
+        <>
+          {/* Large screens: keep original tabs */}
+          <div className="hidden lg:block fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-800 p-2 sm:p-3 z-50">
+            <div className="max-w-7xl mx-auto">
+              <div className="flex justify-center gap-2 flex-nowrap overflow-x-auto">
+                {(() => {
+                  const parts = (testData.parts || []).map((p) => p.number || 0).filter((n) => n > 0).sort((a, b) => a - b);
+                  const uniqueParts = Array.from(new Set(parts));
 
-                const buildPartQuestions = (partNum: number) => {
-                  const part = (testData.parts || []).find((p) => (p.number || 0) === partNum);
-                  const qs = (part?.sections || []).flatMap((s) => s.questions || []);
-                  const nums = qs
-                    .map((q) => q.number)
-                    .filter((n): n is number => typeof n === 'number')
-                    .sort((a, b) => a - b);
-                  return { qs, nums };
-                };
+                  const buildPartQuestions = (partNum: number) => {
+                    const part = (testData.parts || []).find((p) => (p.number || 0) === partNum);
+                    const qs = (part?.sections || []).flatMap((s) => s.questions || []);
+                    const nums = qs
+                      .map((q) => q.number)
+                      .filter((n): n is number => typeof n === 'number')
+                      .sort((a, b) => a - b);
+                    return { qs, nums };
+                  };
 
-                return uniqueParts.map((partNum) => {
-                  const { qs, nums } = buildPartQuestions(partNum);
-                  const isActive = currentPartNumber === partNum;
-                  return (
-                    <div
-                      key={partNum}
-                      className={`text-center border-2 rounded-lg p-2 min-w-fit cursor-pointer ${
-                        isActive ? "border-blue-500 bg-blue-50" : "border-gray-300 bg-gray-50 hover:bg-gray-100"
-                      }`}
-                      onClick={() => setCurrentPartNumber(partNum)}
-                    >
-                      <div className="flex gap-1 mb-1 justify-center flex-wrap">
-                        {(nums.length ? nums : [partNum]).map((q) => {
-                          const questionId = qs.find((qq) => qq.number === q)?.id;
-                          const isAnswered = !!(questionId && answers[questionId]);
-                          return (
-                            <div
-                              key={`${partNum}-${q}`}
-                              className={`w-6 h-6 rounded-full border-2 border-gray-800 flex items-center justify-center text-xs font-bold ${
-                                isAnswered ? "bg-green-500" : "bg-white"
-                              }`}
-                            >
-                              {q}
-                            </div>
-                          );
-                        })}
+                  return uniqueParts.map((partNum) => {
+                    const { qs, nums } = buildPartQuestions(partNum);
+                    const isActive = currentPartNumber === partNum;
+                    return (
+                      <div
+                        key={partNum}
+                        className={`text-center border-2 rounded-lg p-2 min-w-fit cursor-pointer ${
+                          isActive ? "border-blue-500 bg-blue-50" : "border-gray-300 bg-gray-50 hover:bg-gray-100"
+                        }`}
+                        onClick={() => setCurrentPartNumber(partNum)}
+                      >
+                        <div className="flex gap-1 mb-1 justify-center flex-wrap">
+                          {(nums.length ? nums : [partNum]).map((q) => {
+                            const questionId = qs.find((qq) => qq.number === q)?.id;
+                            const isAnswered = !!(questionId && answers[questionId]);
+                            return (
+                              <div
+                                key={`${partNum}-${q}`}
+                                className={`w-6 h-6 rounded-full border-2 border-gray-800 flex items-center justify-center text-xs font-bold ${
+                                  isAnswered ? "bg-green-500" : "bg-white"
+                                }`}
+                              >
+                                {q}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="text-xs font-bold">{partNum}. BÖLÜM</div>
                       </div>
-                      <div className="text-xs font-bold">{partNum}. BÖLÜM</div>
-                    </div>
-                  );
-                });
-              })()}
+                    );
+                  });
+                })()}
+              </div>
             </div>
           </div>
-        </div>
+
+          {/* Small/medium screens: previous/next controls */}
+          <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-300 p-2 sm:p-3 z-50">
+            <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
+              <Button onClick={handlePrevPart} className="bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold px-3 py-2 text-sm">Önceki Bölüm</Button>
+              <div className="text-xs font-bold">{currentPartNumber}. BÖLÜM</div>
+              <Button onClick={handleNextPart} className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-2 text-sm">Sonraki Bölüm</Button>
+            </div>
+          </div>
+        </>
       )}
 
       {/* Submit button (top-right already has one; optional dedicated handler) */}

@@ -11,6 +11,7 @@ export const AudioPlayer = ({ src, onAudioEnded }: AudioPlayerProps) => {
   const [_isPlaying, setIsPlaying] = useState(false);
   const [showPlayButton, setShowPlayButton] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
+  // Web Audio removed: rely on native element volume/muted only for reliability
 
   // Debug: Log the src when component mounts
   useEffect(() => {
@@ -72,12 +73,13 @@ export const AudioPlayer = ({ src, onAudioEnded }: AudioPlayerProps) => {
     };
   }, [src]);
 
+  // Removed Web Audio pipeline
+
   // Keep the underlying audio element in sync with React volume state
   useEffect(() => {
     const audio = audioRef.current;
     if (audio) {
       audio.volume = volume;
-      // Explicitly toggle muted for browsers that optimize zero volume
       audio.muted = volume === 0;
     }
   }, [volume]);
@@ -98,12 +100,7 @@ export const AudioPlayer = ({ src, onAudioEnded }: AudioPlayerProps) => {
   // Volume control
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseFloat(e.target.value);
-    const audio = audioRef.current;
-    if (audio) {
-      audio.volume = newVolume;
-      audio.muted = newVolume === 0;
-      setVolume(newVolume);
-    }
+    setVolume(newVolume);
   };
 
   return (
@@ -131,7 +128,7 @@ export const AudioPlayer = ({ src, onAudioEnded }: AudioPlayerProps) => {
           type="range"
           min="0"
           max="1"
-          step="0.1"
+          step="0.01"
           value={volume}
           onChange={handleVolumeChange}
           className="w-16 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"

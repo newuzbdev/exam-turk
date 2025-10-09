@@ -874,15 +874,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                 GÖNDER
               </Button>
             </div>
-            {/* Mobile: inline audio to auto-start on page entry */}
-            {testData?.audioUrl && (
-              <div className="mt-2 flex justify-center">
-                <AudioPlayer 
-                  src={`https://api.turkcetest.uz/${testData.audioUrl}`} 
-                  onAudioEnded={handleAudioEnded}
-                />
-              </div>
-            )}
+            {/* Removed duplicate mobile-only audio player to avoid double playback */}
           </div>
 
           {/* Desktop Header - Horizontal Layout */}
@@ -896,19 +888,23 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                 {timerActive ? formatTime(timeLeft) : '10:00'}
               </div>
               
-              {/* Volume Control inline with timer */}
-              {testData?.audioUrl && (
-                <AudioPlayer 
-                  src={`https://api.turkcetest.uz/${testData.audioUrl}`} 
-                  onAudioEnded={handleAudioEnded}
-                />
-              )}
+              {/* Audio player moved to a shared area below header */}
               
               <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 text-sm font-bold">
                 GÖNDER
               </Button>
             </div>
           </div>
+
+          {/* Shared Audio Player (single instance for all breakpoints) */}
+          {testData?.audioUrl && (
+            <div className="mt-2 flex justify-center lg:justify-end">
+              <AudioPlayer 
+                src={`https://api.turkcetest.uz/${testData.audioUrl}`} 
+                onAudioEnded={handleAudioEnded}
+              />
+            </div>
+          )}
           
           {/* Description Section - Responsive */}
           <div className="mt-2 p-3 sm:p-5 bg-yellow-50 rounded-lg border border-yellow-300">

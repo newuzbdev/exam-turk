@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { Mic, ArrowLeft, CheckCircle, Info, Volume2 } from "lucide-react"
+import { Mic, ArrowLeft, CheckCircle, Volume2 } from "lucide-react"
 import axiosPrivate from "@/config/api"
 import { toast } from "sonner"
 import { MicrophoneCheck } from "./components/MicrophoneCheck"
-import { getInstructionForSection, type SpeakingInstruction } from "@/config/speakingInstructions"
+import { getInstructionForSection } from "@/config/speakingInstructions"
 import SimpleTextDisplay from "@/components/speaking-test/SimpleTextDisplay"
 // import ResultModal from "./components/ResultModal"
 // import DisableKeys from "./components/DisableKeys"
@@ -49,19 +49,25 @@ interface Recording {
 
 const RECORD_SECONDS_PER_QUESTION = 30
 const sectionAudios: Record<number, string> = {
-  1: "/speakingpart1.mp3",
-  2: "/speakingpart2.mp3",
-  3: "/speakingpart3.mp3",
+  1: "/1.1.mp3",
+  2: "/2..mp3",
+  3: "/3..mp3",
 }
 
 // Static section descriptions
-const getSectionDescription = (sectionTitle: string): string => {
+const getSectionDescription = (sectionTitle: string, subPartIndex?: number): string => {
   if (sectionTitle.includes("Section 1") || sectionTitle.includes("Part 1")) {
-    return "Birinci bölüm iki kısımdan oluşmaktadır. Önce size kendiniz ve ilgi alanlarınız hakkında üç kısa soru sorulacaktır. Sonra size bir resim gösterilecek ve bu resim hakkında üç soru sorulacaktır. Konuşmaya başlamadan önce hazırlanmanız için beş saniyeniz olacaktır."
+    if (subPartIndex === 0) {
+      // Section 1.1
+      return "Merhaba, Türkçe Yeterlik Sınavı'nın konuşma bölümüne hoş geldiniz.\nŞimdi Birinci Bölümün Birinci Kısmına geçiyoruz.\nBu bölümde size kendinizle ilgili üç kısa soru sorulacaktır.\nHer bir soruyu cevaplamak için 30 saniyeniz bulunmaktadır.\nZil sesini duyduğunuzda konuşmaya başlayabilirsiniz."
+    } else if (subPartIndex === 1) {
+      // Section 1.2
+      return "Şimdi size iki resim gösterilecek ve onlara ilişkin daha üç soru sorulacaktır.\nHer bir soruyu cevaplamak için 30 saniyeniz bulunur.\nZil sesini duyduğunuzda konuşmaya başlayabilirsiniz."
+    }
   } else if (sectionTitle.includes("Section 2") || sectionTitle.includes("Part 2")) {
-    return "Bu bölümde size bir resim gösterilecek ve üç soru sorulacaktır. Konuşmaya başlamadan önce hazırlanmanız için bir dakikanız olacaktır. Bu süre zarfında not alabilir ve düşünebilirsiniz. Sonra resim hakkında 1-2 dakika konuşacaksınız."
+    return "Bu bölümde size bir resim gösterilecek ve üç soru sorulacaktır.\nKonuşmaya başlamadan önce hazırlanmanız için 1 dakikanız,\nsoruları cevaplamanız için ise 2 dakikanız vardır.\nZil sesinden sonra konuşmaya başlayabilirsiniz."
   } else if (sectionTitle.includes("Section 3") || sectionTitle.includes("Part 3")) {
-    return "Bu bölümde belirli bir konu hakkında iki dakikalık bir konuşma yapmanız gerekmektedir. Ekranda konu ve bu konunun lehinde ve aleyhinde listelenmiş maddeler gösterilecektir. Hazırlanmanız için bir dakikanız olacaktır. Bu süre zarfında not alabilir ve düşünebilirsiniz. Sonra konu hakkında 2 dakika konuşacaksınız."
+    return "Bu bölümde size bir argüman sunulacaktır.\nBu argümanın her iki yönünü ele alarak konuşmanız gerekmektedir.\nKonuşmaya başlamadan önce hazırlanmanız için 1 dakikanız,\nkonuşmanızı yapmanız için ise 2 dakikanız bulunmaktadır.\nZil sesini duyduktan sonra konuşmaya başlayabilirsiniz."
   }
   return "Bu bölümde konuşma testi yapılacaktır."
 }
@@ -122,7 +128,7 @@ export default function ImprovedSpeakingTest() {
   const [isPrepRunning, setIsPrepRunning] = useState(false)
   
   // instruction state
-  const [completedInstructions, setCompletedInstructions] = useState<Set<string>>(new Set())
+  const [completedInstructions] = useState<Set<string>>(new Set())
 
 
 
@@ -669,7 +675,11 @@ export default function ImprovedSpeakingTest() {
         } else {
           // For other parts, use shorter delay
           console.log(`🎯 Other part: Recording finished, auto-advancing in 600ms...`)
-          setTimeout(() => nextQuestion(true), 600)
+          console.log(`🎯 Current section type: ${currentSection?.type}`)
+          setTimeout(() => {
+            console.log(`🚀 About to call nextQuestion(true) for section ${currentSection?.type}`)
+            nextQuestion(true)
+          }, 600)
         }
         cleanupMedia()
       }
@@ -761,7 +771,8 @@ export default function ImprovedSpeakingTest() {
       return
     }
 
-    if (currentSection.subParts?.length) {
+    // Only handle subParts for PART1 (Section 1)
+    if (currentSection.subParts?.length && currentSection.type === "PART1") {
       const sp = currentSection.subParts[currentSubPartIndex]
       const questions = sp?.questions
       if (questions) {
@@ -778,7 +789,6 @@ export default function ImprovedSpeakingTest() {
           // For PART1, let the auto-advance effect handle the preparation
           // This ensures proper state management and prevents conflicts
           if (currentSection.type === "PART1") {
-            const key = `${currentSectionIndex}-${currentSubPartIndex}-${nextIdx}`
             console.log(`🔄 Question advanced, auto-advance effect should trigger for question ${nextIdx + 1}`)
             // Don't clear the prep key - let the effect handle it
           }
@@ -800,23 +810,14 @@ export default function ImprovedSpeakingTest() {
         return
       }
     } else {
-      const qLen = currentSection.questions?.length ?? 0
-      if (currentQuestionIndex < qLen - 1) {
-        const nextIdx = currentQuestionIndex + 1
-        setCurrentQuestionIndex(nextIdx)
-        resetPerQuestionState()
-        if (currentSection.type === "PART1") {
-          const key = `${currentSectionIndex}-0-${nextIdx}`
-          if (prepStartedKeyRef.current !== key) {
-            prepStartedKeyRef.current = key
-            setTimeout(() => beginPreparation(5, () => startRecording(30, true)), 0)
-          }
-        }
-        return
-      }
+      // For sections without subParts (like PART2 and PART3)
+      // These sections have only one "question" (the speaking period)
+      // So we should move to the next section immediately
+      console.log(`🎯 Section ${currentSection.type} completed, moving to next section`)
     }
 
       if (currentSectionIndex < (testData.sections?.length ?? 0) - 1) {
+        console.log(`🚀 Moving from section ${currentSectionIndex + 1} to section ${currentSectionIndex + 2}`)
         setCurrentSectionIndex((i) => i + 1)
         setCurrentSubPartIndex(0)
         setCurrentQuestionIndex(0)
@@ -825,8 +826,10 @@ export default function ImprovedSpeakingTest() {
         // clear any prep-start guards for new section
         prepStartedKeyRef.current = null
         autoStartKeyRef.current = null
+        console.log(`✅ Section transition completed`)
       } else {
         // test finished: clean up locks & fullscreen
+        console.log(`🏁 Test completed, finishing...`)
         setIsTestComplete(true)
       }
   }
@@ -1174,7 +1177,7 @@ export default function ImprovedSpeakingTest() {
                 if (p12) return p12.instructionText
               }
               // Fallback to generic description
-              return getSectionDescription(currentSection.title)
+              return getSectionDescription(currentSection.title, currentSubPartIndex)
             })()}
             isPlaying={isPlayingInstructions}
           />

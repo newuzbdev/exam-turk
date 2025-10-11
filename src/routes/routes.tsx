@@ -17,6 +17,7 @@ import WritingTestResults from "@/pages/writing-test/WritingTestResults";
 import SpeakingTestResults from "@/pages/speaking-test/SpeakingTestResults";
 import AudioTestSimple from "@/components/speaking-test/AudioTestSimple";
 import AudioDebug from "@/components/speaking-test/AudioDebug";
+import TestPaymePage from "@/pages/test-payme";
 import { createBrowserRouter } from "react-router";
 
 export const router = createBrowserRouter([
@@ -99,6 +100,10 @@ export const router = createBrowserRouter([
       {
         path: "/audio-debug",
         element: <AudioDebug />,
+      },
+      {
+        path: "/test-payme",
+        element: <TestPaymePage />,
       }
     ],
   },

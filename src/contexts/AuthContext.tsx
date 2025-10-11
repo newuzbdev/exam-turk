@@ -16,6 +16,7 @@ interface User {
   avatar?: string;
   phoneNumber?: string;
   createdAt?: string;
+  balance?: number;
 }
 
 interface AuthContextType {

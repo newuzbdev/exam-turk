@@ -15,3 +15,18 @@ export const writingEndPoint = {
   writingSubmissionById: (id: string) => `/api/writing-submission/${id}`,
   writingSubmissionByUserId: (userId: string) => `/api/writing-submissions/user/${userId}`,
 }
+
+export const paymeEndPoint = {
+  checkout: "/api/payme/checkout",
+  balance: "/api/payme/balance",
+  transaction: (id: string) => `/api/payme/transaction/${id}`,
+  verify: "/api/payme/verify",
+}
+
+export const bannerEndPoint = {
+  create: "/api/banner",
+  getAll: "/api/banner",
+  getById: (id: string) => `/api/banner/${id}`,
+  update: (id: string) => `/api/banner/${id}`,
+  delete: (id: string) => `/api/banner/${id}`,
+}

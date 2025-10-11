@@ -9,8 +9,10 @@ import {
 } from "@/components/ui/sheet";
 import { Menu, User, LogOut } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import BalanceTopUp from "@/components/payme/BalanceTopUp";
+import { paymeService } from "@/services/payme.service";
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -67,8 +69,16 @@ const grammarLevels = [
 
 const Navbar = () => {
   const navigate = useNavigate();
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout, refreshUser } = useAuth();
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+
+  // Get balance from user object
+  const balance = user?.balance || 0;
+
+  // Function to refresh user data (including balance)
+  const handleBalanceUpdate = async () => {
+    await refreshUser();
+  };
 
   const handleLogoutClick = () => {
     setShowLogoutDialog(true);
@@ -233,10 +243,12 @@ const Navbar = () => {
               </div>
             )}
 
-            <div className="text-xs sm:text-sm hidden sm:block">
-              <span className="text-gray-600">Bakiye: </span>
-              <span className="font-semibold text-yellow-600">15U</span>
-            </div>
+            {isAuthenticated && (
+              <BalanceTopUp 
+                currentBalance={balance} 
+                onBalanceUpdate={handleBalanceUpdate} 
+              />
+            )}
 
             <div className="lg:hidden">
               <Sheet>
@@ -280,6 +292,12 @@ const Navbar = () => {
                           
                         </div>
                         <div className="space-y-2">
+                          <div className="px-2 py-2">
+                            <BalanceTopUp 
+                              currentBalance={balance} 
+                              onBalanceUpdate={handleBalanceUpdate} 
+                            />
+                          </div>
                           <NavLink
                             to="/profile"
                             className="flex items-center w-full px-2 py-2 text-sm text-gray-600 hover:text-red-600 hover:bg-gray-50 rounded cursor-pointer"

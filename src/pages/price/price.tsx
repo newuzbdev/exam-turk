@@ -8,9 +8,87 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, Zap, Target, Trophy, Users } from "lucide-react";
+import { CheckCircle, Zap, Target, Trophy, Users, CreditCard } from "lucide-react";
+import { useState } from "react";
+import PaymeCheckoutModal from "@/components/payme/PaymeCheckoutModal";
+import { toast } from "@/utils/toast";
+
+// Pricing plans configuration
+const pricingPlans = [
+  {
+    id: 'free',
+    name: 'Başlangıç Deneme',
+    units: 8,
+    price: 0,
+    description: 'Platformumuzu deneyimlemek isteyen yeni kullanıcılar için mükemmel',
+    icon: CheckCircle,
+    iconColor: 'green',
+    isFree: true,
+    buttonText: 'Ücretsiz Bonusu Al'
+  },
+  {
+    id: 'quick',
+    name: 'Hızlı Değerlendirme',
+    units: 15,
+    price: 25000, // 25,000 UZS
+    description: 'Hedefli pratik testlerle tahmini puanınızı alın',
+    icon: Target,
+    iconColor: 'blue',
+    isFree: false,
+    buttonText: '15U Paketi Satın Al'
+  },
+  {
+    id: 'intensive',
+    name: 'Yoğun Hazırlık ⚡',
+    units: 50,
+    price: 75000, // 75,000 UZS
+    description: '6-8 tam sınav veya odaklı beceri pratiği için mükemmel',
+    icon: Zap,
+    iconColor: 'yellow',
+    isFree: false,
+    buttonText: '50U Paketi Satın Al',
+    isPopular: true
+  },
+  {
+    id: 'expert',
+    name: 'Uzman Paketi ✨',
+    units: 120,
+    price: 150000, // 150,000 UZS
+    description: 'Sınırsız pratik fırsatlarıyla nihai hazırlık',
+    icon: Trophy,
+    iconColor: 'purple',
+    isFree: false,
+    buttonText: '120U Paketi Satın Al'
+  }
+];
 
 export default function Price() {
+  const [selectedPlan, setSelectedPlan] = useState<typeof pricingPlans[0] | null>(null);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+
+  const handlePurchaseClick = (plan: typeof pricingPlans[0]) => {
+    if (plan.isFree) {
+      toast.success('Ücretsiz bonus hesabınıza eklendi!');
+      return;
+    }
+    
+    setSelectedPlan(plan);
+    setIsCheckoutOpen(true);
+  };
+
+  const handleCheckoutSuccess = (transactionId: string, purchaseData?: any) => {
+    console.log('Payment successful:', transactionId);
+    console.log('Purchase data:', purchaseData);
+    toast.success(`${selectedPlan?.name} planı başarıyla satın alındı!`);
+    setIsCheckoutOpen(false);
+    setSelectedPlan(null);
+  };
+
+  const handleCheckoutClose = () => {
+    setIsCheckoutOpen(false);
+    setSelectedPlan(null);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -68,157 +146,94 @@ export default function Price() {
 
         {/* Pricing Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Free Trial */}
-
-          <Card className="relative border-2 border-gray-200 hover:border-red-300 transition-colors flex flex-col">
-            <CardHeader className="text-center flex-grow">
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                <CheckCircle className="w-6 h-6 text-green-600" />
-              </div>
-
-              <CardTitle className="text-xl font-bold mt-4">
-                Başlangıç Deneme
-              </CardTitle>
-              <CardDescription className="text-sm">
-                Platformumuzu deneyimlemek isteyen yeni kullanıcılar için
-                mükemmel
-              </CardDescription>
-            </CardHeader>
-
-            <CardContent className="text-center">
-              <div className="flex justify-center items-center gap-2">
-                <span className="text-sm text-gray-600">Birim dahil:</span>
-                <span className="text-lg font-bold text-yellow-600">8U</span>
-              </div>
-
-              <div className="text-3xl font-bold text-gray-900 mt-4">
-                Ücretsiz
-              </div>
-              <p className="text-sm text-gray-600 mt-2">
-                İlk kayıt olduğunuzda bonus birimler kazanın
-              </p>
-            </CardContent>
-
-            <CardFooter className="mt-auto">
-              <Button className="bg-red-600 hover:bg-red-700 text-white w-full">
-                Ücretsiz Bonusu Al
-              </Button>
-            </CardFooter>
-          </Card>
-
-          {/* One Shot */}
-
-          <Card className="relative border-2 border-gray-200 hover:border-red-300 transition-colors flex flex-col">
-            <CardHeader className="text-center flex-grow">
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
-                <Target className="w-6 h-6 text-blue-600" />
-              </div>
-
-              <CardTitle className="text-xl font-bold mt-4">
-                Hızlı Değerlendirme
-              </CardTitle>
-              <CardDescription className="text-sm">
-                Hedefli pratik testlerle tahmini puanınızı alın
-              </CardDescription>
-            </CardHeader>
-
-            <CardContent className="text-center">
-              <div className="flex justify-center items-center gap-2">
-                <span className="text-sm text-gray-600">Birim dahil:</span>
-                <span className="text-lg font-bold text-yellow-600">15U</span>
-              </div>
-
-              <div className="text-3xl font-bold text-gray-900 mt-4">
-                25.000 TL
-              </div>
-              <p className="text-sm text-gray-600 mt-2">
-                Bir kapsamlı sınav veya birden fazla odaklı bölüm için ideal
-              </p>
-            </CardContent>
-
-            <CardFooter className="mt-auto">
-              <Button className="bg-red-600 hover:bg-red-700 text-white w-full">
-                15U Paketi Satın Al
-              </Button>
-            </CardFooter>
-          </Card>
-
-          {/* Quick Preparation */}
-
-          <Card className="relative border-2 border-red-300 hover:border-red-400 transition-colors flex flex-col">
+          {pricingPlans.map((plan) => {
+            const IconComponent = plan.icon;
+            
+            // Define icon colors explicitly to avoid dynamic class issues
+            const getIconStyles = (color: string) => {
+              switch (color) {
+                case 'green':
+                  return { bg: 'bg-green-100', text: 'text-green-600' };
+                case 'blue':
+                  return { bg: 'bg-blue-100', text: 'text-blue-600' };
+                case 'yellow':
+                  return { bg: 'bg-yellow-100', text: 'text-yellow-600' };
+                case 'purple':
+                  return { bg: 'bg-purple-100', text: 'text-purple-600' };
+                default:
+                  return { bg: 'bg-gray-100', text: 'text-gray-600' };
+              }
+            };
+            
+            const iconStyles = getIconStyles(plan.iconColor);
+            
+            return (
+              <Card 
+                key={plan.id}
+                className={`relative border-2 ${
+                  plan.isPopular 
+                    ? 'border-red-300 hover:border-red-400' 
+                    : 'border-gray-200 hover:border-red-300'
+                } transition-colors flex flex-col`}
+              >
+                {plan.isPopular && (
             <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-red-600 text-white">
               En Popüler
             </Badge>
+                )}
+                
             <CardHeader className="text-center flex-grow">
-              <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mx-auto">
-                <Zap className="w-6 h-6 text-yellow-600" />
+                  <div className={`w-12 h-12 ${iconStyles.bg} rounded-full flex items-center justify-center mx-auto`}>
+                    <IconComponent className={`w-6 h-6 ${iconStyles.text}`} />
               </div>
 
               <CardTitle className="text-xl font-bold mt-4">
-                Yoğun Hazırlık ⚡
+                    {plan.name}
               </CardTitle>
               <CardDescription className="text-sm">
-                6-8 tam sınav veya odaklı beceri pratiği için mükemmel
+                    {plan.description}
               </CardDescription>
             </CardHeader>
 
             <CardContent className="text-center">
               <div className="flex justify-center items-center gap-2">
                 <span className="text-sm text-gray-600">Birim dahil:</span>
-                <span className="text-lg font-bold text-yellow-600">50U</span>
+                    <span className="text-lg font-bold text-yellow-600">{plan.units}U</span>
               </div>
 
               <div className="text-3xl font-bold text-gray-900 mt-4">
-                75.000 TL
+                    {plan.isFree ? 'Ücretsiz' : `${plan.price.toLocaleString('tr-TR')} UZS`}
               </div>
               <p className="text-sm text-gray-600 mt-2">
-                Ciddi sınav adayları için kapsamlı hazırlık
+                    {plan.isFree 
+                      ? 'İlk kayıt olduğunuzda bonus birimler kazanın'
+                      : 'Payme ile güvenli ödeme'
+                    }
               </p>
             </CardContent>
 
             <CardFooter className="mt-auto">
-              <Button className="bg-red-600 hover:bg-red-700 text-white w-full">
-                50U Paketi Satın Al
+                  <Button 
+                    onClick={() => handlePurchaseClick(plan)}
+                    className={`w-full ${
+                      plan.isFree 
+                        ? 'bg-green-600 hover:bg-green-700' 
+                        : 'bg-red-600 hover:bg-red-700'
+                    } text-white`}
+                  >
+                    {plan.isFree ? (
+                      plan.buttonText
+                    ) : (
+                      <>
+                        <CreditCard className="w-4 h-4 mr-2" />
+                        {plan.buttonText}
+                      </>
+                    )}
               </Button>
             </CardFooter>
           </Card>
-
-          {/* Full Practice */}
-
-          <Card className="relative border-2 border-gray-200 hover:border-red-300 transition-colors flex flex-col">
-            <CardHeader className="text-center flex-grow">
-              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto">
-                <Trophy className="w-6 h-6 text-purple-600" />
-              </div>
-
-              <CardTitle className="text-xl font-bold mt-4">
-                Uzman Paketi ✨
-              </CardTitle>
-              <CardDescription className="text-sm">
-                Sınırsız pratik fırsatlarıyla nihai hazırlık
-              </CardDescription>
-            </CardHeader>
-
-            <CardContent className="text-center">
-              <div className="flex justify-center items-center gap-2">
-                <span className="text-sm text-gray-600">Birim dahil:</span>
-                <span className="text-lg font-bold text-yellow-600">120U</span>
-              </div>
-
-              <div className="text-3xl font-bold text-gray-900 mt-4">
-                150.000 TL
-              </div>
-              <p className="text-sm text-gray-600 mt-2">
-                Maksimum puan artışı için tam hakimiyet paketi
-              </p>
-            </CardContent>
-
-            <CardFooter className="mt-auto">
-              <Button className="bg-red-600 hover:bg-red-700 text-white w-full">
-                120U Paketi Satın Al
-              </Button>
-            </CardFooter>
-          </Card>
+            );
+          })}
         </div>
 
         {/* Additional Info */}
@@ -236,6 +251,17 @@ export default function Price() {
           </div>
         </div>
       </main>
+
+      {/* Payme Checkout Modal */}
+      {selectedPlan && (
+        <PaymeCheckoutModal
+          isOpen={isCheckoutOpen}
+          onClose={handleCheckoutClose}
+          planName={selectedPlan.name}
+          planId={selectedPlan.id}
+          onSuccess={handleCheckoutSuccess}
+        />
+      )}
     </div>
   );
 }

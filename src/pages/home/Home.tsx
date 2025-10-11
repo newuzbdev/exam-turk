@@ -11,6 +11,7 @@ import HeroSection from "./ui/hero-section";
 import HowItWorks from "./ui/how-it-works";
 import HomeTestimonials from "./ui/home-testimonials";
 import HomePricing from "./ui/home-pricing";
+import { BannerSection } from "@/components/banner";
 
 export default function Home() {
   const [searchParams] = useSearchParams();
@@ -83,6 +84,9 @@ export default function Home() {
 
       {/* Last 30 Days Results */}
       <HomeLastMonthTopResults />
+
+      {/* Banner before Pricing */}
+      <BannerSection position="top" className="py-8" />
 
       {/* Pricing */}
       <HomePricing />

@@ -116,7 +116,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange }: Read
                               value={answers[q.id] || ""}
                               onValueChange={(value) => onAnswerChange(q.id, value)}
                             >
-                              <SelectTrigger className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm">
+                              <SelectTrigger className="w-28 bg-white border border-gray-400 rounded px-2 py-1 h-8 text-sm">
                                 <SelectValue placeholder="Seçiniz" />
                               </SelectTrigger>
                               <SelectContent>
@@ -162,8 +162,8 @@ export default function ReadingPart2({ testData, answers, onAnswerChange }: Read
                               value={answers[q.id] || ""}
                               onValueChange={(value) => onAnswerChange(q.id, value)}
                             >
-                              <SelectTrigger className="w-24 bg-white border border-gray-400 rounded px-2 py-1 h-8 text-sm">
-                                <SelectValue placeholder="" />
+                              <SelectTrigger className="w-28 bg-white border border-gray-400 rounded px-2 py-1 h-8 text-sm">
+                                <SelectValue placeholder="Seçiniz" />
                               </SelectTrigger>
                               <SelectContent>
                                 {optionList.map((opt) => (

@@ -1,119 +1,127 @@
-"use client";
-
-import { useState } from "react";
-import { Card } from "@/components/ui/card";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-export default function ReadingPart3() {
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+interface Question {
+  id: string;
+  number?: number;
+  text?: string;
+  content?: string;
+  answers: Array<{
+    id: string;
+    variantText: string;
+    answer: string;
+  }>;
+}
 
-  const headings = [
-    { id: "A", text: "Özbekistan’da Olimpiyat Ruhunun Modern Spor Üzerindeki Etkileri" },
-    { id: "B", text: "Paris 2024’te Sürdürülebilirlik Projelerinin Rolü" },
-    { id: "C", text: "Yeni Kuşağı Meraklandıran Spor Dalları" },
-    { id: "D", text: "Genç Sporcuların Olimpik Başarı Dinamikleri" },
-    { id: "E", text: "Sunulan Yeni Olanaklar" },
-    { id: "F", text: "Sporun Toplumlararası İlişkilere Etkisi" },
-    { id: "G", text: "Özbekistan’ın Paris 2024’teki Hedefleri" },
-    { id: "H", text: "Yenilikçi Olimpiyat Stratejileri" },
-  ];
+interface ReadingPart3Props {
+  testData: {
+    parts: Array<{
+      number: number;
+      sections: Array<{
+        content?: string;
+        questions: Question[];
+      }>;
+    }>;
+  };
+  answers: Record<string, string>;
+  onAnswerChange: (questionId: string, value: string) => void;
+}
 
-  const paragraphs: Array<{ key: string; label: string; text: string }> = [
-    {
-      key: "S15",
-      label: "S15. I. paragraf",
-      text:
-        "Paris 2024 Olimpiyat Oyunları, modern olimpiyat tarihinin en önemli etkinliklerinden biri olarak kabul ediliyor. Bu oyunlar, Paris’in üçüncü kez ev sahipliği yaptığı oyunlar olarak tarihe geçecek. Ancak Paris 2024, sadece tarihi bir olay olmanın ötesinde, yenilikçi yaklaşımları ve çevre dostu projeleriyle de dikkat çekiyor. Sürdürülebilirlik, oyunların merkezinde yer alıyor ve kullanılan malzemelerin büyük çoğunluğu geri dönüştürülebilir olacak şekilde tasarlandı. Olimpiyat Köyü, enerji verimliliği göz önünde bulundurularak inşa edildi ve oyunlar sırasında çevreye verilen zararın minimuma indirgenmesi hedeflendi. Paris 2024, bu anlamda sadece bir spor etkinliği değil, aynı zamanda gelecekteki uluslararası organizasyonlara örnek teşkil edecek bir model olarak da görülüyor.",
-    },
-    {
-      key: "S16",
-      label: "S16. II. paragraf",
-      text:
-        "Paris 2024’te tanıtılan yenilikçi teknolojiler, spor deneyimini izleyiciler için daha etkileşimli hale getiriyor. Akıllı biletleme, artırılmış gerçeklik ve canlı veri panoları, seyircilerin müsabakalara anlık erişim sağlamasına yardımcı oluyor.",
-    },
-    {
-      key: "S17",
-      label: "S17. III. paragraf",
-      text:
-        "Genç sporcular için oluşturulan destek programları, performans takibi ve psikolojik danışmanlık gibi hizmetlerle olimpik başarıyı artırmayı hedefliyor. Bu programlar, yeni kuşağın sporla bağını güçlendiriyor.",
-    },
-    {
-      key: "S18",
-      label: "S18. IV. paragraf",
-      text:
-        "Paris, oyunlar kapsamında düzenlediği kültürel etkinliklerle farklı toplumlar arasında köprü kurmayı amaçlıyor. Sporun birleştirici gücü, uluslararası işbirliği ve anlayışı destekliyor.",
-    },
-    {
-      key: "S19",
-      label: "S19. V. paragraf",
-      text:
-        "Şehir içi ulaşımda çevreci çözümler ön plana çıkarılıyor. Bisiklet yolları genişletildi, elektrikli toplu taşıma araçları yaygınlaştırıldı ve gönüllüler için özel servisler planlandı.",
-    },
-    {
-      key: "S20",
-      label: "S20. VI. paragraf",
-      text:
-        "Orta Asya’dan katılan ekipler arasında Özbekistan, genç ve dinamik kadrosuyla dikkat çekiyor. Paris 2024 için belirlenen hedefler, belirli branşlarda finale kalmak ve rekorları zorlamak üzerine kurulu.",
-    },
-  ];
+export default function ReadingPart3({ testData, answers, onAnswerChange }: ReadingPart3Props) {
+  const part3 = testData.parts.find((p) => p.number === 3) || testData.parts[2];
+  const sections = part3?.sections || [];
+  
+  // Find the section with paragraphs/questions (the one that has questions)
+  const paragraphSection = sections.find((s) => (s.questions || []).length > 0);
+  const paragraphQuestions = (paragraphSection?.questions || []).sort((a, b) => (a.number || 0) - (b.number || 0));
+
+  // Build options A..H from answers if present; fallback to parsing the first section content (A) .. (H)
+  const optionMap = new Map<string, { letter: string; text: string }>();
+  (sections || []).forEach((s) => (s.questions || []).forEach((q) => (q.answers || []).forEach((a) => {
+    if (a.variantText && a.answer && !optionMap.has(a.variantText)) {
+      optionMap.set(a.variantText, { letter: a.variantText, text: a.answer });
+    }
+  })));
+
+  if (optionMap.size === 0 && sections[0]?.content) {
+    const lines = String(sections[0].content).split(/\n+/);
+    lines.forEach((line) => {
+      const m = line.trim().match(/^([A-H])\)\s*(.+)$/);
+      if (m) {
+        const letter = m[1];
+        const text = m[2];
+        if (!optionMap.has(letter)) optionMap.set(letter, { letter, text });
+      }
+    });
+  }
+
+  const optionList = Array.from(optionMap.values()).sort((a, b) => a.letter.localeCompare(b.letter));
 
   return (
-    <div className="p-4 md:p-6 bg-white rounded-xl mx-auto  mt-4 mb-4">
-      <ResizablePanelGroup direction="horizontal" className="items-stretch">
-        <ResizablePanel defaultSize={66} minSize={40}>
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-lg font-bold mb-4">3. OKUMA METNİ.</h2>
-              <p className="text-sm leading-relaxed mb-6">
-                Sorular 15-20. Aşağıdaki başlıkları (A-H) ve paragrafları (15-20) okuyunuz. Her paragraf için uygun
-                başlığı seçiniz. Her başlık yalnız bir defa kullanılabilir.
-              </p>
-            </div>
-
+    <div className="mx-2 h-[calc(100vh-200px)]">
+      <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border border-gray-300 shadow-lg">
+        {/* Left: Paragraphs 15–20, select above text with green bg */}
+        <ResizablePanel defaultSize={60} minSize={30} className="bg-[#fffef5]">
+          <div className="h-full p-6 overflow-y-auto pb-24 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
             <div className="space-y-6">
-              {paragraphs.map((p) => (
-                <div key={p.key} className="space-y-3">
-                  <div className="space-y-2">
-                    <span className="font-bold block">{p.label}</span>
-                    <Select
-                      value={answers[p.key] ?? ""}
-                      onValueChange={(val) => setAnswers((prev) => ({ ...prev, [p.key]: val }))}
-                    >
-                      <SelectTrigger className="w-28">
-                        <SelectValue placeholder="Seçiniz" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {headings.map((h) => (
-                          <SelectItem key={h.id} value={h.id}>
-                            {h.id}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+              {paragraphQuestions.map((q, idx) => {
+                const displayNum = 15 + idx; // 15..20 (sequential)
+                const displayText = q.text || q.content || "";
+                const romans = ["I", "II", "III", "IV", "V", "VI"];
+                const label = `S${displayNum}. ${romans[idx]}. paragraf`;
+                return (
+                  <div key={q.id} className="rounded-xl p-4">
+                    <div className="flex items-start gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="text-xl font-bold text-gray-800">{label}</div>
+                          <div>
+                            <Select
+                              value={answers[q.id] || ""}
+                              onValueChange={(value) => onAnswerChange(q.id, value)}
+                            >
+                              <SelectTrigger className="w-28 bg-white border border-gray-400 rounded px-2 py-1 h-8 text-sm">
+                                <SelectValue placeholder="Seçiniz" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {optionList.map((opt) => (
+                                  <SelectItem key={opt.letter} value={opt.letter}>
+                                    {opt.letter}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        {displayText && (
+                          <div className="">
+                            <p className="text-base leading-7 text-gray-800 font-serif text-justify whitespace-pre-line">{displayText}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
-
-                  <Card className="p-4 bg-gray-50">
-                    <p className="text-sm leading-relaxed">{p.text}</p>
-                  </Card>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </ResizablePanel>
 
-        <ResizableHandle withHandle variant="grip" />
+        <ResizableHandle withHandle={true} className="bg-gray-300 hover:bg-gray-400 transition-colors" />
 
-        <ResizablePanel defaultSize={34} minSize={25}>
-          <div className="space-y-3">
-            {headings.map((h) => (
-              <div key={h.id} className="flex items-start gap-3 p-2 rounded">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold flex-shrink-0 mt-1 border">
-                  {h.id}
+        {/* Right: Headings legend A..H (no question labels next to variants) */}
+        <ResizablePanel defaultSize={40} minSize={25} className="bg-white">
+          <div className="h-full p-6 flex flex-col">
+            <div className="space-y-3">
+              {optionList.map((opt) => (
+                <div key={opt.letter} className="flex items-start gap-3 p-3 bg-white rounded border border-gray-200">
+                  <div className="w-7 h-7 rounded-full border-2 border-gray-400 flex items-center justify-center font-bold bg-white text-gray-700 flex-shrink-0 text-base">
+                    {opt.letter}
+                  </div>
+                  <span className="text-lg leading-snug text-gray-800 pt-0.5">{opt.text}</span>
                 </div>
-                <span className="text-sm leading-relaxed">{h.text}</span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>

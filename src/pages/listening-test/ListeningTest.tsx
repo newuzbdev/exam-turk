@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import ListeningTestDemo from "@/components/listening-test/ListeningTestDemo";
 import { useEffect } from "react";
+import "./components/index.css";
 
 export default function ListeningTestPage() {
     const { testId } = useParams<{ testId: string }>();

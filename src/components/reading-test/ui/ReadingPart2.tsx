@@ -1,138 +1,209 @@
-import { useState } from "react";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { Input } from "@/components/ui/input";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
-export default function ReadingPart2() {
-  const [answers, setAnswers] = useState<{ s7: string; s8: string }>({ s7: "A", s8: "A" });
-  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
+interface Question {
+  id: string;
+  text?: string;
+  content?: string;
+  imageUrl?: string;
+  answers: Array<{
+    id: string;
+    variantText: string;
+    answer: string;
+  }>;
+}
 
-  const multipleChoiceOptions = [
-    { id: "A", text: "Baytar olarak çalışmak istiyorsunuz." },
-    { id: "B", text: "Aracınızda bir arıza var, onarmak istiyorsunuz." },
-    { id: "C", text: "Kangalınız kuduz olduğunda, sorunu çözmek istiyorsunuz." },
-    { id: "D", text: "Bir yakınınız, yeni ve cazip bir apartmanda bir daire kiralamak istiyor." },
-    { id: "E", text: "Evinizi tamir etmek istiyorsunuz." },
-    { id: "F", text: "Evinizin duvarlarını boyatmak istiyorsunuz." },
-    { id: "G", text: "Gece yarısı kızınız dental implant ağrısıyla uyandı." },
-    { id: "H", text: "Evinizin duvarlarını boyatmak istiyorsunuz." },
-    { id: "I", text: "Evinizin duvarlarını boyatmak istiyorsunuz." },
-    { id: "J", text: "Lazerle göz estetik yöntemleri hakkında bilgi almak istiyorsunuz." },
-  ];
+interface ReadingPart2Props {
+  testData: {
+    parts: Array<{
+      number: number;
+      sections: Array<{
+        questions: Question[];
+      }>;
+    }>;
+  };
+  answers: Record<string, string>;
+  onAnswerChange: (questionId: string, value: string) => void;
+}
+
+export default function ReadingPart2({ testData, answers, onAnswerChange }: ReadingPart2Props) {
+  const part2 = testData.parts.find((p) => p.number === 2) || testData.parts[1];
+  const sections = part2?.sections || [];
+  
+  // Build options list across part 2 sections (A..J)
+  const optionMap = new Map<string, { variantText: string; answer: string }>();
+  sections.forEach((s) => (s.questions || []).forEach((q) => (q.answers || []).forEach((a) => {
+    if (a.variantText && !optionMap.has(a.variantText)) {
+      optionMap.set(a.variantText, { variantText: a.variantText, answer: a.answer });
+    }
+  })));
+  const optionList = Array.from(optionMap.values()).sort((a, b) => a.variantText.localeCompare(b.variantText));
+
+  // Flatten questions and show all available questions for this part
+  const allQuestions = sections.flatMap((s) => s.questions || []);
+  const numbered = allQuestions;
+
+  const makeImageSrc = (u: string) => {
+    let src = u.trim();
+    if (/^(?:\/)?uploads\//i.test(src)) {
+      src = `https://api.turkcetest.uz/${src.replace(/^\//, '')}`;
+    }
+    return src;
+  };
+
+  const renderContent = (raw: string, qNum: number) => {
+    if (!raw) return null;
+    const nodes: any[] = [];
+    const pattern = /!\[[^\]]*\]\(([^)]+)\)|@?(https?:\/\/[^\s)]+?\.(?:png|jpg|jpeg|gif|webp)(?:\?[^\s)]*)?)|@?(?:^|\s)(\/??uploads\/[\w\-./]+?\.(?:png|jpg|jpeg|gif|webp)(?:\?[^\s)]*)?)/gi;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(raw)) !== null) {
+      const start = match.index;
+      if (start > lastIndex) {
+        const textChunk = raw.slice(lastIndex, start).trim();
+        if (textChunk) nodes.push(<p key={`t-${lastIndex}`} className="mb-2">{textChunk}</p>);
+      }
+      const urlFromMd = match[1];
+      const urlFromHttp = match[2];
+      const urlFromUploads = match[3];
+      let src = urlFromMd || urlFromHttp || urlFromUploads || "";
+      src = src.replace(/^\(|\)/g, "");
+      if (/^(?:\/)?uploads\//i.test(src)) {
+        src = `https://api.turkcetest.uz/${src.replace(/^\//, '')}`;
+      }
+      if (src) {
+        nodes.push(
+          <img
+            key={`i-${start}`}
+            src={src}
+            alt={`S${qNum} görseli`}
+            className="w-full max-w-[520px] h-auto max-h-[340px] object-contain border border-gray-200 rounded my-2 mx-auto"
+            onError={(e) => {
+              const el = e.target as HTMLImageElement;
+              el.style.display = "none";
+            }}
+          />
+        );
+      }
+      lastIndex = pattern.lastIndex;
+    }
+    if (lastIndex < raw.length) {
+      const tail = raw.slice(lastIndex).trim();
+      if (tail) nodes.push(<p key={`t-tail`} className="mb-2">{tail}</p>);
+    }
+    return nodes.length ? <div className="text-[13px] leading-6 text-gray-800 font-serif text-justify">{nodes}</div> : null;
+  };
 
   return (
-    <div>
-      <div className="p-4 md:p-6 bg-white rounded-xl mx-auto  mt-4 mb-4">
-        <ResizablePanelGroup direction="horizontal" className="items-stretch">
-          <ResizablePanel defaultSize={66} minSize={40}>
+    <div className="mx-2 h-[calc(100vh-200px)]">
+      <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border border-gray-300 shadow-lg">
+        {/* Left: Questions 7–14 with selects */}
+        <ResizablePanel defaultSize={50} minSize={30} className="bg-[#fffef5]">
+          <div className="h-full p-6 overflow-y-auto pb-24">
             <div className="space-y-6">
-              <div>
-                <h2 className="text-lg font-bold mb-4">2. OKUMA METNİ.</h2>
-                <p className="text-sm leading-relaxed mb-6">
-                  Sorular 7-14. Aşağıda verilen durumları (A-J) ve bilgi metinlerini (7-14) okuyunuz. Her durum için
-                  uygun olan metni bulup uygun seçeneği işaretleyiniz. Her seçenek yalnız bir defa kullanılabilir.
-                  Seçilmemesi gereken İKİ seçenek bulunmaktadır.
-                </p>
-              </div>
+              {numbered.map((q, idx) => {
+                const qNum = 7 + idx;
+                const hasImage = typeof q.imageUrl === 'string' && q.imageUrl.length > 0;
 
-              <div className="space-y-6">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <span className="font-bold">S.7</span>
-                    <Input
-                      className="w-16 rounded-lg text-center font-bold"
-                      value={answers.s7}
-                      onChange={(e) => setAnswers((prev) => ({ ...prev, s7: e.target.value }))}
-                    />
-                  </div>
-
-                  <div className="p-4 bg-white rounded-lg">
-                    <div className="text-center font-bold text-lg mb-3">İSTANBUL-SİLİVRİSARAY EVLERİ</div>
-                    <div className="text-sm space-y-2">
-                      <p>
-                        Silivrisaray Evleri; denize sıfır konumu, büyük bahçeleri, temiz havası, güvenli, huzurlu ve
-                        keyifli ortamıyla sakinlerine yeni bir daireden ziyade, yeni bir yaşam vaat ediyor.
-                      </p>
-                      <div className="space-y-1 mt-3">
-                        <p>
-                          <strong>Satılık Dairelerin Teslim Tarihi:</strong> Hemen
-                        </p>
-                        <p>
-                          <strong>Daire Sayısı:</strong> 86
-                        </p>
-                        <p>
-                          <strong>Toplam Proje Alanı:</strong> 20.000 m²
-                        </p>
-                      </div>
-                      <div className="mt-3 space-y-1">
-                        <p>
-                          <strong>İletişim Bilgileri:</strong>
-                        </p>
-                        <p>Tel.: 0 (212) 728 05 32</p>
-                        <p>Satış Ofisi: Fatih Mahallesi Bağlar Sokak</p>
-                        <p>No:2 Silivri/İSTANBUL</p>
-                        <p>www.silivrisaray.com</p>
-                      </div>
+                return (
+                  <div key={q.id} className="bg-transparent rounded-xl p-6">
+                    <div className="flex items-start gap-4">
+                      {hasImage ? (
+                        <div className="w-full">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="text-xl font-bold text-gray-800">S{qNum}</div>
+                            <Select
+                              value={answers[q.id] || ""}
+                              onValueChange={(value) => onAnswerChange(q.id, value)}
+                            >
+                              <SelectTrigger className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm">
+                                <SelectValue placeholder="Seçiniz" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {optionList.map((opt) => (
+                                  <SelectItem key={opt.variantText} value={opt.variantText}>
+                                    {opt.variantText}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="flex items-center justify-start mb-4">
+                            <div className="relative bg-white rounded-xl border border-gray-200 shadow-sm p-3">
+                              <img
+                                src={makeImageSrc(q.imageUrl as string)}
+                                alt={`S${qNum} görseli`}
+                                className="w-full max-w-[520px] h-auto max-h-[340px] object-contain bg-white"
+                                onError={(e) => {
+                                  const el = e.target as HTMLImageElement;
+                                  el.style.display = 'none';
+                                }}
+                              />
+                            </div>
+                          </div>
+                          {q.text && (
+                            <div className="text-center">
+                              <p className="text-sm text-gray-600 italic bg-gray-50 px-4 py-2 rounded-lg">{q.text}</p>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex-1">
+                            {q.text && (
+                              <h3 className="font-semibold mb-2 leading-snug italic text-gray-900">
+                                {q.text}
+                              </h3>
+                            )}
+                            {renderContent(q.content || "", qNum)}
+                          </div>
+                          <div className="shrink-0 pt-1">
+                            <Select
+                              value={answers[q.id] || ""}
+                              onValueChange={(value) => onAnswerChange(q.id, value)}
+                            >
+                              <SelectTrigger className="w-24 bg-white border border-gray-400 rounded px-2 py-1 h-8 text-sm">
+                                <SelectValue placeholder="" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {optionList.map((opt) => (
+                                  <SelectItem key={opt.variantText} value={opt.variantText}>
+                                    {opt.variantText}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
-                </div>
+                );
+              })}
+            </div>
+          </div>
+        </ResizablePanel>
 
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <span className="font-bold">S.8</span>
-                    <Input
-                      className="w-16 rounded-lg text-center font-bold"
-                      value={answers.s8}
-                      onChange={(e) => setAnswers((prev) => ({ ...prev, s8: e.target.value }))}
-                    />
-                  </div>
+        <ResizableHandle withHandle={true} className="bg-gray-300 hover:bg-gray-400 transition-colors" />
 
-                  <div className="p-4 bg-white rounded-lg">
-                    <div className="text-center font-bold text-lg mb-3">İSTANBUL-SİLİVRİSARAY EVLERİ</div>
-                    <div className="text-sm space-y-2">
-                      <p>
-                        Silivrisaray Evleri; denize sıfır konumu, büyük bahçeleri, temiz havası, güvenli, huzurlu ve
-                        keyifli ortamıyla sakinlerine yeni bir daireden ziyade, yeni bir yaşam vaat ediyor.
-                      </p>
-                      <div className="space-y-1 mt-3">
-                        <p>
-                          <strong>Satılık Dairelerin Teslim Tarihi:</strong> Hemen
-                        </p>
-                        <p>
-                          <strong>Daire Sayısı:</strong> 86
-                        </p>
-                        <p>
-                          <strong>Toplam Proje Alanı:</strong> 20.000 m²
-                        </p>
-                      </div>
+        {/* Right: Options legend A..J - Fixed Sidebar */}
+        <ResizablePanel defaultSize={50} minSize={25} className="bg-white">
+          <div className="h-full flex flex-col">
+            <div className="flex-1 p-4 overflow-hidden">
+              <div className="space-y-2">
+                {optionList.map((opt) => (
+                  <div key={opt.variantText} className="flex items-start gap-2 p-2 bg-white rounded hover:bg-gray-50 transition-all duration-200 border border-gray-200">
+                    <div className="w-6 h-6 rounded-full border-2 border-gray-400 flex items-center justify-center font-bold bg-white text-gray-700 flex-shrink-0 text-xs">
+                      {opt.variantText}
                     </div>
+                    <span className="text-lg leading-tight text-gray-800 pt-0.5 font-medium">{opt.answer}</span>
                   </div>
-                </div>
+                ))}
               </div>
             </div>
-          </ResizablePanel>
-
-          <ResizableHandle withHandle variant="grip" />
-
-          <ResizablePanel defaultSize={34} minSize={25}>
-            <div className="space-y-3">
-              {multipleChoiceOptions.map((option) => (
-                <div
-                  key={option.id}
-                  className="flex items-start gap-3 cursor-pointer p-2 rounded"
-                  onClick={() => setSelectedAnswers((prev) => ({ ...prev, [option.id]: option.text }))}
-                >
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold flex-shrink-0 mt-1">
-                    {option.id}
-                  </div>
-                  <span className="text-sm leading-relaxed">{option.text}</span>
-                </div>
-              ))}
-            </div>
-          </ResizablePanel>
-        </ResizablePanelGroup>
-      </div>
+          </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </div>
   );
 }
-
-

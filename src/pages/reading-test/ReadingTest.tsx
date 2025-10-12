@@ -23,6 +23,5 @@ export default function ReadingTest() {
     return null;
   }
 
-  // @ts-expect-error
   return <ReadingTestDemo testId={testId} />;
 }

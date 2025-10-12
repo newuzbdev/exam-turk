@@ -240,7 +240,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
           <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border border-gray-300 shadow-lg">
             {/* Left: Passage content for Part 4 */}
             <ResizablePanel defaultSize={55} minSize={30} className="bg-[#fffef5]">
-              <div className="h-full p-6 overflow-y-auto pb-24">
+              <div className="h-full p-6 overflow-y-auto pb-24" style={{ maxHeight: 'calc(100vh - 200px)' }}>
                 {/* <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-300 mb-4">
                   <h3 className="text-xl font-bold text-gray-800">4. OKUMA METNİ.</h3>
                   <p className="text-base text-gray-800">21-29. sorular için aşağıdaki metni okuyunuz</p>
@@ -252,7 +252,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
                   return (
                     <div className="space-y-4">
                      
-                      <div className="text-base leading-7 space-y-3 font-serif text-justify whitespace-pre-line">
+                      <div className="text-base leading-7 space-y-3 font-serif text-justify whitespace-pre-line min-h-[800px]">
                         {content}
                       </div>
                     </div>
@@ -413,7 +413,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
           <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border border-gray-300 shadow-lg">
             {/* Left: Passage with paragraphs A–E each separated with space */}
             <ResizablePanel defaultSize={55} minSize={30} className="bg-[#fffef5]">
-              <div className="h-full p-6 overflow-y-auto pb-24">
+              <div className="h-full p-6 overflow-y-auto pb-24" style={{ maxHeight: 'calc(100vh - 200px)' }}>
                 {(() => {
                   const part5 = (testData.parts || []).find((p) => p.number === 5) || (testData.parts || [])[4];
                   const section = part5?.sections?.[0];
@@ -440,7 +440,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
                   }
 
                   return (
-                    <div className="space-y-6">
+                    <div className="space-y-6 min-h-[800px]">
                       {blocks.map((b, idx) => (
                         <div key={`${b.letter || 'content'}-${idx}`} className="rounded-lg p-4">
                           {b.letter && (

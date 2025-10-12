@@ -442,7 +442,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
                   return (
                     <div className="space-y-6">
                       {blocks.map((b, idx) => (
-                        <div key={`${b.letter || 'content'}-${idx}`} className="bg-white rounded-lg p-4 border border-gray-200">
+                        <div key={`${b.letter || 'content'}-${idx}`} className="rounded-lg p-4">
                           {b.letter && (
                             <div className="flex items-center gap-3 mb-2">
                               <div className="w-8 h-8 rounded-full border-2 border-gray-700 flex items-center justify-center font-bold text-base">
@@ -482,19 +482,13 @@ export default function ReadingPage({ testId }: { testId: string }) {
                         <h4 className="font-semibold text-base">S{displayNumber}. {q.text || q.content || ""}</h4>
                         <div className="space-y-2">
                           {options.map((opt: any) => (
-                            <label key={opt.id || opt.variantText} className="flex items-center gap-3 cursor-pointer">
-                              <input
-                                type="radio"
-                                name={q.id}
-                                value={String(opt.variantText)}
-                                checked={(answers[q.id] || "") === String(opt.variantText)}
-                                onChange={(e) => handleAnswerChange(q.id, e.target.value)}
-                                className="accent-black"
-                              />
-                              <div className="flex items-center justify-center w-8 h-8 rounded-full border-2 border-black font-bold text-base">
-                                {String(opt.variantText)}
+                            <label key={opt.id || opt.variantText} className="flex items-center gap-3 cursor-pointer" onClick={() => handleAnswerChange(q.id, String(opt.variantText))}>
+                              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 border-2 ${(answers[q.id] || "") === String(opt.variantText) ? "bg-green-500 border-black text-white" : "border-gray-300"}`}>
                               </div>
-                              <span className="text-base">{opt.answer || opt.text || ""}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-sm">{String(opt.variantText)})</span>
+                                <span className="text-sm">{opt.answer || opt.text || ""}</span>
+                              </div>
                             </label>
                           ))}
                         </div>
@@ -562,19 +556,13 @@ export default function ReadingPage({ testId }: { testId: string }) {
                     <h4 className="font-semibold text-sm">S{displayNumber}. {q.text || q.content || ""}</h4>
                     <div className="space-y-1">
                       {options.map((opt: any) => (
-                        <label key={opt.id || opt.variantText} className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name={q.id}
-                            value={String(opt.variantText)}
-                            checked={(answers[q.id] || "") === String(opt.variantText)}
-                            onChange={(e) => handleAnswerChange(q.id, e.target.value)}
-                            className="accent-black"
-                          />
-                          <div className="flex items-center justify-center w-7 h-7 rounded-full border-2 border-black font-bold text-xs">
-                            {String(opt.variantText)}
+                        <label key={opt.id || opt.variantText} className="flex items-center gap-2 cursor-pointer" onClick={() => handleAnswerChange(q.id, String(opt.variantText))}>
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 border-2 ${(answers[q.id] || "") === String(opt.variantText) ? "bg-green-500 border-black text-white" : "border-gray-300"}`}>
                           </div>
-                          <span className="text-sm">{opt.answer || opt.text || ""}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-sm">{String(opt.variantText)})</span>
+                            <span className="text-sm">{opt.answer || opt.text || ""}</span>
+                          </div>
                         </label>
                       ))}
                     </div>
@@ -587,7 +575,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
                 <div className="rounded-lg border border-gray-300 shadow-lg overflow-hidden">
                   <div className="bg-[#fffef5] p-4 space-y-4">
                     {blocks.map((b, idx) => (
-                      <div key={`${b.letter || 'content'}-${idx}`} className="bg-white rounded-lg p-3 border border-gray-200">
+                      <div key={`${b.letter || 'content'}-${idx}`} className="rounded-lg p-3">
                         {b.letter && (
                           <div className="flex items-center gap-2 mb-2">
                             <div className="w-7 h-7 rounded-full border-2 border-gray-700 flex items-center justify-center font-bold text-xs">

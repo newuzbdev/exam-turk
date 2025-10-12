@@ -265,7 +265,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
 
             {/* Right: Questions and static instructions */}
             <ResizablePanel defaultSize={45} minSize={25} className="bg-white">
-              <div className="h-full p-6 overflow-y-auto pb-24">
+              <div className="p-6 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100" style={{ height: 'calc(100vh - 200px)', maxHeight: 'calc(100vh - 200px)' }}>
                 <div className="space-y-6">
                   <p className="text-xl font-semibold font-serif">Sorular 21-24. Metne göre doğru seçeneği (A, B, C veya D) işaretleyiniz.</p>
 
@@ -466,7 +466,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
 
             {/* Right: Questions 30–35 with options */}
             <ResizablePanel defaultSize={45} minSize={25} className="bg-white">
-              <div className="h-full p-6 overflow-y-auto pb-24">
+              <div className="p-6 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100" style={{ height: 'calc(100vh - 200px)', maxHeight: 'calc(100vh - 200px)' }}>
                 {(() => {
                   const part5 = (testData.parts || []).find((p) => p.number === 5) || (testData.parts || [])[4];
                   const section = part5?.sections?.[0];

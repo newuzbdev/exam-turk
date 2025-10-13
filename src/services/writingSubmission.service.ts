@@ -20,6 +20,7 @@ export interface WritingSubmissionSection {
 export interface WritingSubmissionPayload {
 	writingTestId: string;
 	sections: WritingSubmissionSection[];
+  sessionToken?: string;
 }
 
 export interface WritingSubmissionItem {
@@ -34,10 +35,14 @@ export interface WritingSubmissionItem {
 export const writingSubmissionService = {
 	create: async (payload: WritingSubmissionPayload): Promise<WritingSubmissionItem | null> => {
 		try {
-			const res = await axiosPrivate.post("/api/writing-submission", payload, {
+      const { overallTestTokenStore } = await import("./overallTest.service");
+      const embeddedToken = payload.sessionToken || overallTestTokenStore.getByTestId(payload.writingTestId);
+      const body = embeddedToken ? { ...payload, sessionToken: embeddedToken } : payload;
+      const res = await axiosPrivate.post("/api/writing-submission", body, {
 				headers: { "Content-Type": "application/json" }
 			});
 			toast.success("Yazma cevabı gönderildi");
+      try { if (embeddedToken) overallTestTokenStore.clearByTestId(payload.writingTestId); } catch {}
 			return res.data?.data || res.data || null;
 		} catch (error: any) {
 			console.error("Failed to submit writing answer", error);

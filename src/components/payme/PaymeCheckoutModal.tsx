@@ -11,6 +11,7 @@ interface PaymeCheckoutModalProps {
   planName: string;
   planId: string;
   onSuccess?: (transactionId: string, purchaseData?: any) => void;
+  initialUnits?: number;
 }
 
 export const PaymeCheckoutModal: React.FC<PaymeCheckoutModalProps> = ({
@@ -18,7 +19,8 @@ export const PaymeCheckoutModal: React.FC<PaymeCheckoutModalProps> = ({
   onClose,
   planName,
   planId,
-  onSuccess
+  onSuccess,
+  initialUnits
 }) => {
   const [isSuccess, setIsSuccess] = useState(false);
   const [transactionId, setTransactionId] = useState<string>('');
@@ -42,12 +44,12 @@ export const PaymeCheckoutModal: React.FC<PaymeCheckoutModalProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <DialogTitle className="text-xl font-bold">
-                {isSuccess ? 'Ödeme Başarılı!' : 'Payme ile Ödeme'}
+                {isSuccess ? 'İşlem Başarılı!' : 'Birim Satın Al'}
               </DialogTitle>
               <DialogDescription className="mt-2">
                 {isSuccess 
-                  ? `${planName} planı başarıyla satın alındı` 
-                  : `${planName} planını Payme ile satın alın`
+                  ? `${planName} işlemi başarıyla tamamlandı` 
+                  : 'Satın almak istediğiniz birim sayısını girin'
                 }
               </DialogDescription>
             </div>
@@ -93,6 +95,7 @@ export const PaymeCheckoutModal: React.FC<PaymeCheckoutModalProps> = ({
               planId={planId}
               onSuccess={handleSuccess}
               onCancel={handleClose}
+              initialUnits={initialUnits}
             />
           )}
         </div>

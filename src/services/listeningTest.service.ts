@@ -152,7 +152,9 @@ export const listeningSubmissionService = {
     token?: string | null
   ) => {
     try {
+      const { overallTestTokenStore } = await import("./overallTest.service");
       const sessionToken =
+        overallTestTokenStore.getByTestId(testId) ||
         SecureStorage.getSessionItem?.("accessToken") ||
         localStorage.getItem("accessToken") ||
         token;
@@ -162,7 +164,7 @@ export const listeningSubmissionService = {
         throw new Error("Authentication required to submit exam results.");
       }
 
-      const payload = { testId, answers };
+      const payload = { testId, sessionToken, answers };
       const opts = { headers: { Authorization: `Bearer ${sessionToken}` } };
 
       const res = await axiosPrivate.post(
@@ -173,6 +175,7 @@ export const listeningSubmissionService = {
       const data = extractData<any>(res);
 
       toast.success("Javoblar muvaffaqiyatli jo'natildi");
+      try { overallTestTokenStore.clearByTestId(testId); } catch {}
       return data ?? res.data ?? res;
     } catch (error: any) {
       const status = error?.response?.status;

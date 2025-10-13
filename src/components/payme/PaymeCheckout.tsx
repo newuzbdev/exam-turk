@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { AlertCircle, CheckCircle, CreditCard, Loader2, RefreshCw } from 'lucide-react';
+import { AlertCircle, CheckCircle, CreditCard, Loader2 } from 'lucide-react';
 import { paymeService } from '@/services/payme.service';
 import { toast } from '@/utils/toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface PaymeCheckoutProps {
   planName: string;
@@ -15,6 +16,7 @@ interface PaymeCheckoutProps {
   onSuccess?: (transactionId: string, purchaseData?: any) => void;
   onCancel?: () => void;
   className?: string;
+  initialUnits?: number;
 }
 
 export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
@@ -22,61 +24,66 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
   planId,
   onSuccess,
   onCancel,
-  className = ''
+  className = '',
+  initialUnits
 }) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingBalance, setIsCheckingBalance] = useState(false);
-  const [balance, setBalance] = useState<number>(0);
-  const [amount, setAmount] = useState<string>('');
+  const { user, refreshUser } = useAuth();
+  const [amount, setAmount] = useState<string>(initialUnits ? String(initialUnits) : '');
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationProgress, setVerificationProgress] = useState(0);
-
-  // Fetch user's Payme balance on component mount
+  const [unitPrice, setUnitPrice] = useState<number>(1000);
+  // Fetch unit price once
   useEffect(() => {
-    fetchBalance();
+    let mounted = true;
+    (async () => {
+      try {
+        const products = await paymeService.getAllProducts();
+        const price = products?.[0]?.price;
+        if (mounted && typeof price === 'number' && price > 0) setUnitPrice(price);
+      } catch {}
+    })();
+    return () => { mounted = false; };
   }, []);
 
-  const fetchBalance = async () => {
-    setIsCheckingBalance(true);
-    try {
-      const balanceResponse = await paymeService.getBalance();
-      if (balanceResponse.success) {
-        setBalance(balanceResponse.balance);
-      } else {
-        toast.error('Bakiye bilgisi alınamadı');
-      }
-    } catch (error) {
-      console.error('Balance fetch error:', error);
-      toast.error('Bakiye bilgisi alınamadı');
-    } finally {
-      setIsCheckingBalance(false);
-    }
-  };
-
   const handleCheckout = async () => {
-    const amountValue = parseFloat(amount);
+    const units = Math.floor(parseFloat(amount));
     
-    if (!amountValue || amountValue <= 0) {
+    if (!units || units <= 0) {
       toast.error('Lütfen geçerli bir miktar girin');
       return;
     }
 
     setIsLoading(true);
-    
-    const response = await paymeService.initiateCheckout(amountValue);
-    
-    // Extract URL from response
-    const checkoutUrl = response.result?.url || response.data?.checkoutUrl;
-    
-    if (checkoutUrl) {
-      toast.success('Ödeme işlemi başlatıldı');
-      // Open Payme checkout in new tab
-      window.open(checkoutUrl, '_blank');
-    } else {
-      toast.error('Ödeme URL\'si alınamadı');
+    try {
+      // Try direct purchase via app wallet balance; backend validates funds
+      const purchase = await paymeService.purchaseProduct(planId, units);
+      const txId = purchase?.transaction?.id || 'purchase';
+      onSuccess?.(txId, purchase);
+      try { await refreshUser(); } catch {}
+    } catch (e) {
+      // If insufficient app balance, open Payme top-up for the difference
+      const appBalance = user?.balance ?? 0;
+      const required = Math.max(0, units * unitPrice - appBalance);
+      if (required > 0) {
+        const resp = await paymeService.initiateCheckout(required);
+        const url = resp.result?.url || resp.data?.checkoutUrl;
+        const txId = resp.result?.transactionId || resp.data?.transactionId;
+        if (url) {
+          window.open(url, '_blank');
+          // Begin verification loop; on success, auto-purchase coins
+          if (txId) {
+            await startVerificationProcess(txId, units);
+          }
+        } else {
+          toast.error('Ödeme bağlantısı oluşturılamadı');
+        }
+      } else {
+        toast.error('Satın alma sırasında hata oluştu');
+      }
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
 
   const startVerificationProcess = async (transactionId: string, amountValue: number) => {
@@ -141,10 +148,10 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
     onCancel?.();
   };
 
-  const amountValue = parseFloat(amount) || 0;
-  const isBalanceSufficient = balance >= amountValue;
-  const formattedBalance = paymeService.formatBalance(balance);
-  const formattedAmount = paymeService.formatBalance(amountValue);
+  const unitsValue = Math.floor(parseFloat(amount) || 0);
+  const totalCost = unitsValue * unitPrice;
+  const formattedBalance = paymeService.formatBalance(user?.balance ?? 0);
+  const formattedAmount = paymeService.formatBalance(totalCost);
 
   return (
     <Card className={`w-full max-w-md mx-auto ${className}`}>
@@ -170,23 +177,15 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
       <CardContent className="space-y-4">
         {/* Balance Display */}
         <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-          <span className="text-sm font-medium text-gray-700">Payme Bakiyeniz:</span>
+          <span className="text-sm font-medium text-gray-700">Cüzdan Bakiyesi (UZS):</span>
           <div className="flex items-center gap-2">
-            {isCheckingBalance ? (
-              <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
-            ) : (
-              <RefreshCw 
-                className="w-4 h-4 text-gray-500 cursor-pointer hover:text-gray-700" 
-                onClick={fetchBalance}
-              />
-            )}
             <span className="font-semibold text-gray-900">{formattedBalance}</span>
           </div>
         </div>
 
         {/* Amount Input */}
         <div className="space-y-2">
-          <Label htmlFor="amount">Satın Alınacak Birim Miktarı</Label>
+          <Label htmlFor="amount">Satın Alınacak Birim (U) Miktarı</Label>
           <Input
             id="amount"
             type="number"
@@ -197,7 +196,7 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
             step="1"
             className="text-center text-lg focus-visible:ring-0 focus-visible:ring-offset-0"
           />
-          {amountValue > 0 && (
+          {unitsValue > 0 && (
             <div className="text-center text-sm text-gray-600">
               Toplam: {formattedAmount}
             </div>
@@ -205,9 +204,9 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
         </div>
 
         {/* Balance Status */}
-        {!isCheckingBalance && amountValue > 0 && (
+        {unitsValue > 0 && (
           <div className="flex items-center gap-2">
-            {isBalanceSufficient ? (
+            {(user?.balance ?? 0) >= totalCost ? (
               <>
                 <CheckCircle className="w-5 h-5 text-green-600" />
                 <span className="text-sm text-green-700">Bakiye yeterli</span>
@@ -216,7 +215,7 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
               <>
                 <AlertCircle className="w-5 h-5 text-red-600" />
                 <span className="text-sm text-red-700">
-                  Bakiye yetersiz (Eksik: {paymeService.formatBalance(amountValue - balance)})
+                  Bakiye yetersiz (Eksik: {paymeService.formatBalance(Math.max(0, totalCost - (user?.balance ?? 0)))})
                 </span>
               </>
             )}
@@ -239,8 +238,8 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
           {!isVerifying && (
             <Button
               onClick={handleCheckout}
-              disabled={isLoading || !isBalanceSufficient || isCheckingBalance || amountValue <= 0}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+              disabled={isLoading || unitsValue <= 0}
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white"
             >
               {isLoading ? (
                 <>
@@ -250,14 +249,14 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
               ) : (
                 <>
                   <CreditCard className="w-4 h-4 mr-2" />
-                  Payme ile Öde
+                  Satın Al
                 </>
               )}
             </Button>
           )}
 
 
-          {!isBalanceSufficient && !isCheckingBalance && amountValue > 0 && (
+          {(user?.balance ?? 0) < totalCost && unitsValue > 0 && (
             <div className="text-center">
               <Badge variant="outline" className="text-orange-600 border-orange-200">
                 Payme hesabınıza para yükleyin

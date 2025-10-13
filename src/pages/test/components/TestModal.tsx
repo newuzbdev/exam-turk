@@ -10,7 +10,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import overallTestService from "@/services/overallTest.service";
+import { toast } from "sonner";
+import testCoinPriceService from "@/services/testCoinPrice.service";
+import type { TestCoinPriceItem } from "@/services/testCoinPrice.service";
 
 interface TurkishTest {
   id: string;
@@ -80,7 +84,7 @@ const TestModal = ({
   onTestTypeClick,
 }: TestModalProps) => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   // selection state for simple checklist UI
   const [selectedMap, setSelectedMap] = useState<Record<string, boolean>>({
@@ -97,34 +101,50 @@ const TestModal = ({
   console.log("TestModal - Selected test:", selectedTest);
   console.log("TestModal - Writing tests received:", writingTests);
 
+  // dynamic coin prices
+  const [coinPrices, setCoinPrices] = useState<TestCoinPriceItem[] | null>(null);
+  useEffect(() => {
+    let mounted = true;
+    testCoinPriceService.getAll().then((items) => {
+      if (mounted) setCoinPrices(items);
+    });
+    return () => { mounted = false; };
+  }, []);
+
+  const coinByType = useMemo(() => {
+    const map: Record<string, number> = {};
+    (coinPrices || []).forEach((i) => { map[i.testType] = i.coin; });
+    return map;
+  }, [coinPrices]);
+
   const testSections = [
     {
       id: "listening",
       title: "LISTENING",
       icon: Headphones,
       tests: listeningTests,
-      cost: 3,
+      cost: coinByType["LISTENING"] ?? 3,
     },
     {
       id: "reading",
       title: "READING",
       icon: BookOpen,
       tests: readingTests,
-      cost: 3,
+      cost: coinByType["READING"] ?? 3,
     },
     {
       id: "writing",
       title: "WRITING",
       icon: PenTool,
       tests: writingTests,
-      cost: 4,
+      cost: coinByType["WRITING"] ?? 4,
     },
     {
       id: "speaking",
       title: "SPEAKING",
       icon: Mic,
       tests: speakingTests,
-      cost: 2,
+      cost: coinByType["SPEAKING"] ?? 2,
     },
   ];
 
@@ -133,12 +153,60 @@ const TestModal = ({
     return acc + (available && selectedMap[s.id] ? s.cost : 0);
   }, 0);
 
-  const handleCta = () => {
-    // Choose first selected and available section for navigation
-    const chosen = testSections.find(
-      (s) => selectedMap[s.id] && s.tests && s.tests.length > 0
-    );
-    if (!chosen || !chosen.tests[0]) return;
+  const handleCta = async () => {
+    // Determine selected tests and call overall start API first
+    const readingId = selectedMap.reading && readingTests?.[0]?.id ? readingTests[0].id : undefined;
+    const listeningId = selectedMap.listening && listeningTests?.[0]?.id ? listeningTests[0].id : undefined;
+    const writingId = selectedMap.writing && writingTests?.[0]?.id ? writingTests[0].id : undefined;
+    const speakingId = selectedMap.speaking && speakingTests?.[0]?.id ? speakingTests[0].id : undefined;
+
+    if (!readingId && !listeningId && !writingId && !speakingId) {
+      toast.error("Please select at least one test section");
+      return;
+    }
+
+    if (!isAuthenticated) {
+      // compute first path for redirect after signup
+      const chosen = [
+        { id: "listening", tests: listeningTests },
+        { id: "reading", tests: readingTests },
+        { id: "writing", tests: writingTests },
+        { id: "speaking", tests: speakingTests },
+      ].find((s) => selectedMap[s.id] && s.tests && s.tests.length > 0);
+      const test = chosen?.tests?.[0];
+      const path = !chosen || !test
+        ? "/"
+        : chosen.id === "speaking"
+          ? `/speaking-test/${test.id}`
+          : chosen.id === "writing"
+            ? `/writing-test/${test.id}`
+            : chosen.id === "listening"
+              ? `/listening-test/${test.id}`
+              : `/reading-test/${test.id}`;
+      navigate("/signup", { state: { redirectTo: path } });
+      return;
+    }
+
+    // Preflight coin check: redirect to pricing if not enough coins
+    const userCoins = user?.coin ?? 0;
+    if (userCoins < totalCoins) {
+      toast.error("Insufficient coins. Please purchase more to start.");
+      navigate(`/price?neededCoins=${totalCoins - userCoins}`);
+      return;
+    }
+
+    const startRes = await overallTestService.start({ readingId, listeningId, writingId, speakingId });
+    if (!startRes) return;
+
+    // After tokens stored, navigate to the first selected test
+    const chosen = [
+      { id: "listening", tests: listeningTests },
+      { id: "reading", tests: readingTests },
+      { id: "writing", tests: writingTests },
+      { id: "speaking", tests: speakingTests },
+    ].find((s) => selectedMap[s.id] && s.tests && s.tests.length > 0);
+
+    if (!chosen || !chosen.tests?.[0]) return;
     const test = chosen.tests[0];
     const path =
       chosen.id === "speaking"
@@ -149,10 +217,6 @@ const TestModal = ({
         ? `/listening-test/${test.id}`
         : `/reading-test/${test.id}`;
 
-    if (!isAuthenticated) {
-      navigate("/signup", { state: { redirectTo: path } });
-      return;
-    }
     navigate(path);
   };
 

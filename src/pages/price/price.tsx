@@ -65,6 +65,7 @@ const pricingPlans = [
 export default function Price() {
   const [selectedPlan, setSelectedPlan] = useState<typeof pricingPlans[0] | null>(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [initialUnits, setInitialUnits] = useState<number | undefined>(undefined);
 
   const handlePurchaseClick = (plan: typeof pricingPlans[0]) => {
     if (plan.isFree) {
@@ -75,6 +76,20 @@ export default function Price() {
     setSelectedPlan(plan);
     setIsCheckoutOpen(true);
   };
+
+  // Prefill from query param neededCoins
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  const url = typeof window !== 'undefined' ? new URL(window.location.href) : null;
+  const neededCoins = url ? Number(url.searchParams.get('neededCoins') || 0) : 0;
+  useState(() => {
+    if (neededCoins > 0) {
+      setSelectedPlan(pricingPlans[1]);
+      setIsCheckoutOpen(true);
+      setInitialUnits(neededCoins);
+    }
+    return undefined;
+  });
 
   const handleCheckoutSuccess = (transactionId: string, purchaseData?: any) => {
     console.log('Payment successful:', transactionId);
@@ -142,6 +157,29 @@ export default function Price() {
               <div className="text-lg font-bold text-red-600">12U</div>
             </div>
           </div>
+        </div>
+
+        {/* Custom coin purchase */}
+        <div className="mb-10">
+          <Card className="border-2 border-blue-200">
+            <CardHeader>
+              <CardTitle>İstediğiniz Kadar Birim Satın Alın</CardTitle>
+              <CardDescription>Kaç birime ihtiyacınız varsa girin ve Payme ile ödeyin</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={() => {
+                  const fallback = pricingPlans.find(p => p.id === 'quick') || pricingPlans[0];
+                  setSelectedPlan({ ...fallback, name: 'Birim Satın Al' } as any);
+                  setInitialUnits(undefined);
+                  setIsCheckoutOpen(true);
+                }}
+              >
+                Özel Miktar Satın Al
+              </Button>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Pricing Cards */}
@@ -260,6 +298,7 @@ export default function Price() {
           planName={selectedPlan.name}
           planId={selectedPlan.id}
           onSuccess={handleCheckoutSuccess}
+          initialUnits={initialUnits}
         />
       )}
     </div>

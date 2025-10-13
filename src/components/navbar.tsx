@@ -7,7 +7,8 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Menu, User, LogOut } from "lucide-react";
+import { Menu, User, LogOut, Coins } from "lucide-react";
+import PaymeCheckoutModal from "@/components/payme/PaymeCheckoutModal";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -72,8 +73,10 @@ const Navbar = () => {
   const { user, isAuthenticated, logout, refreshUser } = useAuth();
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
-  // Get balance from user object
+  // Get balance and coin from user object
   const balance = user?.balance || 0;
+  const coin = user?.coin ?? 0;
+  const [isCoinModalOpen, setIsCoinModalOpen] = useState(false);
 
   // Function to refresh user data (including balance)
   const handleBalanceUpdate = async () => {
@@ -175,7 +178,16 @@ const Navbar = () => {
           <div className="flex items-center space-x-2 sm:space-x-4">  
             {/* Authentication buttons or user info */}
             {isAuthenticated && user ? (
-              <div className="hidden sm:flex items-center space-x-2">
+              <div className="hidden sm:flex items-center space-x-3">
+                {/* Coin indicator */}
+                <button
+                  type="button"
+                  onClick={() => setIsCoinModalOpen(true)}
+                  className="flex items-center gap-1 text-amber-600 bg-amber-50 border border-amber-200 px-2 py-1 rounded-md hover:bg-amber-100 cursor-pointer"
+                >
+                  <Coins className="h-4 w-4" />
+                  <span className="text-sm font-semibold">{coin}</span>
+                </button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -270,7 +282,12 @@ const Navbar = () => {
                     {isAuthenticated && user ? (
                       <div className="px-3 py-2 border-b">
                         <div className="flex items-center space-x-2 mb-3">
-                        <span className="text-gray-900 font-medium">
+                          {/* Coin indicator mobile */}
+                          <div className="flex items-center gap-1 text-amber-600 bg-amber-50 border border-amber-200 px-2 py-1 rounded-md mr-2">
+                            <Coins className="h-4 w-4" />
+                            <span className="text-sm font-semibold">{coin}</span>
+                          </div>
+                          <span className="text-gray-900 font-medium">
                             {user.name}
                           </span>
                           <Avatar className="w-8 h-8">
@@ -428,6 +445,13 @@ const Navbar = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* Coin Purchase Modal */}
+      <PaymeCheckoutModal
+        isOpen={isCoinModalOpen}
+        onClose={() => setIsCoinModalOpen(false)}
+        planName="Birim Satın Al"
+        planId="quick"
+      />
     </nav>
   );
 };

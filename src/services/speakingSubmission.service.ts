@@ -22,6 +22,7 @@ export interface PartSubmission {
 export interface SpeakingSubmissionData {
   speakingTestId: string;
   parts: PartSubmission[];
+  sessionToken?: string;
 }
 
 export interface SubmissionResponse {
@@ -38,7 +39,11 @@ export const speakingSubmissionService = {
    */
   submitSpeakingTest: async (submissionData: SpeakingSubmissionData): Promise<SubmissionResponse> => {
     try {
-      const response = await axiosPrivate.post('/api/speaking-submission', submissionData, {
+      const { overallTestTokenStore } = await import('./overallTest.service');
+      const embeddedToken = submissionData.sessionToken || overallTestTokenStore.getByTestId(submissionData.speakingTestId);
+      const payload = embeddedToken ? { ...submissionData, sessionToken: embeddedToken } : submissionData;
+
+      const response = await axiosPrivate.post('/api/speaking-submission', payload, {
         headers: {
           'Content-Type': 'application/json',
         },
@@ -47,10 +52,12 @@ export const speakingSubmissionService = {
 
       if (response.data && (response.data.success || response.status === 200 || response.status === 201)) {
         toast.success('Konuşma testi başarıyla gönderildi!');
-        return {
+        const result = {
           success: true,
           submissionId: response.data.id || response.data.submissionId
         };
+        try { if (embeddedToken) overallTestTokenStore.clearByTestId(submissionData.speakingTestId); } catch {}
+        return result;
       } else {
         return {
           success: false,

@@ -17,6 +17,7 @@ interface User {
   phoneNumber?: string;
   createdAt?: string;
   balance?: number;
+  coin?: number;
 }
 
 interface AuthContextType {

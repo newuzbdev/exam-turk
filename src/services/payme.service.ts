@@ -260,11 +260,13 @@ export const paymeService = {
     try {
       console.log('Fetching all products...');
       const response = await axiosPrivate.get('/api/product');
-      console.log('Available products:', response.data);
-      return response.data;
+      const list = response?.data?.data || response?.data || [];
+      const arr = Array.isArray(list) ? list : Array.isArray(list?.data) ? list.data : [];
+      console.log('Available products (normalized):', arr);
+      return arr;
     } catch (error: any) {
       console.error('Error fetching products:', error);
-      return null;
+      return [];
     }
   },
 

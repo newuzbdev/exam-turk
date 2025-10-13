@@ -9,9 +9,10 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Zap, Target, Trophy, Users, CreditCard } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import PaymeCheckoutModal from "@/components/payme/PaymeCheckoutModal";
 import { toast } from "@/utils/toast";
+import testCoinPriceService from "@/services/testCoinPrice.service";
 
 // Pricing plans configuration
 const pricingPlans = [
@@ -66,6 +67,21 @@ export default function Price() {
   const [selectedPlan, setSelectedPlan] = useState<typeof pricingPlans[0] | null>(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [initialUnits, setInitialUnits] = useState<number | undefined>(undefined);
+  const [coinPrices, setCoinPrices] = useState<any[] | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    testCoinPriceService.getAll().then((items) => {
+      if (mounted) setCoinPrices(items);
+    });
+    return () => { mounted = false; };
+  }, []);
+
+  const coinByType = useMemo(() => {
+    const map: Record<string, number> = {};
+    (coinPrices || []).forEach((i) => { map[i.testType] = i.coin; });
+    return map;
+  }, [coinPrices]);
 
   const handlePurchaseClick = (plan: typeof pricingPlans[0]) => {
     if (plan.isFree) {
@@ -128,7 +144,7 @@ export default function Price() {
           </p>
         </div>
 
-        {/* Test Pricing Overview */}
+        {/* Test Pricing Overview (dynamic) */}
         <div className="rounded-xl p-6 mb-12">
           <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">
             Bireysel Test Ücretleri
@@ -136,25 +152,30 @@ export default function Price() {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="text-center">
               <div className="text-base font-medium text-gray-600">Dinleme</div>
-              <div className="text-lg font-bold text-red-600">3U</div>
+              <div className="text-lg font-bold text-red-600">{(coinByType["LISTENING"] ?? 3)}U</div>
             </div>
             <div className="text-center">
               <div className="text-base font-medium text-gray-600">Okuma</div>
-              <div className="text-lg font-bold text-red-600">3U</div>
+              <div className="text-lg font-bold text-red-600">{(coinByType["READING"] ?? 3)}U</div>
             </div>
             <div className="text-center">
               <div className="text-base font-medium text-gray-600">Yazma</div>
-              <div className="text-lg font-bold text-red-600">5U</div>
+              <div className="text-lg font-bold text-red-600">{(coinByType["WRITING"] ?? 5)}U</div>
             </div>
             <div className="text-center">
               <div className="text-base font-medium text-gray-600">Konuşma</div>
-              <div className="text-lg font-bold text-red-600">5U</div>
+              <div className="text-lg font-bold text-red-600">{(coinByType["SPEAKING"] ?? 5)}U</div>
             </div>
             <div className="text-center">
               <div className="text-base font-medium text-gray-600">
                 Tam Test
               </div>
-              <div className="text-lg font-bold text-red-600">12U</div>
+              <div className="text-lg font-bold text-red-600">{
+                ((coinByType["LISTENING"] ?? 3)
+                + (coinByType["READING"] ?? 3)
+                + (coinByType["WRITING"] ?? 5)
+                + (coinByType["SPEAKING"] ?? 5))
+              }U</div>
             </div>
           </div>
         </div>

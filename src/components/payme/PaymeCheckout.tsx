@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { AlertCircle, CheckCircle, CreditCard, Loader2 } from 'lucide-react';
+import { AlertCircle, CheckCircle, CreditCard, Loader2, Wallet, Coins, Minus, Plus, Star } from 'lucide-react';
 import { paymeService } from '@/services/payme.service';
 import { toast } from '@/utils/toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -153,119 +153,122 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
   const formattedBalance = paymeService.formatBalance(user?.balance ?? 0);
   const formattedAmount = paymeService.formatBalance(totalCost);
 
+  const hasEnough = (user?.balance ?? 0) >= totalCost;
+  const presets = [1, 10, 50, 100, 200];
+  const setUnits = (u: number) => setAmount(String(Math.max(1, u)));
+  const dec = () => setUnits(Math.max(1, (parseInt(amount || '0', 10) || 0) - 1));
+  const inc = () => setUnits((parseInt(amount || '0', 10) || 0) + 1);
+
   return (
-    <Card className={`w-full max-w-md mx-auto ${className}`}>
-      <CardHeader className="text-center">
-        <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-          <img 
-            src="https://payme.uz/assets/images/logo.svg" 
-            alt="Payme" 
-            className="w-12 h-12"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none';
-              e.currentTarget.nextElementSibling.style.display = 'block';
-            }}
-          />
-          <CreditCard className="w-6 h-6 text-blue-600 hidden" />
-        </div>
-        <CardTitle className="text-xl font-bold">{planName}</CardTitle>
-        <CardDescription>
-          Birim satın alın
-        </CardDescription>
-      </CardHeader>
-
-      <CardContent className="space-y-4">
-        {/* Balance Display */}
-        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-          <span className="text-sm font-medium text-gray-700">Cüzdan Bakiyesi (UZS):</span>
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-gray-900">{formattedBalance}</span>
-          </div>
-        </div>
-
-        {/* Amount Input */}
-        <div className="space-y-2">
-          <Label htmlFor="amount">Satın Alınacak Birim (U) Miktarı</Label>
-          <Input
-            id="amount"
-            type="number"
-            placeholder="Örnek: 10"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            min="1"
-            step="1"
-            className="text-center text-lg focus-visible:ring-0 focus-visible:ring-offset-0"
-          />
-          {unitsValue > 0 && (
-            <div className="text-center text-sm text-gray-600">
-              Toplam: {formattedAmount}
+    <Card className={`w-full mx-auto ${className} bg-white text-gray-900 border-x-0 border-b-0 rounded-none`}> 
+      <div className="grid grid-cols-1 md:grid-cols-2">
+        {/* Left: immersive hero */}
+        <div className="relative overflow-hidden p-5 border-b md:border-b-0 md:border-r border-gray-200">
+          <div className="absolute -top-10 -right-10 w-44 h-44 bg-gradient-to-br from-amber-400/10 to-purple-500/10 rounded-full blur-2xl" />
+          {/* Decorative icon removed per request */}
+          <h3 className="text-2xl font-extrabold tracking-tight text-black">Birim Satın Al</h3>
+          <p className="mt-1 text-black text-sm">
+            Hedefinize uygun miktarı seçin ve hemen başlayın
+          </p>
+          <div className="mt-6 flex items-center justify-between p-4 rounded-xl bg-gray-50 border border-gray-200">
+            <div className="flex items-center gap-2 text-black">
+              <Wallet className="w-5 h-5" />
+              <span>Mevcut Bakiye</span>
             </div>
-          )}
+            <div className="font-semibold text-black">{formattedBalance}</div>
+          </div>
         </div>
 
-        {/* Balance Status */}
-        {unitsValue > 0 && (
+        {/* Right: controls */}
+        <div className="p-5">
+          <div className="space-y-4 text-black">
+        {/* Presets */}
+        <div className="grid grid-cols-3 gap-2">
+          {presets.map((p) => (
+            <button
+              key={p}
+              onClick={() => setUnits(p)}
+              className={`rounded-lg px-4 py-3 border transition-colors text-left ${
+                unitsValue === p
+                  ? 'border-amber-400 bg-amber-50'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-2 font-semibold text-sm text-black">
+                <Coins className="w-4 h-4 text-amber-500" /> {p}U
+              </div>
+              <div className="text-[11px] text-black mt-1">{paymeService.formatBalance(p * unitPrice)}</div>
+            </button>
+          ))}
+        </div>
+
+        {/* Units input with +/- */}
+        <div className="space-y-2">
+          <Label htmlFor="amount" className="text-black">Birim (U) Miktarı</Label>
           <div className="flex items-center gap-2">
-            {(user?.balance ?? 0) >= totalCost ? (
-              <>
-                <CheckCircle className="w-5 h-5 text-green-600" />
-                <span className="text-sm text-green-700">Bakiye yeterli</span>
-              </>
-            ) : (
-              <>
-                <AlertCircle className="w-5 h-5 text-red-600" />
-                <span className="text-sm text-red-700">
-                  Bakiye yetersiz (Eksik: {paymeService.formatBalance(Math.max(0, totalCost - (user?.balance ?? 0)))})
-                </span>
-              </>
-            )}
+            <button onClick={dec} className="w-9 h-9 rounded-md border border-gray-300 flex items-center justify-center hover:border-gray-400">
+              <Minus className="w-4 h-4" />
+            </button>
+            <Input
+              id="amount"
+              type="number"
+              placeholder="Örnek: 10"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              min="1"
+              step="1"
+              className="text-center text-base bg-white border-gray-300 focus-visible:ring-0 focus-visible:ring-offset-0 text-black"
+            />
+            <button onClick={inc} className="w-9 h-9 rounded-md border border-gray-300 flex items-center justify-center hover:border-gray-400">
+              <Plus className="w-4 h-4" />
+            </button>
           </div>
-        )}
+        </div>
 
         {/* Verification Progress */}
         {isVerifying && (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-700">Ödeme doğrulanıyor...</span>
-              <span className="text-gray-500">{verificationProgress}%</span>
+              <span className="text-slate-300">Ödeme doğrulanıyor...</span>
+              <span className="text-slate-400">{verificationProgress}%</span>
             </div>
             <Progress value={verificationProgress} className="w-full" />
           </div>
         )}
 
-        {/* Action Buttons */}
-        <div className="space-y-2">
-          {!isVerifying && (
-            <Button
-              onClick={handleCheckout}
-              disabled={isLoading || unitsValue <= 0}
-              className="w-full bg-purple-600 hover:bg-purple-700 text-white"
-            >
+          {/* Total cost */}
+          <div className={`rounded-lg p-3 border ${hasEnough ? 'border-emerald-300 bg-emerald-50' : 'border-rose-300 bg-rose-50'}`}>
+            <div className="text-xs text-black mb-1">Toplam Tutar</div>
+            <div className="text-xl font-bold text-black">{formattedAmount}</div>
+            {!hasEnough && unitsValue > 0 && (
+              <div className="text-xs mt-1 text-black">
+                Gerekli ek bakiye: {paymeService.formatBalance(Math.max(0, totalCost - (user?.balance ?? 0)))}
+              </div>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <Button variant="ghost" onClick={handleCancel} className="h-10 border border-gray-300 bg-gray-50 text-gray-800 hover:bg-gray-100">
+              İptal
+            </Button>
+            <Button onClick={handleCheckout} disabled={isLoading || unitsValue <= 0} className={`h-10 ${hasEnough ? 'bg-amber-500 hover:bg-amber-600' : 'bg-purple-600 hover:bg-purple-700'} text-white`}>
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  İşlem Başlatılıyor...
+                  İşleniyor...
                 </>
               ) : (
                 <>
                   <CreditCard className="w-4 h-4 mr-2" />
-                  Satın Al
+                  {hasEnough ? 'Satın Al' : 'Bakiye Yükle'}
                 </>
               )}
             </Button>
-          )}
-
-
-          {(user?.balance ?? 0) < totalCost && unitsValue > 0 && (
-            <div className="text-center">
-              <Badge variant="outline" className="text-orange-600 border-orange-200">
-                Payme hesabınıza para yükleyin
-              </Badge>
-            </div>
-          )}
+          </div>
         </div>
-
-      </CardContent>
+      </div>
+    </div>
     </Card>
   );
 };

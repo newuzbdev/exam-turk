@@ -39,32 +39,25 @@ export const PaymeCheckoutModal: React.FC<PaymeCheckoutModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-3xl w-[96vw] max-h-[85vh] overflow-y-auto p-0 border border-gray-200 bg-white">
         <DialogHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between px-4 pt-4">
             <div>
-              <DialogTitle className="text-xl font-bold">
+              <DialogTitle className="text-lg font-bold text-black">
                 {isSuccess ? 'İşlem Başarılı!' : 'Birim Satın Al'}
               </DialogTitle>
-              <DialogDescription className="mt-2">
+              <DialogDescription className="mt-1 text-black">
                 {isSuccess 
                   ? `${planName} işlemi başarıyla tamamlandı` 
                   : 'Satın almak istediğiniz birim sayısını girin'
                 }
               </DialogDescription>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleClose}
-              className="h-8 w-8 p-0"
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            {/* Built-in dialog close exists; remove extra X */}
           </div>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="p-4">
           {isSuccess ? (
             <div className="text-center space-y-4">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">

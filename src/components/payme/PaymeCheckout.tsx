@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { AlertCircle, CheckCircle, CreditCard, Loader2, Wallet, Coins, Minus, Plus, Star } from 'lucide-react';
+import { AlertCircle, CheckCircle, CreditCard, Loader2, Wallet, Coins, Minus, Plus, Star, RefreshCcw } from 'lucide-react';
 import { paymeService } from '@/services/payme.service';
 import { toast } from '@/utils/toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -158,6 +158,7 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
   const setUnits = (u: number) => setAmount(String(Math.max(1, u)));
   const dec = () => setUnits(Math.max(1, (parseInt(amount || '0', 10) || 0) - 1));
   const inc = () => setUnits((parseInt(amount || '0', 10) || 0) + 1);
+  const approxUnits = Math.floor((user?.balance ?? 0) / (unitPrice || 1));
 
   return (
     <Card className={`w-full mx-auto ${className} bg-white text-gray-900 border-x-0 border-b-0 rounded-none`}> 
@@ -170,12 +171,25 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
           <p className="mt-1 text-black text-sm">
             Hedefinize uygun miktarı seçin ve hemen başlayın
           </p>
-          <div className="mt-6 flex items-center justify-between p-4 rounded-xl bg-gray-50 border border-gray-200">
-            <div className="flex items-center gap-2 text-black">
-              <Wallet className="w-5 h-5" />
-              <span>Mevcut Bakiye</span>
+          <div className="mt-6 p-4 rounded-xl bg-gray-50 border border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-black">
+                <Wallet className="w-5 h-5" />
+                <span className="font-medium">Mevcut Bakiye</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="font-semibold text-black">{formattedBalance}</span>
+                <button
+                  type="button"
+                  aria-label="Yenile"
+                  onClick={() => { try { refreshUser(); } catch {} }}
+                  className="w-8 h-8 rounded-md border border-gray-300 flex items-center justify-center hover:border-gray-400"
+                >
+                  <RefreshCcw className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-            <div className="font-semibold text-black">{formattedBalance}</div>
+            <div className="mt-2 text-xs text-black/70">Yaklaşık: <span className="font-semibold text-black">~ {approxUnits}U</span></div>
           </div>
         </div>
 

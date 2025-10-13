@@ -122,46 +122,28 @@ export const BalanceTopUp: React.FC<BalanceTopUpProps> = ({
 
       {/* Top-up Dialog */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md w-[92vw] bg-white border border-gray-200">
           <DialogHeader>
-            <div className="flex items-center justify-center mb-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <img 
-                  src="https://payme.uz/assets/images/logo.svg" 
-                  alt="Payme" 
-                  className="w-8 h-8"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                    e.currentTarget.nextElementSibling.style.display = 'block';
-                  }}
-                />
-                <Wallet className="w-5 h-5 text-blue-600 hidden" />
-              </div>
-            </div>
-            <DialogTitle className="text-center">
-              Bakiye Yükle
-            </DialogTitle>
-            <DialogDescription className="text-center">
-              Bakiye yükleme
-            </DialogDescription>
+            <DialogTitle className="text-center text-black">Bakiye Yükle</DialogTitle>
+            <DialogDescription className="text-center text-black">Bakiye yükleme</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             {/* Current Balance */}
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <span className="text-sm font-medium text-gray-700">Mevcut Bakiye:</span>
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+              <span className="text-sm font-medium text-black">Mevcut Bakiye:</span>
               <div className="flex items-center gap-2">
                 {isCheckingBalance ? (
                   <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
                 ) : (
-                  <span className="font-semibold text-gray-900">{formattedBalance}</span>
+                  <span className="font-semibold text-black">{formattedBalance}</span>
                 )}
               </div>
             </div>
 
             {/* Amount Input */}
             <div className="space-y-2">
-              <Label htmlFor="topup-amount">Yüklenecek Miktar (UZS)</Label>
+              <Label htmlFor="topup-amount" className="text-black">Yüklenecek Miktar (UZS)</Label>
               <Input
                 id="topup-amount"
                 type="number"
@@ -170,10 +152,10 @@ export const BalanceTopUp: React.FC<BalanceTopUpProps> = ({
                 onChange={(e) => setAmount(e.target.value)}
                 min="1000"
                 step="1000"
-                className="text-center text-lg focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="text-center text-lg focus-visible:ring-0 focus-visible:ring-offset-0 border-gray-300 text-black"
               />
               {amountValue > 0 && (
-                <div className="text-center text-sm text-gray-600">
+                <div className="text-center text-sm text-black">
                   Yüklenecek: {formattedAmount}
                 </div>
               )}
@@ -181,14 +163,14 @@ export const BalanceTopUp: React.FC<BalanceTopUpProps> = ({
 
             {/* Validation Messages */}
             {amountValue > 0 && amountValue < 1000 && (
-              <div className="flex items-center gap-2 text-sm text-red-600">
+              <div className="flex items-center gap-2 text-sm text-red-700">
                 <AlertCircle className="w-4 h-4" />
                 <span>Minimum yükleme miktarı 1,000 UZS</span>
               </div>
             )}
 
             {amountValue >= 1000 && (
-              <div className="flex items-center gap-2 text-sm text-green-600">
+              <div className="flex items-center gap-2 text-sm text-green-700">
                 <CheckCircle className="w-4 h-4" />
                 <span>Miktar geçerli</span>
               </div>
@@ -199,7 +181,7 @@ export const BalanceTopUp: React.FC<BalanceTopUpProps> = ({
               <Button
                 onClick={handleTopUp}
                 disabled={isLoading || amountValue < 1000}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                className="w-full bg-amber-500 hover:bg-amber-600 text-white"
               >
                 {isLoading ? (
                   <>
@@ -217,7 +199,7 @@ export const BalanceTopUp: React.FC<BalanceTopUpProps> = ({
               <Button
                 variant="outline"
                 onClick={() => setIsOpen(false)}
-                className="w-full"
+                className="w-full border-gray-300"
               >
                 İptal
               </Button>

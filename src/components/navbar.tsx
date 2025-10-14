@@ -177,6 +177,13 @@ const Navbar = () => {
 
           <div className="flex items-center space-x-2 sm:space-x-4">  
             {/* Authentication buttons or user info */}
+            {isAuthenticated && (
+              <BalanceTopUp 
+                currentBalance={balance} 
+                onBalanceUpdate={handleBalanceUpdate} 
+              />
+            )}
+
             {isAuthenticated && user ? (
               <div className="hidden sm:flex items-center space-x-3">
                 {/* Coin indicator */}
@@ -253,13 +260,6 @@ const Navbar = () => {
                   </Button>
                 </NavLink>
               </div>
-            )}
-
-            {isAuthenticated && (
-              <BalanceTopUp 
-                currentBalance={balance} 
-                onBalanceUpdate={handleBalanceUpdate} 
-              />
             )}
 
             <div className="lg:hidden">

@@ -1,38 +1,19 @@
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
-interface Question {
-  id: string;
-  text?: string;
-  content?: string;
-  imageUrl?: string;
-  answers: Array<{
-    id: string;
-    variantText: string;
-    answer: string;
-  }>;
-}
-
 interface ReadingPart2Props {
-  testData: {
-    parts: Array<{
-      number: number;
-      sections: Array<{
-        questions: Question[];
-      }>;
-    }>;
-  };
+  testData: any;
   answers: Record<string, string>;
   onAnswerChange: (questionId: string, value: string) => void;
 }
 
 export default function ReadingPart2({ testData, answers, onAnswerChange }: ReadingPart2Props) {
-  const part2 = testData.parts.find((p) => p.number === 2) || testData.parts[1];
+  const part2 = (testData.parts || []).find((p: any) => (p.number || 0) === 2) || (testData.parts || [])[1];
   const sections = part2?.sections || [];
   
   // Build options list across part 2 sections (A..J)
   const optionMap = new Map<string, { variantText: string; answer: string }>();
-  sections.forEach((s) => (s.questions || []).forEach((q) => (q.answers || []).forEach((a) => {
+  sections.forEach((s: any) => (s.questions || []).forEach((q: any) => (q.answers || []).forEach((a: any) => {
     if (a.variantText && !optionMap.has(a.variantText)) {
       optionMap.set(a.variantText, { variantText: a.variantText, answer: a.answer });
     }
@@ -40,7 +21,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange }: Read
   const optionList = Array.from(optionMap.values()).sort((a, b) => a.variantText.localeCompare(b.variantText));
 
   // Flatten questions and show all available questions for this part
-  const allQuestions = sections.flatMap((s) => s.questions || []);
+  const allQuestions = sections.flatMap((s: any) => s.questions || []);
   const numbered = allQuestions;
 
   const makeImageSrc = (u: string) => {
@@ -101,7 +82,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange }: Read
         <ResizablePanel defaultSize={50} minSize={30} className="bg-[#fffef5]">
           <div className="h-full p-6 overflow-y-auto pb-24">
             <div className="space-y-6">
-              {numbered.map((q, idx) => {
+              {numbered.map((q: any, idx: number) => {
                 const qNum = 7 + idx;
                 const hasImage = typeof q.imageUrl === 'string' && q.imageUrl.length > 0;
 

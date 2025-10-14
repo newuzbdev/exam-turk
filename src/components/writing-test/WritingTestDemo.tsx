@@ -286,15 +286,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   );
   };
   
-  const renderKeyboardShortcuts = () => {
-  return (
-  <div className="mt-3 p-2 bg-blue-50 rounded border border-blue-200">
-  <div className="text-xs text-blue-800">
-  <span className="font-semibold">Klavye Kısayolları:</span> c=→ç, g=→ğ, s=→ş, o=→ö, u=→ü, i=→ı, I=→İ
-  </div>
-  </div>
-  );
-  };
+  // Shortcut legend removed (unused)
 
   const getWordCount = (text: string) => {
     return text.trim().split(/\s+/).filter(Boolean).length;
@@ -313,7 +305,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   const currentAnswer = answers[selectedQuestionId] || "";
   const wordCount = getWordCount(currentAnswer);
   const wordLimit = getWordLimit();
-  const wordsRemaining = Math.max(0, wordLimit - wordCount);
+  // const wordsRemaining = Math.max(0, wordLimit - wordCount);
   const isOverLimit = wordCount > wordLimit;
 
   // Desktop bottom navigation arrows helpers
@@ -588,7 +580,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                   )}
                   {hasQuestions && (
                     <div className="space-y-3">
-                      {questions.map((question, idx) => (
+                          {questions.map((question, idx) => (
                         <div
                           key={question.id}
                           className="p-3 rounded-lg bg-gray-50"
@@ -601,14 +593,14 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                               {question.text}
                             </p>
                           )}
-                          {question.question && (
+                          {"question" in question && (question as any).question && (
                             <p className="text-gray-700 text-base">
-                              {question.question}
+                              {(question as any).question}
                             </p>
                           )}
-                          {question.description && (
+                          {"description" in question && (question as any).description && (
                             <p className="text-gray-600 text-xs mt-1">
-                              {question.description}
+                              {(question as any).description}
                             </p>
                           )}
                         </div>
@@ -625,13 +617,15 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                   {selectedSection?.title || `WRITING TASK ${currentSectionIndex + 1}`}
                 </h2>
                 <div className="space-y-3">
-                  {questions.map((question, idx) => (
+                      {questions.map((question, idx) => (
                     <div key={question.id} className="p-3 rounded-lg bg-gray-50 border border-gray-200">
                       <h3 className="font-medium text-gray-900 mb-2 text-base">Question {idx + 1}</h3>
-                      <p className="text-gray-700 text-base">{question.text}</p>
-                      {question.question && <p className="text-gray-700 text-base">{question.question}</p>}
-                      {question.description && (
-                        <p className="text-gray-600 text-sm mt-1">{question.description}</p>
+                      {question.text && <p className="text-gray-700 text-base">{question.text}</p>}
+                      {"question" in question && (question as any).question && (
+                        <p className="text-gray-700 text-base">{(question as any).question}</p>
+                      )}
+                      {"description" in question && (question as any).description && (
+                        <p className="text-gray-600 text-sm mt-1">{(question as any).description}</p>
                       )}
                     </div>
                   ))}
@@ -730,10 +724,12 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                       {questions.map((question, idx) => (
                         <div key={question.id} className="p-4 rounded-lg bg-gray-50 border border-gray-200">
                           <h3 className="font-medium text-gray-900 mb-2 text-lg">Question {idx + 1}</h3>
-                          <p className="text-gray-700 text-lg">{question.text}</p>
-                          {question.question && <p className="text-gray-700 text-lg">{question.question}</p>}
-                          {question.description && (
-                            <p className="text-gray-600 text-base mt-2">{question.description}</p>
+                          {question.text && <p className="text-gray-700 text-lg">{question.text}</p>}
+                          {"question" in question && (question as any).question && (
+                            <p className="text-gray-700 text-lg">{(question as any).question}</p>
+                          )}
+                          {"description" in question && (question as any).description && (
+                            <p className="text-gray-600 text-base mt-2">{(question as any).description}</p>
                           )}
                         </div>
                       ))}

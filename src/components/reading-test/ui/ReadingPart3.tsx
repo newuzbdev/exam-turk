@@ -1,43 +1,23 @@
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-interface Question {
-  id: string;
-  number?: number;
-  text?: string;
-  content?: string;
-  answers: Array<{
-    id: string;
-    variantText: string;
-    answer: string;
-  }>;
-}
-
 interface ReadingPart3Props {
-  testData: {
-    parts: Array<{
-      number: number;
-      sections: Array<{
-        content?: string;
-        questions: Question[];
-      }>;
-    }>;
-  };
+  testData: any;
   answers: Record<string, string>;
   onAnswerChange: (questionId: string, value: string) => void;
 }
 
 export default function ReadingPart3({ testData, answers, onAnswerChange }: ReadingPart3Props) {
-  const part3 = testData.parts.find((p) => p.number === 3) || testData.parts[2];
+  const part3 = (testData.parts || []).find((p: any) => (p.number || 0) === 3) || (testData.parts || [])[2];
   const sections = part3?.sections || [];
   
   // Find the section with paragraphs/questions (the one that has questions)
-  const paragraphSection = sections.find((s) => (s.questions || []).length > 0);
-  const paragraphQuestions = (paragraphSection?.questions || []).sort((a, b) => (a.number || 0) - (b.number || 0));
+  const paragraphSection = sections.find((s: any) => (s.questions || []).length > 0);
+  const paragraphQuestions = (paragraphSection?.questions || []).sort((a: any, b: any) => (a.number || 0) - (b.number || 0));
 
   // Build options A..H from answers if present; fallback to parsing the first section content (A) .. (H)
   const optionMap = new Map<string, { letter: string; text: string }>();
-  (sections || []).forEach((s) => (s.questions || []).forEach((q) => (q.answers || []).forEach((a) => {
+  (sections || []).forEach((s: any) => (s.questions || []).forEach((q: any) => (q.answers || []).forEach((a: any) => {
     if (a.variantText && a.answer && !optionMap.has(a.variantText)) {
       optionMap.set(a.variantText, { letter: a.variantText, text: a.answer });
     }
@@ -64,7 +44,7 @@ export default function ReadingPart3({ testData, answers, onAnswerChange }: Read
         <ResizablePanel defaultSize={60} minSize={30} className="bg-[#fffef5]">
           <div className="h-full p-6 overflow-y-auto pb-24 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
             <div className="space-y-6">
-              {paragraphQuestions.map((q, idx) => {
+              {paragraphQuestions.map((q: any, idx: number) => {
                 const displayNum = 15 + idx; // 15..20 (sequential)
                 const displayText = q.text || q.content || "";
                 const romans = ["I", "II", "III", "IV", "V", "VI"];

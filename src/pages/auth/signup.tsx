@@ -153,7 +153,7 @@ const SignUp = () => {
       avatarUrl: registrationData.avatarUrl || "",
     };
 
-    const result = await authService.registerUser(registrationPayload, navigate);
+    await authService.registerUser(registrationPayload, navigate);
     // After successful signup, redirect back if requested
     const state = location.state as { redirectTo?: string } | null;
     if (state?.redirectTo) {

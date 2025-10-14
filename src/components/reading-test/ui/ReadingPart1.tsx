@@ -1,41 +1,22 @@
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
-interface Question {
-  id: string;
-  text?: string;
-  content?: string;
-  answers: Array<{
-    id: string;
-    variantText: string;
-    answer: string;
-  }>;
-}
-
 interface ReadingPart1Props {
-  testData: {
-    parts: Array<{
-      number: number;
-      sections: Array<{
-        content: string;
-        questions: Question[];
-      }>;
-    }>;
-  };
+  testData: any;
   answers: Record<string, string>;
   onAnswerChange: (questionId: string, value: string) => void;
 }
 
 export default function ReadingPart1({ testData, answers, onAnswerChange }: ReadingPart1Props) {
-  const part1 = testData.parts.find((p) => p.number === 1) || testData.parts[0];
+  const part1 = (testData.parts || []).find((p: any) => (p.number || 0) === 1) || (testData.parts || [])[0];
   const section1 = part1?.sections && part1.sections[0];
   const content = section1?.content || "";
   const questions = (section1?.questions || []);
   
   // Build options from answers
   const optionMap = new Map<string, { variantText: string; answer: string }>();
-  (section1?.questions || []).forEach((q) => {
-    (q.answers || []).forEach((a) => {
+  (section1?.questions || []).forEach((q: any) => {
+    (q.answers || []).forEach((a: any) => {
       if (a.variantText && !optionMap.has(a.variantText)) {
         optionMap.set(a.variantText, { variantText: a.variantText, answer: a.answer });
       }
@@ -62,7 +43,7 @@ export default function ReadingPart1({ testData, answers, onAnswerChange }: Read
         <ResizablePanel defaultSize={45} minSize={20} className="bg-white min-h-0">
           <div className="h-full max-h-full p-6 overflow-visible pb-32">
             <div className="space-y-4 mb-8">
-              {questions.map((q, idx) => (
+              {questions.map((q: any, idx: number) => (
                 <div key={q.id} className="flex items-center gap-4">
                   <label className="font-bold text-lg w-12">S{idx + 1}.</label>
                   <Select

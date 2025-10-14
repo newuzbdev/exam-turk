@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { AlertCircle, CheckCircle, CreditCard, Loader2, Wallet, Coins, Minus, Plus, Star, RefreshCcw } from 'lucide-react';
+import { CreditCard, Loader2, Wallet, Coins, Minus, Plus, RefreshCcw } from 'lucide-react';
 import { paymeService } from '@/services/payme.service';
 import { toast } from '@/utils/toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,7 +19,7 @@ interface PaymeCheckoutProps {
 }
 
 export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
-  planName,
+  planName: _planName,
   planId,
   onSuccess,
   onCancel,

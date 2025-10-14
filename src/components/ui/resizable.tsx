@@ -19,7 +19,7 @@ export interface ResizableHandleProps extends PanelResizeHandleProps {
 }
 
 export const ResizableHandle = React.forwardRef<HTMLDivElement, ResizableHandleProps>(
-  ({ className, withHandle = true, variant = "grip", ...props }, ref) => (
+  ({ className, withHandle = true, variant = "grip", ...props }, _ref) => (
     <PanelResizeHandle
       className={cn(
         // Base line for vertical group (horizontal split)

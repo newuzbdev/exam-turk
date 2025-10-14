@@ -10,10 +10,10 @@ import {
 import { Menu, User, LogOut, Coins } from "lucide-react";
 import PaymeCheckoutModal from "@/components/payme/PaymeCheckoutModal";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import BalanceTopUp from "@/components/payme/BalanceTopUp";
-import { paymeService } from "@/services/payme.service";
+// removed unused paymeService import
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -199,10 +199,10 @@ const Navbar = () => {
                       </span>
                       <Avatar className="w-8 h-8">
                         <AvatarImage
-                          src={user.avatarUrl || user.avatar ? 
-                            (user.avatarUrl || user.avatar).startsWith('http') ? 
-                              (user.avatarUrl || user.avatar) : 
-                              `https://api.turkcetest.uz/${user.avatarUrl || user.avatar}` 
+                          src={(user.avatarUrl || user.avatar)
+                            ? ((user.avatarUrl || user.avatar)!.startsWith('http')
+                                ? (user.avatarUrl || user.avatar)!
+                                : `https://api.turkcetest.uz/${user.avatarUrl || user.avatar}`)
                             : undefined}
                           alt={user.name}
                         />
@@ -292,10 +292,10 @@ const Navbar = () => {
                           </span>
                           <Avatar className="w-8 h-8">
                             <AvatarImage
-                              src={user.avatarUrl || user.avatar ? 
-                                (user.avatarUrl || user.avatar).startsWith('http') ? 
-                                  (user.avatarUrl || user.avatar) : 
-                                  `https://api.turkcetest.uz/${user.avatarUrl || user.avatar}` 
+                              src={(user.avatarUrl || user.avatar)
+                                ? ((user.avatarUrl || user.avatar)!.startsWith('http')
+                                    ? (user.avatarUrl || user.avatar)!
+                                    : `https://api.turkcetest.uz/${user.avatarUrl || user.avatar}`)
                                 : undefined}
                               alt={user.name}
                             />

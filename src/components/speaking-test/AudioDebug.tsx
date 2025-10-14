@@ -16,7 +16,7 @@ const AudioDebug: React.FC = () => {
       setResult(prev => prev + '\nCan play');
     });
     
-    audio.addEventListener('error', (e) => {
+    audio.addEventListener('error', (_e) => {
       setResult(prev => prev + `\nError: ${audio.error?.message || 'Unknown error'}`);
       setResult(prev => prev + `\nNetwork state: ${audio.networkState}`);
       setResult(prev => prev + `\nReady state: ${audio.readyState}`);

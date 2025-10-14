@@ -9,7 +9,7 @@ interface AudioPlayerProps {
 export const AudioPlayer = ({ src, onAudioEnded }: AudioPlayerProps) => {
   const [volume, setVolume] = useState(0.7);
   const [_isPlaying, setIsPlaying] = useState(false);
-  const [showPlayButton, setShowPlayButton] = useState(false);
+  const [_showPlayButton, setShowPlayButton] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   // Web Audio removed: rely on native element volume/muted only for reliability
 

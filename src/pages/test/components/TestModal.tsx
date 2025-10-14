@@ -1,10 +1,8 @@
-import { BookOpen, CheckCircle2, Coins, Headphones, Mic, PenTool, ArrowRight, X, Sparkles, Zap, Target, Brain, Clock, Users, Star, Play, Pause, RotateCcw } from "lucide-react";
+import { BookOpen, CheckCircle2, Coins, Headphones, Mic, PenTool, ArrowRight, X, } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
 
 import { Button } from "@/components/ui/button";
@@ -81,7 +79,6 @@ const TestModal = ({
   speakingTests,
   listeningTests,
   readingTests,
-  onTestTypeClick,
 }: TestModalProps) => {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
@@ -96,7 +93,7 @@ const TestModal = ({
 
   const toggle = (key: string) =>
     setSelectedMap((p) => ({ ...p, [key]: !p[key] }));
-  const [selectedSection, setSelectedSection] = useState<string | null>(null);
+
 
   console.log("TestModal - Selected test:", selectedTest);
   console.log("TestModal - Writing tests received:", writingTests);

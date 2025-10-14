@@ -16,7 +16,7 @@ export const BannerSection: React.FC<BannerSectionProps> = ({
 }) => {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dismissedBanners, setDismissedBanners] = useState<Set<string>>(new Set());
+  const [dismissedBanners, _setDismissedBanners] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchBanners();
@@ -50,9 +50,7 @@ export const BannerSection: React.FC<BannerSectionProps> = ({
     }
   };
 
-  const handleDismiss = (bannerId: string) => {
-    setDismissedBanners(prev => new Set([...prev, bannerId]));
-  };
+  // Dismiss handler is not currently used; remove to avoid unused warnings
 
   const handleBannerClick = (banner: Banner) => {
     if (banner.linkUrl) {

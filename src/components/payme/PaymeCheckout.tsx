@@ -160,17 +160,17 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
   const approxUnits = Math.floor((user?.balance ?? 0) / (unitPrice || 1));
 
   return (
-    <Card className={`w-full mx-auto ${className} bg-white text-gray-900 border-x-0 border-b-0 rounded-none`}> 
+    <Card className={`w-full mx-auto ${className} bg-white text-gray-900 border-0 rounded-xl shadow-sm`}> 
       <div className="grid grid-cols-1 md:grid-cols-2">
         {/* Left: immersive hero */}
-        <div className="relative overflow-hidden p-5 border-b md:border-b-0 md:border-r border-gray-200">
-          <div className="absolute -top-10 -right-10 w-44 h-44 bg-gradient-to-br from-amber-400/10 to-purple-500/10 rounded-full blur-2xl" />
+        <div className="relative overflow-hidden p-5 md:border-r border-gray-100">
+          {/* Decorative gradient removed to reduce color noise */}
           {/* Decorative icon removed per request */}
           <h3 className="text-2xl font-extrabold tracking-tight text-black">Birim Satın Al</h3>
           <p className="mt-1 text-black text-sm">
             Hedefinize uygun miktarı seçin ve hemen başlayın
           </p>
-          <div className="mt-6 p-4 rounded-xl bg-gray-50 border border-gray-200">
+          <div className="mt-6 p-4 rounded-xl bg-slate-50 ring-1 ring-gray-300">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-black">
                 <Wallet className="w-5 h-5" />
@@ -182,7 +182,7 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
                   type="button"
                   aria-label="Yenile"
                   onClick={() => { try { refreshUser(); } catch {} }}
-                  className="w-8 h-8 rounded-md border border-gray-300 flex items-center justify-center hover:border-gray-400"
+                  className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center hover:shadow"
                 >
                   <RefreshCcw className="w-4 h-4" />
                 </button>
@@ -201,14 +201,14 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
             <button
               key={p}
               onClick={() => setUnits(p)}
-              className={`rounded-lg px-4 py-3 border transition-colors text-left ${
+              className={`rounded-xl px-4 py-3 transition-colors text-left shadow-sm cursor-pointer ${
                 unitsValue === p
-                  ? 'border-amber-400 bg-amber-50'
-                  : 'border-gray-200 hover:border-gray-300'
+                  ? 'bg-white ring-1 ring-gray-400'
+                  : 'bg-white ring-1 ring-gray-300 hover:ring-gray-400 hover:bg-gray-50'
               }`}
             >
               <div className="flex items-center gap-2 font-semibold text-sm text-black">
-                <Coins className="w-4 h-4 text-amber-500" /> {p}U
+                <Coins className="w-4 h-4 text-slate-600" /> {p}U
               </div>
               <div className="text-[11px] text-black mt-1">{paymeService.formatBalance(p * unitPrice)}</div>
             </button>
@@ -219,7 +219,7 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
         <div className="space-y-2">
           <Label htmlFor="amount" className="text-black">Birim (U) Miktarı</Label>
           <div className="flex items-center gap-2">
-            <button onClick={dec} className="w-9 h-9 rounded-md border border-gray-300 flex items-center justify-center hover:border-gray-400">
+            <button onClick={dec} className="w-9 h-9 rounded-full bg-white ring-1 ring-gray-200 flex items-center justify-center hover:bg-gray-50">
               <Minus className="w-4 h-4" />
             </button>
             <Input
@@ -230,9 +230,9 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
               onChange={(e) => setAmount(e.target.value)}
               min="1"
               step="1"
-              className="text-center text-base bg-white border-gray-300 focus-visible:ring-0 focus-visible:ring-offset-0 text-black"
+              className="text-center text-base bg-white ring-1 ring-gray-200 rounded-xl focus-visible:ring-0 focus-visible:ring-offset-0 text-black"
             />
-            <button onClick={inc} className="w-9 h-9 rounded-md border border-gray-300 flex items-center justify-center hover:border-gray-400">
+            <button onClick={inc} className="w-9 h-9 rounded-full bg-white ring-1 ring-gray-200 flex items-center justify-center hover:bg-gray-50">
               <Plus className="w-4 h-4" />
             </button>
           </div>
@@ -250,7 +250,7 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
         )}
 
           {/* Total cost */}
-          <div className={`rounded-lg p-3 border ${hasEnough ? 'border-emerald-300 bg-emerald-50' : 'border-rose-300 bg-rose-50'}`}>
+          <div className={`rounded-xl p-3 ${hasEnough ? 'bg-slate-50 ring-1 ring-slate-200' : 'bg-slate-50 ring-1 ring-slate-200'}`}>
             <div className="text-xs text-black mb-1">Toplam Tutar</div>
             <div className="text-xl font-bold text-black">{formattedAmount}</div>
             {!hasEnough && unitsValue > 0 && (
@@ -262,10 +262,10 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
 
           {/* Actions */}
           <div className="grid grid-cols-2 gap-2 pt-1">
-            <Button variant="ghost" onClick={handleCancel} className="h-10 border border-gray-300 bg-gray-50 text-gray-800 hover:bg-gray-100">
+            <Button variant="ghost" onClick={handleCancel} className="h-10 ring-1 ring-gray-200 bg-white text-gray-800 hover:bg-gray-50 rounded-xl">
               İptal
             </Button>
-            <Button onClick={handleCheckout} disabled={isLoading || unitsValue <= 0} className={`h-10 ${hasEnough ? 'bg-amber-500 hover:bg-amber-600' : 'bg-purple-600 hover:bg-purple-700'} text-white`}>
+            <Button onClick={handleCheckout} disabled={isLoading || unitsValue <= 0} className={`h-10 bg-red-600 hover:bg-red-700 text-white rounded-lg`}>
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -274,7 +274,7 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
               ) : (
                 <>
                   <CreditCard className="w-4 h-4 mr-2" />
-                  {hasEnough ? 'Satın Al' : 'Bakiye Yükle'}
+                  Devam Et
                 </>
               )}
             </Button>

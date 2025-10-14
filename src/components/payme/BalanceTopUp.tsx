@@ -108,19 +108,19 @@ export const BalanceTopUp: React.FC<BalanceTopUpProps> = ({
     <>
       {/* Balance Display Button */}
       <Button
-        variant="outline"
+        variant="ghost"
         size="sm"
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2"
+        className="flex items-center gap-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-900 shadow-sm px-3 ring-1 ring-gray-300"
       >
         <Wallet className="w-4 h-4" />
-        <span className="hidden sm:inline">{formattedBalance}</span>
+        <span className="hidden sm:inline font-semibold">{formattedBalance}</span>
         <Plus className="w-3 h-3" />
       </Button>
 
       {/* Top-up Dialog */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-md w-[92vw] bg-white border border-gray-200">
+        <DialogContent className="sm:max-w-md w-[92vw] bg-white border-0 shadow-xl">
           <DialogHeader>
             <DialogTitle className="text-center text-black">Bakiye Yükle</DialogTitle>
             <DialogDescription className="text-center text-black">Bakiye yükleme</DialogDescription>
@@ -128,7 +128,7 @@ export const BalanceTopUp: React.FC<BalanceTopUpProps> = ({
 
           <div className="space-y-4">
             {/* Current Balance */}
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50">
               <span className="text-sm font-medium text-black">Mevcut Bakiye:</span>
               <div className="flex items-center gap-2">
                 {isCheckingBalance ? (
@@ -150,7 +150,7 @@ export const BalanceTopUp: React.FC<BalanceTopUpProps> = ({
                 onChange={(e) => setAmount(e.target.value)}
                 min="1000"
                 step="1000"
-                className="text-center text-lg focus-visible:ring-0 focus-visible:ring-offset-0 border-gray-300 text-black"
+                className="text-center text-lg focus-visible:ring-0 focus-visible:ring-offset-0 border-gray-200 text-black rounded-xl"
               />
               {amountValue > 0 && (
                 <div className="text-center text-sm text-black">
@@ -179,7 +179,7 @@ export const BalanceTopUp: React.FC<BalanceTopUpProps> = ({
               <Button
                 onClick={handleTopUp}
                 disabled={isLoading || amountValue < 1000}
-                className="w-full bg-amber-500 hover:bg-amber-600 text-white"
+                className="w-full bg-red-600 hover:bg-red-700 text-white rounded-lg"
               >
                 {isLoading ? (
                   <>
@@ -197,7 +197,7 @@ export const BalanceTopUp: React.FC<BalanceTopUpProps> = ({
               <Button
                 variant="outline"
                 onClick={() => setIsOpen(false)}
-                className="w-full border-gray-300"
+                className="w-full border-gray-200 rounded-xl"
               >
                 İptal
               </Button>

@@ -183,7 +183,7 @@ const Navbar = () => {
                 <button
                   type="button"
                   onClick={() => setIsCoinModalOpen(true)}
-                  className="flex items-center gap-1 text-amber-600 bg-amber-50 border border-amber-200 px-2 py-1 rounded-md hover:bg-amber-100 cursor-pointer"
+                  className="flex items-center gap-1.5 text-gray-900 bg-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-300 shadow-sm cursor-pointer ring-1 ring-gray-300"
                 >
                   <Coins className="h-4 w-4" />
                   <span className="text-sm font-semibold">{coin}</span>
@@ -283,7 +283,7 @@ const Navbar = () => {
                       <div className="px-3 py-2 border-b">
                         <div className="flex items-center space-x-2 mb-3">
                           {/* Coin indicator mobile */}
-                          <div className="flex items-center gap-1 text-amber-600 bg-amber-50 border border-amber-200 px-2 py-1 rounded-md mr-2">
+                          <div className="flex items-center gap-1.5 text-gray-900 bg-gray-200 px-3 py-1.5 rounded-lg mr-2 shadow-sm ring-1 ring-gray-300">
                             <Coins className="h-4 w-4" />
                             <span className="text-sm font-semibold">{coin}</span>
                           </div>

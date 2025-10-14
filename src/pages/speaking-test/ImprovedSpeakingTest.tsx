@@ -464,8 +464,8 @@ export default function ImprovedSpeakingTest() {
   // Play TTS audio when a new question becomes active (outside instructions)
   useEffect(() => {
     if (!showSectionDescription && currentSection && !isPlayingInstructions && currentQuestion) {
-      // Play TTS audio if available (skip for Part 2)
-      if (currentQuestion?.textToSpeechUrl && currentSection?.type !== "PART2") {
+      // Play TTS audio if available (skip for Part 2 and Part 3)
+      if (currentQuestion?.textToSpeechUrl && currentSection?.type !== "PART2" && currentSection?.type !== "PART3") {
         const fullUrl = currentQuestion.textToSpeechUrl.startsWith('./')
           ? `${baseURL}${currentQuestion.textToSpeechUrl.substring(1)}`
           : currentQuestion.textToSpeechUrl
@@ -1315,7 +1315,7 @@ export default function ImprovedSpeakingTest() {
            exit={{ opacity: 0, y: 20 }}
            className="mb-12 sm:mb-16"
          >
-           {currentSection?.type !== "PART2" && !isPlayingInstructions && (
+          {currentSection?.type !== "PART2" && currentSection?.type !== "PART3" && !isPlayingInstructions && (
              <div className="text-center">
                <div className="text-black font-bold text-2xl sm:text-3xl">
                  QUESTION {currentQuestionIndex + 1}
@@ -1397,19 +1397,31 @@ export default function ImprovedSpeakingTest() {
               </ul>
             </div>
           ) : currentSection?.type === "PART3" ? (
-            <div className="max-w-4xl mx-auto bg-white p-4 sm:p-6 rounded-xl">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                <div>
-                  <h3 className="text-lg sm:text-xl font-bold mb-3 text-gray-900">Lehler (Avantajlar)</h3>
-                  <ul className="list-disc list-inside space-y-2 text-black">
+            <div className="max-w-5xl mx-auto bg-white p-0 rounded-xl overflow-hidden border border-gray-300">
+              {(() => {
+                const sp = currentSection?.subParts?.[currentSubPartIndex]
+                const questions = sp?.questions ? [...sp.questions].sort((a, b) => a.order - b.order) : []
+                const text = questions?.[0]?.questionText || currentSection?.description || ""
+                return text ? (
+                  <div className="border-b border-gray-300 px-4 sm:px-6 py-3 sm:py-4">
+                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 text-center whitespace-pre-line">
+                      {text}
+                    </h3>
+                  </div>
+                ) : null
+              })()}
+              <div className="grid grid-cols-1 md:grid-cols-2">
+                <div className="p-4 sm:p-6 md:border-r border-gray-300">
+                  <h4 className="text-base sm:text-lg font-bold mb-3 text-gray-900">Lehine</h4>
+                  <ul className="list-disc list-inside space-y-2 text-black text-base sm:text-lg">
                     {(currentSection as any)?.points?.filter((p: any) => p.type === 'ADVANTAGE')?.flatMap((p: any) => p.example || []).sort((a: any, b: any) => (a.order||0)-(b.order||0)).map((ex: any, idx: number) => (
                       <li key={`adv-${idx}`}>{ex.text}</li>
                     ))}
                   </ul>
                 </div>
-                <div>
-                  <h3 className="text-lg sm:text-xl font-bold mb-3 text-gray-900">Aleyhler (Dezavantajlar)</h3>
-                  <ul className="list-disc list-inside space-y-2 text-black">
+                <div className="p-4 sm:p-6">
+                  <h4 className="text-base sm:text-lg font-bold mb-3 text-gray-900">Aleyhine</h4>
+                  <ul className="list-disc list-inside space-y-2 text-black text-base sm:text-lg">
                     {(currentSection as any)?.points?.filter((p: any) => p.type === 'DISADVANTAGE')?.flatMap((p: any) => p.example || []).sort((a: any, b: any) => (a.order||0)-(b.order||0)).map((ex: any, idx: number) => (
                       <li key={`dis-${idx}`}>{ex.text}</li>
                     ))}

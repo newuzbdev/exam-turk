@@ -178,10 +178,12 @@ const Navbar = () => {
           <div className="flex items-center space-x-2 sm:space-x-4">  
             {/* Authentication buttons or user info */}
             {isAuthenticated && (
-              <BalanceTopUp 
-                currentBalance={balance} 
-                onBalanceUpdate={handleBalanceUpdate} 
-              />
+              <div className="hidden md:block">
+                <BalanceTopUp 
+                  currentBalance={balance} 
+                  onBalanceUpdate={handleBalanceUpdate} 
+                />
+              </div>
             )}
 
             {isAuthenticated && user ? (
@@ -262,6 +264,18 @@ const Navbar = () => {
               </div>
             )}
 
+            {/* Mobile quick coin access */}
+            {isAuthenticated && user && (
+              <button
+                type="button"
+                onClick={() => setIsCoinModalOpen(true)}
+                className="sm:hidden flex items-center gap-1.5 text-gray-900 bg-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-300 shadow-sm cursor-pointer ring-1 ring-gray-300"
+              >
+                <Coins className="h-4 w-4" />
+                <span className="text-sm font-semibold">{coin}</span>
+              </button>
+            )}
+
             <div className="lg:hidden">
               <Sheet>
                 <SheetTrigger asChild>
@@ -281,39 +295,43 @@ const Navbar = () => {
                     {/* Mobile Authentication */}
                     {isAuthenticated && user ? (
                       <div className="px-3 py-2 border-b">
-                        <div className="flex items-center space-x-2 mb-3">
-                          {/* Coin indicator mobile */}
-                          <div className="flex items-center gap-1.5 text-gray-900 bg-gray-200 px-3 py-1.5 rounded-lg mr-2 shadow-sm ring-1 ring-gray-300">
-                            <Coins className="h-4 w-4" />
-                            <span className="text-sm font-semibold">{coin}</span>
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2">
+                            <Avatar className="w-8 h-8">
+                              <AvatarImage
+                                src={(user.avatarUrl || user.avatar)
+                                  ? ((user.avatarUrl || user.avatar)!.startsWith('http')
+                                      ? (user.avatarUrl || user.avatar)!
+                                      : `https://api.turkcetest.uz/${user.avatarUrl || user.avatar}`)
+                                  : undefined}
+                                alt={user.name}
+                              />
+                              <AvatarFallback className="text-xs font-semibold text-red-700">
+                                {user.name
+                                  .split(" ")
+                                  .map((n: string) => n[0])
+                                  .join("")}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-gray-900 font-medium truncate">{user.name}</span>
+                            <span className="ml-auto flex items-center gap-1.5 text-gray-900 bg-gray-100 px-2 py-1 rounded-md ring-1 ring-gray-200">
+                              <Coins className="h-4 w-4" />
+                              <span className="text-xs font-semibold">{coin}</span>
+                            </span>
                           </div>
-                          <span className="text-gray-900 font-medium">
-                            {user.name}
-                          </span>
-                          <Avatar className="w-8 h-8">
-                            <AvatarImage
-                              src={(user.avatarUrl || user.avatar)
-                                ? ((user.avatarUrl || user.avatar)!.startsWith('http')
-                                    ? (user.avatarUrl || user.avatar)!
-                                    : `https://api.turkcetest.uz/${user.avatarUrl || user.avatar}`)
-                                : undefined}
-                              alt={user.name}
-                            />
-                            <AvatarFallback className="text-xs font-semibold text-red-700">
-                              {user.name
-                                .split(" ")
-                                .map((n: string) => n[0])
-                                .join("")}
-                            </AvatarFallback>
-                          </Avatar>
-                          
-                        </div>
-                        <div className="space-y-2">
-                          <div className="px-2 py-2">
-                            <BalanceTopUp 
-                              currentBalance={balance} 
-                              onBalanceUpdate={handleBalanceUpdate} 
-                            />
+                          <Button
+                            onClick={() => setIsCoinModalOpen(true)}
+                            className="w-full bg-red-600 hover:bg-red-700 text-white"
+                          >
+                            Birim Satın Al
+                          </Button>
+                          <div className="rounded-lg ring-1 ring-gray-200 bg-white">
+                            <div className="px-2 py-2">
+                              <BalanceTopUp 
+                                currentBalance={balance} 
+                                onBalanceUpdate={handleBalanceUpdate} 
+                              />
+                            </div>
                           </div>
                           <NavLink
                             to="/profile"

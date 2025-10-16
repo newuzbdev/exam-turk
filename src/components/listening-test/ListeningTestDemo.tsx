@@ -176,50 +176,36 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
     const sections: any[] = [];
     if (!testData?.parts) return sections;
     for (const p of testData.parts as any[]) {
+      const parentPartNumber = typeof p.number === 'number' ? p.number : undefined;
       for (const s of (p.sections || [])) {
-        sections.push(s);
+        sections.push({
+          ...s,
+          partNumber: parentPartNumber,
+        });
       }
     }
     return sections;
   };
 
-  const detectBolumForQuestion = (question: any): number => {
-    // Extract question number from question.text or question.content
-    const text = `${question?.text || ''} ${question?.content || ''}`;
-    const match = text.match(/S(\d+)/);
-    if (match) {
-      const num = parseInt(match[1]);
-      if (num >= 1 && num <= 8) return 1;
-      if (num >= 9 && num <= 14) return 2;
-      if (num >= 15 && num <= 18) return 3;
-      if (num >= 19 && num <= 23) return 4;
-      if (num >= 24 && num <= 29) return 5;
-      if (num >= 30 && num <= 35) return 6;
-    }
-    
-    // Fallback: check question type
-    if (question.type === "TRUE_FALSE") return 2; // Most TRUE_FALSE are in bölüm 2
-    return 1; // Default fallback
-  };
+  // Use actual parent part numbers from API instead of guessing by text
 
   const getQuestionsForPartNumber = (partNumber: number) => {
     const questions: any[] = [];
     const sections = getAllSections();
     
     sections.forEach((section: any, sectionIndex: number) => {
-      (section.questions || []).forEach((question: any) => {
-        const questionBolum = detectBolumForQuestion(question);
-        if (questionBolum === partNumber) {
+      if ((section.partNumber || 0) === partNumber) {
+        (section.questions || []).forEach((question: any) => {
           questions.push({
             ...question,
             sectionTitle: section.title,
             sectionContent: section.content,
             imageUrl: section.imageUrl,
             partNumber,
-            sectionIndex
+            sectionIndex,
           });
-        }
-      });
+        });
+      }
     });
     
     return questions;

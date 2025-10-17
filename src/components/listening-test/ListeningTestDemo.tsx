@@ -9,6 +9,7 @@ import { AudioPlayer } from "@/pages/listening-test/components/AudioPlayer";
 import { toast } from "sonner";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { ConfirmationModal } from "../ui/confirmation-modal";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface UserAnswers {
   [questionId: string]: string;
@@ -350,18 +351,21 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                     <div key={question.id} className="flex items-center gap-2 py-1">
                       <span className="font-bold text-sm">S{currentQuestionNumber}.</span>
                       <span className="text-sm flex-1">1. konuşmacı ...</span>
-                      <select
+                      <Select
                         value={userAnswers[question.id] || ""}
-                        onChange={(e) => handleAnswerSelect(question.id, e.target.value)}
-                        className="border border-gray-400 rounded px-2 py-1 text-xs min-w-[60px]"
+                        onValueChange={(value) => handleAnswerSelect(question.id, value)}
                       >
-                        <option value="">Seç</option>
-                        {answerOptions.map((option) => (
-                          <option key={option.letter} value={option.letter}>
-                            {option.letter}
-                          </option>
-                        ))}
-                      </select>
+                        <SelectTrigger className="w-16 h-8 text-xs bg-white border-gray-400">
+                          <SelectValue placeholder="Seç" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white">
+                          {answerOptions.map((option) => (
+                            <SelectItem key={option.letter} value={option.letter}>
+                              {option.letter}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   );
                 })}
@@ -399,18 +403,21 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                         <div key={question.id} className="flex items-center gap-3 py-2">
                           <span className="font-bold text-lg">S{currentQuestionNumber}.</span>
                           <span className="text-lg">1. konuşmacı ...</span>
-                          <select
+                          <Select
                             value={userAnswers[question.id] || ""}
-                            onChange={(e) => handleAnswerSelect(question.id, e.target.value)}
-                            className="border border-gray-400 rounded px-3 py-1 text-base ml-auto"
+                            onValueChange={(value) => handleAnswerSelect(question.id, value)}
                           >
-                            <option value="">Seç</option>
-                            {answerOptions.map((option) => (
-                              <option key={option.letter} value={option.letter}>
-                                {option.letter}
-                              </option>
-                            ))}
-                          </select>
+                            <SelectTrigger className="w-20 h-10 text-base ml-auto bg-white border-gray-400">
+                              <SelectValue placeholder="Seç" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white">
+                              {answerOptions.map((option) => (
+                                <SelectItem key={option.letter} value={option.letter}>
+                                  {option.letter}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                       );
                     })}
@@ -484,21 +491,24 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                     <div key={question.id} className="flex items-center gap-2 w-full py-1">
                       <span className="font-bold text-sm">S{currentQuestionNumber}.</span>
                       <span className="text-sm flex-1">{question.text}</span>
-                      <select
-                        className="border border-gray-400 rounded px-2 py-1 text-xs min-w-[60px]"
+                      <Select
                         value={userAnswers[question.id] || ""}
-                        onChange={(e) => handleAnswerSelect(question.id, e.target.value)}
+                        onValueChange={(value) => handleAnswerSelect(question.id, value)}
                       >
-                        <option value="">Seç</option>
-                        <option value="A">A</option>
-                        <option value="B">B</option>
-                        <option value="C">C</option>
-                        <option value="D">D</option>
-                        <option value="E">E</option>
-                        <option value="F">F</option>
-                        <option value="G">G</option>
-                        <option value="H">H</option>
-                      </select>
+                        <SelectTrigger className="w-16 h-8 text-xs bg-white border-gray-400">
+                          <SelectValue placeholder="Seç" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white">
+                          <SelectItem value="A">A</SelectItem>
+                          <SelectItem value="B">B</SelectItem>
+                          <SelectItem value="C">C</SelectItem>
+                          <SelectItem value="D">D</SelectItem>
+                          <SelectItem value="E">E</SelectItem>
+                          <SelectItem value="F">F</SelectItem>
+                          <SelectItem value="G">G</SelectItem>
+                          <SelectItem value="H">H</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   );
                 })}
@@ -545,21 +555,24 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                         <div key={question.id} className="flex items-center gap-3 w-full py-2">
                           <span className="font-bold text-lg">S{currentQuestionNumber}.</span>
                           <span className="text-lg flex-1">{question.text}</span>
-                          <select
-                            className="border border-gray-400 rounded px-3 py-2 text-base min-w-[80px]"
+                          <Select
                             value={userAnswers[question.id] || ""}
-                            onChange={(e) => handleAnswerSelect(question.id, e.target.value)}
+                            onValueChange={(value) => handleAnswerSelect(question.id, value)}
                           >
-                            <option value="">Seç</option>
-                            <option value="A">A</option>
-                            <option value="B">B</option>
-                            <option value="C">C</option>
-                            <option value="D">D</option>
-                            <option value="E">E</option>
-                            <option value="F">F</option>
-                            <option value="G">G</option>
-                            <option value="H">H</option>
-                          </select>
+                            <SelectTrigger className="w-20 h-10 text-base bg-white border-gray-400">
+                              <SelectValue placeholder="Seç" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white">
+                              <SelectItem value="A">A</SelectItem>
+                              <SelectItem value="B">B</SelectItem>
+                              <SelectItem value="C">C</SelectItem>
+                              <SelectItem value="D">D</SelectItem>
+                              <SelectItem value="E">E</SelectItem>
+                              <SelectItem value="F">F</SelectItem>
+                              <SelectItem value="G">G</SelectItem>
+                              <SelectItem value="H">H</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                       );
                     })}

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Question {
   id: number;
@@ -58,20 +59,21 @@ export default function ListeningPart3() {
               <div key={question.id} className="flex items-center gap-3">
                 <span className="font-bold text-lg">S{question.id}.</span>
                 <span className="text-lg">1. konuşmacı ...</span>
-                <select
+                <Select
                   value={question.selectedAnswer || ""}
-                  onChange={(e) =>
-                    handleAnswerSelect(question.id, e.target.value)
-                  }
-                  className="border border-gray-400 rounded px-2 py-1 text-sm"
+                  onValueChange={(value) => handleAnswerSelect(question.id, value)}
                 >
-                  <option value="">Seç</option>
-                  {answerOptions.map((option) => (
-                    <option key={option.letter} value={option.letter}>
-                      {option.letter}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className="w-16 h-8 text-sm bg-white border-gray-400">
+                    <SelectValue placeholder="Seç" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white">
+                    {answerOptions.map((option) => (
+                      <SelectItem key={option.letter} value={option.letter}>
+                        {option.letter}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             ))}
           </div>

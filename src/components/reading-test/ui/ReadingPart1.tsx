@@ -50,10 +50,10 @@ export default function ReadingPart1({ testData, answers, onAnswerChange }: Read
                     value={answers[q.id] || ""}
                     onValueChange={(value) => onAnswerChange(q.id, value)}
                   >
-                    <SelectTrigger className="flex-1 bg-white border border-gray-400 rounded px-2 py-1 h-8 min-w-[10rem]">
-                      <SelectValue placeholder="" />
+                    <SelectTrigger className="flex-1 bg-white border border-gray-300 rounded-md px-3 py-2 h-10 min-w-[10rem] focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                      <SelectValue placeholder="Seçiniz" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white">
                       {optionList.map((opt) => (
                         <SelectItem key={opt.variantText} value={opt.variantText}>
                           {opt.variantText}) {opt.answer}

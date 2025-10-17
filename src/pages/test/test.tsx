@@ -4,9 +4,8 @@ import { toast } from "sonner";
 import TestModal from "./components/TestModal";
 import MainTestCard from "./components/MainTestCard";
 import EmptyState from "./components/EmptyState";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, } from "react-router-dom";
 import { authService } from "@/services/auth.service";
-import { Button } from "@/components/ui/button";
 
 interface TurkishTest {
   id: string;
@@ -76,7 +75,6 @@ const TestPage = () => {
   const [showTestModal, setShowTestModal] = useState(false);
   const [currentTestForModal, setCurrentTestForModal] = useState<TurkishTest | null>(null);
   const location = useLocation();
-  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchTurkishTestData = async () => {

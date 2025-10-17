@@ -4,6 +4,7 @@ import type { ListeningTestItem } from "@/services/listeningTest.service";
 import { Button } from "../ui/button";
 import { listeningSubmissionService } from "@/services/listeningTest.service";
 import { useNavigate } from "react-router-dom";
+import { overallTestFlowStore } from "@/services/overallTest.service";
 import { AudioPlayer } from "@/pages/listening-test/components/AudioPlayer";
 import { toast } from "sonner";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
@@ -825,14 +826,28 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
       };
       
       if (resultId) {
-        console.log("Navigating to results with ID:", resultId); // Debug log
-        // Ensure results are fetched immediately after submission
-        try {
-          await listeningSubmissionService.getExamResults(resultId);
-        } catch (error) {
-          console.error("Error fetching results immediately:", error);
+        // If overall flow queue has more tests, go to next; else show results
+        const nextPath = overallTestFlowStore.onTestCompleted("LISTENING", testData.id);
+        if (nextPath) {
+          navigate(nextPath);
+          return;
         }
-        navigate(`/listening-test/results/${resultId}` , { state: { summary } });
+        // If multi-test flow finished, prefer overall page if available
+        const overallId = overallTestFlowStore.getOverallId();
+        if (overallId && overallTestFlowStore.isAllDone()) {
+          try {
+            if (!overallTestFlowStore.isCompleted()) {
+              const { overallTestService } = await import("@/services/overallTest.service");
+              await overallTestService.complete(overallId);
+              overallTestFlowStore.markCompleted();
+            }
+          } catch {}
+          navigate(`/overall-results/${overallId}`);
+          return;
+        }
+        // Ensure results are fetched immediately after submission
+        try { await listeningSubmissionService.getExamResults(resultId); } catch (error) { console.error("Error fetching results immediately:", error); }
+        navigate(`/listening-test/results/${resultId}`, { state: { summary } });
         return;
       } else {
         console.error("No resultId found in submission response:", res);

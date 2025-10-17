@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useMemo, useState } from "react";
-import overallTestService from "@/services/overallTest.service";
+import overallTestService, { overallTestFlowStore } from "@/services/overallTest.service";
 import { toast } from "sonner";
 import testCoinPriceService from "@/services/testCoinPrice.service";
 import type { TestCoinPriceItem } from "@/services/testCoinPrice.service";
@@ -194,27 +194,34 @@ const TestModal = ({
 
     const startRes = await overallTestService.start({ readingId, listeningId, writingId, speakingId });
     if (!startRes) return;
+    try {
+      const oid = (startRes as any)?.overallTestId || (startRes as any)?.overallId || (startRes as any)?.overallTestResultId || (startRes as any)?.id;
+      if (oid) overallTestFlowStore.setOverallId(String(oid));
+    } catch {}
 
-    // After tokens stored, navigate to the first selected test
-    const chosen = [
-      { id: "listening", tests: listeningTests },
-      { id: "reading", tests: readingTests },
-      { id: "writing", tests: writingTests },
-      { id: "speaking", tests: speakingTests },
-    ].find((s) => selectedMap[s.id] && s.tests && s.tests.length > 0);
+    // Build ordered queue based on selection order in UI (listening -> reading -> writing -> speaking)
+    const queue = [
+      selectedMap.listening && listeningTests?.[0]?.id
+        ? { testType: "LISTENING" as const, testId: listeningTests[0].id, path: `/listening-test/${listeningTests[0].id}` }
+        : null,
+      selectedMap.reading && readingTests?.[0]?.id
+        ? { testType: "READING" as const, testId: readingTests[0].id, path: `/reading-test/${readingTests[0].id}` }
+        : null,
+      selectedMap.writing && writingTests?.[0]?.id
+        ? { testType: "WRITING" as const, testId: writingTests[0].id, path: `/writing-test/${writingTests[0].id}` }
+        : null,
+      selectedMap.speaking && speakingTests?.[0]?.id
+        ? { testType: "SPEAKING" as const, testId: speakingTests[0].id, path: `/speaking-test/${speakingTests[0].id}` }
+        : null,
+    ].filter(Boolean) as { testType: any; testId: string; path: string }[];
 
-    if (!chosen || !chosen.tests?.[0]) return;
-    const test = chosen.tests[0];
-    const path =
-      chosen.id === "speaking"
-        ? `/speaking-test/${test.id}`
-        : chosen.id === "writing"
-        ? `/writing-test/${test.id}`
-        : chosen.id === "listening"
-        ? `/listening-test/${test.id}`
-        : `/reading-test/${test.id}`;
+    // Store the queue in session for chaining
+    // Set queue and ensure initial count is correct
+    overallTestFlowStore.setQueue(queue);
 
-    navigate(path);
+    // Navigate to the first in queue
+    const first = queue[0];
+    if (first?.path) navigate(first.path);
   };
 
   return (

@@ -12,9 +12,7 @@ export default function ReadingTest() {
       document.body.classList.add("exam-mode");
     }
     return () => {
-      if (typeof document !== "undefined") {
-        document.body.classList.remove("exam-mode");
-      }
+      // leave exam-mode active between chained tests; final page cleans up
     };
   }, []);
 

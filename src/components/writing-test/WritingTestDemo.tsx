@@ -10,6 +10,7 @@ import writingTestService, {
   type WritingTestItem,
 } from "@/services/writingTest.service";
 import writingSubmissionService from "@/services/writingSubmission.service";
+import { overallTestFlowStore } from "@/services/overallTest.service";
 
 interface WritingSubPart {
   id: string;
@@ -409,6 +410,28 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
       setSubmitting(false);
       if (res) {
         toast.success("Your answers have been saved successfully!");
+        const nextPath = overallTestFlowStore.onTestCompleted("WRITING", testId);
+        if (nextPath) {
+          navigate(nextPath);
+          return;
+        }
+        const overallId = overallTestFlowStore.getOverallId();
+        const isAllDone = overallTestFlowStore.isAllDone();
+        console.log("Writing submit - overallId:", overallId, "isAllDone:", isAllDone);
+        if (overallId && isAllDone) {
+          try {
+            if (!overallTestFlowStore.isCompleted()) {
+              console.log("Calling complete for overallId:", overallId);
+              const { overallTestService } = await import("@/services/overallTest.service");
+              await overallTestService.complete(overallId);
+              overallTestFlowStore.markCompleted();
+              console.log("Complete call finished");
+            }
+          } catch {}
+          navigate(`/overall-results/${overallId}`);
+          return;
+        }
+        console.log("Not calling complete - going to single result");
         navigate(`/writing-test/results/${res.id}`);
       }
     } catch (err: any) {

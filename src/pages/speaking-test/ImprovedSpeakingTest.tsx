@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
+import { overallTestFlowStore } from "@/services/overallTest.service"
 import { motion, AnimatePresence } from "framer-motion"
 import { Mic, ArrowLeft, CheckCircle, Volume2 } from "lucide-react"
 import axiosPrivate from "@/config/api"
@@ -1032,6 +1033,23 @@ export default function ImprovedSpeakingTest() {
       exitFullscreen().catch(() => { })
       setIsExamMode(false)
       if (submissionId) {
+        const nextPath = overallTestFlowStore.onTestCompleted("SPEAKING", testData.id)
+        if (nextPath) {
+          navigate(nextPath)
+          return
+        }
+        const overallId = overallTestFlowStore.getOverallId()
+        if (overallId && overallTestFlowStore.isAllDone()) {
+          try {
+            if (!overallTestFlowStore.isCompleted()) {
+              const { overallTestService } = await import("@/services/overallTest.service");
+              await overallTestService.complete(overallId)
+              overallTestFlowStore.markCompleted()
+            }
+          } catch {}
+          navigate(`/overall-results/${overallId}`)
+          return
+        }
         navigate(`/speaking-test/results/${submissionId}`)
         return
       }

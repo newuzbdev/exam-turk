@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { overallTestFlowStore } from "@/services/overallTest.service";
 import { Button } from "../ui/button";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "../ui/resizable";
 import { ConfirmationModal } from "../ui/confirmation-modal";
@@ -111,6 +112,23 @@ export default function ReadingPage({ testId }: { testId: string }) {
         testId: testData.id,
       } as any;
       if (resultId) {
+        const nextPath = overallTestFlowStore.onTestCompleted("READING", testData.id);
+        if (nextPath) {
+          navigate(nextPath);
+          return;
+        }
+        const overallId = overallTestFlowStore.getOverallId();
+        if (overallId && overallTestFlowStore.isAllDone()) {
+          try {
+            if (!overallTestFlowStore.isCompleted()) {
+              const { overallTestService } = await import("@/services/overallTest.service");
+              await overallTestService.complete(overallId);
+              overallTestFlowStore.markCompleted();
+            }
+          } catch {}
+          navigate(`/overall-results/${overallId}`);
+          return;
+        }
         try { await readingSubmissionService.getExamResults(resultId); } catch {}
         navigate(`/reading-test/results/${resultId}`, { state: { summary } });
       } else {

@@ -11,10 +11,9 @@ export default function ListeningTestPage() {
         if (typeof document !== "undefined") {
           document.body.classList.add("exam-mode");
         }
+        // Do not remove exam mode on unmount if another test immediately mounts
         return () => {
-          if (typeof document !== "undefined") {
-            document.body.classList.remove("exam-mode");
-          }
+          // leave as-is; final test pages will clean up
         };
     }, []);
     if (!testId) {

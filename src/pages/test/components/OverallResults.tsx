@@ -3,28 +3,49 @@ import { useNavigate, useParams } from "react-router-dom";
 import axiosPrivate from "@/config/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { overallTestFlowStore } from "@/services/overallTest.service";
 
-interface OverallItem {
-  type: "LISTENING" | "READING" | "WRITING" | "SPEAKING";
-  resultId?: string;
-  score?: number;
-  correctCount?: number;
-  totalQuestions?: number;
+interface Question {
+  questionId: string;
+  questionNumber: number;
+  questionText: string;
+  questionContent: string;
+  questionType: string;
+  userAnswer: string;
+  correctAnswers: Array<{
+    id: string;
+    text: string;
+  }>;
+}
+
+interface TestResult {
+  test: {
+    id: string;
+    title: string;
+    type: string;
+  };
+  score: number;
+  completedAt?: string;
+  questions?: Question[];
+  overallScore?: number;
 }
 
 interface OverallResponse {
-  id?: string;
-  userId?: string;
-  createdAt?: string;
+  id: string;
+  status: string;
+  isCompleted: boolean;
   completedAt?: string;
-  items?: OverallItem[];
-  // fallbacks some backends might return
-  listeningResultId?: string;
-  readingResultId?: string;
-  writingResultId?: string;
-  speakingResultId?: string;
-  results?: OverallItem[];
+  startedAt: string;
+  totalCoinSpent: number;
+  user: {
+    id: string;
+    name: string;
+  };
+  listening?: TestResult;
+  reading?: TestResult;
+  writing?: TestResult;
+  speaking?: TestResult;
 }
 
 export default function OverallResults() {
@@ -32,59 +53,33 @@ export default function OverallResults() {
   const navigate = useNavigate();
   const [data, setData] = useState<OverallResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("listening");
 
-  const retriesRef = useRef(0);
   useEffect(() => {
     const id = params.overallId;
     if (!id) { navigate("/test"); return; }
 
-    let active = true;
-    const fetchOnce = async () => {
+    const fetchOverallResults = async () => {
       setLoading(true);
       try {
         console.log("Fetching overall results for ID:", id);
         const res = await axiosPrivate.get(`/api/overal-test-result/${id}/results`);
         console.log("Overall results response:", res.data);
         const payload = (res?.data?.data || res?.data || null) as OverallResponse | null;
-        if (!active) return;
         setData(payload);
-
-        // If not all results present yet, poll a few times
-        const expected = Math.max(2, overallTestFlowStore.getInitialCount());
-        const currentItems = normalizeItems(payload).length;
-        console.log("Expected items:", expected, "Current items:", currentItems, "Retries:", retriesRef.current);
-        if (expected > 1 && currentItems < expected && retriesRef.current < 5) {
-          retriesRef.current += 1;
-          setTimeout(fetchOnce, 1200);
-          return;
-        }
       } catch (e) {
         console.error("Error fetching overall results:", e);
-        if (!active) return;
         setData(null);
+      } finally {
+        setLoading(false);
       }
-      if (active) setLoading(false);
     };
 
     // exit exam mode on entering overall results
     try { document?.body?.classList?.remove("exam-mode"); } catch {}
-    fetchOnce();
-    return () => { active = false; };
+    fetchOverallResults();
   }, [params.overallId, navigate]);
 
-  const normalizeItems = (resp: OverallResponse | null): OverallItem[] => {
-    if (!resp) return [];
-    if (Array.isArray(resp.items) && resp.items.length) return resp.items;
-    if (Array.isArray(resp.results) && resp.results.length) return resp.results as OverallItem[];
-    const out: OverallItem[] = [];
-    if (resp.listeningResultId) out.push({ type: "LISTENING", resultId: resp.listeningResultId });
-    if (resp.readingResultId) out.push({ type: "READING", resultId: resp.readingResultId });
-    if (resp.writingResultId) out.push({ type: "WRITING", resultId: resp.writingResultId });
-    if (resp.speakingResultId) out.push({ type: "SPEAKING", resultId: resp.speakingResultId });
-    return out;
-  };
-
-  const items = useMemo(() => normalizeItems(data), [data]);
 
   if (loading) {
     return (
@@ -108,44 +103,346 @@ export default function OverallResults() {
     );
   }
 
-  const goTo = (type: string, resultId?: string) => {
-    if (!resultId) return;
-    if (type === "LISTENING") navigate(`/listening-test/results/${resultId}`);
-    else if (type === "READING") navigate(`/reading-test/results/${resultId}`);
-    else if (type === "WRITING") navigate(`/writing-test/results/${resultId}`);
-    else if (type === "SPEAKING") navigate(`/speaking-test/results/${resultId}`);
+  // Render functions using the original UI but with new data structure
+  const renderListeningResults = () => {
+    if (!data?.listening || !data.listening.questions) {
+      return (
+        <div className="text-center py-8">
+          <p className="text-gray-600">No listening test results available</p>
+        </div>
+      );
+    }
+
+    const examData = data.listening.questions.map((q, index) => {
+      const correctAnswer = q.correctAnswers[0]?.text || "";
+      return {
+        no: q.questionNumber || index + 1,
+        userAnswer: q.userAnswer || "Not selected",
+        correctAnswer: correctAnswer,
+        result: q.correctAnswers.some(ca => ca.text === q.userAnswer) ? "Correct" : "Wrong"
+      };
+    });
+
+    return (
+      <div className="max-w-6xl mx-auto space-y-6 p-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold text-foreground">Exam results</h1>
+        </div>
+
+        {/* Report Info */}
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div className="flex items-center gap-6">
+            <span>Report ID: {data.id}</span>
+            <span>Name: {data.user.name}</span>
+          </div>
+          <span>Date: {new Date(data.listening.completedAt || data.startedAt).toISOString().replace('T', ' ').substring(0, 19) + " GMT+5"}</span>
+        </div>
+
+        {/* Listening Score */}
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold text-foreground">
+            Listening score: {data.listening.score}
+            <span className="ml-3 text-base text-muted-foreground">
+              ({examData.filter(r => r.result === "Correct").length} / {examData.length} correct)
+            </span>
+          </h2>
+        </div>
+
+        {/* Results Table */}
+        <Card className="overflow-hidden rounded-lg border border-gray-200">
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-green-600 text-white">
+                    <th className="px-4 py-3 text-left font-medium rounded-tl-lg">No.</th>
+                    <th className="px-4 py-3 text-left font-medium">User Answer</th>
+                    <th className="px-4 py-3 text-left font-medium">Correct Answer</th>
+                    <th className="px-4 py-3 text-left font-medium rounded-tr-lg">Result</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {examData.map((item, index) => (
+                    <tr
+                      key={item.no}
+                      className={`border-b border-gray-200 last:border-b-0 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
+                    >
+                      <td className="px-4 py-3 text-gray-700 font-medium">{item.no}</td>
+                      <td className="px-4 py-3 text-gray-600">{item.userAnswer}</td>
+                      <td className="px-4 py-3 text-gray-800 font-medium">{item.correctAnswer}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          item.result === "Correct" 
+                            ? "bg-green-100 text-green-800" 
+                            : item.result === "Wrong" 
+                              ? "bg-red-100 text-red-800"
+                              : "bg-gray-100 text-gray-700"
+                        }`}>
+                          {item.result}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+
+  const renderReadingResults = () => {
+    if (!data?.reading || !data.reading.questions) {
+      return (
+        <div className="text-center py-8">
+          <p className="text-gray-600">No reading test results available</p>
+        </div>
+      );
+    }
+
+    const examData = data.reading.questions.map((q, index) => {
+      const correctAnswer = q.correctAnswers[0]?.text || "";
+      return {
+        no: q.questionNumber || index + 1,
+        userAnswer: q.userAnswer || "Not selected",
+        correctAnswer: correctAnswer,
+        result: q.correctAnswers.some(ca => ca.text === q.userAnswer) ? "Correct" : "Wrong"
+      };
+    });
+
+    return (
+      <div className="max-w-6xl mx-auto space-y-6 p-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold text-foreground">Exam results</h1>
+        </div>
+
+        {/* Report Info */}
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div className="flex items-center gap-6">
+            <span>Report ID: {data.id}</span>
+            <span>Name: {data.user.name}</span>
+          </div>
+          <span>Date: {new Date(data.reading.completedAt || data.startedAt).toISOString().replace('T', ' ').substring(0, 19) + " GMT+5"}</span>
+        </div>
+
+        {/* Reading Score */}
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold text-foreground">
+            Reading score: {data.reading.score}
+            <span className="ml-3 text-base text-muted-foreground">
+              ({examData.filter(r => r.result === "Correct").length} / {examData.length} correct)
+            </span>
+          </h2>
+        </div>
+
+        {/* Results Table */}
+        <Card className="overflow-hidden rounded-lg border border-gray-200">
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-green-600 text-white">
+                    <th className="px-4 py-3 text-left font-medium rounded-tl-lg">No.</th>
+                    <th className="px-4 py-3 text-left font-medium">User Answer</th>
+                    <th className="px-4 py-3 text-left font-medium">Correct Answer</th>
+                    <th className="px-4 py-3 text-left font-medium rounded-tr-lg">Result</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {examData.map((item, index) => (
+                    <tr
+                      key={item.no}
+                      className={`border-b border-gray-200 last:border-b-0 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
+                    >
+                      <td className="px-4 py-3 text-gray-700 font-medium">{item.no}</td>
+                      <td className="px-4 py-3 text-gray-600">{item.userAnswer}</td>
+                      <td className="px-4 py-3 text-gray-800 font-medium">{item.correctAnswer}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          item.result === "Correct" 
+                            ? "bg-green-100 text-green-800" 
+                            : item.result === "Wrong" 
+                              ? "bg-red-100 text-red-800"
+                              : "bg-gray-100 text-gray-700"
+                        }`}>
+                          {item.result}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+
+  const renderWritingResults = () => {
+    if (!data?.writing) {
+      return (
+        <div className="text-center py-8">
+          <p className="text-gray-600">No writing test results available</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <div className="bg-white shadow-sm border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 py-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-black">Writing Test Results</h1>
+                <p className="text-gray-600">IELTS Assessment Complete</p>
+              </div>
+              <div className="text-right">
+                <div className="text-3xl font-black text-red-500">
+                  {data.writing.score || "0"}
+                </div>
+                <div className="text-sm text-gray-600">Band Score</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          {/* Hero Section */}
+          <div className="bg-white rounded-3xl shadow-lg border border-gray-200 p-8 mb-8 text-center">
+            <div className="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+              <span className="text-white text-3xl font-bold">
+                {data.writing.score || "0"}
+              </span>
+            </div>
+            <h2 className="text-3xl font-bold text-black mb-2">Test Completed!</h2>
+            <p className="text-gray-600 text-lg mb-6">Your IELTS Writing Assessment Results</p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderSpeakingResults = () => {
+    if (!data?.speaking) {
+      return (
+        <div className="text-center py-8">
+          <p className="text-gray-600">No speaking test results available</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <div className="bg-white shadow-sm border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 py-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-black">Speaking Test Results</h1>
+                <p className="text-gray-600">IELTS Assessment Complete</p>
+              </div>
+              <div className="text-right">
+                <div className="text-3xl font-black text-red-500">
+                  {data.speaking.score || "N/A"}
+                </div>
+                <div className="text-sm text-gray-600">Band Score</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          {/* Hero Section */}
+          <div className="bg-white rounded-3xl shadow-lg border border-gray-200 p-8 mb-8 text-center">
+            <div className="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+              <span className="text-white text-3xl font-bold">
+                {data.speaking.score || "N/A"}
+              </span>
+            </div>
+            <h2 className="text-3xl font-bold text-black mb-2">Test Completed!</h2>
+            <p className="text-gray-600 text-lg mb-6">Your IELTS Speaking Assessment Results</p>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
     <div className="min-h-screen bg-gray-50 py-10">
-      <div className="max-w-5xl mx-auto px-4">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Overall Results</h1>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {items.map((it, idx) => (
-            <Card key={idx} className="border-gray-200">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-gray-900 font-semibold">{it.type}</div>
-                    <div className="text-gray-600 text-sm mt-1">
-                      {typeof it.score === "number" ? `Score: ${it.score}` : null}
-                      {typeof it.correctCount === "number" && typeof it.totalQuestions === "number"
-                        ? ` • ${it.correctCount}/${it.totalQuestions}`
-                        : null}
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-foreground mb-2">Overall Results</h1>
+          <p className="text-muted-foreground">Comprehensive overview of your IELTS test performance</p>
                     </div>
-                  </div>
-                  <div>
-                    <Button onClick={() => goTo(it.type, it.resultId)} disabled={!it.resultId}>
-                      View Details
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="listening" className="flex items-center gap-2">
+              <span className="hidden sm:inline">Listening</span>
+              <span className="sm:hidden">L</span>
+              {data?.listening && (
+                <span className="ml-1 text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full">
+                  {data.listening.score || 0}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="reading" className="flex items-center gap-2">
+              <span className="hidden sm:inline">Reading</span>
+              <span className="sm:hidden">R</span>
+              {data?.reading && (
+                <span className="ml-1 text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full">
+                  {data.reading.score || 0}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="writing" className="flex items-center gap-2">
+              <span className="hidden sm:inline">Writing</span>
+              <span className="sm:hidden">W</span>
+              {data?.writing && (
+                <span className="ml-1 text-xs bg-red-100 text-red-800 px-1.5 py-0.5 rounded-full">
+                  {data.writing.score || 0}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="speaking" className="flex items-center gap-2">
+              <span className="hidden sm:inline">Speaking</span>
+              <span className="sm:hidden">S</span>
+              {data?.speaking && (
+                <span className="ml-1 text-xs bg-red-100 text-red-800 px-1.5 py-0.5 rounded-full">
+                  {data.speaking.score || 0}
+                </span>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="listening" className="mt-6">
+            {renderListeningResults()}
+          </TabsContent>
+
+          <TabsContent value="reading" className="mt-6">
+            {renderReadingResults()}
+          </TabsContent>
+
+          <TabsContent value="writing" className="mt-6">
+            {renderWritingResults()}
+          </TabsContent>
+
+          <TabsContent value="speaking" className="mt-6">
+            {renderSpeakingResults()}
+          </TabsContent>
+        </Tabs>
+
+        <div className="mt-8 flex justify-center">
+          <Button variant="outline" onClick={() => navigate("/test")}>
+            Back to Tests
                     </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-        <div className="mt-8">
-          <Button variant="outline" onClick={() => navigate("/test")}>Back to Tests</Button>
         </div>
       </div>
     </div>

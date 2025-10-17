@@ -4,8 +4,9 @@ import { toast } from "sonner";
 import TestModal from "./components/TestModal";
 import MainTestCard from "./components/MainTestCard";
 import EmptyState from "./components/EmptyState";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { authService } from "@/services/auth.service";
+import { Button } from "@/components/ui/button";
 
 interface TurkishTest {
   id: string;
@@ -75,6 +76,7 @@ const TestPage = () => {
   const [showTestModal, setShowTestModal] = useState(false);
   const [currentTestForModal, setCurrentTestForModal] = useState<TurkishTest | null>(null);
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchTurkishTestData = async () => {
@@ -179,8 +181,16 @@ const TestPage = () => {
       <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
         {/* Header */}
         <div className="mb-8">
-
-        
+          <div className="flex justify-between items-center">
+            <h1 className="text-3xl font-bold text-gray-900">IELTS Test Center</h1>
+            <Button
+              onClick={() => navigate("/test-unified-results")}
+              variant="outline"
+              className="bg-red-600 hover:bg-red-700 text-white border-red-600"
+            >
+              Demo Unified Results
+            </Button>
+          </div>
         </div>
 
         {/* Test Cards with Modal */}

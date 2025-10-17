@@ -18,6 +18,8 @@ import SpeakingTestResults from "@/pages/speaking-test/SpeakingTestResults";
 import AudioTestSimple from "@/components/speaking-test/AudioTestSimple";
 import AudioDebug from "@/components/speaking-test/AudioDebug";
 import TestPaymePage from "@/pages/test-payme";
+import UnifiedTestResults from "@/pages/test/UnifiedTestResults";
+import TestUnifiedResults from "@/pages/test/TestUnifiedResults";
 import OverallResults from "@/pages/test/components/OverallResults";
 import { createBrowserRouter } from "react-router";
 
@@ -105,6 +107,14 @@ export const router = createBrowserRouter([
       {
         path: "/overall-results/:overallId",
         element: <OverallResults />,
+      },
+      {
+        path: "/unified-results/:overallId",
+        element: <UnifiedTestResults />,
+      },
+      {
+        path: "/test-unified-results",
+        element: <TestUnifiedResults />,
       },
       {
         path: "/test-payme",

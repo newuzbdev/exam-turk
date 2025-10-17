@@ -181,16 +181,7 @@ const TestPage = () => {
       <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex justify-between items-center">
-            <h1 className="text-3xl font-bold text-gray-900">IELTS Test Center</h1>
-            <Button
-              onClick={() => navigate("/test-unified-results")}
-              variant="outline"
-              className="bg-red-600 hover:bg-red-700 text-white border-red-600"
-            >
-              Demo Unified Results
-            </Button>
-          </div>
+          <h1 className="text-3xl font-bold text-gray-900">IELTS Test Center</h1>
         </div>
 
         {/* Test Cards with Modal */}

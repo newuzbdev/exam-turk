@@ -88,7 +88,7 @@ const TestModal = ({
     listening: true,
     reading: true,
     writing: true,
-    speaking: false,
+    speaking: true,
   });
 
   const toggle = (key: string) =>

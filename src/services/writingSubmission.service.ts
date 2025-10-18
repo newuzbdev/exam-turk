@@ -41,12 +41,12 @@ export const writingSubmissionService = {
       const res = await axiosPrivate.post("/api/writing-submission", body, {
 				headers: { "Content-Type": "application/json" }
 			});
-			toast.success("Yazma cevabı gönderildi");
+			// toast.success("Yazma cevabı gönderildi");
       try { if (embeddedToken) overallTestTokenStore.clearByTestId(payload.writingTestId); } catch {}
 			return res.data?.data || res.data || null;
 		} catch (error: any) {
 			console.error("Failed to submit writing answer", error);
-			toast.error("Yazma cevabı gönderilemedi");
+			// toast.error("Yazma cevabı gönderilemedi");
 			return null;
 		}
 	},

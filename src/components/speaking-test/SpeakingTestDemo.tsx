@@ -233,15 +233,15 @@ const SpeakingTestDemo = ({
       );
 
       if (result.success) {
-        toast.success("Test başarıyla gönderildi!");
+        // toast.success("Test başarıyla gönderildi!");
         if (onTestComplete && result.submissionId) {
           onTestComplete(result.submissionId);
         }
       } else {
-        toast.error(result.error || "Test gönderilemedi");
+        // toast.error(result.error || "Test gönderilemedi");
       }
     } catch (error) {
-      toast.error("Test gönderilirken hata oluştu");
+      // toast.error("Test gönderilirken hata oluştu");
     } finally {
       setIsSubmitting(false);
     }

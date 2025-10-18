@@ -83,7 +83,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
       // Prevent back navigation within the test
       const handlePopState = () => {
         window.history.pushState(null, "", window.location.href);
-        toast.error("Sınav sırasında geri gidemezsiniz");
+        // toast.error("Sınav sırasında geri gidemezsiniz");
       };
       window.history.pushState(null, "", window.location.href);
       window.addEventListener("popstate", handlePopState);
@@ -880,7 +880,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
 
   const submitAllTests = async (overallId: string) => {
     try {
-      toast.info("Submitting all tests...");
+      // toast.info("Submitting all tests...");
       
       // Submit all individual tests first
       const { readingSubmissionService } = await import("@/services/readingTest.service");
@@ -1041,7 +1041,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
           navigate(`/overall-results/${overallId}`);
     } catch (error) {
       console.error("Error submitting all tests:", error);
-      toast.error("Error submitting tests, but continuing to results...");
+      // toast.error("Error submitting tests, but continuing to results...");
       navigate(`/overall-results/${overallId}`);
     }
   };

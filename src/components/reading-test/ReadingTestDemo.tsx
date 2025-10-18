@@ -4,7 +4,7 @@ import { overallTestFlowStore } from "@/services/overallTest.service";
 import { Button } from "../ui/button";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "../ui/resizable";
 import { ConfirmationModal } from "../ui/confirmation-modal";
-import { readingTestService, readingSubmissionService, type ReadingTestItem } from "@/services/readingTest.service";
+import { readingTestService, type ReadingTestItem } from "@/services/readingTest.service";
 import ReadingPart1 from "./ui/ReadingPart1";
 import ReadingPart2 from "./ui/ReadingPart2";
 import ReadingPart3 from "./ui/ReadingPart3";
@@ -165,13 +165,13 @@ export default function ReadingPage({ testId }: { testId: string }) {
 
   const submitAllTests = async (overallId: string) => {
     try {
-      toast.info("Submitting all tests...");
+      // toast.info("Submitting all tests...");
       
       // Submit all individual tests first
       const { readingSubmissionService } = await import("@/services/readingTest.service");
       const { listeningSubmissionService } = await import("@/services/listeningTest.service");
       const { writingSubmissionService } = await import("@/services/writingSubmission.service");
-      const { axiosPrivate } = await import("@/config/api");
+      const axiosPrivate = (await import("@/config/api")).default;
       
       // Submit reading test - look for reading answers from any test
       const readingAnswersKeys = Object.keys(sessionStorage).filter(key => key.startsWith('reading_answers_'));
@@ -180,7 +180,10 @@ export default function ReadingPage({ testId }: { testId: string }) {
         if (readingAnswers) {
           const readingData = JSON.parse(readingAnswers);
           console.log("Submitting reading test:", readingData.testId, "with answers:", readingData.answers);
-          const payload = Object.entries(readingData.answers).map(([questionId, userAnswer]) => ({ questionId, userAnswer }));
+          const payload = Object.entries(readingData.answers).map(([questionId, userAnswer]) => ({ 
+            questionId, 
+            userAnswer: String(userAnswer) 
+          }));
           await readingSubmissionService.submitAnswers(readingData.testId, payload);
         }
       }
@@ -329,7 +332,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
       navigate(`/overall-results/${overallId}`);
     } catch (error) {
       console.error("Error submitting all tests:", error);
-      toast.error("Error submitting tests, but continuing to results...");
+      // toast.error("Error submitting tests, but continuing to results...");
       navigate(`/overall-results/${overallId}`);
     }
   };

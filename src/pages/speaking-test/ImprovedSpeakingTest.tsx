@@ -1028,7 +1028,7 @@ export default function ImprovedSpeakingTest() {
 
   const submitAllTests = async (overallId: string) => {
     try {
-      toast.info("Submitting all tests...");
+      // toast.info("Submitting all tests...");
       
       // Submit all individual tests first
       const { readingSubmissionService } = await import("@/services/readingTest.service");
@@ -1189,7 +1189,7 @@ export default function ImprovedSpeakingTest() {
       navigate(`/overall-results/${overallId}`);
     } catch (error) {
       console.error("Error submitting all tests:", error);
-      toast.error("Error submitting tests, but continuing to results...");
+      // toast.error("Error submitting tests, but continuing to results...");
       navigate(`/overall-results/${overallId}`);
     }
   }

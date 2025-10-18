@@ -193,7 +193,7 @@ const TestModal = ({
     }
 
     // Show loading state
-    toast.info("Starting test session...");
+    // toast.info("Starting test session...");
 
     const startRes = await overallTestService.start({ readingId, listeningId, writingId, speakingId });
     if (!startRes) return;
@@ -219,7 +219,7 @@ const TestModal = ({
     ].filter(Boolean) as { testType: any; testId: string; path: string }[];
 
     // Fetch ALL test data upfront to avoid GET requests during navigation
-    toast.info("Loading test data...");
+    // toast.info("Loading test data...");
     try {
       const { listeningTestService } = await import("@/services/listeningTest.service");
       const { readingTestService } = await import("@/services/readingTest.service");
@@ -280,7 +280,7 @@ const TestModal = ({
         sessionStorage.setItem(`test_data_${type}_${testId}`, JSON.stringify(data));
       });
 
-      toast.success("Test data loaded successfully!");
+      // toast.success("Test data loaded successfully!");
     } catch (error) {
       console.error("Error loading test data:", error);
       toast.error("Failed to load some test data, but continuing...");

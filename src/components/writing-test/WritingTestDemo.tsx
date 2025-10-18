@@ -1,15 +1,15 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Clock, Send, ChevronLeft, ChevronRight } from "lucide-react";
-import { toast } from "sonner";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Clock, ChevronLeft, ChevronRight } from "lucide-react";
+// import { toast } from "sonner";
+import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import writingTestService, {
   type WritingTestItem,
 } from "@/services/writingTest.service";
-import writingSubmissionService from "@/services/writingSubmission.service";
+// import writingSubmissionService from "@/services/writingSubmission.service";
 import { overallTestFlowStore } from "@/services/overallTest.service";
 
 interface WritingSubPart {
@@ -105,7 +105,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
           }
         }
       } catch (error) {
-        toast.error("Test yüklenirken hata oluştu");
+        // toast.error("Test yüklenirken hata oluştu");
         console.error("Error loading test:", error);
       } finally {
         setLoading(false);
@@ -120,7 +120,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
       const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
       return () => clearTimeout(timer);
     } else if (timeLeft === 0) {
-      toast.error("Time is up! Test will be submitted automatically.");
+      // toast.error("Time is up! Test will be submitted automatically.");
       handleSubmit();
     }
   }, [timeLeft]);
@@ -399,13 +399,13 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
 
   const submitAllTests = async (overallId: string) => {
     try {
-      toast.info("Submitting all tests...");
+      // toast.info("Submitting all tests...");
       
       // Submit all individual tests first
       const { readingSubmissionService } = await import("@/services/readingTest.service");
       const { listeningSubmissionService } = await import("@/services/listeningTest.service");
       const { writingSubmissionService } = await import("@/services/writingSubmission.service");
-      const { axiosPrivate } = await import("@/config/api");
+      const axiosPrivate = (await import("@/config/api")).default;
       
       // Submit reading test - look for reading answers from any test
       const readingAnswersKeys = Object.keys(sessionStorage).filter(key => key.startsWith('reading_answers_'));
@@ -414,7 +414,10 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
         if (readingAnswers) {
           const readingData = JSON.parse(readingAnswers);
           console.log("Submitting reading test:", readingData.testId, "with answers:", readingData.answers);
-          const payload = Object.entries(readingData.answers).map(([questionId, userAnswer]) => ({ questionId, userAnswer }));
+          const payload = Object.entries(readingData.answers).map(([questionId, userAnswer]) => ({ 
+            questionId, 
+            userAnswer: String(userAnswer) 
+          }));
           await readingSubmissionService.submitAnswers(readingData.testId, payload);
         }
       }
@@ -559,7 +562,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
       navigate(`/overall-results/${overallId}`);
     } catch (error) {
       console.error("Error submitting all tests:", error);
-      toast.error("Error submitting tests, but continuing to results...");
+      // toast.error("Error submitting tests, but continuing to results...");
       navigate(`/overall-results/${overallId}`);
     }
   };
@@ -605,10 +608,9 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
             {/* Submit button */}
             <Button
               onClick={() => setShowSubmitModal(true)}
-              className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 text-xs font-semibold rounded-lg"
+              className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 text-xs font-bold rounded-lg"
             >
-              <Send className="h-3 w-3 mr-1" />
-              Submit
+              GÖNDER
             </Button>
           </div>
           
@@ -666,10 +668,9 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
               </div>
               <Button
                 onClick={() => setShowSubmitModal(true)}
-                className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 text-lg font-bold"
+                className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 text-lg font-bold"
               >
-                <Send className="h-5 w-5 mr-2" />
-                Submit
+                GÖNDER
               </Button>
             </div>
           </div>
@@ -1046,54 +1047,17 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
         </div>
       )}
 
-      {/* Submit Modal */}
-      <Dialog open={showSubmitModal} onOpenChange={setShowSubmitModal}>
-        <DialogContent className="max-w-sm p-6 rounded-2xl">
-          {/* Simple Header */}
-          <div className="text-center mb-6">
-            <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Send className="w-6 h-6 text-white" />
-            </div>
-            <h2 className="text-xl font-bold text-black mb-2">Submit Test</h2>
-            <p className="text-gray-600 text-base">
-              {Object.values(answers).reduce(
-                (total, answer) => total + getWordCount(answer),
-                0
-              )}{" "}
-              words • {formatTime(timeLeft)} left
-            </p>
-          </div>
-
-          {submitting && (
-            <div className="text-center py-6 mb-6">
-              <div className="animate-spin rounded-full h-12 w-12 border-4 border-red-500 border-t-transparent mx-auto mb-4"></div>
-              <p className="text-gray-800 font-medium">Test gönderiliyor...</p>
-              <p className="text-gray-600 text-base mt-1">
-                Lütfen bekleyin, test sonuçlar sayfasına yönlendiriliyorsunuz
-              </p>
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              onClick={() => setShowSubmitModal(false)}
-              disabled={submitting}
-              className="flex-1 py-3 text-base"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={submitting}
-              className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 text-base"
-            >
-              Submit
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showSubmitModal}
+        onClose={() => setShowSubmitModal(false)}
+        onConfirm={handleSubmit}
+        title="Testi Gönder"
+        message="Testi göndermek istediğinizden emin misiniz? Bu işlem geri alınamaz."
+        confirmText="Evet, Gönder"
+        cancelText="İptal"
+        isLoading={submitting}
+      />
     </div>
   );
 }

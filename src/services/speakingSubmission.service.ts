@@ -51,7 +51,7 @@ export const speakingSubmissionService = {
       });
 
       if (response.data && (response.data.success || response.status === 200 || response.status === 201)) {
-        toast.success('Konuşma testi başarıyla gönderildi!');
+        // toast.success('Konuşma testi başarıyla gönderildi!');
         const result = {
           success: true,
           submissionId: response.data.id || response.data.submissionId

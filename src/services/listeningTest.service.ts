@@ -174,7 +174,7 @@ export const listeningSubmissionService = {
       );
       const data = extractData<any>(res);
 
-      toast.success("Javoblar muvaffaqiyatli jo'natildi");
+      // toast.success("Javoblar muvaffaqiyatli jo'natildi");
       try { overallTestTokenStore.clearByTestId(testId); } catch {}
       return data ?? res.data ?? res;
     } catch (error: any) {

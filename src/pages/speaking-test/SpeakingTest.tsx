@@ -280,19 +280,19 @@ const SpeakingTest = () => {
       
       if (result.success) {
         setSubmissionStep("completed");
-        toast.success("Test başarıyla gönderildi");
+        // toast.success("Test başarıyla gönderildi");
         // Small delay to show completion before moving to next phase
         setTimeout(() => {
           setTestState((prev) => ({ ...prev, phase: "completed" }));
           setIsSubmitting(false);
         }, 1000);
       } else {
-        toast.error(result.error || "Test gönderilirken hata oluştu");
+        // toast.error(result.error || "Test gönderilirken hata oluştu");
         setIsSubmitting(false);
       }
     } catch (error) {
       console.error("Submission error:", error);
-      toast.error("Test gönderilirken hata oluştu");
+      // toast.error("Test gönderilirken hata oluştu");
       setIsSubmitting(false);
     }
   };

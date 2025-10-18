@@ -105,7 +105,7 @@ const Navbar = () => {
             className="flex items-center cursor-pointer"
             onClick={() => navigate("/")}
           >
-            <img src="/turk-test.png" alt="logo" className="h-14 w-auto" />
+            <div className="text-red-600 font-bold text-2xl uppercase">TURKISHMOCK</div>
           </div>
 
           <div className="hidden lg:block">

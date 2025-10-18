@@ -77,7 +77,7 @@ const MainTestCard = ({
             </div>
             <div className="text-right">
               <div className="w-2 h-2 bg-green-500 rounded-full mb-1"></div>
-              <div className="text-xs text-gray-500">Available</div>
+              <div className="text-xs text-gray-500">Mevcut</div>
             </div>
           </div>
           
@@ -85,10 +85,10 @@ const MainTestCard = ({
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
               {test.title}
             </h3>
-            <p className="text-base text-gray-600 mb-4">Turkish Language Mock Test</p>
+            <p className="text-base text-gray-600 mb-4">Türkçe Deneme Sınavı</p>
             <div className="flex items-center gap-4 text-sm text-gray-500">
-              <span>📚 Turkish</span>
-              <span>⏱️ 2-3 hours</span>
+              <span>📚 Türkçe</span>
+              <span>⏱️ 2-3 saat</span>
             </div>
           </div>
         </div>

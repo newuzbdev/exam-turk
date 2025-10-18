@@ -117,28 +117,28 @@ const TestModal = ({
   const testSections = [
     {
       id: "listening",
-      title: "LISTENING",
+      title: "DİNLEME",
       icon: Headphones,
       tests: listeningTests,
       cost: coinByType["LISTENING"] ?? 3,
     },
     {
       id: "reading",
-      title: "READING",
+      title: "OKUMA",
       icon: BookOpen,
       tests: readingTests,
       cost: coinByType["READING"] ?? 3,
     },
     {
       id: "writing",
-      title: "WRITING",
+      title: "YAZMA",
       icon: PenTool,
       tests: writingTests,
       cost: coinByType["WRITING"] ?? 4,
     },
     {
       id: "speaking",
-      title: "SPEAKING",
+      title: "KONUŞMA",
       icon: Mic,
       tests: speakingTests,
       cost: coinByType["SPEAKING"] ?? 2,
@@ -158,7 +158,7 @@ const TestModal = ({
     const speakingId = selectedMap.speaking && speakingTests?.[0]?.id ? speakingTests[0].id : undefined;
 
     if (!readingId && !listeningId && !writingId && !speakingId) {
-      toast.error("Please select at least one test section");
+      toast.error("Lütfen en az bir test bölümü seçin");
       return;
     }
 
@@ -187,7 +187,7 @@ const TestModal = ({
     // Preflight coin check: redirect to pricing if not enough coins
     const userCoins = user?.coin ?? 0;
     if (userCoins < totalCoins) {
-      toast.error("Insufficient coins. Please purchase more to start.");
+      toast.error("Yetersiz birim. Başlamak için lütfen daha fazla satın alın.");
       navigate(`/price?neededCoins=${totalCoins - userCoins}`);
       return;
     }
@@ -283,7 +283,7 @@ const TestModal = ({
       // toast.success("Test data loaded successfully!");
     } catch (error) {
       console.error("Error loading test data:", error);
-      toast.error("Failed to load some test data, but continuing...");
+      toast.error("Bazı test verileri yüklenemedi, ancak devam ediliyor...");
     }
 
     // Store the queue in session for chaining
@@ -305,7 +305,7 @@ const TestModal = ({
               {selectedTest.title}
             </h2>
             <p className="text-gray-600 text-sm">
-              Select the test sections you want to take
+              Almak istediğiniz test bölümlerini seçin
             </p>
           </div>
         </div>
@@ -322,14 +322,14 @@ const TestModal = ({
               return (
                 <Card
                   key={s.id}
-                  className={`transition-all duration-200 cursor-pointer transform hover:scale-105 ${
+                  className={`transition-all duration-200 cursor-pointer transform hover:scale-105 focus:outline-none focus:ring-0 ${
                     selected 
-                      ? "bg-red-100 border-red-400 shadow-md ring-2 ring-red-200" 
+                      ? "bg-red-100 border-gray-200 shadow-md" 
                       : "bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300 hover:shadow-lg"
                   } ${!available ? "opacity-50 cursor-not-allowed hover:scale-100" : ""}`}
                 >
                   <button
-                    className="w-full p-4 text-left cursor-pointer disabled:cursor-not-allowed"
+                    className="w-full p-4 text-left cursor-pointer disabled:cursor-not-allowed focus:outline-none focus:ring-0"
                     onClick={() => available && toggle(s.id)}
                     disabled={!available}
                   >
@@ -351,13 +351,13 @@ const TestModal = ({
                           </span>
                           <div className="flex items-center gap-3 mt-1">
                             <span className="text-xs text-gray-500">
-                              {s.id === "listening" ? "30-40 min" :
-                               s.id === "reading" ? "60 min" :
-                               s.id === "writing" ? "60 min" :
-                               "11-14 min"}
+                              {s.id === "listening" ? "30-40 dk" :
+                               s.id === "reading" ? "60 dk" :
+                               s.id === "writing" ? "60 dk" :
+                               "11-14 dk"}
                             </span>
                             <span className="text-xs text-gray-500">
-                              {testCount} test{testCount !== 1 ? 's' : ''}
+                              {testCount} test
                             </span>
                           </div>
                         </div>
@@ -378,7 +378,7 @@ const TestModal = ({
         {/* Footer */}
         <div className="p-6 pt-4 border-t border-gray-100 bg-gray-50">
           <div className="flex items-center justify-between mb-4">
-            <span className="text-gray-700 font-medium">Total Cost</span>
+            <span className="text-gray-700 font-medium">Toplam Maliyet</span>
             <div className="flex items-center gap-1 text-amber-600">
               <Coins className="h-5 w-5" />
               <span className="text-lg font-semibold">{totalCoins}</span>
@@ -391,14 +391,14 @@ const TestModal = ({
             disabled={totalCoins === 0}
           >
             <span className="flex items-center gap-2">
-              {isAuthenticated ? "Start Test" : "Sign Up to Start"}
+              {isAuthenticated ? "Teste Başla" : "Başlamak İçin Kayıt Ol"}
               <ArrowRight className="h-4 w-4" />
             </span>
           </Button>
           
           {!isAuthenticated && (
             <p className="text-center text-xs text-gray-500 mt-2">
-              You need to sign up to take the test
+              Teste katılmak için kayıt olmanız gerekiyor
             </p>
           )}
         </div>

@@ -20,13 +20,13 @@ const HeroSection = () => {
       <section className="min-h-screen flex items-center bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16">
           <div className="text-center mb-8 sm:mb-12">
-            <Badge
+            {/* <Badge
               variant="secondary"
               className="mb-4 sm:mb-6 bg-red-100 text-red-700 border-red-200 px-3 sm:px-4 py-1.5 sm:py-2 text-base sm:text-lg"
             >
               <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
               Türkiye'nin En Güvenilir Dil Testi Platformu
-            </Badge>
+            </Badge> */}
 
             <h1 className="text-4xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-4 sm:mb-6">
               Türkçe Dil

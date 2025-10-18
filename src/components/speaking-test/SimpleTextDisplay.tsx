@@ -17,7 +17,7 @@ const SimpleTextDisplay: React.FC<SimpleTextDisplayProps> = ({ text, isPlaying }
         )}
         
         {/* Simple text - no background card */}
-        <p className="text-4xl text-gray-800 leading-relaxed font-medium whitespace-pre-line">
+        <p className="text-2xl text-gray-700 leading-relaxed font-serif whitespace-pre-line max-w-4xl mx-auto">
           {text}
         </p>
       </div>

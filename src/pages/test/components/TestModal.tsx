@@ -300,21 +300,13 @@ const TestModal = ({
       <DialogContent className="max-w-2xl w-[95vw] bg-white text-gray-900 rounded-xl border border-gray-200 shadow-xl">
         {/* Header */}
         <div className="p-6 pb-4 border-b border-gray-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-1">
-                {selectedTest.title}
-              </h2>
-              <p className="text-gray-600 text-sm">
-                Select the test sections you want to take
-              </p>
-            </div>
-            <button
-              onClick={() => onOpenChange(false)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <X className="h-5 w-5 text-gray-500" />
-            </button>
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-1">
+              {selectedTest.title}
+            </h2>
+            <p className="text-gray-600 text-sm">
+              Select the test sections you want to take
+            </p>
           </div>
         </div>
 
@@ -330,31 +322,31 @@ const TestModal = ({
               return (
                 <Card
                   key={s.id}
-                  className={`transition-all duration-200 cursor-pointer ${
+                  className={`transition-all duration-200 cursor-pointer transform hover:scale-105 ${
                     selected 
-                      ? "bg-red-50 border-red-300 shadow-sm" 
-                      : "bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300"
-                  } ${!available ? "opacity-50 cursor-not-allowed" : ""}`}
+                      ? "bg-red-100 border-red-400 shadow-md ring-2 ring-red-200" 
+                      : "bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300 hover:shadow-lg"
+                  } ${!available ? "opacity-50 cursor-not-allowed hover:scale-100" : ""}`}
                 >
                   <button
-                    className="w-full p-4 text-left"
+                    className="w-full p-4 text-left cursor-pointer disabled:cursor-not-allowed"
                     onClick={() => available && toggle(s.id)}
                     disabled={!available}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div
-                          className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all duration-200 ${
+                          className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-all duration-200 ${
                             selected 
-                              ? "bg-red-600 border-red-600" 
+                              ? "bg-red-600 border-red-600 shadow-sm" 
                               : "border-gray-300 group-hover:border-gray-400"
                           }`}
                         >
-                          {selected && <CheckCircle2 className="h-3 w-3 text-white" />}
+                          {selected && <CheckCircle2 className="h-4 w-4 text-white" />}
                         </div>
                         <Icon className={`h-5 w-5 ${selected ? "text-red-600" : "text-gray-500"}`} />
                         <div>
-                          <span className={`font-medium ${selected ? "text-red-900" : "text-gray-900"}`}>
+                          <span className={`font-semibold text-base ${selected ? "text-red-900" : "text-gray-900"}`}>
                             {s.title}
                           </span>
                           <div className="flex items-center gap-3 mt-1">

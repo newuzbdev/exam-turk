@@ -16,11 +16,11 @@ import BalanceTopUp from "@/components/payme/BalanceTopUp";
 // removed unused paymeService import
 import {
   NavigationMenu,
-  NavigationMenuContent,
+
   NavigationMenuItem,
-  NavigationMenuLink,
+
   NavigationMenuList,
-  NavigationMenuTrigger,
+
 } from "@/components/ui/navigation-menu";
 import {
   DropdownMenu,
@@ -113,65 +113,23 @@ const Navbar = () => {
               <NavigationMenu>
                 <NavigationMenuList>
                   <NavigationMenuItem>
-                    <NavigationMenuTrigger className="text-gray-600 hover:text-red-600">
-                      Gramer
-                    </NavigationMenuTrigger>
-                    <NavigationMenuContent>
-                      <ul className="grid grid-cols-1 sm:grid-cols-2 w-[300px] sm:w-[500px] gap-2 sm:gap-3 p-3 sm:p-4 bg-white">
-                        {grammarLevels.map((level) => (
-                          <li key={level.title}>
-                            <NavigationMenuLink asChild>
-                              <NavLink
-                                to={level.href}
-                                className="block select-none rounded-md p-2 sm:p-3 leading-none no-underline outline-none transition-colors hover:bg-red-50 focus:bg-red-50"
-                              >
-                                <div className="text-xs sm:text-sm font-medium leading-none text-gray-900 mb-1 sm:mb-2">
-                                  {level.title}
-                                </div>
-                                <p className="text-xs sm:text-sm leading-snug text-gray-600 line-clamp-2">
-                                  {level.description}
-                                </p>
-                              </NavLink>
-                            </NavigationMenuLink>
-                          </li>
-                        ))}
-                      </ul>
-                    </NavigationMenuContent>
+                   
+                   
                   </NavigationMenuItem>
                   <NavigationMenuItem>
-                    <NavLink
-                      to="/price"
-                      className="text-gray-600 hover:text-red-600 px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium transition-colors duration-200 cursor-pointer"
-                    >
-                      Fiyatlar
-                    </NavLink>
+                 
                   </NavigationMenuItem>
                 </NavigationMenuList>
               </NavigationMenu>
-              <NavLink
-                to="/test"
-                className="text-gray-600 hover:text-red-600 px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium transition-colors duration-200 cursor-pointer"
-              >
-                Test
-              </NavLink>
-              <NavLink
-                to="/lugat"
-                className="text-gray-600 hover:text-red-600 px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium transition-colors duration-200 cursor-pointer"
-              >
-                Lügat
-              </NavLink>
-              <NavLink
+           
+           
+              {/* <NavLink
                 to="/results"
                 className="text-gray-600 hover:text-red-600 px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium transition-colors duration-200 cursor-pointer"
               >
                 Sonuçlar
-              </NavLink>
-              <NavLink
-                to="/contact"
-                className="text-gray-600 hover:text-red-600 px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium transition-colors duration-200 cursor-pointer"
-              >
-                İletişim
-              </NavLink>
+              </NavLink> */}
+            
             </div>
           </div>
 

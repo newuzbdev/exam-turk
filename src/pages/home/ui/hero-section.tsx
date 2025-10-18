@@ -43,10 +43,10 @@ const HeroSection = () => {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center mb-8 sm:mb-10">
-              <NavLink to="/test-selection">
+              <NavLink to="/test">
                 <Button
                   size="lg"
-                  className="bg-red-600 hover:bg-red-700 text-white px-4 sm:px-6 py-2 sm:py-3 text-lg sm:text-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 w-full sm:w-auto"
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 sm:px-6 py-2 sm:py-3 text-lg sm:text-xl shadow-lg w-full sm:w-auto"
                 >
                   Ücretsiz Teste Başla
                   <ArrowRight className="ml-2 h-5 w-5 sm:h-6 sm:w-6" />

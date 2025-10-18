@@ -80,10 +80,10 @@ export default function CookieHome() {
             Binlerce kullanıcının güvendiği platformda Türkçe dil yeterlilik
             testinizi hemen başlatın.
           </p>
-          <NavLink to="/test-selection">
+          <NavLink to="/test">
             <Button
               size="lg"
-              className="bg-white text-red-600 hover:bg-gray-100 px-8 py-4 text-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+              className="bg-white text-red-600 hover:bg-gray-100 px-8 py-4 text-lg shadow-lg"
             >
               Ücretsiz Teste Başla
               <ArrowRight className="ml-2 h-5 w-5" />

@@ -61,6 +61,20 @@ export const overallTestFlowStore = {
       }
       // reset completion marker on new queue
       sessionStorage.removeItem(overallCompletedKey);
+      // Ensure exam mode is active when starting overall test
+      if (typeof document !== "undefined") {
+        document.body.classList.add("exam-mode");
+        // Also enter fullscreen for overall test
+        const enterFullscreen = async () => {
+          try {
+            const el: any = document.documentElement as any;
+            if (el.requestFullscreen) await el.requestFullscreen();
+            else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
+            else if (el.msRequestFullscreen) await el.msRequestFullscreen();
+          } catch {}
+        };
+        enterFullscreen();
+      }
     } catch {}
   },
   getQueue: (): FlowItem[] => {
@@ -96,6 +110,20 @@ export const overallTestFlowStore = {
     const remaining = queue.filter((q) => q.testId !== testId);
     // update remaining queue without touching the initial count
     try { sessionStorage.setItem(flowQueueKey, JSON.stringify(remaining || [])); } catch {}
+    // Ensure exam mode stays active for next test
+    if (next && typeof document !== "undefined") {
+      document.body.classList.add("exam-mode");
+      // Also ensure fullscreen stays active
+      const enterFullscreen = async () => {
+        try {
+          const el: any = document.documentElement as any;
+          if (el.requestFullscreen) await el.requestFullscreen();
+          else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
+          else if (el.msRequestFullscreen) await el.msRequestFullscreen();
+        } catch {}
+      };
+      enterFullscreen();
+    }
     return next?.path || null;
   },
   hasActive: (): boolean => {

@@ -63,7 +63,15 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
     if (typeof document !== "undefined") {
       document.body.classList.add("exam-mode");
       return () => {
-        document.body.classList.remove("exam-mode");
+        // Only remove exam-mode if not in overall test flow
+        // Check if there are remaining tests in the overall flow
+        const hasActiveOverallTest = overallTestFlowStore.hasActive();
+        if (!hasActiveOverallTest) {
+          document.body.classList.remove("exam-mode");
+        } else {
+          // Ensure exam-mode stays active for next test
+          document.body.classList.add("exam-mode");
+        }
       };
     }
   }, []);
@@ -74,7 +82,17 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
       if (!testId) return;
       setLoading(true);
       try {
-        const t = await writingTestService.getById(testId);
+        // First try to get pre-loaded data from sessionStorage
+        const cachedData = sessionStorage.getItem(`test_data_WRITING_${testId}`);
+        let t;
+        
+        if (cachedData) {
+          t = JSON.parse(cachedData);
+        } else {
+          // Fallback to API call if no cached data
+          t = await writingTestService.getById(testId);
+        }
+        
         setTest(t);
         // Normalize sections
         const s: WritingSection[] = (t as any)?.sections || [];
@@ -88,7 +106,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
         }
       } catch (error) {
         toast.error("Test yüklenirken hata oluştu");
-        console.error("Error fetching test:", error);
+        console.error("Error loading test:", error);
       } finally {
         setLoading(false);
       }
@@ -164,10 +182,15 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   ]);
 
   const handleAnswerChange = (value: string) => {
-    setAnswers((prev) => ({
-      ...prev,
-      [selectedQuestionId]: value,
-    }));
+    console.log("Answer change - selectedQuestionId:", selectedQuestionId, "value:", value);
+    setAnswers((prev) => {
+      const newAnswers = {
+        ...prev,
+        [selectedQuestionId]: value,
+      };
+      console.log("Updated answers:", newAnswers);
+      return newAnswers;
+    });
   };
 
   // Textarea ref and custom typing shortcuts like c= -> ç, i= -> ı, I= -> İ, etc.
@@ -304,6 +327,8 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   };
 
   const currentAnswer = answers[selectedQuestionId] || "";
+  console.log("Current answer for selectedQuestionId:", selectedQuestionId, "is:", currentAnswer);
+  console.log("All answers:", answers);
   const wordCount = getWordCount(currentAnswer);
   const wordLimit = getWordLimit();
   // const wordsRemaining = Math.max(0, wordLimit - wordCount);
@@ -325,120 +350,217 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
     setSubmitting(true);
     setShowSubmitModal(false);
 
-    // Create proper payload matching API structure
-    const payload = {
-      writingTestId: testId,
-      sections: sections.map((section, sectionIndex) => {
-        const sectionData = {
-          description:
-            section.title ||
-            section.description ||
-            `Section ${section.order || 1}`,
-          answers: [] as any[],
-          subParts: [] as any[],
-        };
-
-        // Handle sections with subParts
-        if (section.subParts && section.subParts.length > 0) {
-          sectionData.subParts = section.subParts.map(
-            (subPart, subPartIndex) => {
-              const questionId = subPart.questions?.[0]?.id || subPart.id;
-              const userAnswer =
-                answers[`${sectionIndex}-${subPartIndex}-${subPart.id}`] || "";
-              return {
-                description: subPart.label || subPart.description,
-                answers: [
-                  {
-                    questionId: questionId,
-                    userAnswer: userAnswer,
-                  },
-                ],
-              };
-            }
-          );
-        }
-
-        // Handle sections with questions (answers go directly in section)
-        if (section.questions && section.questions.length > 0) {
-          let questionAnswer = "";
-          const possibleKeys = [
-            `${sectionIndex}-0-${section.questions[0].id}`,
-            `${sectionIndex}-${section.questions[0].id}`,
-            `${sectionIndex}-${section.id}`,
-            section.questions[0].id,
-            section.id,
-          ];
-          for (const key of possibleKeys) {
-            if (answers[key]) {
-              questionAnswer = answers[key];
-              break;
-            }
-          }
-          if (
-            questionAnswer &&
-            questionAnswer.includes("Kulübün bir başka üyesi")
-          ) {
-            questionAnswer = "";
-          }
-          sectionData.answers = [
-            {
-              questionId: section.questions[0].id,
-              userAnswer: questionAnswer,
-            },
-          ];
-        }
-
-        // Handle sections without subParts or questions (direct answers)
-        if (!section.subParts?.length && !section.questions?.length) {
-          const sectionAnswer = answers[`${sectionIndex}-${section.id}`] || "";
-          if (sectionAnswer.trim()) {
-            sectionData.answers = [
-              {
-                questionId: section.id,
-                userAnswer: sectionAnswer,
-              },
-            ];
-          }
-        }
-
-        return sectionData;
-      }),
+    // Store answers locally for later submission
+    const answersData = {
+      testId: testId,
+      answers: answers,
+      sections: sections,
+      timestamp: new Date().toISOString()
     };
+    // Debug: Log the answers being stored
+    console.log("Writing answers being stored:", answers);
+    console.log("Writing answers data:", answersData);
+    // Store in sessionStorage for later submission
+    sessionStorage.setItem(`writing_answers_${testId}`, JSON.stringify(answersData));
 
-    try {
-      const res = await writingSubmissionService.create(payload);
-      setSubmitting(false);
-      if (res) {
-        toast.success("Your answers have been saved successfully!");
-        const nextPath = overallTestFlowStore.onTestCompleted("WRITING", testId);
-        if (nextPath) {
-          navigate(nextPath);
-          return;
-        }
-        const overallId = overallTestFlowStore.getOverallId();
-        const isAllDone = overallTestFlowStore.isAllDone();
-        console.log("Writing submit - overallId:", overallId, "isAllDone:", isAllDone);
-        if (overallId && isAllDone) {
+    // Just navigate to next test without submitting
+    const nextPath = overallTestFlowStore.onTestCompleted("WRITING", testId);
+    if (nextPath) {
+      // Ensure exam mode and fullscreen stay active for next test
+      if (typeof document !== "undefined") {
+        document.body.classList.add("exam-mode");
+        // Immediately re-enter fullscreen before navigation
+        const enterFullscreen = async () => {
           try {
-            if (!overallTestFlowStore.isCompleted()) {
-              console.log("Calling complete for overallId:", overallId);
-              const { overallTestService } = await import("@/services/overallTest.service");
-              await overallTestService.complete(overallId);
-              overallTestFlowStore.markCompleted();
-              console.log("Complete call finished");
-            }
+            const el: any = document.documentElement as any;
+            if (el.requestFullscreen) await el.requestFullscreen();
+            else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
+            else if (el.msRequestFullscreen) await el.msRequestFullscreen();
           } catch {}
-          navigate(`/overall-results/${overallId}`);
-          return;
-        }
-        console.log("Not calling complete - going to single result");
-        navigate(`/writing-test/results/${res.id}`);
+        };
+        await enterFullscreen();
       }
-    } catch (err: any) {
-      setSubmitting(false);
-      toast.error(
-        "API submission failed, but your answers are saved locally. Please contact support."
-      );
+      navigate(nextPath);
+      return;
+    }
+    
+    // If no next test, we're at the end - submit all tests
+    const overallId = overallTestFlowStore.getOverallId();
+    if (overallId && overallTestFlowStore.isAllDone()) {
+      // Submit all tests at once
+      await submitAllTests(overallId);
+      return;
+    }
+    
+    // Fallback to single test results
+    navigate(`/writing-test/results/temp`, { state: { summary: { testId: testId } } });
+    setSubmitting(false);
+  };
+
+  const submitAllTests = async (overallId: string) => {
+    try {
+      toast.info("Submitting all tests...");
+      
+      // Submit all individual tests first
+      const { readingSubmissionService } = await import("@/services/readingTest.service");
+      const { listeningSubmissionService } = await import("@/services/listeningTest.service");
+      const { writingSubmissionService } = await import("@/services/writingSubmission.service");
+      const { axiosPrivate } = await import("@/config/api");
+      
+      // Submit reading test - look for reading answers from any test
+      const readingAnswersKeys = Object.keys(sessionStorage).filter(key => key.startsWith('reading_answers_'));
+      for (const key of readingAnswersKeys) {
+        const readingAnswers = sessionStorage.getItem(key);
+        if (readingAnswers) {
+          const readingData = JSON.parse(readingAnswers);
+          console.log("Submitting reading test:", readingData.testId, "with answers:", readingData.answers);
+          const payload = Object.entries(readingData.answers).map(([questionId, userAnswer]) => ({ questionId, userAnswer }));
+          await readingSubmissionService.submitAnswers(readingData.testId, payload);
+        }
+      }
+      
+      // Submit listening test - look for listening answers from any test
+      const listeningAnswersKeys = Object.keys(sessionStorage).filter(key => key.startsWith('listening_answers_'));
+      for (const key of listeningAnswersKeys) {
+        const listeningAnswers = sessionStorage.getItem(key);
+        if (listeningAnswers) {
+          const listeningData = JSON.parse(listeningAnswers);
+          console.log("Submitting listening test:", listeningData.testId, "with answers:", listeningData.answers);
+          await listeningSubmissionService.submitAnswers(listeningData.testId, listeningData.answers);
+        }
+      }
+      
+      // Submit writing test
+      const writingAnswers = sessionStorage.getItem(`writing_answers_${testId}`);
+      console.log("Retrieved writing answers from sessionStorage:", writingAnswers);
+      if (writingAnswers) {
+        const writingData = JSON.parse(writingAnswers);
+        console.log("Parsed writing data:", writingData);
+        console.log("Writing answers in data:", writingData.answers);
+        const payload = {
+          writingTestId: writingData.testId,
+          sections: writingData.sections.map((section: any, sectionIndex: number) => {
+            const sectionData = {
+              description: section.title || section.description || `Section ${section.order || 1}`,
+              answers: [] as any[],
+              subParts: [] as any[],
+            };
+            if (section.subParts && section.subParts.length > 0) {
+              sectionData.subParts = section.subParts.map((subPart: any, subPartIndex: number) => {
+                const questionId = subPart.questions?.[0]?.id || subPart.id;
+                const userAnswer = writingData.answers[`${sectionIndex}-${subPartIndex}-${subPart.id}`] || "";
+                return {
+                  description: subPart.label || subPart.description,
+                  answers: [{ questionId, userAnswer }],
+                };
+              });
+            }
+            if (section.questions && section.questions.length > 0) {
+              let questionAnswer = "";
+              const possibleKeys = [
+                `${sectionIndex}-0-${section.questions[0].id}`,
+                `${sectionIndex}-${section.questions[0].id}`,
+                `${sectionIndex}-${section.id}`,
+                section.questions[0].id,
+                section.id,
+              ];
+              for (const key of possibleKeys) {
+                if (writingData.answers[key]) {
+                  questionAnswer = writingData.answers[key];
+                  break;
+                }
+              }
+              sectionData.answers = [{ questionId: section.questions[0].id, userAnswer: questionAnswer }];
+            }
+            return sectionData;
+          }),
+        };
+        await writingSubmissionService.create(payload);
+      }
+      
+      // Submit speaking test - look for speaking answers from any test
+      const speakingAnswersKeys = Object.keys(sessionStorage).filter(key => key.startsWith('speaking_answers_'));
+      for (const key of speakingAnswersKeys) {
+        const speakingAnswers = sessionStorage.getItem(key);
+        if (speakingAnswers) {
+          const speakingData = JSON.parse(speakingAnswers);
+          console.log("Submitting speaking test:", speakingData.testId, "with recordings:", speakingData.recordings?.length || 0);
+          const answerMap = new Map();
+          for (const [qid, rec] of speakingData.recordings) {
+            try {
+              const fd = new FormData();
+              fd.append("audio", rec.blob, "recording.webm");
+              const res = await axiosPrivate.post("/api/speaking-submission/speech-to-text", fd, {
+                headers: { "Content-Type": "multipart/form-data" },
+                timeout: 30000,
+              });
+              const text = res.data?.text || "[Ses metne dönüştürülemedi]";
+              answerMap.set(qid, { text, duration: rec.duration });
+            } catch (e) {
+              answerMap.set(qid, { text: "[Ses metne dönüştürülemedi]", duration: rec.duration || 0 });
+            }
+          }
+          
+          const parts = speakingData.sections.map((s: any) => {
+            const p: any = { description: s.description, image: "" };
+            if (s.subParts?.length) {
+              const subParts = s.subParts.map((sp: any) => {
+                const questions = sp.questions.map((q: any) => {
+                  const a = answerMap.get(q.id);
+                  return {
+                    questionId: q.id,
+                    userAnswer: a?.text ?? "[Cevap bulunamadı]",
+                    duration: a?.duration ?? 0,
+                  };
+                });
+                const duration = questions.reduce((acc: number, q: any) => acc + (q.duration || 0), 0);
+                return { image: sp.images?.[0] || "", duration, questions };
+              });
+              const duration = subParts.reduce((acc: number, sp: any) => acc + (sp.duration || 0), 0);
+              p.subParts = subParts;
+              p.duration = duration;
+            } else {
+              const questions = s.questions.map((q: any) => {
+                const a = answerMap.get(q.id);
+                return {
+                  questionId: q.id,
+                  userAnswer: a?.text ?? "[Cevap bulunamadı]",
+                  duration: a?.duration ?? 0,
+                };
+              });
+              const duration = questions.reduce((acc: number, q: any) => acc + (q.duration || 0), 0);
+              p.questions = questions;
+              p.duration = duration;
+              if (s.type === "PART3") p.type = "DISADVANTAGE";
+            }
+            return p;
+          });
+          
+          await axiosPrivate.post("/api/speaking-submission", {
+            speakingTestId: speakingData.testId,
+            parts,
+          });
+        }
+      }
+      
+      // Now complete the overall test
+      if (!overallTestFlowStore.isCompleted()) {
+        const { overallTestService } = await import("@/services/overallTest.service");
+        await overallTestService.complete(overallId);
+        overallTestFlowStore.markCompleted();
+      }
+      
+      // Exit fullscreen and go to results
+      if (document.fullscreenElement) {
+        try {
+          document.exitFullscreen().catch(() => {});
+        } catch {}
+      }
+      navigate(`/overall-results/${overallId}`);
+    } catch (error) {
+      console.error("Error submitting all tests:", error);
+      toast.error("Error submitting tests, but continuing to results...");
+      navigate(`/overall-results/${overallId}`);
     }
   };
 

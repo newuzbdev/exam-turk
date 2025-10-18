@@ -192,6 +192,9 @@ const TestModal = ({
       return;
     }
 
+    // Show loading state
+    toast.info("Starting test session...");
+
     const startRes = await overallTestService.start({ readingId, listeningId, writingId, speakingId });
     if (!startRes) return;
     try {
@@ -214,6 +217,74 @@ const TestModal = ({
         ? { testType: "SPEAKING" as const, testId: speakingTests[0].id, path: `/speaking-test/${speakingTests[0].id}` }
         : null,
     ].filter(Boolean) as { testType: any; testId: string; path: string }[];
+
+    // Fetch ALL test data upfront to avoid GET requests during navigation
+    toast.info("Loading test data...");
+    try {
+      const { listeningTestService } = await import("@/services/listeningTest.service");
+      const { readingTestService } = await import("@/services/readingTest.service");
+      const { writingTestService } = await import("@/services/writingTest.service");
+      const { default: axiosPrivate } = await import("@/config/api");
+
+      const testDataPromises = [];
+
+      // Fetch listening test data
+      if (listeningId) {
+        testDataPromises.push(
+          listeningTestService.getTestWithFullData(listeningId).then(data => ({
+            type: 'LISTENING',
+            testId: listeningId,
+            data
+          }))
+        );
+      }
+
+      // Fetch reading test data
+      if (readingId) {
+        testDataPromises.push(
+          readingTestService.getTestWithFullData(readingId).then(data => ({
+            type: 'READING',
+            testId: readingId,
+            data
+          }))
+        );
+      }
+
+      // Fetch writing test data
+      if (writingId) {
+        testDataPromises.push(
+          writingTestService.getById(writingId).then(data => ({
+            type: 'WRITING',
+            testId: writingId,
+            data
+          }))
+        );
+      }
+
+      // Fetch speaking test data
+      if (speakingId) {
+        testDataPromises.push(
+          axiosPrivate.get(`/api/speaking-test/${speakingId}`).then((res: any) => ({
+            type: 'SPEAKING',
+            testId: speakingId,
+            data: res.data
+          }))
+        );
+      }
+
+      // Wait for all test data to load
+      const allTestData = await Promise.all(testDataPromises);
+      
+      // Store all test data in sessionStorage
+      allTestData.forEach(({ type, testId, data }: { type: string; testId: string; data: any }) => {
+        sessionStorage.setItem(`test_data_${type}_${testId}`, JSON.stringify(data));
+      });
+
+      toast.success("Test data loaded successfully!");
+    } catch (error) {
+      console.error("Error loading test data:", error);
+      toast.error("Failed to load some test data, but continuing...");
+    }
 
     // Store the queue in session for chaining
     // Set queue and ensure initial count is correct

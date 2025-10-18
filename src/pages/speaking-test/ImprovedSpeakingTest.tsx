@@ -157,8 +157,30 @@ export default function ImprovedSpeakingTest() {
   const lastInstructionSectionRef = useRef<string | null>(null)
 
   useEffect(() => {
+    // Activate exam mode immediately when entering speaking test
+    if (typeof document !== "undefined") {
+      document.body.classList.add("exam-mode")
+      // Double-check exam mode is active if in overall test flow
+      if (overallTestFlowStore.hasActive()) {
+        document.body.classList.add("exam-mode")
+      }
+    }
+
+    // Enter fullscreen immediately for speaking test
+    enterFullscreen().catch(() => {})
+    
     ; (async () => {
       try {
+        // First try to get pre-loaded data from sessionStorage
+        const cachedData = sessionStorage.getItem(`test_data_SPEAKING_${testId}`)
+        if (cachedData) {
+          const data = JSON.parse(cachedData)
+          setTestData(data)
+          setLoading(false)
+          return
+        }
+
+        // Fallback to API call if no cached data
         const res = await axiosPrivate.get(`/api/speaking-test/${testId}`)
         setTestData(res.data)
       } catch (e) {
@@ -185,8 +207,12 @@ export default function ImprovedSpeakingTest() {
       cleanupMedia()
       clearTimers()
       removeNavigationLock()
-      exitFullscreen().catch(() => { })
-      removeExamBodyClass()
+      // Only exit fullscreen if not in overall test flow
+      const hasActiveOverallTest = overallTestFlowStore.hasActive();
+      if (!hasActiveOverallTest) {
+        exitFullscreen().catch(() => { })
+        removeExamBodyClass()
+      }
     }
   }, [testId])
 
@@ -584,8 +610,15 @@ export default function ImprovedSpeakingTest() {
   }
   const removeExamBodyClass = () => {
     try {
-      document.body.classList.remove("exam-mode")
-      document.documentElement.style.overflow = ""
+      // Only remove exam-mode if not in overall test flow
+      const hasActiveOverallTest = overallTestFlowStore.hasActive();
+      if (!hasActiveOverallTest) {
+        document.body.classList.remove("exam-mode")
+        document.documentElement.style.overflow = ""
+      } else {
+        // Ensure exam-mode stays active for next test
+        document.body.classList.add("exam-mode")
+      }
     } catch { }
   }
 
@@ -835,12 +868,11 @@ export default function ImprovedSpeakingTest() {
       }
   }
 
-  // when test becomes complete, remove navigation lock & exit fullscreen & remove body class
+  // when test becomes complete, remove navigation lock & auto-submit
   useEffect(() => {
     if (isTestComplete) {
       removeNavigationLock()
-      exitFullscreen().catch(() => { })
-      setIsExamMode(false)
+      // Don't exit exam mode here - let submitTest handle it based on navigation path
       // auto-submit and navigate to results
       if (!isSubmitting) {
         setIsSubmitting(true)
@@ -945,119 +977,220 @@ export default function ImprovedSpeakingTest() {
     setIsSubmitting(true)
 
     try {
-      toast.info("Konuşmalarınız metne dönüştürülüyor...")
+      // Store answers locally for later submission
+      const answersData = {
+        testId: testData.id,
+        recordings: Array.from(recordings.entries()),
+        sections: testData.sections,
+        timestamp: new Date().toISOString()
+      };
+      // Store in sessionStorage for later submission
+      sessionStorage.setItem(`speaking_answers_${testData.id}`, JSON.stringify(answersData));
 
-      const answerMap = new Map<string, { text: string; duration: number }>()
-      testData.sections.forEach((s) => {
-        if (s.subParts?.length) {
-          s.subParts.forEach((sp) =>
-            sp.questions.forEach((q) => answerMap.set(q.id, { text: "[Cevap bulunamadı]", duration: 0 })),
-          )
-        } else {
-          s.questions.forEach((q) => answerMap.set(q.id, { text: "[Cevap bulunamadı]", duration: 0 }))
+      // Just navigate to next test without submitting
+      const nextPath = overallTestFlowStore.onTestCompleted("SPEAKING", testData.id);
+      if (nextPath) {
+        // Keep exam mode and fullscreen active for next test
+        if (typeof document !== "undefined") {
+          document.body.classList.add("exam-mode");
+          // Immediately re-enter fullscreen before navigation
+          const enterFullscreen = async () => {
+            try {
+              const el: any = document.documentElement as any;
+              if (el.requestFullscreen) await el.requestFullscreen();
+              else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
+              else if (el.msRequestFullscreen) await el.msRequestFullscreen();
+            } catch {}
+          };
+          await enterFullscreen();
         }
-      })
-
-      for (const [qid, rec] of recordings) {
-        try {
-          const fd = new FormData()
-          fd.append("audio", rec.blob, "recording.webm")
-
-          const res = await axiosPrivate.post("/api/speaking-submission/speech-to-text", fd, {
-            headers: { "Content-Type": "multipart/form-data" },
-            timeout: 30000,
-          })
-
-          const text = res.data?.text || "[Ses metne dönüştürülemedi]"
-          answerMap.set(qid, { text, duration: rec.duration })
-        } catch (e) {
-          console.error("speech-to-text error", e)
-          const prev = answerMap.get(qid)
-          answerMap.set(qid, {
-            text: "[Ses metne dönüştürülemedi]",
-            duration: rec.duration || prev?.duration || 0,
-          })
-        }
+        navigate(nextPath);
+        return;
       }
-
-      // --- Parts tuzish
-      const parts = testData.sections.map((s) => {
-        const p: any = { description: s.description, image: "" }
-
-        if (s.subParts?.length) {
-          const subParts = s.subParts.map((sp) => {
-            const questions = sp.questions.map((q) => {
-              const a = answerMap.get(q.id)
-              return {
-                questionId: q.id,
-                userAnswer: a?.text ?? "[Cevap bulunamadı]",
-                duration: a?.duration ?? 0,
-              }
-            })
-            const duration = questions.reduce((acc, q) => acc + (q.duration || 0), 0)
-            return { image: sp.images?.[0] || "", duration, questions }
-          })
-
-          const duration = subParts.reduce((acc, sp) => acc + (sp.duration || 0), 0)
-          p.subParts = subParts
-          p.duration = duration
-        } else {
-          const questions = s.questions.map((q) => {
-            const a = answerMap.get(q.id)
-            return {
-              questionId: q.id,
-              userAnswer: a?.text ?? "[Cevap bulunamadı]",
-              duration: a?.duration ?? 0,
-            }
-          })
-          const duration = questions.reduce((acc, q) => acc + (q.duration || 0), 0)
-          p.questions = questions
-          p.duration = duration
-
-          if (s.type === "PART3") p.type = "DISADVANTAGE"
-        }
-
-        return p
-      })
-
-      // --- Testni serverga yuborish
-      const res = await axiosPrivate.post("/api/speaking-submission", {
-        speakingTestId: testData.id,
-        parts,
-      })
-
-      // --- Navigate to results page like writing test
-      toast.success("Test başarıyla gönderildi!")
-      const submissionId = res.data?.id || res.data?.submissionId
-      removeNavigationLock()
-      exitFullscreen().catch(() => { })
-      setIsExamMode(false)
-      if (submissionId) {
-        const nextPath = overallTestFlowStore.onTestCompleted("SPEAKING", testData.id)
-        if (nextPath) {
-          navigate(nextPath)
-          return
-        }
-        const overallId = overallTestFlowStore.getOverallId()
-        if (overallId && overallTestFlowStore.isAllDone()) {
-          try {
-            if (!overallTestFlowStore.isCompleted()) {
-              const { overallTestService } = await import("@/services/overallTest.service");
-              await overallTestService.complete(overallId)
-              overallTestFlowStore.markCompleted()
-            }
-          } catch {}
-          navigate(`/overall-results/${overallId}`)
-          return
-        }
-        navigate(`/speaking-test/results/${submissionId}`)
-        return
+      
+      // If no next test, we're at the end - submit all tests
+      const overallId = overallTestFlowStore.getOverallId();
+      if (overallId && overallTestFlowStore.isAllDone()) {
+        // Submit all tests at once
+        await submitAllTests(overallId);
+        return;
       }
+      
+      // Fallback to single test results
+      navigate(`/speaking-test/results/temp`, { state: { summary: { testId: testData.id } } });
     } catch (e) {
-      console.error("submit error", e)
-      toast.error("Test gönderilirken hata oluştu")
+      console.error("speaking navigation error", e);
+      toast.error("Test geçişinde hata oluştu");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
+    }
+  }
+
+  const submitAllTests = async (overallId: string) => {
+    try {
+      toast.info("Submitting all tests...");
+      
+      // Submit all individual tests first
+      const { readingSubmissionService } = await import("@/services/readingTest.service");
+      const { listeningSubmissionService } = await import("@/services/listeningTest.service");
+      const { writingSubmissionService } = await import("@/services/writingSubmission.service");
+      const { axiosPrivate } = await import("@/config/api");
+      
+      // Submit reading test - look for reading answers from any test
+      const readingAnswersKeys = Object.keys(sessionStorage).filter(key => key.startsWith('reading_answers_'));
+      for (const key of readingAnswersKeys) {
+        const readingAnswers = sessionStorage.getItem(key);
+        if (readingAnswers) {
+          const readingData = JSON.parse(readingAnswers);
+          console.log("Submitting reading test:", readingData.testId, "with answers:", readingData.answers);
+          const payload = Object.entries(readingData.answers).map(([questionId, userAnswer]) => ({ questionId, userAnswer }));
+          await readingSubmissionService.submitAnswers(readingData.testId, payload);
+        }
+      }
+      
+      // Submit listening test - look for listening answers from any test
+      const listeningAnswersKeys = Object.keys(sessionStorage).filter(key => key.startsWith('listening_answers_'));
+      for (const key of listeningAnswersKeys) {
+        const listeningAnswers = sessionStorage.getItem(key);
+        if (listeningAnswers) {
+          const listeningData = JSON.parse(listeningAnswers);
+          console.log("Submitting listening test:", listeningData.testId, "with answers:", listeningData.answers);
+          await listeningSubmissionService.submitAnswers(listeningData.testId, listeningData.answers);
+        }
+      }
+      
+      // Submit writing test - look for writing answers from any test
+      const writingAnswersKeys = Object.keys(sessionStorage).filter(key => key.startsWith('writing_answers_'));
+      for (const key of writingAnswersKeys) {
+        const writingAnswers = sessionStorage.getItem(key);
+        if (writingAnswers) {
+          const writingData = JSON.parse(writingAnswers);
+          console.log("Submitting writing test:", writingData.testId, "with answers:", writingData.answers);
+          const payload = {
+            writingTestId: writingData.testId,
+            sections: writingData.sections.map((section: any, sectionIndex: number) => {
+              const sectionData = {
+                description: section.title || section.description || `Section ${section.order || 1}`,
+                answers: [] as any[],
+                subParts: [] as any[],
+              };
+              if (section.subParts && section.subParts.length > 0) {
+                sectionData.subParts = section.subParts.map((subPart: any, subPartIndex: number) => {
+                  const questionId = subPart.questions?.[0]?.id || subPart.id;
+                  const userAnswer = writingData.answers[`${sectionIndex}-${subPartIndex}-${subPart.id}`] || "";
+                  return {
+                    description: subPart.label || subPart.description,
+                    answers: [{ questionId, userAnswer }],
+                  };
+                });
+              }
+              if (section.questions && section.questions.length > 0) {
+                let questionAnswer = "";
+                const possibleKeys = [
+                  `${sectionIndex}-0-${section.questions[0].id}`,
+                  `${sectionIndex}-${section.questions[0].id}`,
+                  `${sectionIndex}-${section.id}`,
+                  section.questions[0].id,
+                  section.id,
+                ];
+                for (const key of possibleKeys) {
+                  if (writingData.answers[key]) {
+                    questionAnswer = writingData.answers[key];
+                    break;
+                  }
+                }
+                sectionData.answers = [{ questionId: section.questions[0].id, userAnswer: questionAnswer }];
+              }
+              return sectionData;
+            }),
+          };
+          await writingSubmissionService.create(payload);
+        }
+      }
+      
+      // Submit speaking test - look for speaking answers from any test
+      const speakingAnswersKeys = Object.keys(sessionStorage).filter(key => key.startsWith('speaking_answers_'));
+      for (const key of speakingAnswersKeys) {
+        const speakingAnswers = sessionStorage.getItem(key);
+        if (speakingAnswers) {
+          const speakingData = JSON.parse(speakingAnswers);
+          console.log("Submitting speaking test:", speakingData.testId, "with recordings:", speakingData.recordings?.length || 0);
+          const answerMap = new Map();
+          for (const [qid, rec] of speakingData.recordings) {
+            try {
+              const fd = new FormData();
+              fd.append("audio", rec.blob, "recording.webm");
+              const res = await axiosPrivate.post("/api/speaking-submission/speech-to-text", fd, {
+                headers: { "Content-Type": "multipart/form-data" },
+                timeout: 30000,
+              });
+              const text = res.data?.text || "[Ses metne dönüştürülemedi]";
+              answerMap.set(qid, { text, duration: rec.duration });
+            } catch (e) {
+              answerMap.set(qid, { text: "[Ses metne dönüştürülemedi]", duration: rec.duration || 0 });
+            }
+          }
+          
+          const parts = speakingData.sections.map((s: any) => {
+            const p: any = { description: s.description, image: "" };
+            if (s.subParts?.length) {
+              const subParts = s.subParts.map((sp: any) => {
+                const questions = sp.questions.map((q: any) => {
+                  const a = answerMap.get(q.id);
+                  return {
+                    questionId: q.id,
+                    userAnswer: a?.text ?? "[Cevap bulunamadı]",
+                    duration: a?.duration ?? 0,
+                  };
+                });
+                const duration = questions.reduce((acc: number, q: any) => acc + (q.duration || 0), 0);
+                return { image: sp.images?.[0] || "", duration, questions };
+              });
+              const duration = subParts.reduce((acc: number, sp: any) => acc + (sp.duration || 0), 0);
+              p.subParts = subParts;
+              p.duration = duration;
+            } else {
+              const questions = s.questions.map((q: any) => {
+                const a = answerMap.get(q.id);
+                return {
+                  questionId: q.id,
+                  userAnswer: a?.text ?? "[Cevap bulunamadı]",
+                  duration: a?.duration ?? 0,
+                };
+              });
+              const duration = questions.reduce((acc: number, q: any) => acc + (q.duration || 0), 0);
+              p.questions = questions;
+              p.duration = duration;
+              if (s.type === "PART3") p.type = "DISADVANTAGE";
+            }
+            return p;
+          });
+          
+          await axiosPrivate.post("/api/speaking-submission", {
+            speakingTestId: speakingData.testId,
+            parts,
+          });
+        }
+      }
+      
+      // Now complete the overall test
+      if (!overallTestFlowStore.isCompleted()) {
+        const { overallTestService } = await import("@/services/overallTest.service");
+        await overallTestService.complete(overallId);
+        overallTestFlowStore.markCompleted();
+      }
+      
+      // Exit fullscreen and go to results
+      if (document.fullscreenElement) {
+        try {
+          document.exitFullscreen().catch(() => {});
+        } catch {}
+      }
+      navigate(`/overall-results/${overallId}`);
+    } catch (error) {
+      console.error("Error submitting all tests:", error);
+      toast.error("Error submitting tests, but continuing to results...");
+      navigate(`/overall-results/${overallId}`);
     }
   }
 

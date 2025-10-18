@@ -12,6 +12,7 @@ import HowItWorks from "./ui/how-it-works";
 import HomeTestimonials from "./ui/home-testimonials";
 import HomePricing from "./ui/home-pricing";
 import { BannerSection } from "@/components/banner";
+import { bannerService } from "@/services/banner.service";
 
 export default function Home() {
   const [searchParams] = useSearchParams();
@@ -21,6 +22,9 @@ export default function Home() {
   // Prevent multiple OAuth login attempts
   const [isProcessingOAuth, setIsProcessingOAuth] = useState(false);
   const processedTokenRef = useRef<string | null>(null);
+  
+  // Check if there are active banners
+  const [hasActiveBanners, setHasActiveBanners] = useState(false);
 
   // Handle OAuth tokens if they appear in home URL (backend issue workaround)
   useEffect(() => {
@@ -68,6 +72,32 @@ export default function Home() {
       handleOAuthLogin();
     }
   }, [searchParams, navigate, login, isProcessingOAuth]);
+
+  // Check for active banners
+  useEffect(() => {
+    const checkActiveBanners = async () => {
+      try {
+        const allBanners = await bannerService.getAllBanners();
+        const activeBanners = allBanners.filter(banner => {
+          const isActive = banner.isActive !== false;
+          const now = new Date();
+          const startDate = banner.startDate ? new Date(banner.startDate) : null;
+          const endDate = banner.endDate ? new Date(banner.endDate) : null;
+          
+          if (startDate && now < startDate) return false;
+          if (endDate && now > endDate) return false;
+          
+          return isActive;
+        });
+        
+        setHasActiveBanners(activeBanners.length > 0);
+      } catch (error) {
+        setHasActiveBanners(false);
+      }
+    };
+    
+    checkActiveBanners();
+  }, []);
   return (
     <div className=" bg-white">
       <HeroSection />
@@ -85,8 +115,8 @@ export default function Home() {
       {/* Last 30 Days Results */}
       <HomeLastMonthTopResults />
 
-      {/* Banner before Pricing */}
-      <BannerSection position="top" className="py-8" />
+      {/* Banner before Pricing - only show if there are active banners */}
+      {hasActiveBanners && <BannerSection position="top" className="py-8" />}
 
       {/* Pricing */}
       <HomePricing />

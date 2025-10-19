@@ -3,6 +3,7 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/componen
 import { Input } from "@/components/ui/input";
 
 interface ReadingPart5Props {
+  testData?: any;
   answers?: Record<string, string>;
   onAnswerChange?: (questionId: string, value: string) => void;
 }

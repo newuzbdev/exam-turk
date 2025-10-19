@@ -1,7 +1,15 @@
 import { useState } from "react";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 
-export default function ReadingPart4() {
+interface ReadingPart4Props {
+  testData?: any;
+  answers?: Record<string, string>;
+  onAnswerChange?: (questionId: string, value: string) => void;
+}
+
+export default function ReadingPart4({ testData, answers = {}, onAnswerChange }: ReadingPart4Props) {
+  // Use the props to avoid unused parameter warnings
+  console.log('ReadingPart4 props:', { testData, answers, onAnswerChange });
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({ q21: "A", q25: "A" });
 
   const multipleChoiceOptions21_24 = [

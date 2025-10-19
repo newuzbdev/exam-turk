@@ -63,7 +63,7 @@ export default function ListeningPart3() {
                   value={question.selectedAnswer || ""}
                   onValueChange={(value) => handleAnswerSelect(question.id, value)}
                 >
-                  <SelectTrigger className="w-16 h-8 text-sm bg-white border-gray-400">
+                  <SelectTrigger className="w-16 h-8 text-sm bg-white border-gray-400 cursor-pointer">
                     <SelectValue placeholder="Seç" />
                   </SelectTrigger>
                   <SelectContent className="bg-white">

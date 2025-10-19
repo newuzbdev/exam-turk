@@ -53,7 +53,7 @@ export default function ListeningPart1({ questions: externalQuestions }: { quest
                 {Object.entries(question.options).map(([letter, text]) => (
                   <label
                     key={letter}
-                    className="flex items-start gap-3 p-2 rounded"
+                    className="flex items-start gap-3 p-2 rounded cursor-pointer"
                   >
                     <div className="flex items-center justify-center w-5 h-5 mt-0.5">
                       <span className="font-bold mr-2">{`${letter})`}</span>

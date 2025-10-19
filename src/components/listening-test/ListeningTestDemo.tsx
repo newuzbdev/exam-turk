@@ -234,7 +234,13 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
             <p className="text-lg text-gray-700 leading-relaxed">{question.text}</p>
             
             <div className="flex gap-6">
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label 
+                className="flex items-center gap-2 cursor-pointer"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleAnswerSelect(question.id, "A");
+                }}
+              >
                 <span className="font-bold text-lg">A)</span>
                 <div className="relative">
                   <div className="w-5 h-5 mt-1 border-2 border-gray-400 rounded-full bg-white"></div>
@@ -242,17 +248,25 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                     <div className="absolute mt-1 inset-0 w-5 h-5 bg-green-500 rounded-full border-2 border-green-600"></div>
                   )}
                 </div>
-                <input
-                  type="radio"
-                  name={`question-${question.id}`}
-                  className="sr-only"
-                  checked={selectedAnswer === "A"}
-                  onChange={() => handleAnswerSelect(question.id, "A")}
-                />
+              <input
+                type="radio"
+                name={`question-${question.id}`}
+                className="sr-only"
+                checked={selectedAnswer === "A"}
+                onChange={() => handleAnswerSelect(question.id, "A")}
+                onFocus={(e) => e.target.blur()}
+                tabIndex={-1}
+              />
                 <span className="text-lg text-gray-700 ml-1">Doğru</span>
               </label>
 
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label 
+                className="flex items-center gap-2 cursor-pointer"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleAnswerSelect(question.id, "B");
+                }}
+              >
                 <span className="font-bold text-lg">B)</span>
                 <div className="relative">
                   <div className="w-5 h-5 mt-1 border-2 border-gray-400 rounded-full bg-white"></div>
@@ -266,6 +280,8 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                   className="sr-only"
                   checked={selectedAnswer === "B"}
                   onChange={() => handleAnswerSelect(question.id, "B")}
+                  onFocus={(e) => e.target.blur()}
+                  tabIndex={-1}
                 />
                 <span className="text-lg text-gray-700 ml-1">Yanlış</span>
               </label>
@@ -286,6 +302,10 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
             <label
               key={answer.id}
               className="flex items-start gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded"
+              onClick={(e) => {
+                e.preventDefault();
+                handleAnswerSelect(question.id, answer.variantText);
+              }}
             >
               <div className="flex items-center justify-center w-5 h-5 mt-0.5">
                 <span className="font-bold mr-2">{answer.variantText})</span>
@@ -306,6 +326,8 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                 checked={selectedAnswer === answer.variantText}
                 onChange={() => handleAnswerSelect(question.id, answer.variantText)}
                 className="sr-only"
+                onFocus={(e) => e.target.blur()}
+                tabIndex={-1}
               />
             </label>
           ))}
@@ -594,6 +616,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
         </div>
       );
     }
+
 
     // Special layout for Part 5 (group questions into dialogs)
     if (bolum === 5) {
@@ -1131,7 +1154,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
         </div>
         
         {/* Internal scroll to keep content accessible while exam-mode locks body scroll */}
-        <div className="flex-1 overflow-y-auto p-6 pb-28">
+        <div className="flex-1 overflow-y-auto p-6 pb-28 scrollbar-thin scroll-smooth listening-test-container">
           {renderPart(bolum)}
         </div>
       

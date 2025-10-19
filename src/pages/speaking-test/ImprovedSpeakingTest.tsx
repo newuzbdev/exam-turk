@@ -1034,7 +1034,7 @@ export default function ImprovedSpeakingTest() {
       const { readingSubmissionService } = await import("@/services/readingTest.service");
       const { listeningSubmissionService } = await import("@/services/listeningTest.service");
       const { writingSubmissionService } = await import("@/services/writingSubmission.service");
-      const { axiosPrivate } = await import("@/config/api");
+      // const { axiosPrivate } = await import("@/config/api");
       
       // Submit reading test - look for reading answers from any test
       const readingAnswersKeys = Object.keys(sessionStorage).filter(key => key.startsWith('reading_answers_'));

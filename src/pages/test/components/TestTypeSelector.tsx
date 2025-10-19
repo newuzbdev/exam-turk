@@ -61,8 +61,8 @@ const TestTypeSelector = ({
               variant={selectedTestType === type.id ? "default" : "outline"}
               className={`h-32 flex flex-col items-center justify-center gap-4 ${
                 selectedTestType === type.id
-                  ? "bg-red-600 hover:bg-red-700 text-white"
-                  : "hover:bg-gray-50 text-red-600 border-red-200"
+                  ? "bg-red-600 text-white"
+                  : "text-red-600 border-red-200"
               }`}
               onClick={() => setSelectedTestType(type.id as TestType)}
             >

@@ -80,7 +80,7 @@ const SubTestCard = ({ subTest }: SubTestCardProps) => {
   return (
     <Card
       key={subTest.id}
-      className="overflow-hidden hover:shadow-lg transition-shadow duration-300 border-red-100 hover:border-red-200 h-[320px] flex flex-col cursor-pointer"
+      className="overflow-hidden border-red-100 h-[320px] flex flex-col cursor-pointer"
       onClick={handleCardClick}
     >
       <div className="relative flex-shrink-0">
@@ -111,7 +111,7 @@ const SubTestCard = ({ subTest }: SubTestCardProps) => {
               e.stopPropagation();
               handleStartTest();
             }}
-            className="w-full bg-red-600 hover:bg-red-700 text-white cursor-pointer"
+            className="w-full bg-red-600 text-white cursor-pointer"
           >
             Teste Başla
           </Button>

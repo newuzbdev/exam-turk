@@ -322,11 +322,11 @@ const TestModal = ({
               return (
                 <Card
                   key={s.id}
-                  className={`transition-all duration-200 cursor-pointer transform hover:scale-105 focus:outline-none focus:ring-0 ${
+                  className={`cursor-pointer focus:outline-none focus:ring-0 ${
                     selected 
                       ? "bg-red-100 border-gray-200 shadow-md" 
-                      : "bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300 hover:shadow-lg"
-                  } ${!available ? "opacity-50 cursor-not-allowed hover:scale-100" : ""}`}
+                      : "bg-white border-gray-200"
+                  } ${!available ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
                   <button
                     className="w-full p-4 text-left cursor-pointer disabled:cursor-not-allowed focus:outline-none focus:ring-0"
@@ -336,10 +336,10 @@ const TestModal = ({
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div
-                          className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-all duration-200 ${
+                          className={`w-6 h-6 rounded border-2 flex items-center justify-center ${
                             selected 
                               ? "bg-red-600 border-red-600 shadow-sm" 
-                              : "border-gray-300 group-hover:border-gray-400"
+                              : "border-gray-300"
                           }`}
                         >
                           {selected && <CheckCircle2 className="h-4 w-4 text-white" />}

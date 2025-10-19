@@ -125,7 +125,7 @@ export default function ListeningPart6() {
                           {option.label})
                         </span>
                         <div
-                          className={`w-5 h-5 rounded-full border-2 border-gray-400 cursor-pointer flex items-center justify-center ${
+                          className={`w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center ${
                             selectedAnswers[question.id] === option.label
                               ? "bg-green-500 border-green-600"
                               : "bg-white"

@@ -97,12 +97,12 @@ export default function ReadingPart2({ testData, answers, onAnswerChange }: Read
                               value={answers[q.id] || ""}
                               onValueChange={(value) => onAnswerChange(q.id, value)}
                             >
-                              <SelectTrigger className="w-28 bg-white border border-gray-300 rounded-md px-3 py-2 h-10 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                              <SelectTrigger className="w-28 bg-white border border-gray-300 rounded-md px-3 py-2 h-10 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
                                 <SelectValue placeholder="Seçiniz" />
                               </SelectTrigger>
                               <SelectContent className="bg-white">
                                 {optionList.map((opt) => (
-                                  <SelectItem key={opt.variantText} value={opt.variantText}>
+                                  <SelectItem key={opt.variantText} value={opt.variantText} className="cursor-pointer">
                                     {opt.variantText}
                                   </SelectItem>
                                 ))}
@@ -143,12 +143,12 @@ export default function ReadingPart2({ testData, answers, onAnswerChange }: Read
                               value={answers[q.id] || ""}
                               onValueChange={(value) => onAnswerChange(q.id, value)}
                             >
-                              <SelectTrigger className="w-28 bg-white border border-gray-300 rounded-md px-3 py-2 h-10 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                              <SelectTrigger className="w-28 bg-white border border-gray-300 rounded-md px-3 py-2 h-10 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
                                 <SelectValue placeholder="Seçiniz" />
                               </SelectTrigger>
                               <SelectContent className="bg-white">
                                 {optionList.map((opt) => (
-                                  <SelectItem key={opt.variantText} value={opt.variantText}>
+                                  <SelectItem key={opt.variantText} value={opt.variantText} className="cursor-pointer">
                                     {opt.variantText}
                                   </SelectItem>
                                 ))}

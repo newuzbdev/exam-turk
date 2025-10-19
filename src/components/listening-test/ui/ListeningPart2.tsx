@@ -78,7 +78,7 @@ export default function ListeningPart2() {
             <p className="text-lg mb-4 leading-relaxed">{question.text}</p>
 
             <div className="flex gap-6">
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className="flex items-center gap-2">
                 <span className="font-bold text-lg">A)</span>
                 <div className="relative">
                   <div className="w-5 h-5 mt-1 border-2 border-gray-400 rounded-full bg-white"></div>
@@ -96,7 +96,7 @@ export default function ListeningPart2() {
                 <span className="text-lg text-gray-700 ml-1">Doğru</span>
               </label>
 
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className="flex items-center gap-2">
                 <span className="font-bold text-lg">B)</span>
 
                 <div className="relative">

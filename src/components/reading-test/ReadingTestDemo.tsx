@@ -501,7 +501,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
                           <h4 className="font-semibold text-base">S{displayNumber}. {q.text || q.content || ""}</h4>
                           <div className="space-y-2">
                             {options.map((opt: any) => (
-                              <label key={opt.id || opt.variantText} className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                              <label key={opt.id || opt.variantText} className="flex items-center gap-3 p-2 rounded cursor-pointer">
                                 <div className="flex items-center justify-center w-8 h-8 mt-0.5">
                                   <span className="font-bold mr-2">{String(opt.variantText)})</span>
                                   <div className="relative">
@@ -860,7 +860,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
                     return (
                       <div
                         key={partNum}
-                        className={`text-center border-2 rounded-lg p-2 min-w-fit cursor-pointer ${
+                        className={`text-center border-2 rounded-lg p-2 min-w-fit ${
                           isActive ? "border-blue-500 bg-blue-50" : "border-gray-300 bg-gray-50 hover:bg-gray-100"
                         }`}
                         onClick={() => setCurrentPartNumber(partNum)}

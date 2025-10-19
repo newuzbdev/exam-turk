@@ -50,7 +50,7 @@ export default function ReadingPart4() {
                 {multipleChoiceOptions21_24.map((option) => (
                   <div
                     key={option.id}
-                    className="flex items-start gap-3 cursor-pointer p-2 rounded"
+                    className="flex items-start gap-3 p-2 rounded"
                     onClick={() => setSelectedAnswers((prev) => ({ ...prev, q21: option.id }))}
                   >
                     <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${selectedAnswers.q21 === option.id ? "bg-green-500 text-white" : ""}`}>
@@ -71,7 +71,7 @@ export default function ReadingPart4() {
                 {trueFalseOptions.map((option) => (
                   <div
                     key={option.id}
-                    className="flex items-center gap-3 cursor-pointer p-2 rounded"
+                    className="flex items-center gap-3 p-2 rounded"
                     onClick={() => setSelectedAnswers((prev) => ({ ...prev, q25: option.id }))}
                   >
                     <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${selectedAnswers.q25 === option.id ? "bg-green-500 text-white" : ""}`}>

@@ -235,7 +235,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
             
             <div className="flex gap-6">
               <label 
-                className="flex items-center gap-2 cursor-pointer"
+                className="flex items-center gap-2"
                 onClick={(e) => {
                   e.preventDefault();
                   handleAnswerSelect(question.id, "A");
@@ -261,7 +261,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
               </label>
 
               <label 
-                className="flex items-center gap-2 cursor-pointer"
+                className="flex items-center gap-2"
                 onClick={(e) => {
                   e.preventDefault();
                   handleAnswerSelect(question.id, "B");
@@ -301,7 +301,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
           {question.answers?.map((answer: any) => (
             <label
               key={answer.id}
-              className="flex items-start gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded"
+              className="flex items-start gap-3 p-2 rounded"
               onClick={(e) => {
                 e.preventDefault();
                 handleAnswerSelect(question.id, answer.variantText);
@@ -753,7 +753,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                 return (
                   <div 
                     key={section.number} 
-                    className={`text-center border-2 rounded-lg p-2 min-w-[80px] cursor-pointer transition-colors flex-shrink-0 ${
+                    className={`text-center border-2 rounded-lg p-2 min-w-[80px] transition-colors flex-shrink-0 ${
                       isActive 
                         ? "border-blue-500 bg-blue-50" 
                         : "border-gray-300 bg-gray-50 hover:bg-gray-100"
@@ -806,7 +806,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
               return (
                 <div 
                   key={section.number} 
-                  className={`text-center border-2 rounded-lg p-2 min-w-fit cursor-pointer transition-colors ${
+                  className={`text-center border-2 rounded-lg p-2 min-w-fit transition-colors ${
                     isActive 
                       ? "border-blue-500 bg-blue-50" 
                       : "border-gray-300 bg-gray-50 hover:bg-gray-100"

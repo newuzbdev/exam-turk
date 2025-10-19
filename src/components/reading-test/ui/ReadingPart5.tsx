@@ -67,7 +67,7 @@ export default function ReadingPart5({ answers = {}, onAnswerChange }: ReadingPa
                 {multipleChoiceOptions30_32.map((option) => (
                   <div
                     key={option.id}
-                    className="flex items-start gap-3 cursor-pointer p-2 rounded"
+                    className="flex items-start gap-3 p-2 rounded"
                     onClick={() => handleAnswerChange('q30', option.id)}
                   >
                     <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${selectedAnswers.q30 === option.id ? "bg-green-500 text-white" : ""}`}>

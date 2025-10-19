@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
-import { useParams, useLocation } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { listeningSubmissionService, type TestResultData as ListeningTestResultData } from "@/services/listeningTest.service";
 import { readingSubmissionService, type TestResultData as ReadingTestResultData } from "@/services/readingTest.service";
 import writingSubmissionService from "@/services/writingSubmission.service";
@@ -50,7 +48,6 @@ interface SpeakingResult {
 
 export default function UnifiedTestResults() {
   const { overallId } = useParams<{ overallId: string }>();
-  const location = useLocation();
   const [overallData, setOverallData] = useState<OverallResultsData | null>(null);
   const [listeningData, setListeningData] = useState<ListeningTestResultData | null>(null);
   const [readingData, setReadingData] = useState<ReadingTestResultData | null>(null);
@@ -97,7 +94,7 @@ export default function UnifiedTestResults() {
         if (overall.writingResultId) {
           promises.push(
             writingSubmissionService.getById(overall.writingResultId)
-              .then(data => setWritingData(data))
+              .then(data => setWritingData(data as any))
               .catch(err => console.error("Error fetching writing results:", err))
           );
         }

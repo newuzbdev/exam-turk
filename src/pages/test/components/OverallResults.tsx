@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axiosPrivate from "@/config/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { overallTestFlowStore } from "@/services/overallTest.service";
 
 interface Question {
   questionId: string;
@@ -20,6 +19,7 @@ interface Question {
 }
 
 interface TestResult {
+  aiFeedback?: any;
   test: {
     id: string;
     title: string;
@@ -29,6 +29,11 @@ interface TestResult {
   completedAt?: string;
   questions?: Question[];
   overallScore?: number;
+  answers?: Array<{
+    questionId: string;
+    userAnswer: string;
+  }>;
+  submittedAt?: string;
 }
 
 interface OverallResponse {
@@ -291,6 +296,9 @@ export default function OverallResults() {
       );
     }
 
+    const { writing } = data;
+    const aiFeedback = writing.aiFeedback;
+
     return (
       <div className="min-h-screen bg-gray-50">
         {/* Header */}
@@ -303,7 +311,7 @@ export default function OverallResults() {
               </div>
               <div className="text-right">
                 <div className="text-3xl font-black text-red-500">
-                  {data.writing.score || "0"}
+                  {writing.score || "0"}
                 </div>
                 <div className="text-sm text-gray-600">Band Score</div>
               </div>
@@ -317,12 +325,66 @@ export default function OverallResults() {
           <div className="bg-white rounded-3xl shadow-lg border border-gray-200 p-8 mb-8 text-center">
             <div className="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
               <span className="text-white text-3xl font-bold">
-                {data.writing.score || "0"}
+                {writing.score || "0"}
               </span>
             </div>
             <h2 className="text-3xl font-bold text-black mb-2">Test Completed!</h2>
             <p className="text-gray-600 text-lg mb-6">Your IELTS Writing Assessment Results</p>
           </div>
+
+          {/* AI Feedback Section */}
+          {aiFeedback && (
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8 mb-8">
+              <h3 className="text-2xl font-bold text-black mb-6 text-center">AI Assessment Feedback</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Task Achievement */}
+                <div className="bg-blue-50 rounded-xl p-6 border border-blue-200">
+                  <h4 className="text-lg font-semibold text-blue-900 mb-3 flex items-center">
+                    <span className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">1</span>
+                    Task Achievement
+                  </h4>
+                  <p className="text-gray-700 leading-relaxed">
+                    {aiFeedback.taskAchievement || "No feedback available for task achievement."}
+                  </p>
+                </div>
+
+                {/* Coherence and Cohesion */}
+                <div className="bg-green-50 rounded-xl p-6 border border-green-200">
+                  <h4 className="text-lg font-semibold text-green-900 mb-3 flex items-center">
+                    <span className="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">2</span>
+                    Coherence and Cohesion
+                  </h4>
+                  <p className="text-gray-700 leading-relaxed">
+                    {aiFeedback.coherenceAndCohesion || "No feedback available for coherence and cohesion."}
+                  </p>
+                </div>
+
+                {/* Lexical Resource */}
+                <div className="bg-purple-50 rounded-xl p-6 border border-purple-200">
+                  <h4 className="text-lg font-semibold text-purple-900 mb-3 flex items-center">
+                    <span className="w-8 h-8 bg-purple-500 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">3</span>
+                    Lexical Resource
+                  </h4>
+                  <p className="text-gray-700 leading-relaxed">
+                    {aiFeedback.lexicalResource || "No feedback available for lexical resource."}
+                  </p>
+                </div>
+
+                {/* Grammatical Range and Accuracy */}
+                <div className="bg-orange-50 rounded-xl p-6 border border-orange-200">
+                  <h4 className="text-lg font-semibold text-orange-900 mb-3 flex items-center">
+                    <span className="w-8 h-8 bg-orange-500 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">4</span>
+                    Grammatical Range and Accuracy
+                  </h4>
+                  <p className="text-gray-700 leading-relaxed">
+                    {aiFeedback.grammaticalRangeAndAccuracy || "No feedback available for grammatical range and accuracy."}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
     );

@@ -1,4 +1,4 @@
-import { BookOpen, CheckCircle2, Coins, Headphones, Mic, PenTool, ArrowRight, X, } from "lucide-react";
+import { BookOpen, CheckCircle2, Coins, Headphones, Mic, PenTool, ArrowRight } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import {
   Dialog,

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { overallTestFlowStore } from "@/services/overallTest.service"
 import { motion, AnimatePresence } from "framer-motion"
-import { Mic, ArrowLeft, CheckCircle, Volume2 } from "lucide-react"
+import { Mic, ArrowLeft, Volume2 } from "lucide-react"
 import axiosPrivate from "@/config/api"
 import { toast } from "sonner"
 import { MicrophoneCheck } from "./components/MicrophoneCheck"
@@ -1034,7 +1034,7 @@ export default function ImprovedSpeakingTest() {
       const { readingSubmissionService } = await import("@/services/readingTest.service");
       const { listeningSubmissionService } = await import("@/services/listeningTest.service");
       const { writingSubmissionService } = await import("@/services/writingSubmission.service");
-      // const { axiosPrivate } = await import("@/config/api");
+      const axiosPrivate = (await import("@/config/api")).default;
       
       // Submit reading test - look for reading answers from any test
       const readingAnswersKeys = Object.keys(sessionStorage).filter(key => key.startsWith('reading_answers_'));
@@ -1043,7 +1043,10 @@ export default function ImprovedSpeakingTest() {
         if (readingAnswers) {
           const readingData = JSON.parse(readingAnswers);
           console.log("Submitting reading test:", readingData.testId, "with answers:", readingData.answers);
-          const payload = Object.entries(readingData.answers).map(([questionId, userAnswer]) => ({ questionId, userAnswer }));
+          const payload = Object.entries(readingData.answers).map(([questionId, userAnswer]) => ({ 
+            questionId: questionId as string, 
+            userAnswer: String(userAnswer) 
+          }));
           await readingSubmissionService.submitAnswers(readingData.testId, payload);
         }
       }
@@ -1620,7 +1623,7 @@ export default function ImprovedSpeakingTest() {
           </motion.button>
         </div>
 
-        {(() => {
+        {/* {(() => {
           const key = currentQuestion?.id || currentSection?.id || `${currentSectionIndex}`
           return recordings.has(key)
         })() && (
@@ -1632,7 +1635,7 @@ export default function ImprovedSpeakingTest() {
             <CheckCircle className="w-5 h-5" />
             <span>Recorded</span>
           </motion.div>
-        )}
+        )} */}
 
         {isPlayingInstructions && (
           <motion.div
@@ -1718,7 +1721,7 @@ export default function ImprovedSpeakingTest() {
           </div>
           {isPrepRunning ? (
           <div className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600 font-mono text-center mt-1 sm:mt-2">
-              Hazırlık
+             
           </div>
         ) : (
           isRecording && (

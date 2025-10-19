@@ -39,72 +39,124 @@ export default function ReadingPart3({ testData, answers, onAnswerChange }: Read
 
   return (
     <div className="mx-2 h-[calc(100vh-200px)]">
-      <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border border-gray-300 shadow-lg">
-        {/* Left: Paragraphs 15–20, select above text with green bg */}
-        <ResizablePanel defaultSize={60} minSize={30} className="bg-[#fffef5]">
-          <div className="h-full p-6 overflow-y-auto pb-24 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-            <div className="space-y-6">
+      {/* Mobile Layout - Stacked */}
+      <div className="block lg:hidden h-full">
+        <div className="rounded-lg border border-gray-300 shadow-lg overflow-hidden h-full flex flex-col">
+          {/* Questions Section - More scroll space for mobile */}
+          <div className="bg-[#fffef5] flex-1 overflow-y-auto p-4 pb-40">
+            <h4 className="text-base font-bold text-gray-800 mb-3">Paragraflar</h4>
+            <div className="space-y-4">
               {paragraphQuestions.map((q: any, idx: number) => {
                 const displayNum = 15 + idx; // 15..20 (sequential)
                 const displayText = q.text || q.content || "";
                 const romans = ["I", "II", "III", "IV", "V", "VI"];
                 const label = `S${displayNum}. ${romans[idx]}. paragraf`;
                 return (
-                  <div key={q.id} className="rounded-xl p-4">
-                    <div className="flex items-start gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="text-xl font-bold text-gray-800">{label}</div>
-                          <div>
-                            <Select
-                              value={answers[q.id] || ""}
-                              onValueChange={(value) => onAnswerChange(q.id, value)}
-                            >
-                              <SelectTrigger className="w-28 bg-white border border-gray-300 rounded-md px-3 py-2 h-10 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
-                                <SelectValue placeholder="Seçiniz" />
-                              </SelectTrigger>
-                              <SelectContent className="bg-white">
-                                {optionList.map((opt) => (
-                                  <SelectItem key={opt.letter} value={opt.letter} className="cursor-pointer">
-                                    {opt.letter}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                        {displayText && (
-                          <div className="">
-                            <p className="text-base leading-7 text-gray-800 font-serif text-justify whitespace-pre-line">{displayText}</p>
-                          </div>
-                        )}
-                      </div>
+                  <div key={q.id} className="bg-white rounded-lg p-3 border border-gray-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-sm font-bold text-gray-800">{label}</div>
+                      <Select
+                        value={answers[q.id] || ""}
+                        onValueChange={(value) => onAnswerChange(q.id, value)}
+                      >
+                        <SelectTrigger className="w-20 bg-white border border-gray-300 rounded-md px-2 py-1 h-8 text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
+                          <SelectValue placeholder="Seç">
+                            {answers[q.id] ? answers[q.id] : "Seç"}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="bg-white max-h-48 overflow-y-auto z-50">
+                          {optionList.map((opt) => (
+                            <SelectItem key={opt.letter} value={opt.letter} className="cursor-pointer text-xs py-1">
+                              {opt.letter}) {opt.text}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
+                    {displayText && (
+                      <div className="text-xs leading-6 text-gray-800 font-serif text-justify whitespace-pre-line">
+                        {displayText}
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
           </div>
-        </ResizablePanel>
+        </div>
+      </div>
 
-        <ResizableHandle withHandle={true} className="bg-gray-300 hover:bg-gray-400 transition-colors" />
-
-        {/* Right: Headings legend A..H (no question labels next to variants) */}
-        <ResizablePanel defaultSize={40} minSize={25} className="bg-white">
-          <div className="h-full p-6 flex flex-col">
-            <div className="space-y-3">
-              {optionList.map((opt) => (
-                <div key={opt.letter} className="flex items-start gap-3 p-3 bg-white rounded border border-gray-200">
-                  <div className="w-7 h-7 rounded-full border-2 border-gray-400 flex items-center justify-center font-bold bg-white text-gray-700 flex-shrink-0 text-base">
-                    {opt.letter}
-                  </div>
-                  <span className="text-lg leading-snug text-gray-800 pt-0.5">{opt.text}</span>
-                </div>
-              ))}
+      {/* Desktop Layout - Resizable */}
+      <div className="hidden lg:block h-full">
+        <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border border-gray-300 shadow-lg">
+          {/* Left: Paragraphs 15–20, select above text with green bg */}
+          <ResizablePanel defaultSize={60} minSize={30} className="bg-[#fffef5]">
+            <div className="h-full p-6 overflow-y-auto pb-24 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+              <div className="space-y-6">
+                {paragraphQuestions.map((q: any, idx: number) => {
+                  const displayNum = 15 + idx; // 15..20 (sequential)
+                  const displayText = q.text || q.content || "";
+                  const romans = ["I", "II", "III", "IV", "V", "VI"];
+                  const label = `S${displayNum}. ${romans[idx]}. paragraf`;
+                  return (
+                    <div key={q.id} className="rounded-xl p-4">
+                      <div className="flex items-start gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="text-xl font-bold text-gray-800">{label}</div>
+                            <div>
+                              <Select
+                                value={answers[q.id] || ""}
+                                onValueChange={(value) => onAnswerChange(q.id, value)}
+                              >
+                                <SelectTrigger className="w-28 bg-white border border-gray-300 rounded-md px-3 py-2 h-10 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
+                                  <SelectValue placeholder="Seçiniz">
+                                    {answers[q.id] ? answers[q.id] : "Seçiniz"}
+                                  </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent className="bg-white max-h-64 overflow-y-auto z-50">
+                                  {optionList.map((opt) => (
+                                    <SelectItem key={opt.letter} value={opt.letter} className="cursor-pointer py-1">
+                                      {opt.letter}) {opt.text}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          {displayText && (
+                            <div className="">
+                              <p className="text-base leading-7 text-gray-800 font-serif text-justify whitespace-pre-line">{displayText}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        </ResizablePanel>
-      </ResizablePanelGroup>
+          </ResizablePanel>
+
+          <ResizableHandle withHandle={true} className="bg-gray-300 hover:bg-gray-400 transition-colors" />
+
+          {/* Right: Headings legend A..H (no question labels next to variants) */}
+          <ResizablePanel defaultSize={40} minSize={25} className="bg-white">
+            <div className="h-full p-6 flex flex-col">
+              <div className="space-y-3">
+                {optionList.map((opt) => (
+                  <div key={opt.letter} className="flex items-start gap-3 p-3 bg-white rounded border border-gray-200">
+                    <div className="w-7 h-7 rounded-full border-2 border-gray-400 flex items-center justify-center font-bold bg-white text-gray-700 flex-shrink-0 text-base">
+                      {opt.letter}
+                    </div>
+                    <span className="text-lg leading-snug text-gray-800 pt-0.5">{opt.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      </div>
     </div>
   );
 }

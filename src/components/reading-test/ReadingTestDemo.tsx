@@ -513,10 +513,14 @@ export default function ReadingPage({ testId }: { testId: string }) {
                     return (
                       <div
                         key={partNum}
-                        className={`text-center border-2 rounded-lg p-2 min-w-fit ${
+                        className={`text-center border-2 rounded-lg p-2 min-w-fit cursor-pointer ${
                           isActive ? "border-blue-500 bg-blue-50" : "border-gray-300 bg-gray-50 hover:bg-gray-100"
                         }`}
-                        onClick={() => setCurrentPartNumber(partNum)}
+                        onClick={() => {
+                          setCurrentPartNumber(partNum);
+                          // Smooth scroll to top of content
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
                       >
                         <div className="flex gap-1 mb-1 justify-center flex-wrap">
                           {(nums.length ? nums : [partNum]).map((q) => {

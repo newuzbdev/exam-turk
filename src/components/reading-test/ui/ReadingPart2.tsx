@@ -131,11 +131,11 @@ export default function ReadingPart2({ testData, answers, onAnswerChange }: Read
                     ) : (
                       <div className="space-y-2">
                         {q.text && (
-                          <h3 className="font-semibold text-sm leading-snug italic text-gray-900">
+                          <h3 className="font-semibold text-base leading-snug italic text-gray-900">
                             {q.text}
                           </h3>
                         )}
-                        <div className="text-xs">
+                        <div className="text-sm">
                           {renderContent(q.content || "", qNum)}
                         </div>
                       </div>

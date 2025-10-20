@@ -74,7 +74,7 @@ export default function ReadingPart3({ testData, answers, onAnswerChange }: Read
                       </Select>
                     </div>
                     {displayText && (
-                      <div className="text-xs leading-6 text-gray-800 font-serif text-justify whitespace-pre-line">
+                      <div className="text-sm leading-6 text-gray-800 font-serif text-justify whitespace-pre-line">
                         {displayText}
                       </div>
                     )}

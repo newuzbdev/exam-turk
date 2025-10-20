@@ -42,7 +42,7 @@ export default function ReadingPart1({ testData, answers, onAnswerChange }: Read
             <h4 className="text-base font-bold text-gray-800 mb-3">Sorular</h4>
             {questions.map((q: any, idx: number) => (
               <div key={q.id} className="flex items-center gap-2">
-                <label className="font-bold text-sm w-8">S{idx + 1}.</label>
+                <label className="font-bold text-base w-8">S{idx + 1}.</label>
                 <Select
                   value={answers[q.id] || ""}
                   onValueChange={(value) => onAnswerChange(q.id, value)}

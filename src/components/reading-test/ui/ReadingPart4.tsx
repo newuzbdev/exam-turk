@@ -65,7 +65,7 @@ export default function ReadingPart4({ testData, answers, onAnswerChange }: Read
                     </div>
                   )}
                   <div className="space-y-2">
-                    <div className="font-bold text-sm font-sans">S{questionNumber}. <span className="font-normal">{q.text || q.question || ""}</span></div>
+                    <div className="font-bold text-base font-sans">S{questionNumber}. <span className="font-normal">{q.text || q.question || ""}</span></div>
                     <div className={`${isTrueFalseQuestion ? 'flex gap-2' : 'space-y-1'}`}>
                       {getQuestionOptions(q).map((opt: any) => (
                         <div

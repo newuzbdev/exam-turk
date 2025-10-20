@@ -183,11 +183,11 @@ export default function ReadingPart5({ testData, answers, onAnswerChange }: Read
                           </Select>
                         </div>
                       </div>
-                      <p className="text-xs font-medium text-gray-800">{q.text || q.question || "Hangi paragrafta yer almaktadır?"}</p>
+                      <p className="text-sm font-medium text-gray-800">{q.text || q.question || "Hangi paragrafta yer almaktadır?"}</p>
                     </>
                   ) : (
                     <div className="space-y-1">
-                      <div className="font-bold text-sm">S{questionNumber}. <span className="font-normal">{q.text || q.question || ''}</span></div>
+                      <div className="font-bold text-base">S{questionNumber}. <span className="font-normal">{q.text || q.question || ''}</span></div>
                       {getQuestionOptions(q).map((opt: any) => (
                         <div
                           key={opt.variantText}

@@ -75,7 +75,7 @@ export default function ReadingPart5({ testData, answers, onAnswerChange }: Read
             <div className="space-y-4 leading-relaxed">
               <h3 className="text-center font-bold text-lg mb-4">E-Kitaplar Okuma Tarzını Değiştiriyor mu?</h3>
               <div className="space-y-4">
-                {paragraphs.map((para, idx) => (
+                {paragraphs.map((para,) => (
                   <div key={para.letter} className="flex items-start gap-3">
                     <span className="font-bold text-lg bg-gray-200 w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0">
                       {para.letter}
@@ -147,7 +147,7 @@ export default function ReadingPart5({ testData, answers, onAnswerChange }: Read
               <div className="space-y-4 leading-relaxed">
                 <h3 className="text-center font-bold text-lg mb-6">E-Kitaplar Okuma Tarzını Değiştiriyor mu?</h3>
                 <div className="space-y-4">
-                  {paragraphs.map((para, idx) => (
+                  {paragraphs.map((para) => (
                     <div key={para.letter} className="flex items-start gap-4">
                       <span className="font-bold text-xl bg-gray-200 w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0">
                         {para.letter}

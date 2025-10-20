@@ -1,6 +1,5 @@
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 
 interface ReadingPart5Props {
   testData: any;
@@ -13,6 +12,11 @@ export default function ReadingPart5({ testData, answers, onAnswerChange }: Read
   const section5 = part5?.sections && part5.sections[0];
   const content = section5?.content || "";
   const questions = (section5?.questions || []);
+  const orderedQuestions = [...questions].sort((a: any, b: any) => {
+    const an = typeof a.number === 'number' ? a.number : 0;
+    const bn = typeof b.number === 'number' ? b.number : 0;
+    return an - bn;
+  });
   
   // Build options from answers for paragraph matching (A-E)
   const optionMap = new Map<string, { variantText: string; answer: string }>();
@@ -25,41 +29,88 @@ export default function ReadingPart5({ testData, answers, onAnswerChange }: Read
   });
   const optionList = Array.from(optionMap.values()).sort((a, b) => a.variantText.localeCompare(b.variantText));
 
-  // Parse content to extract paragraphs A-E
-  const parseParagraphs = (content: string) => {
+  // Helper: per-question options (A-D)
+  const getQuestionOptions = (question: any) => {
+    const opts = (question.answers || []).map((a: any) => ({
+      variantText: a.variantText,
+      answer: a.answer,
+    }));
+    return opts.sort((a: any, b: any) => a.variantText.localeCompare(b.variantText));
+  };
+
+  // Parse content to extract paragraphs A-E in multiple possible formats
+  const parseParagraphs = (rawContent: string) => {
     const paragraphs: { letter: string; text: string }[] = [];
+    if (!rawContent) return paragraphs;
+
+    // Normalize Windows/Mac newlines to \n
+    const content = rawContent.replace(/\r\n?|\r/g, '\n');
+
+    // Strategy 1: Regex capture for formats like "A) ...", "A. ...", "A - ..."
+    const blockRegex = /(\n|^)\s*([A-E])[)\.-]?\s+([\s\S]*?)(?=(\n\s*[A-E][)\.-]?\s+|$))/g;
+    const matched: { letter: string; text: string }[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = blockRegex.exec(content)) !== null) {
+      const letter = m[2];
+      const text = (m[3] || '').trim();
+      if (letter && text) matched.push({ letter, text });
+    }
+    if (matched.length >= 1) {
+      // Keep only first five A-E and sort by letter
+      const unique = new Map<string, string>();
+      for (const { letter, text } of matched) {
+        if (!unique.has(letter) && letter >= 'A' && letter <= 'E') unique.set(letter, text);
+      }
+      const ordered = Array.from(unique.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .slice(0, 5)
+        .map(([letter, text]) => ({ letter, text }));
+      return ordered;
+    }
+
+    // Strategy 2: Letter on its own line followed by text lines until next letter line
     const lines = content.split('\n');
     let currentLetter = '';
-    let currentText = '';
-    
+    let buffer: string[] = [];
+    const pushIfValid = () => {
+      const text = buffer.join(' ').trim();
+      if (currentLetter && text) paragraphs.push({ letter: currentLetter, text });
+    };
     for (const line of lines) {
-      const trimmedLine = line.trim();
-      if (trimmedLine.match(/^[A-E]\)/)) {
-        if (currentLetter && currentText) {
-          paragraphs.push({ letter: currentLetter, text: currentText.trim() });
-        }
-        currentLetter = trimmedLine[0];
-        currentText = trimmedLine.substring(2).trim();
-      } else if (currentLetter && trimmedLine) {
-        currentText += ' ' + trimmedLine;
+      const trimmed = line.trim();
+      const singleLetter = /^[A-E]$/.test(trimmed);
+      const letterHeader = /^[A-E][)\.-]?$/.test(trimmed);
+      if (singleLetter || letterHeader) {
+        // flush previous
+        pushIfValid();
+        currentLetter = trimmed[0];
+        buffer = [];
+      } else if (trimmed.length) {
+        buffer.push(trimmed);
       }
     }
-    
-    if (currentLetter && currentText) {
-      paragraphs.push({ letter: currentLetter, text: currentText.trim() });
+    pushIfValid();
+    if (paragraphs.length >= 1) {
+      // Ensure A-E order and limit to five
+      const unique = new Map<string, string>();
+      for (const p of paragraphs) {
+        if (!unique.has(p.letter) && p.letter >= 'A' && p.letter <= 'E') unique.set(p.letter, p.text);
+      }
+      return Array.from(unique.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .slice(0, 5)
+        .map(([letter, text]) => ({ letter, text }));
     }
-    
-    // If no paragraphs found with A-E format, try to split by double newlines
-    if (paragraphs.length === 0) {
-      const sections = content.split('\n\n').filter(section => section.trim());
-      sections.forEach((section, index) => {
-        const letter = String.fromCharCode(65 + index); // A, B, C, D, E
-        if (letter <= 'E') {
-          paragraphs.push({ letter, text: section.trim() });
-        }
-      });
+
+    // Strategy 3: Fallback split by double newlines (first five chunks become A-E)
+    const sections = content.split(/\n\n+/).filter((s) => s.trim());
+    if (sections.length) {
+      return sections.slice(0, 5).map((section, index) => ({
+        letter: String.fromCharCode(65 + index),
+        text: section.trim(),
+      }));
     }
-    
+
     return paragraphs;
   };
 
@@ -67,13 +118,14 @@ export default function ReadingPart5({ testData, answers, onAnswerChange }: Read
 
   return (
     <div className="mx-2 pb-24 max-h-[calc(100vh-120px)] overflow-y-auto overscroll-contain pr-2">
+   
+
       {/* Mobile Layout - Stacked */}
       <div className="block lg:hidden">
         <div className="rounded-lg border border-gray-300 shadow-lg overflow-hidden">
           {/* Passage Section */}
           <div className="bg-[#fffef5] p-4">
             <div className="space-y-4 leading-relaxed">
-              <h3 className="text-center font-bold text-lg mb-4">E-Kitaplar Okuma Tarzını Değiştiriyor mu?</h3>
               <div className="space-y-4">
                 {paragraphs.map((para,) => (
                   <div key={para.letter} className="flex items-start gap-3">
@@ -90,69 +142,92 @@ export default function ReadingPart5({ testData, answers, onAnswerChange }: Read
           {/* Questions Section - More scroll space for mobile */}
           <div className="bg-white p-4 space-y-4 pb-32">
             <h4 className="text-base font-bold text-gray-800 mb-3">Sorular</h4>
-            {questions.map((q: any, idx: number) => {
+            {/* Static instruction for 30-32 (always visible at top) */}
+            <div className="mb-4">
+              <p className="text-lg md:text-xl font-extrabold text-gray-900 font-serif leading-relaxed">
+                Sorular 30-32. Metne göre doğru seçeneği (A, B, C veya D) işaretleyiniz.
+              </p>
+            </div>
+            {/* S33-35 instruction will appear right before question 33 */}
+            {orderedQuestions.map((q: any, idx: number) => {
               const questionNumber = q.number || (30 + idx);
               const isParagraphQuestion = questionNumber >= 33; // Questions 33-35 are paragraph matching
               
-              if (isParagraphQuestion) {
-                return (
-                  <div key={q.id} className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm">S{questionNumber}.</span>
-                      <Input 
-                        value={answers[q.id] || ''} 
-                        onChange={(e) => onAnswerChange(q.id, e.target.value)} 
-                        className="w-16 h-8 text-center" 
-                        placeholder="A-E"
-                      />
+              return (
+                <div key={q.id} className="space-y-2">
+
+                  {/* Static instruction for 33-35 (render once above S33) */}
+                  {isParagraphQuestion && questionNumber === 33 && (
+                    <div className="mb-2">
+                      <p className="text-lg md:text-xl font-extrabold text-gray-900 font-serif leading-relaxed">
+                        Sorular 33-35. Aşağıdaki cümleleri (33-35) okuyunuz. Cümlelerin hangi paragraflara (A-E) ait olduğunu bulunuz. Seçilmemesi gereken İKİ paragraf bulunmaktadır.
+                      </p>
                     </div>
-                    <p className="text-xs text-gray-600">{q.text || q.question || "Hangi paragrafta yer almaktadır?"}</p>
-                  </div>
-                );
-              } else {
-                return (
-                  <div key={q.id} className="flex items-center gap-2">
-                    <label className="font-bold text-sm w-8">S{questionNumber}.</label>
-                    <Select
-                      value={answers[q.id] || ""}
-                      onValueChange={(value) => onAnswerChange(q.id, value)}
-                    >
-                      <SelectTrigger className="flex-1 bg-white border border-gray-300 rounded-md px-2 py-1 h-8 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
-                        <SelectValue placeholder="Seçiniz">
-                          {answers[q.id] ? answers[q.id] : "Seçiniz"}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent className="bg-white max-h-48 overflow-y-auto z-50">
-                        {optionList.map((opt) => (
-                          <SelectItem key={opt.variantText} value={opt.variantText} className="cursor-pointer text-sm py-1">
-                            {opt.variantText}) {opt.answer}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                );
-              }
+                  )}
+
+                  {/* Render question types */}
+                  {isParagraphQuestion ? (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-base">S{questionNumber}.</span>
+                        <div className="w-24">
+                          <Select value={(answers[q.id] || "")} onValueChange={(v) => onAnswerChange(q.id, v)}>
+                            <SelectTrigger className="h-8 text-sm bg-white cursor-pointer">
+                              <SelectValue placeholder="A-E" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white">
+                              {(optionList.length ? optionList.map(o => o.variantText) : ["A","B","C","D","E"]).map((letter) => (
+                                <SelectItem key={letter} value={String(letter)}>{String(letter)}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <p className="text-sm md:text-base font-medium text-gray-800">{q.text || q.question || "Hangi paragrafta yer almaktadır?"}</p>
+                    </>
+                  ) : (
+                    <div className="space-y-1">
+                      <div className="font-bold text-base">S{questionNumber}. <span className="font-normal">{q.text || q.question || ''}</span></div>
+                      {getQuestionOptions(q).map((opt: any) => (
+                        <div
+                          key={opt.variantText}
+                          className="flex items-center gap-3 p-2 rounded hover:bg-gray-50 cursor-pointer"
+                          onClick={() => onAnswerChange(q.id, opt.variantText)}
+                        >
+                          <div className={`w-6 h-6 rounded-full border-2 border-gray-400 flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                            answers[q.id] === opt.variantText ? 'bg-green-500 border-green-500' : 'bg-white'
+                          }`}>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold">{opt.variantText})</span>
+                            <span>{opt.answer}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
             })}
+            
           </div>
         </div>
       </div>
 
       {/* Desktop Layout - Resizable */}
       <div className="hidden lg:block">
-        <ResizablePanelGroup direction="horizontal" className="rounded-lg border border-gray-300 shadow-lg">
-          {/* Left: Passage */}
-          <ResizablePanel defaultSize={60} minSize={30} className="bg-[#fffef5]">
-            <div className="h-full p-6 overflow-visible pb-32">
+        <ResizablePanelGroup direction="horizontal" className="rounded-lg border border-gray-300 shadow-lg" style={{ height: 'calc(100vh - 200px)' }}>
+          {/* Left: Passage (fixed) */}
+          <ResizablePanel defaultSize={60} minSize={50} maxSize={70} className="bg-[#fffef5]">
+            <div className="h-full p-6 overflow-y-auto">
               <div className="space-y-4 leading-relaxed">
-                <h3 className="text-center font-bold text-lg mb-6">E-Kitaplar Okuma Tarzını Değiştiriyor mu?</h3>
                 <div className="space-y-4">
                   {paragraphs.map((para) => (
                     <div key={para.letter} className="flex items-start gap-4">
                       <span className="font-bold text-xl bg-gray-200 w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0">
                         {para.letter}
                       </span>
-                      <p className="text-sm leading-relaxed">{para.text}</p>
+                      <p className="text-lg md:text-xl leading-relaxed">{para.text}</p>
                     </div>
                   ))}
                 </div>
@@ -162,66 +237,79 @@ export default function ReadingPart5({ testData, answers, onAnswerChange }: Read
 
           <ResizableHandle withHandle={true} className="bg-gray-300 hover:bg-gray-400 transition-colors" />
 
-          {/* Right: Answers */}
-          <ResizablePanel defaultSize={45} minSize={20} className="bg-white min-h-0">
-            <div className="h-full max-h-full p-6 overflow-visible pb-32">
+          {/* Right: Answers (scrollable & resizable) */}
+          <ResizablePanel defaultSize={40} minSize={20} className="bg-white min-h-0">
+            <div className="h-full max-h-full p-6 overflow-y-auto pb-32">
+              {/* Static instruction for 30-32 (always visible at top) */}
+              <div className="bg-white p-1 mb-2">
+                <p className="text-xl font-extrabold text-gray-900 font-serif leading-relaxed">
+                  Sorular 30-32. Metne göre doğru seçeneği (A, B, C veya D) işaretleyiniz.
+                </p>
+              </div>
+              {/* S33-35 instruction will appear right before question 33 */}
+
               <div className="space-y-4 mb-8">
-                {questions.map((q: any, idx: number) => {
+                {orderedQuestions.map((q: any, idx: number) => {
                   const questionNumber = q.number || (30 + idx);
                   const isParagraphQuestion = questionNumber >= 33; // Questions 33-35 are paragraph matching
                   
-                  if (isParagraphQuestion) {
-                    return (
-                      <div key={q.id} className="space-y-2">
-                        <div className="flex items-center gap-3">
-                          <span className="font-bold text-lg">S{questionNumber}.</span>
-                          <Input 
-                            value={answers[q.id] || ''} 
-                            onChange={(e) => onAnswerChange(q.id, e.target.value)} 
-                            className="w-20 h-10 text-center text-lg font-bold" 
-                            placeholder="A-E"
-                          />
+                  return (
+                    <div key={q.id} className="space-y-2">
+                      {/* Static instruction for 33-35 (render once above S33) */}
+                      {isParagraphQuestion && questionNumber === 33 && (
+                        <div className="bg-white p-2 mb-2">
+                          <p className="text-lg md:text-xl font-extrabold text-gray-900 font-serif leading-relaxed">
+                            Sorular 33-35. Aşağıdaki cümleleri (33-35) okuyunuz. Cümlelerin hangi paragraflara (A-E) ait olduğunu bulunuz. Seçilmemesi gereken İKİ paragraf bulunmaktadır.
+                          </p>
                         </div>
-                        <p className="text-sm text-gray-600">{q.text || q.question || "Hangi paragrafta yer almaktadır?"}</p>
-                      </div>
-                    );
-                  } else {
-                    return (
-                      <div key={q.id} className="flex items-center gap-4">
-                        <label className="font-bold text-lg w-12">S{questionNumber}.</label>
-                        <Select
-                          value={answers[q.id] || ""}
-                          onValueChange={(value) => onAnswerChange(q.id, value)}
-                        >
-                          <SelectTrigger className="flex-1 bg-white border border-gray-300 rounded-md px-3 py-2 h-10 min-w-[10rem] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
-                            <SelectValue placeholder="Seçiniz">
-                              {answers[q.id] ? answers[q.id] : "Seçiniz"}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent className="bg-white max-h-64 overflow-y-auto z-50">
-                            {optionList.map((opt) => (
-                              <SelectItem key={opt.variantText} value={opt.variantText} className="cursor-pointer py-1">
-                                {opt.variantText}) {opt.answer}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    );
-                  }
+                      )}
+
+                      {isParagraphQuestion ? (
+                        <>
+                          <div className="flex items-center gap-3">
+                            <span className="font-bold text-lg">S{questionNumber}.</span>
+                            <div className="w-28">
+                              <Select value={(answers[q.id] || "")} onValueChange={(v) => onAnswerChange(q.id, v)}>
+                                <SelectTrigger className="h-10 text-lg font-bold bg-white cursor-pointer">
+                                  <SelectValue placeholder="A-E" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white">
+                                  {(optionList.length ? optionList.map(o => o.variantText) : ["A","B","C","D","E"]).map((letter) => (
+                                    <SelectItem key={letter} value={String(letter)}>{String(letter)}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          <p className="text-base md:text-lg font-medium text-gray-800">{q.text || q.question || "Hangi paragrafta yer almaktadır?"}</p>
+                        </>
+                      ) : (
+                        <div className="space-y-1">
+                          <div className="font-bold text-lg">S{questionNumber}. <span className="font-normal">{q.text || q.question || ''}</span></div>
+                          {getQuestionOptions(q).map((opt: any) => (
+                            <div
+                              key={opt.variantText}
+                              className="flex items-center gap-3 p-2 rounded hover:bg-gray-50 cursor-pointer"
+                              onClick={() => onAnswerChange(q.id, opt.variantText)}
+                            >
+                              <div className={`w-6 h-6 rounded-full border-2 border-gray-400 flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                                answers[q.id] === opt.variantText ? 'bg-green-500 border-green-500' : 'bg-white'
+                              }`}>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold">{opt.variantText})</span>
+                                <span>{opt.answer}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
                 })}
               </div>
 
-              <div className="space-y-2">
-                {optionList.map((opt) => (
-                  <div key={opt.variantText} className="flex items-center gap-3 text-lg">
-                    <div className="w-10 h-10 rounded-full border-2 border-black flex items-center justify-center font-bold bg-white">
-                      {opt.variantText}
-                    </div>
-                    <span>{opt.answer}</span>
-                  </div>
-                ))}
-              </div>
+              
             </div>
           </ResizablePanel>
         </ResizablePanelGroup>

@@ -144,7 +144,7 @@ export default function ReadingPart5({ testData, answers, onAnswerChange }: Read
             <h4 className="text-base font-bold text-gray-800 mb-3">Sorular</h4>
             {/* Static instruction for 30-32 (always visible at top) */}
             <div className="mb-4">
-              <p className="text-lg md:text-xl font-extrabold text-gray-900 font-serif leading-relaxed">
+              <p className="text-sm font-bold text-gray-800 mb-2 font-sans leading-relaxed">
                 Sorular 30-32. Metne göre doğru seçeneği (A, B, C veya D) işaretleyiniz.
               </p>
             </div>
@@ -154,12 +154,12 @@ export default function ReadingPart5({ testData, answers, onAnswerChange }: Read
               const isParagraphQuestion = questionNumber >= 33; // Questions 33-35 are paragraph matching
               
               return (
-                <div key={q.id} className="space-y-2">
+                <div key={q.id} className="bg-white rounded-lg border border-gray-200 p-3 space-y-2">
 
                   {/* Static instruction for 33-35 (render once above S33) */}
                   {isParagraphQuestion && questionNumber === 33 && (
                     <div className="mb-2">
-                      <p className="text-lg md:text-xl font-extrabold text-gray-900 font-serif leading-relaxed">
+                      <p className="text-xs font-bold text-gray-800 mb-2 font-sans leading-relaxed">
                         Sorular 33-35. Aşağıdaki cümleleri (33-35) okuyunuz. Cümlelerin hangi paragraflara (A-E) ait olduğunu bulunuz. Seçilmemesi gereken İKİ paragraf bulunmaktadır.
                       </p>
                     </div>
@@ -169,10 +169,10 @@ export default function ReadingPart5({ testData, answers, onAnswerChange }: Read
                   {isParagraphQuestion ? (
                     <>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-base">S{questionNumber}.</span>
-                        <div className="w-24">
+                        <span className="font-bold text-sm">S{questionNumber}.</span>
+                        <div className="w-20">
                           <Select value={(answers[q.id] || "")} onValueChange={(v) => onAnswerChange(q.id, v)}>
-                            <SelectTrigger className="h-8 text-sm bg-white cursor-pointer">
+                            <SelectTrigger className="h-8 text-xs bg-white cursor-pointer">
                               <SelectValue placeholder="A-E" />
                             </SelectTrigger>
                             <SelectContent className="bg-white">
@@ -183,24 +183,24 @@ export default function ReadingPart5({ testData, answers, onAnswerChange }: Read
                           </Select>
                         </div>
                       </div>
-                      <p className="text-sm md:text-base font-medium text-gray-800">{q.text || q.question || "Hangi paragrafta yer almaktadır?"}</p>
+                      <p className="text-xs font-medium text-gray-800">{q.text || q.question || "Hangi paragrafta yer almaktadır?"}</p>
                     </>
                   ) : (
                     <div className="space-y-1">
-                      <div className="font-bold text-base">S{questionNumber}. <span className="font-normal">{q.text || q.question || ''}</span></div>
+                      <div className="font-bold text-sm">S{questionNumber}. <span className="font-normal">{q.text || q.question || ''}</span></div>
                       {getQuestionOptions(q).map((opt: any) => (
                         <div
                           key={opt.variantText}
-                          className="flex items-center gap-3 p-2 rounded hover:bg-gray-50 cursor-pointer"
+                          className="flex items-center gap-2 p-2 rounded hover:bg-gray-50 cursor-pointer"
                           onClick={() => onAnswerChange(q.id, opt.variantText)}
                         >
-                          <div className={`w-6 h-6 rounded-full border-2 border-gray-400 flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                          <div className={`w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${
                             answers[q.id] === opt.variantText ? 'bg-green-500 border-green-500' : 'bg-white'
                           }`}>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold">{opt.variantText})</span>
-                            <span>{opt.answer}</span>
+                          <div className="flex items-center gap-1">
+                            <span className="font-bold text-sm">{opt.variantText})</span>
+                            <span className="text-sm font-normal">{opt.answer}</span>
                           </div>
                         </div>
                       ))}
@@ -219,9 +219,9 @@ export default function ReadingPart5({ testData, answers, onAnswerChange }: Read
         <ResizablePanelGroup direction="horizontal" className="rounded-lg border border-gray-300 shadow-lg" style={{ height: 'calc(100vh - 200px)' }}>
           {/* Left: Passage (fixed) */}
           <ResizablePanel defaultSize={60} minSize={50} maxSize={70} className="bg-[#fffef5]">
-            <div className="h-full p-6 overflow-y-auto">
-              <div className="space-y-4 leading-relaxed">
-                <div className="space-y-4">
+            <div className="h-full p-8 overflow-y-auto pb-32">
+              <div className="space-y-6 leading-relaxed">
+                <div className="space-y-6">
                   {paragraphs.map((para) => (
                     <div key={para.letter} className="flex items-start gap-4">
                       <span className="font-bold text-xl bg-gray-200 w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0">

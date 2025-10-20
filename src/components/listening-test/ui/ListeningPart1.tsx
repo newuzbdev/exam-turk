@@ -48,7 +48,6 @@ export default function ListeningPart1({ questions: externalQuestions }: { quest
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {questions.map((question) => (
             <div key={question.id} className="space-y-3">
-              <div className="font-bold text-lg">S{question.id}.</div>
               <div className="space-y-2">
                 {Object.entries(question.options).map(([letter, text]) => (
                   <label

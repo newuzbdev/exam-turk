@@ -117,10 +117,9 @@ export default function ListeningPart5() {
 
             {section.questions.map((question) => (
               <div key={question.id} className="mb-8">
-                <div className="flex items-start gap-4 mb-4">
-                  <span className="font-bold text-lg">{question.id}.</span>
+                <div className="mb-4">
                   <p className="font-bold text-lg leading-relaxed">
-                    {question.text}
+                    {question.id}. {question.text}
                   </p>
                 </div>
 

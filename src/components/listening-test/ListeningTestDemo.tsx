@@ -294,9 +294,8 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
     // MULTIPLE_CHOICE
     return (
       <div key={question.id} className="space-y-3">
-        <div className="font-bold text-lg">S{questionNumber}.</div>
         <div className="space-y-2">
-          <p className="text-lg text-gray-700 leading-relaxed">{question.text}</p>
+          <p className="text-lg text-gray-700 leading-relaxed font-bold">{question.text}.</p>
           
           {question.answers?.map((answer: any) => (
             <label

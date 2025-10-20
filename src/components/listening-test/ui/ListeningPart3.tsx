@@ -57,8 +57,7 @@ export default function ListeningPart3() {
           <div className="space-y-6">
             {questions.map((question) => (
               <div key={question.id} className="flex items-center gap-3">
-                <span className="font-bold text-lg">S{question.id}.</span>
-                <span className="text-lg">1. konuşmacı ...</span>
+                <span className="text-lg font-bold">S{question.id}. 1. konuşmacı ...</span>
                 <Select
                   value={question.selectedAnswer || ""}
                   onValueChange={(value) => handleAnswerSelect(question.id, value)}

@@ -74,8 +74,7 @@ export default function ListeningPart2() {
             key={question.id}
             className="bg-white  border-gray-300 p-4 rounded"
           >
-            <div className="font-bold text-lg">S{question.id}.</div>
-            <p className="text-lg mb-4 leading-relaxed">{question.text}</p>
+            <p className="text-lg mb-4 leading-relaxed font-bold">{question.text}</p>
 
             <div className="flex gap-6">
               <label className="flex items-center gap-2 cursor-pointer">

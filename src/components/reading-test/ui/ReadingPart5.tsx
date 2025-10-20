@@ -143,9 +143,9 @@ export default function ReadingPart5({ testData, answers, onAnswerChange }: Read
           <div className="bg-white p-4 space-y-4 pb-32">
             <h4 className="text-base font-bold text-gray-800 mb-3">Sorular</h4>
             {/* Static instruction for 30-32 (always visible at top) */}
-            <div className="mb-4">
-              <p className="text-sm font-bold text-gray-800 mb-2 font-sans leading-relaxed">
-                Sorular 30-32. Metne göre doğru seçeneği (A, B, C veya D) işaretleyiniz.
+            <div className="bg-gray-50 border-l-4 border-gray-400 p-3 mb-4 rounded-r">
+              <p className="text-sm font-bold text-gray-700 mb-2 font-sans leading-relaxed">
+                 Sorular 30-32. Metne göre doğru seçeneği (A, B, C veya D) işaretleyiniz.
               </p>
             </div>
             {/* S33-35 instruction will appear right before question 33 */}
@@ -158,9 +158,9 @@ export default function ReadingPart5({ testData, answers, onAnswerChange }: Read
 
                   {/* Static instruction for 33-35 (render once above S33) */}
                   {isParagraphQuestion && questionNumber === 33 && (
-                    <div className="mb-2">
-                      <p className="text-xs font-bold text-gray-800 mb-2 font-sans leading-relaxed">
-                        Sorular 33-35. Aşağıdaki cümleleri (33-35) okuyunuz. Cümlelerin hangi paragraflara (A-E) ait olduğunu bulunuz. Seçilmemesi gereken İKİ paragraf bulunmaktadır.
+                    <div className="bg-slate-50 border-l-4 border-slate-500 p-3 mb-3 rounded-r">
+                      <p className="text-xs font-bold text-slate-700 mb-2 font-sans leading-relaxed">
+                         Sorular 33-35. Aşağıdaki cümleleri (33-35) okuyunuz. Cümlelerin hangi paragraflara (A-E) ait olduğunu bulunuz. Seçilmemesi gereken İKİ paragraf bulunmaktadır.
                       </p>
                     </div>
                   )}
@@ -241,9 +241,9 @@ export default function ReadingPart5({ testData, answers, onAnswerChange }: Read
           <ResizablePanel defaultSize={40} minSize={20} className="bg-white min-h-0">
             <div className="h-full max-h-full p-6 overflow-y-auto pb-32">
               {/* Static instruction for 30-32 (always visible at top) */}
-              <div className="bg-white p-1 mb-2">
-                <p className="text-xl font-extrabold text-gray-900 font-serif leading-relaxed">
-                  Sorular 30-32. Metne göre doğru seçeneği (A, B, C veya D) işaretleyiniz.
+              <div className="bg-gray-50 border-l-4 border-gray-400 p-3 mb-2 rounded-r">
+                <p className="text-xl font-extrabold text-gray-700 font-serif leading-relaxed">
+                   Sorular 30-32. Metne göre doğru seçeneği (A, B, C veya D) işaretleyiniz.
                 </p>
               </div>
               {/* S33-35 instruction will appear right before question 33 */}
@@ -257,9 +257,9 @@ export default function ReadingPart5({ testData, answers, onAnswerChange }: Read
                     <div key={q.id} className="space-y-2">
                       {/* Static instruction for 33-35 (render once above S33) */}
                       {isParagraphQuestion && questionNumber === 33 && (
-                        <div className="bg-white p-2 mb-2">
-                          <p className="text-lg md:text-xl font-extrabold text-gray-900 font-serif leading-relaxed">
-                            Sorular 33-35. Aşağıdaki cümleleri (33-35) okuyunuz. Cümlelerin hangi paragraflara (A-E) ait olduğunu bulunuz. Seçilmemesi gereken İKİ paragraf bulunmaktadır.
+                        <div className="bg-slate-50 border-l-4 border-slate-500 p-3 mb-2 rounded-r">
+                          <p className="text-lg md:text-xl font-extrabold text-slate-700 font-serif leading-relaxed">
+                             Sorular 33-35. Aşağıdaki cümleleri (33-35) okuyunuz. Cümlelerin hangi paragraflara (A-E) ait olduğunu bulunuz. Seçilmemesi gereken İKİ paragraf bulunmaktadır.
                           </p>
                         </div>
                       )}

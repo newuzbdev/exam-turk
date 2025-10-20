@@ -39,9 +39,9 @@ export default function ReadingPart4({ testData, answers, onAnswerChange }: Read
             <h4 className="text-base font-bold text-gray-800 mb-3">Sorular</h4>
             
             {/* Instructions for Questions 21-24 */}
-            <div className="bg-white mb-4">
-              <p className="text-sm font-bold text-gray-800 mb-2 font-sans leading-relaxed">
-                Sorular 21-24. Metne göre doğru seçeneği (A, B, C veya D) işaretleyiniz.
+            <div className="bg-gray-50 border-l-4 border-gray-400 p-3 mb-4 rounded-r">
+              <p className="text-sm font-bold text-gray-700 mb-2 font-sans leading-relaxed">
+                 Sorular 21-24. Metne göre doğru seçeneği (A, B, C veya D) işaretleyiniz.
               </p>
             </div>
             
@@ -53,11 +53,11 @@ export default function ReadingPart4({ testData, answers, onAnswerChange }: Read
                 <div key={q.id} className="bg-white rounded-lg border border-gray-200 p-3">
                   {/* Show instructions for questions 25-29 before the first True/False question */}
                   {isTrueFalseQuestion && questionNumber === 25 && (
-                    <div className="bg-white p-2 mb-3">
-                      <p className="text-sm font-bold text-gray-800 mb-2">
-                        Sorular 25-29. Sorulardaki cümleler metne göre DOĞRU, YANLIŞ ya da VERİLMEMİŞ olabilir. İlgili seçeneği işaretleyiniz.
+                    <div className="bg-slate-50 border-l-4 border-slate-500 p-3 mb-3 rounded-r">
+                      <p className="text-sm font-bold text-slate-700 mb-2">
+                         Sorular 25-29. Sorulardaki cümleler metne göre DOĞRU, YANLIŞ ya da VERİLMEMİŞ olabilir. İlgili seçeneği işaretleyiniz.
                       </p>
-                      <div className="text-xs text-gray-700 space-y-1 font-sans">
+                      <div className="text-xs text-slate-600 space-y-1 font-sans">
                         <p><span className="font-bold">DOĞRU</span> – cümle, metindeki bilgilerle uygun ve/veya tutarlıysa,</p>
                         <p><span className="font-bold">YANLIŞ</span> – cümle, metindeki bilgilerle tutarsız ve/veya çelişkiliyse,</p>
                         <p><span className="font-bold">VERİLMEMİŞ</span> – cümle, metindeki bilgilerde yer almıyor ve/veya belirtilmemişse.</p>
@@ -110,9 +110,9 @@ export default function ReadingPart4({ testData, answers, onAnswerChange }: Read
           <ResizablePanel defaultSize={40} minSize={30} maxSize={50} className="bg-white min-h-0">
             <div className="h-full p-6 overflow-y-auto pb-32">
               {/* Instructions for Questions 21-24 */}
-              <div className="bg-white p-1 mb-2">
-                <p className="text-lg font-bold text-gray-800 mb-2 font-sans leading-relaxed">
-                  Sorular 21-24. Metne göre doğru seçeneği (A, B, C veya D) işaretleyiniz.
+              <div className="bg-gray-50 border-l-4 border-gray-400 p-3 mb-2 rounded-r">
+                <p className="text-lg font-bold text-gray-700 mb-2 font-sans leading-relaxed">
+                   Sorular 21-24. Metne göre doğru seçeneği (A, B, C veya D) işaretleyiniz.
                 </p>
               </div>
               
@@ -125,11 +125,11 @@ export default function ReadingPart4({ testData, answers, onAnswerChange }: Read
                     <div key={q.id}>
                       {/* Show instructions for questions 25-29 before the first True/False question */}
                       {isTrueFalseQuestion && questionNumber === 25 && (
-                        <div className="bg-white p-4 mb-4">
-                          <p className="text-lg font-bold text-gray-800 mb-3 font-sans">
-                            Sorular 25-29. Sorulardaki cümleler metne göre DOĞRU, YANLIŞ ya da VERİLMEMİŞ olabilir. İlgili seçeneği işaretleyiniz.
+                        <div className="bg-slate-50 border-l-4 border-slate-500 p-4 mb-4 rounded-r">
+                          <p className="text-lg font-bold text-slate-700 mb-3 font-sans">
+                             Sorular 25-29. Sorulardaki cümleler metne göre DOĞRU, YANLIŞ ya da VERİLMEMİŞ olabilir. İlgili seçeneği işaretleyiniz.
                           </p>
-                          <div className="text-base text-gray-700 space-y-1 font-sans">
+                          <div className="text-base text-slate-600 space-y-1 font-sans">
                             <p><span className="font-bold">DOĞRU</span> – cümle, metindeki bilgilerle uygun ve/veya tutarlıysa,</p>
                             <p><span className="font-bold">YANLIŞ</span> – cümle, metindeki bilgilerle tutarsız ve/veya çelişkiliyse,</p>
                             <p><span className="font-bold">VERİLMEMİŞ</span> – cümle, metindeki bilgilerde yer almıyor ve/veya belirtilmemişse.</p>

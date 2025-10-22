@@ -356,9 +356,7 @@ export default function OverallResults() {
           <div className="mb-8">
             <h1 className="text-lg font-semibold text-foreground">
               Writing overall score: {scores.overall}{" "}
-              <span className="text-gray-600">
-                (Part 1 score: {scores.part1} | Part 2 score: {scores.part2})
-              </span>
+            
             </h1>
           </div>
 

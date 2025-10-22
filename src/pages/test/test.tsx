@@ -178,9 +178,7 @@ const TestPage = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-100 via-gray-50 to-blue-50 p-6">
       <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Test Merkezi</h1>
-        </div>
+        
 
         {/* Test Cards with Modal */}
         <div>

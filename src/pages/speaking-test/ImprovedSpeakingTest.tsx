@@ -1360,42 +1360,171 @@ export default function ImprovedSpeakingTest() {
       {/* <DisableKeys /> */}
       
       {/* Header with section indicators */}
-      <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
-        <div className="bg-red-600 text-white px-3 py-1 rounded font-bold text-lg">
-          TURKISHMOCK
+      <div className="bg-white border-b border-gray-200 px-3 sm:px-6 py-3">
+        {/* Mobile Layout */}
+        <div className="block sm:hidden">
+          {/* Top row - TURKISHMOCK and Speaking */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="bg-red-600 text-white px-3 py-1.5 rounded font-bold text-sm">
+              TURKISHMOCK
+            </div>
+            <div className="font-bold text-lg text-gray-800">Speaking</div>
+          </div>
+          
+          {/* Progress indicator */}
+          <div className="mb-3">
+            <div className="text-sm text-gray-500 text-center mb-3">
+              Test Bölümleri
+            </div>
+            <div className="flex gap-2 justify-center">
+              {/* Section 1.1 */}
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
+                currentSectionIndex === 0 && currentSubPartIndex === 0
+                  ? "bg-green-600 text-white shadow-lg"
+                  : currentSectionIndex > 0 || (currentSectionIndex === 0 && currentSubPartIndex > 0)
+                  ? "bg-green-100 text-green-700 border-2 border-green-300"
+                  : "bg-gray-200 text-gray-600"
+              }`}>
+                1.1
+              </div>
+              
+              {/* Connector line */}
+              <div className={`w-6 h-0.5 mt-5 ${
+                currentSectionIndex > 0 || (currentSectionIndex === 0 && currentSubPartIndex > 0)
+                  ? "bg-green-300"
+                  : "bg-gray-300"
+              }`}></div>
+              
+              {/* Section 1.2 */}
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
+                currentSectionIndex === 0 && currentSubPartIndex === 1
+                  ? "bg-green-600 text-white shadow-lg"
+                  : currentSectionIndex > 0
+                  ? "bg-green-100 text-green-700 border-2 border-green-300"
+                  : "bg-gray-200 text-gray-600"
+              }`}>
+                1.2
+              </div>
+              
+              {/* Connector line */}
+              <div className={`w-6 h-0.5 mt-5 ${
+                currentSectionIndex > 0
+                  ? "bg-green-300"
+                  : "bg-gray-300"
+              }`}></div>
+              
+              {/* Section 2 */}
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
+                currentSectionIndex === 1
+                  ? "bg-green-600 text-white shadow-lg"
+                  : currentSectionIndex > 1
+                  ? "bg-green-100 text-green-700 border-2 border-green-300"
+                  : "bg-gray-200 text-gray-600"
+              }`}>
+                2
+              </div>
+              
+              {/* Connector line */}
+              <div className={`w-6 h-0.5 mt-5 ${
+                currentSectionIndex > 1
+                  ? "bg-green-300"
+                  : "bg-gray-300"
+              }`}></div>
+              
+              {/* Section 3 */}
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
+                currentSectionIndex === 2
+                  ? "bg-green-600 text-white shadow-lg"
+                  : "bg-gray-200 text-gray-600"
+              }`}>
+                3
+              </div>
+            </div>
+          </div>
+          
+          {/* Current section indicator */}
+          <div className="text-center">
+            <div className="text-xs text-gray-500">
+              {currentSectionIndex === 0 && currentSubPartIndex === 0 && "Bölüm 1.1 - Tanışma"}
+              {currentSectionIndex === 0 && currentSubPartIndex === 1 && "Bölüm 1.2 - Resim Açıklama"}
+              {currentSectionIndex === 1 && "Bölüm 2 - Uzun Konuşma"}
+              {currentSectionIndex === 2 && "Bölüm 3 - Tartışma"}
+            </div>
+          </div>
         </div>
-        <div className="font-bold text-2xl">Speaking</div>
-        <div className="flex items-center gap-4">
-          <div className="flex gap-2">
+
+        {/* Desktop Layout */}
+        <div className="hidden sm:flex items-center justify-between relative">
+          <div className="bg-red-600 text-white px-4 py-2 rounded font-bold text-lg">
+            TURKISHMOCK
+          </div>
+          
+          {/* Centered Speaking text */}
+          <div className="absolute left-1/2 transform -translate-x-1/2 font-bold text-2xl text-gray-800">
+            Speaking
+          </div>
+          
+          {/* Progress indicator - Right side */}
+          <div className="flex items-center gap-3">
             {/* Section 1.1 */}
-            <div className={`px-3 py-1 rounded font-bold text-sm ${
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
               currentSectionIndex === 0 && currentSubPartIndex === 0
-                ? "bg-green-600 text-white"
-                : "bg-gray-200 text-gray-700"
+                ? "bg-green-600 text-white shadow-lg"
+                : currentSectionIndex > 0 || (currentSectionIndex === 0 && currentSubPartIndex > 0)
+                ? "bg-green-100 text-green-700 border-2 border-green-300"
+                : "bg-gray-200 text-gray-600"
             }`}>
               1.1
             </div>
+            
+            {/* Connector line */}
+            <div className={`w-6 h-0.5 ${
+              currentSectionIndex > 0 || (currentSectionIndex === 0 && currentSubPartIndex > 0)
+                ? "bg-green-300"
+                : "bg-gray-300"
+            }`}></div>
+            
             {/* Section 1.2 */}
-            <div className={`px-3 py-1 rounded font-bold text-sm ${
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
               currentSectionIndex === 0 && currentSubPartIndex === 1
-                ? "bg-green-600 text-white"
-                : "bg-gray-200 text-gray-700"
+                ? "bg-green-600 text-white shadow-lg"
+                : currentSectionIndex > 0
+                ? "bg-green-100 text-green-700 border-2 border-green-300"
+                : "bg-gray-200 text-gray-600"
             }`}>
               1.2
             </div>
+            
+            {/* Connector line */}
+            <div className={`w-6 h-0.5 ${
+              currentSectionIndex > 0
+                ? "bg-green-300"
+                : "bg-gray-300"
+            }`}></div>
+            
             {/* Section 2 */}
-            <div className={`px-3 py-1 rounded font-bold text-sm ${
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
               currentSectionIndex === 1
-                ? "bg-green-600 text-white"
-                : "bg-gray-200 text-gray-700"
+                ? "bg-green-600 text-white shadow-lg"
+                : currentSectionIndex > 1
+                ? "bg-green-100 text-green-700 border-2 border-green-300"
+                : "bg-gray-200 text-gray-600"
             }`}>
               2
             </div>
+            
+            {/* Connector line */}
+            <div className={`w-6 h-0.5 ${
+              currentSectionIndex > 1
+                ? "bg-green-300"
+                : "bg-gray-300"
+            }`}></div>
+            
             {/* Section 3 */}
-            <div className={`px-3 py-1 rounded font-bold text-sm ${
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
               currentSectionIndex === 2
-                ? "bg-green-600 text-white"
-                : "bg-gray-200 text-gray-700"
+                ? "bg-green-600 text-white shadow-lg"
+                : "bg-gray-200 text-gray-600"
             }`}>
               3
             </div>

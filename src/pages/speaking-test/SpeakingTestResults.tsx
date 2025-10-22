@@ -52,7 +52,7 @@ export default function SpeakingTestResults() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading results...</p>
+          <p className="mt-4 text-gray-600">Sonuçlar yükleniyor...</p>
         </div>
       </div>
     );
@@ -62,9 +62,9 @@ export default function SpeakingTestResults() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600">Result not found</p>
+          <p className="text-gray-600">Sonuç bulunamadı</p>
           <Button onClick={() => navigate("/test")} className="mt-4">
-            Back to Tests
+            Testlere Dön
           </Button>
         </div>
       </div>
@@ -86,8 +86,8 @@ export default function SpeakingTestResults() {
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <div>
-                <h1 className="text-2xl font-bold text-black">Speaking Test Results</h1>
-                <p className="text-gray-600">IELTS Assessment Complete</p>
+                <h1 className="text-2xl font-bold text-black">Konuşma Testi Sonuçları</h1>
+                <p className="text-gray-600">IELTS Değerlendirmesi Tamamlandı</p>
               </div>
             </div>
 
@@ -95,7 +95,7 @@ export default function SpeakingTestResults() {
               <div className="text-3xl font-black text-red-500">
                 {result.score ?? "N/A"}
               </div>
-              <div className="text-sm text-gray-600">Band Score</div>
+              <div className="text-sm text-gray-600">Bant Puanı</div>
             </div>
           </div>
         </div>
@@ -110,13 +110,13 @@ export default function SpeakingTestResults() {
               {result.score ?? "N/A"}
             </span>
           </div>
-          <h2 className="text-3xl font-bold text-black mb-2">Test Completed!</h2>
-          <p className="text-gray-600 text-lg mb-6">Your IELTS Speaking Assessment Results</p>
+          <h2 className="text-3xl font-bold text-black mb-2">Test Tamamlandı!</h2>
+          <p className="text-gray-600 text-lg mb-6">IELTS Konuşma Değerlendirmesi Sonuçlarınız</p>
 
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div className="bg-gray-50 rounded-2xl p-4">
               <div className="text-2xl font-bold text-black mb-1">{result.score ?? "N/A"}</div>
-              <div className="text-sm text-gray-600">Band Score</div>
+              <div className="text-sm text-gray-600">Bant Puanı</div>
             </div>
             <div className="bg-gray-50 rounded-2xl p-4">
               <div className="text-2xl font-bold text-black mb-1">4</div>
@@ -145,8 +145,8 @@ export default function SpeakingTestResults() {
                   <FileText className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-black">Task Achievement</h3>
-                  <p className="text-sm text-gray-600">How well you addressed the task</p>
+                  <h3 className="font-bold text-black">Görev Başarısı</h3>
+                  <p className="text-sm text-gray-600">Görevi ne kadar iyi ele aldığınız</p>
                 </div>
               </div>
               <p className="text-gray-700 leading-relaxed">
@@ -161,7 +161,7 @@ export default function SpeakingTestResults() {
                   <span className="text-white font-bold">CC</span>
                 </div>
                 <div>
-                  <h3 className="font-bold text-black">Coherence & Cohesion</h3>
+                  <h3 className="font-bold text-black">Tutarlılık ve Bağlılık</h3>
                   <p className="text-sm text-gray-600">Structure and flow of your speaking</p>
                 </div>
               </div>

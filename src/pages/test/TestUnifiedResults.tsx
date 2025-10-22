@@ -16,29 +16,29 @@ export default function TestUnifiedResults() {
       <div className="max-w-4xl mx-auto px-4">
         <Card className="p-8">
           <CardHeader>
-            <CardTitle className="text-2xl font-bold text-center">Test Unified Results Page</CardTitle>
+            <CardTitle className="text-2xl font-bold text-center">Test Birleşik Sonuçlar Sayfası</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="text-center">
               <p className="text-gray-600 mb-4">
-                This page allows you to test the unified results page with tabs for all test types.
+                Bu sayfa, tüm test türleri için sekmelerle birleşik sonuçlar sayfasını test etmenizi sağlar.
               </p>
               <p className="text-sm text-gray-500 mb-6">
-                Note: This is a demo page. In a real scenario, you would navigate here from completed test results.
+                Not: Bu bir demo sayfasıdır. Gerçek senaryoda, tamamlanan test sonuçlarından buraya yönlendirilirsiniz.
               </p>
             </div>
 
             <div className="flex flex-col items-center space-y-4">
               <div className="w-full max-w-md">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Test ID (for demo purposes):
+                  Test ID (demo amaçlı):
                 </label>
                 <input
                   type="text"
                   value={testId}
                   onChange={(e) => setTestId(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                  placeholder="Enter test ID"
+                  placeholder="Test ID girin"
                 />
               </div>
 
@@ -46,18 +46,18 @@ export default function TestUnifiedResults() {
                 onClick={handleTestUnifiedResults}
                 className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 text-lg"
               >
-                View Unified Results
+                Birleşik Sonuçları Görüntüle
               </Button>
             </div>
 
             <div className="mt-8 p-4 bg-blue-50 rounded-lg">
-              <h3 className="font-semibold text-blue-900 mb-2">Features:</h3>
+              <h3 className="font-semibold text-blue-900 mb-2">Özellikler:</h3>
               <ul className="text-sm text-blue-800 space-y-1">
-                <li>• 4 tabs for Listening, Reading, Writing, and Speaking</li>
-                <li>• Each tab shows the respective test results</li>
-                <li>• Score badges on tab labels</li>
-                <li>• Responsive design for mobile and desktop</li>
-                <li>• Consistent UI across all test types</li>
+                <li>• Dinleme, Okuma, Yazma ve Konuşma için 4 sekme</li>
+                <li>• Her sekme ilgili test sonuçlarını gösterir</li>
+                <li>• Sekme etiketlerinde puan rozetleri</li>
+                <li>• Mobil ve masaüstü için duyarlı tasarım</li>
+                <li>• Tüm test türlerinde tutarlı UI</li>
               </ul>
             </div>
 
@@ -67,7 +67,7 @@ export default function TestUnifiedResults() {
                 onClick={() => navigate("/test")}
                 className="px-6"
               >
-                Back to Tests
+                Testlere Dön
               </Button>
             </div>
           </CardContent>

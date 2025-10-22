@@ -56,7 +56,7 @@ export default function WritingTestResults() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading results...</p>
+          <p className="mt-4 text-gray-600">Sonuçlar yükleniyor...</p>
         </div>
       </div>
     );
@@ -66,9 +66,9 @@ export default function WritingTestResults() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600">Result not found</p>
+          <p className="text-gray-600">Sonuç bulunamadı</p>
           <Button onClick={() => navigate("/test")} className="mt-4">
-            Back to Tests
+            Testlere Dön
           </Button>
         </div>
       </div>
@@ -109,17 +109,17 @@ export default function WritingTestResults() {
       const answerIndex = activeTask1Part === "part1" ? 0 : 1;
       const currentAnswer = task1Answers[answerIndex];
       return {
-        question: currentAnswer?.questionText || `Task 1 ${activeTask1Part === "part1" ? "Part 1" : "Part 2"} Question`,
-        answer: currentAnswer?.userAnswer || "No answer provided",
-        comment: writingData?.aiFeedback?.taskAchievement || `Task 1 ${activeTask1Part === "part1" ? "Part 1" : "Part 2"} feedback will be shown here`
+        question: currentAnswer?.questionText || `Görev 1 ${activeTask1Part === "part1" ? "Bölüm 1" : "Bölüm 2"} Sorusu`,
+        answer: currentAnswer?.userAnswer || "Cevap verilmedi",
+        comment: writingData?.aiFeedback?.taskAchievement || `Görev 1 ${activeTask1Part === "part1" ? "Bölüm 1" : "Bölüm 2"} geri bildirimi burada gösterilecek`
       };
     } else {
       // For Task 2, show the first Task 2 answer
       const firstTask2Answer = task2Answers[0];
       return {
-        question: firstTask2Answer?.questionText || "Task 2 Question",
-        answer: firstTask2Answer?.userAnswer || "No answer provided",
-        comment: writingData?.aiFeedback?.taskAchievement || "Task 2 feedback will be shown here"
+        question: firstTask2Answer?.questionText || "Görev 2 Sorusu",
+        answer: firstTask2Answer?.userAnswer || "Cevap verilmedi",
+        comment: writingData?.aiFeedback?.taskAchievement || "Görev 2 geri bildirimi burada gösterilecek"
       };
     }
   };
@@ -154,7 +154,7 @@ export default function WritingTestResults() {
               </div>
               <div className="text-right">
                 <div className="text-4xl font-bold text-red-600">{scores.overall}</div>
-                <div className="text-sm text-gray-500">9 üzerinden</div>
+                <div className="text-sm text-gray-500">75 üzerinden</div>
               </div>
             </div>
           </div>
@@ -195,7 +195,7 @@ export default function WritingTestResults() {
               <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
             </div>
             <p className="text-sm text-gray-600 leading-relaxed">
-              {writingData?.aiFeedback?.taskAchievement || "No feedback available"}
+              {writingData?.aiFeedback?.taskAchievement || "Geri bildirim mevcut değil"}
             </p>
           </div>
         </div>

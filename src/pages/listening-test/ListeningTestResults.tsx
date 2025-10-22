@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useLocation, useParams } from "react-router-dom";
 import { listeningSubmissionService, listeningTestService, type ListeningTestItem, type TestResultData } from "@/services/listeningTest.service";
 
-export default function ListeningResultPage() {
+export default function ListeningResultsPage() {
   const { resultId } = useParams<{ resultId: string }>();
   const [data, setData] = useState<TestResultData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -25,7 +25,7 @@ export default function ListeningResultPage() {
       setLoading(true);
       try {
         const res = await listeningSubmissionService.getExamResults(resultId);
-        console.log("Results fetched:", res);
+        console.log("Sonuçs fetched:", res);
         setData(res);
         // Try to fetch full test to render all questions
         if (res?.testId) {
@@ -56,35 +56,35 @@ export default function ListeningResultPage() {
   };
 
   // Transform data to match the table format
-  const examData = data?.userAnswers?.map((ua, index) => {
-    const correctAnswer = ua.question.answers.find(a => a.correct);
+  const examData = data?.userAnswers?.map((ua: any, index: number) => {
+    const doğruAnswer = ua.question.answers.find((a: any) => a.correct);
     return {
       no: index + 1,
-      userAnswer: ua.userAnswer || "Not selected",
-      correctAnswer: correctAnswer?.variantText || correctAnswer?.answer || "",
-      result: ua.isCorrect ? "Correct" : "Wrong"
+      userAnswer: ua.userAnswer || "Seçilmedi",
+      doğruAnswer: doğruAnswer?.variantText || doğruAnswer?.answer || "",
+      result: ua.isCorrect ? "Doğru" : "Yanlış"
     };
   }) || [];
 
-  // Build full results using original test structure to show unanswered as Not selected
+  // Build full results using original test structure to show unanswered as Seçilmedi
   const fullExamData = useMemo(() => {
     if (!testData) return null;
     const userAnswerByQ: Record<string, { userAnswer?: string; isCorrect?: boolean }> = {};
-    (data?.userAnswers || []).forEach(ua => {
+    (data?.userAnswers || []).forEach((ua: any) => {
       userAnswerByQ[ua.questionId] = { userAnswer: ua.userAnswer, isCorrect: ua.isCorrect };
     });
-    const rows: { no: number; userAnswer: string; correctAnswer: string; result: string }[] = [];
+    const rows: { no: number; userAnswer: string; doğruAnswer: string; result: string }[] = [];
     let counter = 1;
     (testData.parts || []).forEach(p => {
       (p.sections || []).forEach(s => {
         (s.questions || []).forEach(q => {
           const ua = userAnswerByQ[q.id] || {};
-          const correct = (q.answers || []).find(a => a.correct);
+          const doğru = (q.answers || []).find((a: any) => a.correct);
           rows.push({
             no: counter++,
-            userAnswer: ua.userAnswer || "Not selected",
-            correctAnswer: (correct?.variantText || correct?.answer || "") as string,
-            result: ua.userAnswer ? (ua.isCorrect ? "Correct" : "Wrong") : "Not selected",
+            userAnswer: ua.userAnswer || "Seçilmedi",
+            doğruAnswer: (doğru?.variantText || doğru?.answer || "") as string,
+            result: ua.userAnswer ? (ua.isCorrect ? "Doğru" : "Yanlış") : "Seçilmedi",
           });
         });
       });
@@ -97,9 +97,9 @@ export default function ListeningResultPage() {
   const hasSummaryData = summary && summary.score !== undefined;
 
   const score = summary?.score ?? data?.score ?? 0;
-  const computedCorrectFromFull = useMemo(() => {
-    if (fullExamData) return fullExamData.filter(r => r.result === "Correct").length;
-    if (hasDetailedData) return (data!.userAnswers || []).filter(u => u.isCorrect).length;
+  const computedDoğruFromFull = useMemo(() => {
+    if (fullExamData) return fullExamData.filter(r => r.result === "Doğru").length;
+    if (hasDetailedData) return (data!.userAnswers || []).filter((u: any) => u.isCorrect).length;
     return undefined;
   }, [fullExamData, hasDetailedData, data]);
   const computedTotalFromFull = useMemo(() => {
@@ -107,20 +107,20 @@ export default function ListeningResultPage() {
     if (hasDetailedData) return (data!.userAnswers || []).length;
     return undefined;
   }, [fullExamData, hasDetailedData, data]);
-  const correctCount = summary?.correctCount ?? computedCorrectFromFull;
+  const doğruCount = summary?.doğruCount ?? computedDoğruFromFull;
   const totalQuestions = summary?.totalQuestions ?? computedTotalFromFull;
   const userName = "JAXONGIRMIRZO"; // You can get this from user context or API
   const currentDate = new Date().toISOString().replace('T', ' ').substring(0, 19) + " GMT+5";
 
   // Debug logging
-  console.log("Results page state:", { resultId, data, summary, loading });
+  console.log("Sonuçs page state:", { resultId, data, summary, loading });
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading results...</p>
+          <p className="text-muted-foreground">Sonuçlar yükleniyor...</p>
         </div>
       </div>
     );
@@ -131,22 +131,22 @@ export default function ListeningResultPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">Results Not Found</h2>
+          <h2 className="text-2xl font-bold text-red-600 mb-4">Sonuçlar Bulunamadı</h2>
           <p className="text-muted-foreground mb-4">
-            Unable to load test results. Please check the result ID and try again.
+            Test sonuçları yüklenemedi. Lütfen sonuç ID'sini kontrol edin ve tekrar deneyin.
           </p>
           <div className="flex items-center gap-3">
             <Input
               value={reportId}
               onChange={(e) => setReportId(e.target.value)}
               className="w-48"
-              placeholder="Enter report ID"
+              placeholder="Rapor ID girin"
             />
             <Button 
               onClick={handleGetReport}
               className="bg-red-600 hover:bg-red-700 text-white px-6"
             >
-              Get Report
+              Raporu Al
             </Button>
           </div>
         </div>
@@ -160,14 +160,14 @@ export default function ListeningResultPage() {
       <div className="max-w-6xl mx-auto space-y-5 p-4 sm:p-6">
         {/* Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h1 className="text-xl sm:text-3xl font-bold text-foreground">Exam results</h1>
+          <h1 className="text-xl sm:text-3xl font-bold text-foreground">Sınav Sonuçları</h1>
           <div className="w-full sm:w-auto">
             <div className="flex items-center gap-2">
               <Input
                 value={reportId}
                 onChange={(e) => setReportId(e.target.value)}
                 className="flex-1 sm:flex-none sm:w-64 h-9"
-                placeholder="Enter report ID"
+                placeholder="Rapor ID girin"
               />
               <Button 
                 onClick={handleGetReport}
@@ -202,16 +202,16 @@ export default function ListeningResultPage() {
 
         {/* Listening Score */}
         <div className="mb-6">
-        <h2 className="text-xl font-semibold text-foreground">Listening score: {score}
-          {typeof correctCount === "number" && typeof totalQuestions === "number" && (
+        <h2 className="text-xl font-semibold text-foreground">Dinleme Puanı: {score}
+          {typeof doğruCount === "number" && typeof totalQuestions === "number" && (
             <span className="ml-3 text-base text-muted-foreground">(
-              {correctCount} / {totalQuestions} correct
+              {doğruCount} / {totalQuestions} doğru
             )</span>
           )}
         </h2>
         </div>
 
-        {/* Prefer full table using original test structure to include Not selected rows */}
+        {/* Prefer full table using original test structure to include Seçilmedi rows */}
         {fullExamData ? (
           <Card className="overflow-hidden rounded-lg border border-gray-200">
             <CardContent className="p-0">
@@ -220,9 +220,9 @@ export default function ListeningResultPage() {
                   <thead>
                     <tr className="bg-green-600 text-white">
                       <th className="px-4 py-3 text-left font-medium rounded-tl-lg">No.</th>
-                      <th className="px-4 py-3 text-left font-medium">User Answer</th>
-                      <th className="px-4 py-3 text-left font-medium">Correct Answer</th>
-                      <th className="px-4 py-3 text-left font-medium rounded-tr-lg">Result</th>
+                      <th className="px-4 py-3 text-left font-medium">Kullanıcı Cevabı</th>
+                      <th className="px-4 py-3 text-left font-medium">Doğru Cevap</th>
+                      <th className="px-4 py-3 text-left font-medium rounded-tr-lg">Sonuç</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -232,13 +232,13 @@ export default function ListeningResultPage() {
                         className={`border-b border-gray-200 last:border-b-0 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
                       >
                         <td className="px-4 py-3 text-gray-700 font-medium">{item.no}</td>
-                        <td className="px-4 py-3 text-gray-600">{item.userAnswer || "Not selected"}</td>
-                        <td className="px-4 py-3 text-gray-800 font-medium">{item.correctAnswer}</td>
+                        <td className="px-4 py-3 text-gray-600">{item.userAnswer || "Seçilmedi"}</td>
+                        <td className="px-4 py-3 text-gray-800 font-medium">{item.doğruAnswer}</td>
                         <td className="px-4 py-3">
                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            item.result === "Correct" 
+                            item.result === "Doğru" 
                               ? "bg-green-100 text-green-800" 
-                              : item.result === "Wrong" 
+                              : item.result === "Yanlış" 
                                 ? "bg-red-100 text-red-800"
                                 : "bg-gray-100 text-gray-700"
                           }`}>
@@ -256,15 +256,15 @@ export default function ListeningResultPage() {
           <Card className="overflow-hidden rounded-lg border border-gray-200">
             <CardContent className="p-6">
               <div className="text-center">
-                <h3 className="text-lg font-semibold text-foreground mb-2">Test Completed Successfully</h3>
+                <h3 className="text-lg font-semibold text-foreground mb-2">Test Başarıyla Tamamlandı</h3>
                 <p className="text-muted-foreground mb-4">
-                  Your test has been submitted and scored. Detailed question-by-question results are being processed.
+                  Testiniz gönderildi ve puanlandı. Soru bazında detaylı sonuçlar işleniyor.
                 </p>
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <p className="text-green-800 font-medium">Score: {score}</p>
+                  <p className="text-green-800 font-medium">Puan: {score}</p>
                   {summary?.totalQuestions && (
                     <p className="text-green-700 text-sm mt-1">
-                      Total Questions: {summary.totalQuestions}
+                      Toplam Soru: {summary.totalQuestions}
                     </p>
                   )}
                 </div>
@@ -280,13 +280,13 @@ export default function ListeningResultPage() {
     <div className="max-w-6xl mx-auto space-y-6 p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-foreground">Exam results</h1>
+        <h1 className="text-3xl font-bold text-foreground">Sınav Sonuçları</h1>
         <div className="flex items-center gap-3">
           <Input
             value={reportId}
             onChange={(e) => setReportId(e.target.value)}
             className="w-48"
-            placeholder="Enter report ID"
+            placeholder="Rapor ID girin"
           />
           <Button 
             onClick={handleGetReport}
@@ -308,16 +308,16 @@ export default function ListeningResultPage() {
 
       {/* Listening Score */}
       <div className="mb-6">
-        <h2 className="text-xl font-semibold text-foreground">Listening score: {score}
-          {typeof correctCount === "number" && typeof totalQuestions === "number" && (
+        <h2 className="text-xl font-semibold text-foreground">Dinleme Puanı: {score}
+          {typeof doğruCount === "number" && typeof totalQuestions === "number" && (
             <span className="ml-3 text-base text-muted-foreground">(
-              {correctCount} / {totalQuestions} correct
+              {doğruCount} / {totalQuestions} doğru
             )</span>
           )}
         </h2>
       </div>
 
-      {/* Results Table */}
+      {/* Sonuçs Table */}
       <Card className="overflow-hidden rounded-lg border border-gray-200">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -325,25 +325,25 @@ export default function ListeningResultPage() {
               <thead>
                 <tr className="bg-green-600 text-white">
                   <th className="px-4 py-3 text-left font-medium rounded-tl-lg">No.</th>
-                  <th className="px-4 py-3 text-left font-medium">User Answer</th>
-                  <th className="px-4 py-3 text-left font-medium">Correct Answer</th>
-                  <th className="px-4 py-3 text-left font-medium rounded-tr-lg">Result</th>
+                  <th className="px-4 py-3 text-left font-medium">Kullanıcı Cevabı</th>
+                  <th className="px-4 py-3 text-left font-medium">Doğru Cevap</th>
+                  <th className="px-4 py-3 text-left font-medium rounded-tr-lg">Sonuç</th>
                 </tr>
               </thead>
               <tbody>
-                {(fullExamData || examData).map((item, index) => (
+                {(fullExamData || examData).map((item: any, index: number) => (
                   <tr
                     key={item.no}
                     className={`border-b border-gray-200 last:border-b-0 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
                   >
                     <td className="px-4 py-3 text-gray-700 font-medium">{item.no}</td>
-                    <td className="px-4 py-3 text-gray-600">{item.userAnswer || "Not selected"}</td>
-                    <td className="px-4 py-3 text-gray-800 font-medium">{item.correctAnswer}</td>
+                    <td className="px-4 py-3 text-gray-600">{item.userAnswer || "Seçilmedi"}</td>
+                    <td className="px-4 py-3 text-gray-800 font-medium">{item.doğruAnswer}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        item.result === "Correct" 
+                        item.result === "Doğru" 
                           ? "bg-green-100 text-green-800" 
-                          : item.result === "Wrong" 
+                          : item.result === "Yanlış" 
                             ? "bg-red-100 text-red-800"
                             : "bg-gray-100 text-gray-700"
                       }`}>

@@ -50,13 +50,13 @@ export default function ReadingTestResults() {
     setLoading(false);
   };
 
-  const examData = data?.userAnswers?.map((ua, index) => {
-    const correctAnswer = ua.question.answers.find(a => a.correct);
+  const examData = data?.userAnswers?.map((ua: any, index: number) => {
+    const doğruAnswer = ua.question.answers.find((a: any) => a.correct);
     return {
       no: index + 1,
-      userAnswer: ua.userAnswer || "Not selected",
-      correctAnswer: correctAnswer?.variantText || correctAnswer?.answer || "",
-      result: ua.isCorrect ? "Correct" : "Wrong"
+      userAnswer: ua.userAnswer || "Seçilmedi",
+      doğruAnswer: doğruAnswer?.variantText || doğruAnswer?.answer || "",
+      result: ua.isCorrect ? "Doğru" : "Yanlış"
     };
   }) || [];
 
@@ -66,7 +66,7 @@ export default function ReadingTestResults() {
     const byNumber: Record<number, { userAnswer?: string; isCorrect?: boolean }> = {};
     const byText: Record<string, { userAnswer?: string; isCorrect?: boolean }> = {};
     const detailed = (data?.userAnswers || []);
-    detailed.forEach(ua => {
+    detailed.forEach((ua: any) => {
       if (ua?.questionId) byId[ua.questionId] = { userAnswer: ua.userAnswer, isCorrect: ua.isCorrect };
       const num = ua?.question?.number;
       if (typeof num === 'number') byNumber[num] = { userAnswer: ua.userAnswer, isCorrect: ua.isCorrect };
@@ -84,12 +84,12 @@ export default function ReadingTestResults() {
       return 0;
     });
 
-    const rows: { no: number; userAnswer: string; correctAnswer: string; result: string; _qid?: string }[] = [];
+    const rows: { no: number; userAnswer: string; doğruAnswer: string; result: string; _qid?: string }[] = [];
     const usedDetailed = new Set<number>();
 
     for (let i = 0; i < flatQuestions.length; i++) {
       const q = flatQuestions[i];
-      const correct = (q.answers || []).find((a: any) => a.correct);
+      const doğru = (q.answers || []).find((a: any) => a.doğru);
       let ua = byId[q.id];
       if (!ua && typeof q.number === 'number') ua = byNumber[q.number];
       if (!ua) {
@@ -103,12 +103,12 @@ export default function ReadingTestResults() {
           usedDetailed.add(i);
         }
       }
-      const userAnswer = ua?.userAnswer || "Not selected";
-      const result = ua?.userAnswer ? (ua?.isCorrect ? "Correct" : "Wrong") : "Not selected";
+      const userAnswer = ua?.userAnswer || "Seçilmedi";
+      const result = ua?.userAnswer ? (ua?.isCorrect ? "Doğru" : "Yanlış") : "Seçilmedi";
       rows.push({
         no: (typeof q.number === 'number' ? q.number : (i + 1)),
         userAnswer,
-        correctAnswer: String(correct?.variantText || correct?.answer || ""),
+        doğruAnswer: String(doğru?.variantText || doğru?.answer || ""),
         result,
         _qid: q.id,
       });
@@ -121,12 +121,12 @@ export default function ReadingTestResults() {
       if (!ua) continue;
       // Skip if we already have a row with this questionId
       if (ua.questionId && rows.some(r => r._qid === ua.questionId)) continue;
-      const cAns = (ua.question?.answers || []).find((a: any) => a.correct);
+      const cAns = (ua.question?.answers || []).find((a: any) => a.doğru);
       rows.push({
         no: typeof ua.question?.number === 'number' ? ua.question.number : (rows.length + 1),
-        userAnswer: ua.userAnswer || "Not selected",
-        correctAnswer: String(cAns?.variantText || cAns?.answer || ""),
-        result: ua.userAnswer ? (ua.isCorrect ? "Correct" : "Wrong") : "Not selected",
+        userAnswer: ua.userAnswer || "Seçilmedi",
+        doğruAnswer: String(cAns?.variantText || cAns?.answer || ""),
+        result: ua.userAnswer ? (ua.isCorrect ? "Doğru" : "Yanlış") : "Seçilmedi",
       });
     }
 
@@ -140,18 +140,18 @@ export default function ReadingTestResults() {
   const hasSummaryData = summary && summary.score !== undefined;
 
   const score = summary?.score ?? data?.score ?? 0;
-  // Prefer reconstructed rows, but if most are "Not selected", fall back to raw API rows
+  // Prefer reconstructed rows, but if most are "Seçilmedi", fall back to raw API rows
   const finalRows = useMemo(() => {
     if (fullExamData && fullExamData.length) {
-      const notSelectedCount = fullExamData.filter(r => !r.userAnswer || r.userAnswer === "Not selected").length;
+      const notSelectedCount = fullExamData.filter(r => !r.userAnswer || r.userAnswer === "Seçilmedi").length;
       const ratio = notSelectedCount / fullExamData.length;
       if (ratio <= 0.5) return fullExamData;
       // Too many missing matches -> use raw mapping
     }
     return examData;
   }, [fullExamData, examData]);
-  const computedCorrectFromFull = useMemo(() => {
-    if (finalRows) return finalRows.filter(r => r.result === "Correct").length;
+  const computedDoğruFromFull = useMemo(() => {
+    if (finalRows) return finalRows.filter(r => r.result === "Doğru").length;
     if (hasDetailedData) return (data!.userAnswers || []).filter(u => u.isCorrect).length;
     return undefined;
   }, [finalRows, hasDetailedData, data]);
@@ -160,7 +160,7 @@ export default function ReadingTestResults() {
     if (hasDetailedData) return (data!.userAnswers || []).length;
     return undefined;
   }, [finalRows, hasDetailedData, data]);
-  const correctCount = summary?.correctCount ?? computedCorrectFromFull;
+  const doğruCount = summary?.doğruCount ?? computedDoğruFromFull;
   const totalQuestions = summary?.totalQuestions ?? computedTotalFromFull;
   const userName = "JAXONGIRMIRZO";
   const currentDate = new Date().toISOString().replace('T', ' ').substring(0, 19) + " GMT+5";
@@ -170,7 +170,7 @@ export default function ReadingTestResults() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading results...</p>
+          <p className="text-muted-foreground">Sonuçlar yükleniyor...</p>
         </div>
       </div>
     );
@@ -180,22 +180,22 @@ export default function ReadingTestResults() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">Results Not Found</h2>
+          <h2 className="text-2xl font-bold text-red-600 mb-4">Sonuçlar Bulunamadı</h2>
           <p className="text-muted-foreground mb-4">
-            Unable to load test results. Please check the result ID and try again.
+            Test sonuçları yüklenemedi. Lütfen sonuç ID'sini kontrol edin ve tekrar deneyin.
           </p>
           <div className="flex items-center gap-3">
             <Input
               value={reportId}
               onChange={(e) => setReportId(e.target.value)}
               className="w-48"
-              placeholder="Enter report ID"
+              placeholder="Rapor ID girin"
             />
             <Button 
               onClick={handleGetReport}
               className="bg-red-600 hover:bg-red-700 text-white px-6"
             >
-              Get Report
+              Raporu Al
             </Button>
           </div>
         </div>
@@ -207,14 +207,14 @@ export default function ReadingTestResults() {
     return (
       <div className="max-w-6xl mx-auto space-y-5 p-4 sm:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h1 className="text-xl sm:text-3xl font-bold text-foreground">Exam results</h1>
+          <h1 className="text-xl sm:text-3xl font-bold text-foreground">Sınav Sonuçları</h1>
           <div className="w-full sm:w-auto">
             <div className="flex items-center gap-2">
               <Input
                 value={reportId}
                 onChange={(e) => setReportId(e.target.value)}
                 className="flex-1 sm:flex-none sm:w-64 h-9"
-                placeholder="Enter report ID"
+                placeholder="Rapor ID girin"
               />
               <Button 
                 onClick={handleGetReport}
@@ -247,10 +247,10 @@ export default function ReadingTestResults() {
         </div>
 
         <div className="mb-6">
-          <h2 className="text-xl font-semibold text-foreground">Reading score: {score}
-            {typeof correctCount === "number" && typeof totalQuestions === "number" && (
+          <h2 className="text-xl font-semibold text-foreground">Okuma Puanı: {score}
+            {typeof doğruCount === "number" && typeof totalQuestions === "number" && (
               <span className="ml-3 text-base text-muted-foreground">(
-                {correctCount} / {totalQuestions} correct
+                {doğruCount} / {totalQuestions} doğru
               )</span>
             )}
           </h2>
@@ -264,25 +264,25 @@ export default function ReadingTestResults() {
                   <thead>
                     <tr className="bg-green-600 text-white">
                       <th className="px-4 py-3 text-left font-medium rounded-tl-lg">No.</th>
-                      <th className="px-4 py-3 text-left font-medium">User Answer</th>
-                      <th className="px-4 py-3 text-left font-medium">Correct Answer</th>
-                      <th className="px-4 py-3 text-left font-medium rounded-tr-lg">Result</th>
+                      <th className="px-4 py-3 text-left font-medium">Kullanıcı Cevabı</th>
+                      <th className="px-4 py-3 text-left font-medium">Doğru Cevap</th>
+                      <th className="px-4 py-3 text-left font-medium rounded-tr-lg">Sonuç</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {finalRows.map((item, index) => (
+                    {finalRows.map((item: any, index: number) => (
                       <tr
                         key={item.no}
                         className={`border-b border-gray-200 last:border-b-0 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
                       >
                         <td className="px-4 py-3 text-gray-700 font-medium">{item.no}</td>
-                        <td className="px-4 py-3 text-gray-600">{item.userAnswer || "Not selected"}</td>
-                        <td className="px-4 py-3 text-gray-800 font-medium">{item.correctAnswer}</td>
+                        <td className="px-4 py-3 text-gray-600">{item.userAnswer || "Seçilmedi"}</td>
+                        <td className="px-4 py-3 text-gray-800 font-medium">{item.doğruAnswer}</td>
                         <td className="px-4 py-3">
                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            item.result === "Correct" 
+                            item.result === "Doğru" 
                               ? "bg-green-100 text-green-800" 
-                              : item.result === "Wrong" 
+                              : item.result === "Yanlış" 
                                 ? "bg-red-100 text-red-800"
                                 : "bg-gray-100 text-gray-700"
                           }`}>
@@ -323,19 +323,19 @@ export default function ReadingTestResults() {
   return (
     <div className="max-w-6xl mx-auto space-y-6 p-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-foreground">Exam results</h1>
+        <h1 className="text-3xl font-bold text-foreground">Sınav Sonuçları</h1>
         <div className="flex items-center gap-3">
           <Input
             value={reportId}
             onChange={(e) => setReportId(e.target.value)}
             className="w-48"
-            placeholder="Enter report ID"
+            placeholder="Rapor ID girin"
           />
           <Button 
             onClick={handleGetReport}
             className="bg-red-600 hover:bg-red-700 text-white px-6"
           >
-            Get Report
+            Raporu Al
           </Button>
         </div>
       </div>
@@ -349,10 +349,10 @@ export default function ReadingTestResults() {
       </div>
 
       <div className="mb-6">
-        <h2 className="text-xl font-semibold text-foreground">Reading score: {score}
-          {typeof correctCount === "number" && typeof totalQuestions === "number" && (
+        <h2 className="text-xl font-semibold text-foreground">Okuma Puanı: {score}
+          {typeof doğruCount === "number" && typeof totalQuestions === "number" && (
             <span className="ml-3 text-base text-muted-foreground">(
-              {correctCount} / {totalQuestions} correct
+              {doğruCount} / {totalQuestions} doğru
             )</span>
           )}
         </h2>
@@ -365,9 +365,9 @@ export default function ReadingTestResults() {
               <thead>
                 <tr className="bg-green-600 text-white">
                   <th className="px-4 py-3 text-left font-medium rounded-tl-lg">No.</th>
-                  <th className="px-4 py-3 text-left font-medium">User Answer</th>
-                  <th className="px-4 py-3 text-left font-medium">Correct Answer</th>
-                  <th className="px-4 py-3 text-left font-medium rounded-tr-lg">Result</th>
+                  <th className="px-4 py-3 text-left font-medium">Kullanıcı Cevabı</th>
+                  <th className="px-4 py-3 text-left font-medium">Doğru Cevap</th>
+                  <th className="px-4 py-3 text-left font-medium rounded-tr-lg">Sonuç</th>
                 </tr>
               </thead>
               <tbody>
@@ -377,13 +377,13 @@ export default function ReadingTestResults() {
                     className={`border-b border-gray-200 last:border-b-0 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
                   >
                     <td className="px-4 py-3 text-gray-700 font-medium">{item.no}</td>
-                    <td className="px-4 py-3 text-gray-600">{item.userAnswer || "Not selected"}</td>
-                    <td className="px-4 py-3 text-gray-800 font-medium">{item.correctAnswer}</td>
+                    <td className="px-4 py-3 text-gray-600">{item.userAnswer || "Seçilmedi"}</td>
+                    <td className="px-4 py-3 text-gray-800 font-medium">{item.doğruAnswer}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        item.result === "Correct" 
+                        item.result === "Doğru" 
                           ? "bg-green-100 text-green-800" 
-                          : item.result === "Wrong" 
+                          : item.result === "Yanlış" 
                             ? "bg-red-100 text-red-800"
                             : "bg-gray-100 text-gray-700"
                       }`}>

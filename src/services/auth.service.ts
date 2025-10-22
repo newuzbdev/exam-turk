@@ -153,7 +153,7 @@ export const authService = {
     SecureStorage.removeSessionItem("userId");
     
     // Clear all test-related session tokens
-    this.clearAllTestTokens();
+    authService.clearAllTestTokens();
   },
 
   // Helper function to clear all test-related tokens
@@ -201,24 +201,27 @@ export const authService = {
   // Helper function to clean up expired tokens on app start
   cleanupExpiredTokens: (): void => {
     try {
-      const { accessToken, refreshToken } = this.getStoredTokens();
+      const tokens = authService.getStoredTokens();
+      if (!tokens) return;
+      
+      const { accessToken, refreshToken } = tokens;
       
       // Check if access token is expired
-      if (accessToken && this.isTokenExpired(accessToken)) {
+      if (accessToken && authService.isTokenExpired(accessToken)) {
         console.log('Access token expired, clearing all tokens');
-        this.clearStoredTokens();
+        authService.clearStoredTokens();
         return;
       }
       
       // Check if refresh token is expired
-      if (refreshToken && this.isTokenExpired(refreshToken)) {
+      if (refreshToken && authService.isTokenExpired(refreshToken)) {
         console.log('Refresh token expired, clearing all tokens');
-        this.clearStoredTokens();
+        authService.clearStoredTokens();
         return;
       }
       
       // Clean up test-related tokens that might be expired
-      this.cleanupExpiredTestTokens();
+      authService.cleanupExpiredTestTokens();
       
     } catch (error) {
       console.error('Error during token cleanup:', error);
@@ -231,12 +234,12 @@ export const authService = {
   cleanupExpiredTestTokens: (): void => {
     try {
       const keys = Object.keys(sessionStorage);
-      const currentTime = Math.floor(Date.now() / 1000);
+      // const currentTime = Math.floor(Date.now() / 1000);
       
       keys.forEach(key => {
         if (key.includes('overall.sessionToken')) {
           const token = sessionStorage.getItem(key);
-          if (token && this.isTokenExpired(token)) {
+          if (token && authService.isTokenExpired(token)) {
             console.log(`Clearing expired test token: ${key}`);
             sessionStorage.removeItem(key);
           }

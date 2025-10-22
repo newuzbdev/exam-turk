@@ -12,13 +12,13 @@ interface Question {
   questionContent: string;
   questionType: string;
   userAnswer: string;
-  correctAnswers: Array<{
+  doğruAnswers: Array<{
     id: string;
     text: string;
   }>;
 }
 
-interface TestResult {
+interface TestSonuç {
   aiFeedback?: any;
   test: {
     id: string;
@@ -47,10 +47,10 @@ interface OverallResponse {
     id: string;
     name: string;
   };
-  listening?: TestResult;
-  reading?: TestResult;
-  writing?: TestResult;
-  speaking?: TestResult;
+  listening?: TestSonuç;
+  reading?: TestSonuç;
+  writing?: TestSonuç;
+  speaking?: TestSonuç;
 }
 
 export default function OverallResults() {
@@ -93,7 +93,7 @@ export default function OverallResults() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading results...</p>
+          <p className="mt-4 text-gray-600">Sonuçlar yükleniyor...</p>
         </div>
       </div>
     );
@@ -103,8 +103,8 @@ export default function OverallResults() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600">Overall results not found</p>
-          <Button onClick={() => navigate("/test")} className="mt-4">Back to Tests</Button>
+          <p className="text-gray-600">Genel sonuçlar bulunamadı</p>
+          <Button onClick={() => navigate("/test")} className="mt-4">Testlere Dön</Button>
         </div>
       </div>
     );
@@ -115,18 +115,18 @@ export default function OverallResults() {
     if (!data?.listening || !data.listening.questions) {
       return (
         <div className="text-center py-8">
-          <p className="text-gray-600">No listening test results available</p>
+          <p className="text-gray-600">Dinleme testi sonuçları mevcut değil</p>
         </div>
       );
     }
 
     const examData = data.listening.questions.map((q, index) => {
-      const correctAnswer = q.correctAnswers[0]?.text || "";
+      const doğruAnswer = q.doğruAnswers[0]?.text || "";
       return {
         no: q.questionNumber || index + 1,
-        userAnswer: q.userAnswer || "Not selected",
-        correctAnswer: correctAnswer,
-        result: q.correctAnswers.some(ca => ca.text === q.userAnswer) ? "Correct" : "Wrong"
+        userAnswer: q.userAnswer || "Seçilmedi",
+        doğruAnswer: doğruAnswer,
+        result: q.doğruAnswers.some(ca => ca.text === q.userAnswer) ? "Doğru" : "Yanlış"
       };
     });
 
@@ -134,29 +134,29 @@ export default function OverallResults() {
       <div className="max-w-6xl mx-auto space-y-6 p-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-foreground">Exam results</h1>
+          <h1 className="text-3xl font-bold text-foreground">Sınav Sonuçları</h1>
         </div>
 
         {/* Report Info */}
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <div className="flex items-center gap-6">
             <span>Report ID: {data.id}</span>
-            <span>Name: {data.user.name}</span>
+            <span>İsim: {data.user.name}</span>
           </div>
-          <span>Date: {new Date(data.listening.completedAt || data.startedAt).toISOString().replace('T', ' ').substring(0, 19) + " GMT+5"}</span>
+          <span>Tarih: {new Date(data.listening.completedAt || data.startedAt).toISOString().replace('T', ' ').substring(0, 19) + " GMT+5"}</span>
         </div>
 
         {/* Listening Score */}
         <div className="mb-6">
           <h2 className="text-xl font-semibold text-foreground">
-            Listening score: {data.listening.score}
+            Dinleme Puanı: {data.listening.score}
             <span className="ml-3 text-base text-muted-foreground">
-              ({examData.filter(r => r.result === "Correct").length} / {examData.length} correct)
+              ({examData.filter(r => r.result === "Doğru").length} / {examData.length} doğru)
             </span>
           </h2>
         </div>
 
-        {/* Results Table */}
+        {/* Sonuçs Table */}
         <Card className="overflow-hidden rounded-lg border border-gray-200">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -164,9 +164,9 @@ export default function OverallResults() {
                 <thead>
                   <tr className="bg-green-600 text-white">
                     <th className="px-4 py-3 text-left font-medium rounded-tl-lg">No.</th>
-                    <th className="px-4 py-3 text-left font-medium">User Answer</th>
-                    <th className="px-4 py-3 text-left font-medium">Correct Answer</th>
-                    <th className="px-4 py-3 text-left font-medium rounded-tr-lg">Result</th>
+                    <th className="px-4 py-3 text-left font-medium">Kullanıcı Cevabı</th>
+                    <th className="px-4 py-3 text-left font-medium">Doğru Cevap</th>
+                    <th className="px-4 py-3 text-left font-medium rounded-tr-lg">Sonuç</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -177,12 +177,12 @@ export default function OverallResults() {
                     >
                       <td className="px-4 py-3 text-gray-700 font-medium">{item.no}</td>
                       <td className="px-4 py-3 text-gray-600">{item.userAnswer}</td>
-                      <td className="px-4 py-3 text-gray-800 font-medium">{item.correctAnswer}</td>
+                      <td className="px-4 py-3 text-gray-800 font-medium">{item.doğruAnswer}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          item.result === "Correct" 
+                          item.result === "Doğru" 
                             ? "bg-green-100 text-green-800" 
-                            : item.result === "Wrong" 
+                            : item.result === "Yanlış" 
                               ? "bg-red-100 text-red-800"
                               : "bg-gray-100 text-gray-700"
                         }`}>
@@ -204,18 +204,18 @@ export default function OverallResults() {
     if (!data?.reading || !data.reading.questions) {
       return (
         <div className="text-center py-8">
-          <p className="text-gray-600">No reading test results available</p>
+          <p className="text-gray-600">Okuma testi sonuçları mevcut değil</p>
         </div>
       );
     }
 
     const examData = data.reading.questions.map((q, index) => {
-      const correctAnswer = q.correctAnswers[0]?.text || "";
+      const doğruAnswer = q.doğruAnswers[0]?.text || "";
       return {
         no: q.questionNumber || index + 1,
-        userAnswer: q.userAnswer || "Not selected",
-        correctAnswer: correctAnswer,
-        result: q.correctAnswers.some(ca => ca.text === q.userAnswer) ? "Correct" : "Wrong"
+        userAnswer: q.userAnswer || "Seçilmedi",
+        doğruAnswer: doğruAnswer,
+        result: q.doğruAnswers.some(ca => ca.text === q.userAnswer) ? "Doğru" : "Yanlış"
       };
     });
 
@@ -223,29 +223,29 @@ export default function OverallResults() {
       <div className="max-w-6xl mx-auto space-y-6 p-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-foreground">Exam results</h1>
+          <h1 className="text-3xl font-bold text-foreground">Sınav Sonuçları</h1>
         </div>
 
         {/* Report Info */}
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <div className="flex items-center gap-6">
             <span>Report ID: {data.id}</span>
-            <span>Name: {data.user.name}</span>
+            <span>İsim: {data.user.name}</span>
           </div>
-          <span>Date: {new Date(data.reading.completedAt || data.startedAt).toISOString().replace('T', ' ').substring(0, 19) + " GMT+5"}</span>
+          <span>Tarih: {new Date(data.reading.completedAt || data.startedAt).toISOString().replace('T', ' ').substring(0, 19) + " GMT+5"}</span>
         </div>
 
         {/* Reading Score */}
         <div className="mb-6">
           <h2 className="text-xl font-semibold text-foreground">
-            Reading score: {data.reading.score}
+            Okuma Puanı: {data.reading.score}
             <span className="ml-3 text-base text-muted-foreground">
-              ({examData.filter(r => r.result === "Correct").length} / {examData.length} correct)
+              ({examData.filter(r => r.result === "Doğru").length} / {examData.length} doğru)
             </span>
           </h2>
         </div>
 
-        {/* Results Table */}
+        {/* Sonuçs Table */}
         <Card className="overflow-hidden rounded-lg border border-gray-200">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -253,9 +253,9 @@ export default function OverallResults() {
                 <thead>
                   <tr className="bg-green-600 text-white">
                     <th className="px-4 py-3 text-left font-medium rounded-tl-lg">No.</th>
-                    <th className="px-4 py-3 text-left font-medium">User Answer</th>
-                    <th className="px-4 py-3 text-left font-medium">Correct Answer</th>
-                    <th className="px-4 py-3 text-left font-medium rounded-tr-lg">Result</th>
+                    <th className="px-4 py-3 text-left font-medium">Kullanıcı Cevabı</th>
+                    <th className="px-4 py-3 text-left font-medium">Doğru Cevap</th>
+                    <th className="px-4 py-3 text-left font-medium rounded-tr-lg">Sonuç</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -266,12 +266,12 @@ export default function OverallResults() {
                     >
                       <td className="px-4 py-3 text-gray-700 font-medium">{item.no}</td>
                       <td className="px-4 py-3 text-gray-600">{item.userAnswer}</td>
-                      <td className="px-4 py-3 text-gray-800 font-medium">{item.correctAnswer}</td>
+                      <td className="px-4 py-3 text-gray-800 font-medium">{item.doğruAnswer}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          item.result === "Correct" 
+                          item.result === "Doğru" 
                             ? "bg-green-100 text-green-800" 
-                            : item.result === "Wrong" 
+                            : item.result === "Yanlış" 
                               ? "bg-red-100 text-red-800"
                               : "bg-gray-100 text-gray-700"
                         }`}>
@@ -293,7 +293,7 @@ export default function OverallResults() {
     if (!data?.writing) {
       return (
         <div className="text-center py-8">
-          <p className="text-gray-600">No writing test results available</p>
+          <p className="text-gray-600">Yazma testi sonuçları mevcut değil</p>
         </div>
       );
     }
@@ -330,16 +330,16 @@ export default function OverallResults() {
         const answerIndex = activeTask1Part === "part1" ? 0 : 1;
         const currentAnswer = task1Answers[answerIndex];
         return {
-          question: `Task 1 ${activeTask1Part === "part1" ? "Part 1" : "Part 2"} Question`,
-          answer: currentAnswer?.userAnswer || "No answer provided",
-          comment: aiFeedback?.taskAchievement || `Task 1 ${activeTask1Part === "part1" ? "Part 1" : "Part 2"} feedback will be shown here`
+          question: (currentAnswer as any)?.questionText || `Görev 1 ${activeTask1Part === "part1" ? "Bölüm 1" : "Bölüm 2"} Sorusu`,
+          answer: currentAnswer?.userAnswer || "Cevap verilmedi",
+          comment: aiFeedback?.taskAchievement || `Görev 1 ${activeTask1Part === "part1" ? "Bölüm 1" : "Bölüm 2"} geri bildirimi burada gösterilecek`
         };
       } else {
         const firstTask2Answer = task2Answers[0];
         return {
-          question: "Task 2 Question",
-          answer: firstTask2Answer?.userAnswer || "No answer provided",
-          comment: aiFeedback?.taskAchievement || "Task 2 feedback will be shown here"
+          question: (firstTask2Answer as any)?.questionText || "Görev 2 Sorusu",
+          answer: firstTask2Answer?.userAnswer || "Cevap verilmedi",
+          comment: aiFeedback?.taskAchievement || "Görev 2 geri bildirimi burada gösterilecek"
         };
       }
     };
@@ -351,21 +351,21 @@ export default function OverallResults() {
         <div className="mx-auto max-w-6xl">
           {/* Header Section */}
           <div className="mb-8">
-            <div className="mb-6">
-              <h1 className="text-3xl font-bold text-gray-900">Writing Test Results</h1>
+            {/* <div className="mb-6">
+              <h1 className="text-3xl font-bold text-gray-900">Writing Test Sonuçs</h1>
               <p className="text-gray-600 mt-1">Review your performance and feedback</p>
-            </div>
+            </div> */}
 
             {/* Overall Score Card */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Overall Score</h2>
-                  <p className="text-gray-600">Your writing test performance</p>
+                  <h2 className="text-2xl font-bold text-gray-900">Genel Puan</h2>
+                  <p className="text-gray-600">Yazma testi performansınız</p>
                 </div>
                 <div className="text-right">
                   <div className="text-4xl font-bold text-red-600">{scores.overall}</div>
-                  <div className="text-sm text-gray-500">out of 9</div>
+                  <div className="text-sm text-gray-500">75 üzerinden</div>
                 </div>
               </div>
             </div>
@@ -481,7 +481,7 @@ export default function OverallResults() {
                 <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
                   <span className="text-blue-600 font-semibold text-sm">Q</span>
                 </div>
-                <h2 className="text-lg font-semibold text-gray-900">Question</h2>
+                <h2 className="text-lg font-semibold text-gray-900">Soru</h2>
               </div>
               <div className="bg-gray-50 rounded-lg p-4">
                 <p className="text-gray-700 leading-relaxed">{currentData.question}</p>
@@ -494,7 +494,7 @@ export default function OverallResults() {
                 <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
                   <span className="text-green-600 font-semibold text-sm">A</span>
                 </div>
-                <h2 className="text-lg font-semibold text-gray-900">Your Answer</h2>
+                <h2 className="text-lg font-semibold text-gray-900">Cevabınız</h2>
               </div>
               <div className="bg-gray-50 rounded-lg p-4">
                 <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{currentData.answer}</p>
@@ -507,7 +507,7 @@ export default function OverallResults() {
                 <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
                   <span className="text-purple-600 font-semibold text-sm">💬</span>
                 </div>
-                <h2 className="text-lg font-semibold text-gray-900">AI Feedback</h2>
+                <h2 className="text-lg font-semibold text-gray-900">AI Geri Bildirimi</h2>
               </div>
               <div className="bg-gray-50 rounded-lg p-4">
                 <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{currentData.comment}</p>
@@ -523,7 +523,7 @@ export default function OverallResults() {
     if (!data?.speaking) {
       return (
         <div className="text-center py-8">
-          <p className="text-gray-600">No speaking test results available</p>
+          <p className="text-gray-600">Konuşma testi sonuçları mevcut değil</p>
         </div>
       );
     }
@@ -535,14 +535,14 @@ export default function OverallResults() {
           <div className="max-w-7xl mx-auto px-4 py-6">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-black">Speaking Test Results</h1>
-                <p className="text-gray-600">IELTS Assessment Complete</p>
+                <h1 className="text-2xl font-bold text-black">Konuşma Testi Sonuçları</h1>
+                <p className="text-gray-600">IELTS Değerlendirmesi Tamamlandı</p>
               </div>
               <div className="text-right">
                 <div className="text-3xl font-black text-red-500">
                   {data.speaking.score || "N/A"}
                 </div>
-                <div className="text-sm text-gray-600">Band Score</div>
+                <div className="text-sm text-gray-600">Bant Puanı</div>
               </div>
             </div>
           </div>
@@ -557,8 +557,8 @@ export default function OverallResults() {
                 {data.speaking.score || "N/A"}
               </span>
             </div>
-            <h2 className="text-3xl font-bold text-black mb-2">Test Completed!</h2>
-            <p className="text-gray-600 text-lg mb-6">Your IELTS Speaking Assessment Results</p>
+            <h2 className="text-3xl font-bold text-black mb-2">Test Tamamlandı!</h2>
+            <p className="text-gray-600 text-lg mb-6">IELTS Konuşma Değerlendirmesi Sonuçlarınız</p>
           </div>
         </div>
       </div>
@@ -600,7 +600,7 @@ export default function OverallResults() {
 
           <div className="mt-8 flex justify-center">
             <Button variant="outline" onClick={() => navigate("/test")}>
-              Back to Tests
+              Testlere Dön
             </Button>
           </div>
         </div>
@@ -676,7 +676,7 @@ export default function OverallResults() {
 
         <div className="mt-8 flex justify-center">
           <Button variant="outline" onClick={() => navigate("/test")}>
-            Back to Tests
+            Testlere Dön
                     </Button>
         </div>
       </div>

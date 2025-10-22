@@ -122,7 +122,7 @@ export default function UnifiedTestResults() {
     if (!listeningData) {
       return (
         <div className="text-center py-8">
-          <p className="text-gray-600">No listening test results available</p>
+          <p className="text-gray-600">Dinleme testi sonuçları mevcut değil</p>
         </div>
       );
     }
@@ -131,9 +131,9 @@ export default function UnifiedTestResults() {
       const correctAnswer = ua.question.answers.find(a => a.correct);
       return {
         no: index + 1,
-        userAnswer: ua.userAnswer || "Not selected",
+        userAnswer: ua.userAnswer || "Seçilmedi",
         correctAnswer: correctAnswer?.variantText || correctAnswer?.answer || "",
-        result: ua.isCorrect ? "Correct" : "Wrong"
+        result: ua.isCorrect ? "Doğru" : "Yanlış"
       };
     }) || [];
 
@@ -141,10 +141,10 @@ export default function UnifiedTestResults() {
       <div className="space-y-6">
         <div className="mb-6">
           <h2 className="text-xl font-semibold text-foreground">
-            Listening Score: {listeningData.score || 0}
+            Dinleme Puanı: {listeningData.score || 0}
             {listeningData.userAnswers && (
               <span className="ml-3 text-base text-muted-foreground">
-                ({listeningData.userAnswers.filter(u => u.isCorrect).length} / {listeningData.userAnswers.length} correct)
+                ({listeningData.userAnswers.filter(u => u.isCorrect).length} / {listeningData.userAnswers.length} doğru)
               </span>
             )}
           </h2>
@@ -157,9 +157,9 @@ export default function UnifiedTestResults() {
                 <thead>
                   <tr className="bg-green-600 text-white">
                     <th className="px-4 py-3 text-left font-medium rounded-tl-lg">No.</th>
-                    <th className="px-4 py-3 text-left font-medium">User Answer</th>
-                    <th className="px-4 py-3 text-left font-medium">Correct Answer</th>
-                    <th className="px-4 py-3 text-left font-medium rounded-tr-lg">Result</th>
+                    <th className="px-4 py-3 text-left font-medium">Kullanıcı Cevabı</th>
+                    <th className="px-4 py-3 text-left font-medium">Doğru Cevap</th>
+                    <th className="px-4 py-3 text-left font-medium rounded-tr-lg">Sonuç</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -173,9 +173,9 @@ export default function UnifiedTestResults() {
                       <td className="px-4 py-3 text-gray-800 font-medium">{item.correctAnswer}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          item.result === "Correct" 
+                          item.result === "Doğru" 
                             ? "bg-green-100 text-green-800" 
-                            : item.result === "Wrong" 
+                            : item.result === "Yanlış" 
                               ? "bg-red-100 text-red-800"
                               : "bg-gray-100 text-gray-700"
                         }`}>
@@ -197,7 +197,7 @@ export default function UnifiedTestResults() {
     if (!readingData) {
       return (
         <div className="text-center py-8">
-          <p className="text-gray-600">No reading test results available</p>
+          <p className="text-gray-600">Okuma testi sonuçları mevcut değil</p>
         </div>
       );
     }
@@ -206,9 +206,9 @@ export default function UnifiedTestResults() {
       const correctAnswer = ua.question.answers.find(a => a.correct);
       return {
         no: index + 1,
-        userAnswer: ua.userAnswer || "Not selected",
+        userAnswer: ua.userAnswer || "Seçilmedi",
         correctAnswer: correctAnswer?.variantText || correctAnswer?.answer || "",
-        result: ua.isCorrect ? "Correct" : "Wrong"
+        result: ua.isCorrect ? "Doğru" : "Yanlış"
       };
     }) || [];
 
@@ -216,10 +216,10 @@ export default function UnifiedTestResults() {
       <div className="space-y-6">
         <div className="mb-6">
           <h2 className="text-xl font-semibold text-foreground">
-            Reading Score: {readingData.score || 0}
+            Okuma Puanı: {readingData.score || 0}
             {readingData.userAnswers && (
               <span className="ml-3 text-base text-muted-foreground">
-                ({readingData.userAnswers.filter(u => u.isCorrect).length} / {readingData.userAnswers.length} correct)
+                ({readingData.userAnswers.filter(u => u.isCorrect).length} / {readingData.userAnswers.length} doğru)
               </span>
             )}
           </h2>
@@ -232,9 +232,9 @@ export default function UnifiedTestResults() {
                 <thead>
                   <tr className="bg-green-600 text-white">
                     <th className="px-4 py-3 text-left font-medium rounded-tl-lg">No.</th>
-                    <th className="px-4 py-3 text-left font-medium">User Answer</th>
-                    <th className="px-4 py-3 text-left font-medium">Correct Answer</th>
-                    <th className="px-4 py-3 text-left font-medium rounded-tr-lg">Result</th>
+                    <th className="px-4 py-3 text-left font-medium">Kullanıcı Cevabı</th>
+                    <th className="px-4 py-3 text-left font-medium">Doğru Cevap</th>
+                    <th className="px-4 py-3 text-left font-medium rounded-tr-lg">Sonuç</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -248,9 +248,9 @@ export default function UnifiedTestResults() {
                       <td className="px-4 py-3 text-gray-800 font-medium">{item.correctAnswer}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          item.result === "Correct" 
+                          item.result === "Doğru" 
                             ? "bg-green-100 text-green-800" 
-                            : item.result === "Wrong" 
+                            : item.result === "Yanlış" 
                               ? "bg-red-100 text-red-800"
                               : "bg-gray-100 text-gray-700"
                         }`}>
@@ -272,7 +272,7 @@ export default function UnifiedTestResults() {
     if (!writingData) {
       return (
         <div className="text-center py-8">
-          <p className="text-gray-600">No writing test results available</p>
+          <p className="text-gray-600">Yazma testi sonuçları mevcut değil</p>
         </div>
       );
     }
@@ -285,8 +285,8 @@ export default function UnifiedTestResults() {
               {writingData.score ?? "0"}
             </span>
           </div>
-          <h2 className="text-3xl font-bold text-black mb-2">Writing Test Completed!</h2>
-          <p className="text-gray-600 text-lg mb-6">Your IELTS Writing Assessment Results</p>
+          <h2 className="text-3xl font-bold text-black mb-2">Yazma Testi Tamamlandı!</h2>
+          <p className="text-gray-600 text-lg mb-6">IELTS Yazma Değerlendirmesi Sonuçlarınız</p>
         </div>
 
         {writingData.aiFeedback && (
@@ -325,7 +325,7 @@ export default function UnifiedTestResults() {
     if (!speakingData) {
       return (
         <div className="text-center py-8">
-          <p className="text-gray-600">No speaking test results available</p>
+          <p className="text-gray-600">Konuşma testi sonuçları mevcut değil</p>
         </div>
       );
     }
@@ -338,8 +338,8 @@ export default function UnifiedTestResults() {
               {speakingData.score ?? "N/A"}
             </span>
           </div>
-          <h2 className="text-3xl font-bold text-black mb-2">Speaking Test Completed!</h2>
-          <p className="text-gray-600 text-lg mb-6">Your IELTS Speaking Assessment Results</p>
+          <h2 className="text-3xl font-bold text-black mb-2">Konuşma Testi Tamamlandı!</h2>
+          <p className="text-gray-600 text-lg mb-6">IELTS Konuşma Değerlendirmesi Sonuçlarınız</p>
         </div>
 
         {speakingData.aiFeedback && (
@@ -379,7 +379,7 @@ export default function UnifiedTestResults() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading results...</p>
+          <p className="text-muted-foreground">Sonuçlar yükleniyor...</p>
         </div>
       </div>
     );
@@ -389,9 +389,9 @@ export default function UnifiedTestResults() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">Results Not Found</h2>
+          <h2 className="text-2xl font-bold text-red-600 mb-4">Sonuçlar Bulunamadı</h2>
           <p className="text-muted-foreground mb-4">
-            Unable to load test results. Please check the result ID and try again.
+            Test sonuçları yüklenemedi. Lütfen sonuç ID'sini kontrol edin ve tekrar deneyin.
           </p>
         </div>
       </div>
@@ -402,14 +402,14 @@ export default function UnifiedTestResults() {
     <div className="min-h-screen bg-gray-50 py-10">
       <div className="max-w-7xl mx-auto px-4">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Test Results</h1>
-          <p className="text-muted-foreground">Comprehensive overview of your IELTS test performance</p>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Test Sonuçları</h1>
+          <p className="text-muted-foreground">IELTS test performansınızın kapsamlı özeti</p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="listening" className="flex items-center gap-2">
-              <span className="hidden sm:inline">Listening</span>
+              <span className="hidden sm:inline">Dinleme</span>
               <span className="sm:hidden">L</span>
               {listeningData && (
                 <span className="ml-1 text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full">
@@ -418,7 +418,7 @@ export default function UnifiedTestResults() {
               )}
             </TabsTrigger>
             <TabsTrigger value="reading" className="flex items-center gap-2">
-              <span className="hidden sm:inline">Reading</span>
+              <span className="hidden sm:inline">Okuma</span>
               <span className="sm:hidden">R</span>
               {readingData && (
                 <span className="ml-1 text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full">
@@ -427,7 +427,7 @@ export default function UnifiedTestResults() {
               )}
             </TabsTrigger>
             <TabsTrigger value="writing" className="flex items-center gap-2">
-              <span className="hidden sm:inline">Writing</span>
+              <span className="hidden sm:inline">Yazma</span>
               <span className="sm:hidden">W</span>
               {writingData && (
                 <span className="ml-1 text-xs bg-red-100 text-red-800 px-1.5 py-0.5 rounded-full">
@@ -436,7 +436,7 @@ export default function UnifiedTestResults() {
               )}
             </TabsTrigger>
             <TabsTrigger value="speaking" className="flex items-center gap-2">
-              <span className="hidden sm:inline">Speaking</span>
+              <span className="hidden sm:inline">Konuşma</span>
               <span className="sm:hidden">S</span>
               {speakingData && (
                 <span className="ml-1 text-xs bg-red-100 text-red-800 px-1.5 py-0.5 rounded-full">

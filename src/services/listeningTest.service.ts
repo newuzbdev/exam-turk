@@ -158,6 +158,13 @@ export const listeningSubmissionService = {
         SecureStorage.getSessionItem?.("accessToken") ||
         localStorage.getItem("accessToken") ||
         token;
+      
+      console.log("🔍 Listening test submission debug:", {
+        testId,
+        hasOverallToken: !!overallTestTokenStore.getByTestId(testId),
+        hasSessionToken: !!sessionToken,
+        tokenSource: overallTestTokenStore.getByTestId(testId) ? 'overall' : 'session'
+      });
 
       if (!sessionToken) {
         toast.error("Javoblarni yuborish uchun tizimga kirishingiz kerak.");

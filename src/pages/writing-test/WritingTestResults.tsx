@@ -140,7 +140,7 @@ export default function WritingTestResults() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Writing Test Results</h1>
+              <h1 className="text-3xl font-bold text-gray-900"></h1>
               <p className="text-gray-600 mt-1">Review your performance and feedback</p>
             </div>
           </div>

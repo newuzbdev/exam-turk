@@ -110,6 +110,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
 
     setIsLoading(true);
+    
+    // Clean up expired tokens before checking auth
+    authService.cleanupExpiredTokens();
+    
     const { accessToken } = authService.getStoredTokens();
 
     if (accessToken) {

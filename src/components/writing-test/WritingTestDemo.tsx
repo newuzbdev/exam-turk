@@ -414,11 +414,21 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
         if (readingAnswers) {
           const readingData = JSON.parse(readingAnswers);
           console.log("Submitting reading test:", readingData.testId, "with answers:", readingData.answers);
-          const payload = Object.entries(readingData.answers).map(([questionId, userAnswer]) => ({ 
-            questionId, 
-            userAnswer: String(userAnswer) 
-          }));
-          await readingSubmissionService.submitAnswers(readingData.testId, payload);
+          
+          // Check if this test was part of the overall test flow
+          const { overallTestTokenStore } = await import("@/services/overallTest.service");
+          const hasOverallToken = overallTestTokenStore.getByTestId(readingData.testId);
+          
+          if (hasOverallToken) {
+            console.log("✅ Reading test has overall token, submitting...");
+            const payload = Object.entries(readingData.answers).map(([questionId, userAnswer]) => ({ 
+              questionId, 
+              userAnswer: String(userAnswer) 
+            }));
+            await readingSubmissionService.submitAnswers(readingData.testId, payload);
+          } else {
+            console.log("⚠️ Reading test not part of overall flow, skipping submission");
+          }
         }
       }
       
@@ -429,7 +439,19 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
         if (listeningAnswers) {
           const listeningData = JSON.parse(listeningAnswers);
           console.log("Submitting listening test:", listeningData.testId, "with answers:", listeningData.answers);
-          await listeningSubmissionService.submitAnswers(listeningData.testId, listeningData.answers);
+          
+          // Check if this test was part of the overall test flow
+          const { overallTestTokenStore } = await import("@/services/overallTest.service");
+          const hasOverallToken = overallTestTokenStore.getByTestId(listeningData.testId);
+          
+          if (hasOverallToken) {
+            console.log("✅ Listening test has overall token, submitting...");
+            await listeningSubmissionService.submitAnswers(listeningData.testId, listeningData.answers);
+          } else {
+            console.log("⚠️ Listening test not part of overall flow, skipping submission");
+            // You can either skip or use session token as fallback
+            // await listeningSubmissionService.submitAnswers(listeningData.testId, listeningData.answers);
+          }
         }
       }
       

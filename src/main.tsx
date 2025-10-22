@@ -5,6 +5,7 @@ import { RouterProviders } from "./providers/route-provider";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "./contexts/AuthContext";
+import "./utils/tokenCleanup"; // Import for global functions
 
 createRoot(document.getElementById("root")!).render(
   <QueryProvider>

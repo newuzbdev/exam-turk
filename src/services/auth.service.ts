@@ -151,6 +151,92 @@ export const authService = {
     SecureStorage.removeSessionItem("accessToken");
     SecureStorage.removeSessionItem("refreshToken");
     SecureStorage.removeSessionItem("userId");
+    
+    // Clear all test-related session tokens
+    this.clearAllTestTokens();
+  },
+
+  // Helper function to clear all test-related tokens
+  clearAllTestTokens: (): void => {
+    try {
+      // Get all session storage keys
+      const keys = Object.keys(sessionStorage);
+      
+      // Clear all test-related tokens
+      keys.forEach(key => {
+        if (key.includes('overall.sessionToken') || 
+            key.includes('test_data_') || 
+            key.includes('_answers_') ||
+            key.includes('overall.flow')) {
+          sessionStorage.removeItem(key);
+        }
+      });
+      
+      console.log('Cleared all test-related tokens');
+    } catch (error) {
+      console.error('Error clearing test tokens:', error);
+    }
+  },
+
+  // Helper function to check if JWT token is expired
+  isTokenExpired: (token: string): boolean => {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const currentTime = Math.floor(Date.now() / 1000);
+      return payload.exp < currentTime;
+    } catch (error) {
+      console.error('Error parsing token:', error);
+      return true; // If we can't parse it, consider it expired
+    }
+  },
+
+  // Helper function to clean up expired tokens on app start
+  cleanupExpiredTokens: (): void => {
+    try {
+      const { accessToken, refreshToken } = this.getStoredTokens();
+      
+      // Check if access token is expired
+      if (accessToken && this.isTokenExpired(accessToken)) {
+        console.log('Access token expired, clearing all tokens');
+        this.clearStoredTokens();
+        return;
+      }
+      
+      // Check if refresh token is expired
+      if (refreshToken && this.isTokenExpired(refreshToken)) {
+        console.log('Refresh token expired, clearing all tokens');
+        this.clearStoredTokens();
+        return;
+      }
+      
+      // Clean up test-related tokens that might be expired
+      this.cleanupExpiredTestTokens();
+      
+    } catch (error) {
+      console.error('Error during token cleanup:', error);
+      // If there's any error, clear everything to be safe
+      this.clearStoredTokens();
+    }
+  },
+
+  // Helper function to clean up expired test tokens
+  cleanupExpiredTestTokens: (): void => {
+    try {
+      const keys = Object.keys(sessionStorage);
+      const currentTime = Math.floor(Date.now() / 1000);
+      
+      keys.forEach(key => {
+        if (key.includes('overall.sessionToken')) {
+          const token = sessionStorage.getItem(key);
+          if (token && this.isTokenExpired(token)) {
+            console.log(`Clearing expired test token: ${key}`);
+            sessionStorage.removeItem(key);
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Error cleaning up test tokens:', error);
+    }
   },
 
   // Helper function to get current user data (with request deduplication)

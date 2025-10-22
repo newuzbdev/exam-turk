@@ -565,13 +565,57 @@ export default function OverallResults() {
     );
   };
 
+  // Check which test types are available
+  const availableTests = [];
+  if (data?.listening) availableTests.push('listening');
+  if (data?.reading) availableTests.push('reading');
+  if (data?.writing) availableTests.push('writing');
+  if (data?.speaking) availableTests.push('speaking');
+
+  // If only one test type is available, show it directly without tabs
+  if (availableTests.length === 1) {
+    const testType = availableTests[0];
+    return (
+      <div className="min-h-screen bg-gray-50 py-10">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-foreground mb-2">
+              {testType === 'listening' && 'Listening Test Results'}
+              {testType === 'reading' && 'Reading Test Results'}
+              {/* {testType === 'writing' && 'Writing Test Results'} */}
+              {testType === 'speaking' && 'Speaking Test Results'}
+            </h1>
+            <p className="text-muted-foreground">
+              {testType === 'listening' && 'Review your listening test performance'}
+              {testType === 'reading' && 'Review your reading test performance'}
+              {/* {testType === 'writing' && 'Review your writing test performance'} */}
+              {testType === 'speaking' && 'Review your speaking test performance'}
+            </p>
+          </div>
+          
+          {testType === 'listening' && renderListeningResults()}
+          {testType === 'reading' && renderReadingResults()}
+          {testType === 'writing' && renderWritingResults()}
+          {testType === 'speaking' && renderSpeakingResults()}
+
+          <div className="mt-8 flex justify-center">
+            <Button variant="outline" onClick={() => navigate("/test")}>
+              Back to Tests
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If multiple test types are available, show tabs
   return (
     <div className="min-h-screen bg-gray-50 py-10">
       <div className="max-w-7xl mx-auto px-4">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">Overall Results</h1>
           <p className="text-muted-foreground">Comprehensive overview of your IELTS test performance</p>
-                    </div>
+        </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-4">

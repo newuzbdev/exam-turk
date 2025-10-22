@@ -17,7 +17,22 @@ axiosPrivate.interceptors.request.use(
     const token = SecureStorage.getSessionItem("accessToken");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log("🔑 Token attached to request");
+      console.log("🔑 Token attached to request:", token.substring(0, 20) + "...");
+      
+      // Debug: Check if token is expired
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const currentTime = Math.floor(Date.now() / 1000);
+        const isExpired = payload.exp < currentTime;
+        console.log("🔍 Token expiration check:", {
+          exp: payload.exp,
+          currentTime,
+          isExpired,
+          expiresIn: payload.exp - currentTime
+        });
+      } catch (e) {
+        console.error("❌ Error parsing token:", e);
+      }
     } else {
       console.log("❌ No token found");
     }
@@ -43,15 +58,36 @@ axiosPrivate.interceptors.response.use(
       `❌ Request failed: ${error.config?.method?.toUpperCase()} ${error.config?.url} - Status: ${error.response?.status}`,
       error.message
     );
+    
+    // Debug: Log the full error response
+    console.log("🔍 Full error response:", {
+      status: error.response?.status,
+      data: error.response?.data,
+      headers: error.response?.headers
+    });
+    
+    // Debug: Check if this is the specific error we're seeing
+    if (error.response?.data?.error === "Token not found or expired") {
+      console.log("🚨 Detected 'Token not found or expired' error");
+      console.log("🔍 Request details:", {
+        url: error.config?.url,
+        method: error.config?.method,
+        headers: error.config?.headers,
+        hasAuthHeader: !!error.config?.headers?.Authorization
+      });
+    }
 
     const originalRequest = error.config;
 
-    // 👉 Token eskirgan holatni backend JWT_EXPIRED orqali qaytaradi
-    if (
-      error.response?.status === 401 &&
-      error.response?.data?.error === "JWT_EXPIRED" &&
-      !originalRequest._retry
-    ) {
+    // 👉 Handle token expiration - check for various error formats
+    const isTokenError = error.response?.status === 401 && (
+      error.response?.data?.error === "JWT_EXPIRED" ||
+      error.response?.data?.error === "Token not found or expired" ||
+      error.response?.data?.message === "Token not found or expired" ||
+      error.response?.data?.success === false
+    );
+    
+    if (isTokenError && !originalRequest._retry) {
       originalRequest._retry = true;
 
       try {
@@ -66,7 +102,9 @@ axiosPrivate.interceptors.response.use(
         }
       } catch (err) {
         console.error("❌ Error refreshing token:", err);
-        SecureStorage.removeSessionItem("accessToken");
+        // Clear all tokens and redirect to login
+        const { authService } = await import("@/services/auth.service");
+        authService.clearStoredTokens();
         window.location.href = "/login";
         return Promise.reject(err);
       }

@@ -59,6 +59,8 @@ export default function OverallResults() {
   const [data, setData] = useState<OverallResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("listening");
+  const [activeTask, setActiveTask] = useState("task2");
+  const [activeTask1Part, setActiveTask1Part] = useState("part1");
 
   useEffect(() => {
     const id = params.overallId;
@@ -299,92 +301,158 @@ export default function OverallResults() {
     const { writing } = data;
     const aiFeedback = writing.aiFeedback;
 
+    // Extract scores from AI feedback or use defaults
+    const extractScoreFromFeedback = (feedbackText: string) => {
+      const match = feedbackText?.match(/(\d+)/);
+      return match ? parseInt(match[1]) : 0;
+    };
+
+    const scores = {
+      overall: writing?.score || 0,
+      part1: 0,
+      part2: 0,
+      coherence: extractScoreFromFeedback(aiFeedback?.coherenceAndCohesion) || 0,
+      grammar: extractScoreFromFeedback(aiFeedback?.grammaticalRangeAndAccuracy) || 0,
+      lexical: extractScoreFromFeedback(aiFeedback?.lexicalResource) || 0,
+      achievement: extractScoreFromFeedback(aiFeedback?.taskAchievement) || 0,
+    };
+
+    // Get answers array
+    const answers = writing?.answers || [];
+    
+    // Separate Task 1 and Task 2 answers
+    const task1Answers = answers.filter((_: any, index: number) => index < 2);
+    const task2Answers = answers.filter((_: any, index: number) => index >= 2);
+
+    // Get current question and answer based on active task
+    const getCurrentQuestionAndAnswer = () => {
+      if (activeTask === "task1") {
+        const answerIndex = activeTask1Part === "part1" ? 0 : 1;
+        const currentAnswer = task1Answers[answerIndex];
+        return {
+          question: `Task 1 ${activeTask1Part === "part1" ? "Part 1" : "Part 2"} Question`,
+          answer: currentAnswer?.userAnswer || "No answer provided",
+          comment: aiFeedback?.taskAchievement || `Task 1 ${activeTask1Part === "part1" ? "Part 1" : "Part 2"} feedback will be shown here`
+        };
+      } else {
+        const firstTask2Answer = task2Answers[0];
+        return {
+          question: "Task 2 Question",
+          answer: firstTask2Answer?.userAnswer || "No answer provided",
+          comment: aiFeedback?.taskAchievement || "Task 2 feedback will be shown here"
+        };
+      }
+    };
+
+    const currentData = getCurrentQuestionAndAnswer();
+
     return (
-      <div className="min-h-screen bg-gray-50">
-        {/* Header */}
-        <div className="bg-white shadow-sm border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 py-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-black">Writing Test Results</h1>
-                <p className="text-gray-600">IELTS Assessment Complete</p>
-              </div>
-              <div className="text-right">
-                <div className="text-3xl font-black text-red-500">
-                  {writing.score || "0"}
-                </div>
-                <div className="text-sm text-gray-600">Band Score</div>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div className="w-full bg-gray-50 p-8">
+        <div className="mx-auto max-w-4xl">
+          {/* Debug info - remove this later */}
+          
 
-        {/* Content */}
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          {/* Hero Section */}
-          <div className="bg-white rounded-3xl shadow-lg border border-gray-200 p-8 mb-8 text-center">
-            <div className="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
-              <span className="text-white text-3xl font-bold">
-                {writing.score || "0"}
+          {/* Header with overall score */}
+          <div className="mb-8">
+            <h1 className="text-lg font-semibold text-foreground">
+              Writing overall score: {scores.overall}{" "}
+              <span className="text-gray-600">
+                (Part 1 score: {scores.part1} | Part 2 score: {scores.part2})
               </span>
-            </div>
-            <h2 className="text-3xl font-bold text-black mb-2">Test Completed!</h2>
-            <p className="text-gray-600 text-lg mb-6">Your IELTS Writing Assessment Results</p>
+            </h1>
           </div>
 
-          {/* AI Feedback Section */}
-          {aiFeedback && (
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8 mb-8">
-              <h3 className="text-2xl font-bold text-black mb-6 text-center">AI Assessment Feedback</h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Task Achievement */}
-                <div className="bg-blue-50 rounded-xl p-6 border border-blue-200">
-                  <h4 className="text-lg font-semibold text-blue-900 mb-3 flex items-center">
-                    <span className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">1</span>
-                    Task Achievement
-                  </h4>
-                  <p className="text-gray-700 leading-relaxed">
-                    {aiFeedback.taskAchievement || "No feedback available for task achievement."}
-                  </p>
-                </div>
+          {/* Scoring categories */}
+          <div className="mb-8 grid grid-cols-4 gap-6">
+            <div className="text-center">
+              <p className="mb-2 text-sm font-medium text-foreground">Coherence cohesion</p>
+              <p className="text-sm text-gray-700 leading-relaxed">{aiFeedback?.coherenceAndCohesion || "No feedback available"}</p>
+            </div>
+            <div className="text-center">
+              <p className="mb-2 text-sm font-medium text-foreground">Grammar</p>
+              <p className="text-sm text-gray-700 leading-relaxed">{aiFeedback?.grammaticalRangeAndAccuracy || "No feedback available"}</p>
+            </div>
+            <div className="text-center">
+              <p className="mb-2 text-sm font-medium text-foreground">Lexical resource</p>
+              <p className="text-sm text-gray-700 leading-relaxed">{aiFeedback?.lexicalResource || "No feedback available"}</p>
+            </div>
+            <div className="text-center">
+              <p className="mb-2 text-sm font-medium text-foreground">Task achievement</p>
+              <p className="text-sm text-gray-700 leading-relaxed">{aiFeedback?.taskAchievement || "No feedback available"}</p>
+            </div>
+          </div>
 
-                {/* Coherence and Cohesion */}
-                <div className="bg-green-50 rounded-xl p-6 border border-green-200">
-                  <h4 className="text-lg font-semibold text-green-900 mb-3 flex items-center">
-                    <span className="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">2</span>
-                    Coherence and Cohesion
-                  </h4>
-                  <p className="text-gray-700 leading-relaxed">
-                    {aiFeedback.coherenceAndCohesion || "No feedback available for coherence and cohesion."}
-                  </p>
-                </div>
+          {/* Task tabs */}
+          <div className="mb-8 flex gap-4">
+            <Button
+              onClick={() => setActiveTask("task1")}
+              variant={activeTask === "task1" ? "default" : "outline"}
+              className={`flex-1 rounded-lg py-2 font-medium ${
+                activeTask === "task1"
+                  ? "bg-red-600 text-white hover:bg-red-700"
+                  : "bg-gray-200 text-foreground hover:bg-gray-300"
+              }`}
+            >
+              Task 1
+            </Button>
+            <Button
+              onClick={() => setActiveTask("task2")}
+              variant={activeTask === "task2" ? "default" : "outline"}
+              className={`flex-1 rounded-lg py-2 font-medium ${
+                activeTask === "task2"
+                  ? "bg-red-600 text-white hover:bg-red-700"
+                  : "bg-gray-200 text-foreground hover:bg-gray-300"
+              }`}
+            >
+              Task 2
+            </Button>
+          </div>
 
-                {/* Lexical Resource */}
-                <div className="bg-purple-50 rounded-xl p-6 border border-purple-200">
-                  <h4 className="text-lg font-semibold text-purple-900 mb-3 flex items-center">
-                    <span className="w-8 h-8 bg-purple-500 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">3</span>
-                    Lexical Resource
-                  </h4>
-                  <p className="text-gray-700 leading-relaxed">
-                    {aiFeedback.lexicalResource || "No feedback available for lexical resource."}
-                  </p>
-                </div>
-
-                {/* Grammatical Range and Accuracy */}
-                <div className="bg-orange-50 rounded-xl p-6 border border-orange-200">
-                  <h4 className="text-lg font-semibold text-orange-900 mb-3 flex items-center">
-                    <span className="w-8 h-8 bg-orange-500 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">4</span>
-                    Grammatical Range and Accuracy
-                  </h4>
-                  <p className="text-gray-700 leading-relaxed">
-                    {aiFeedback.grammaticalRangeAndAccuracy || "No feedback available for grammatical range and accuracy."}
-                  </p>
-                </div>
-              </div>
+          {/* Task 1 sub-tabs (only show when Task 1 is active) */}
+          {activeTask === "task1" && task1Answers.length > 1 && (
+            <div className="mb-8 flex gap-4">
+              <Button
+                onClick={() => setActiveTask1Part("part1")}
+                variant={activeTask1Part === "part1" ? "default" : "outline"}
+                className={`flex-1 rounded-lg py-2 font-medium ${
+                  activeTask1Part === "part1"
+                    ? "bg-red-600 text-white hover:bg-red-700"
+                    : "bg-gray-200 text-foreground hover:bg-gray-300"
+                }`}
+              >
+                Part 1.1
+              </Button>
+              <Button
+                onClick={() => setActiveTask1Part("part2")}
+                variant={activeTask1Part === "part2" ? "default" : "outline"}
+                className={`flex-1 rounded-lg py-2 font-medium ${
+                  activeTask1Part === "part2"
+                    ? "bg-red-600 text-white hover:bg-red-700"
+                    : "bg-gray-200 text-foreground hover:bg-gray-300"
+                }`}
+              >
+                Part 1.2
+              </Button>
             </div>
           )}
 
+          {/* Question section */}
+          <div className="mb-8 rounded-lg bg-white p-6">
+            <h2 className="mb-4 text-base font-semibold text-foreground">Question:</h2>
+            <p className="text-sm text-gray-700">{currentData.question}</p>
+          </div>
+
+          {/* Answer section */}
+          <div className="mb-8 rounded-lg bg-white p-6">
+            <h2 className="mb-4 text-base font-semibold text-foreground">Answer:</h2>
+            <p className="text-sm text-gray-700">{currentData.answer}</p>
+          </div>
+
+          {/* Comment section */}
+          <div className="rounded-lg bg-white p-6">
+            <h2 className="mb-4 text-base font-semibold text-foreground">Comment:</h2>
+            <p className="text-sm text-gray-700">{currentData.comment}</p>
+          </div>
         </div>
       </div>
     );

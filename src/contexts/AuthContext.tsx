@@ -111,10 +111,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     setIsLoading(true);
     
-    // Clean up expired tokens before checking auth
-    authService.cleanupExpiredTokens();
-    
     const { accessToken } = authService.getStoredTokens();
+    
+    // Debug token status
+    console.log('🔍 Auth check - Token status:', {
+      hasToken: !!accessToken,
+      tokenPreview: accessToken ? accessToken.substring(0, 20) + '...' : 'No token',
+      isExpired: accessToken ? authService.isTokenExpired(accessToken) : 'No token'
+    });
+    
+    // Only clean up tokens if they are actually expired
+    if (accessToken && authService.isTokenExpired(accessToken)) {
+      console.log('Token expired, cleaning up...');
+      authService.cleanupExpiredTokens();
+    }
 
     if (accessToken) {
       try {

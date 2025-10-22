@@ -413,55 +413,55 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
         const readingAnswers = sessionStorage.getItem(key);
         if (readingAnswers) {
           const readingData = JSON.parse(readingAnswers);
-          console.log("Submitting reading test:", readingData.testId, "with answers:", readingData.answers);
+          console.log("Okuma testi gönderiliyor:", readingData.testId, "cevaplarla:", readingData.answers);
           
-          // Check if this test was part of the overall test flow
+          // Bu testin genel test akışının parçası olup olmadığını kontrol et
           const { overallTestTokenStore } = await import("@/services/overallTest.service");
           const hasOverallToken = overallTestTokenStore.getByTestId(readingData.testId);
           
           if (hasOverallToken) {
-            console.log("✅ Reading test has overall token, submitting...");
+            console.log("✅ Okuma testi genel token'a sahip, gönderiliyor...");
             const payload = Object.entries(readingData.answers).map(([questionId, userAnswer]) => ({ 
               questionId, 
               userAnswer: String(userAnswer) 
             }));
             await readingSubmissionService.submitAnswers(readingData.testId, payload);
           } else {
-            console.log("⚠️ Reading test not part of overall flow, skipping submission");
+            console.log("⚠️ Okuma testi genel akışın parçası değil, gönderim atlanıyor");
           }
         }
       }
       
-      // Submit listening test - look for listening answers from any test
+      // Dinleme testini gönder - herhangi bir testten dinleme cevaplarını ara
       const listeningAnswersKeys = Object.keys(sessionStorage).filter(key => key.startsWith('listening_answers_'));
       for (const key of listeningAnswersKeys) {
         const listeningAnswers = sessionStorage.getItem(key);
         if (listeningAnswers) {
           const listeningData = JSON.parse(listeningAnswers);
-          console.log("Submitting listening test:", listeningData.testId, "with answers:", listeningData.answers);
+          console.log("Dinleme testi gönderiliyor:", listeningData.testId, "cevaplarla:", listeningData.answers);
           
-          // Check if this test was part of the overall test flow
+          // Bu testin genel test akışının parçası olup olmadığını kontrol et
           const { overallTestTokenStore } = await import("@/services/overallTest.service");
           const hasOverallToken = overallTestTokenStore.getByTestId(listeningData.testId);
           
           if (hasOverallToken) {
-            console.log("✅ Listening test has overall token, submitting...");
+            console.log("✅ Dinleme testi genel token'a sahip, gönderiliyor...");
             await listeningSubmissionService.submitAnswers(listeningData.testId, listeningData.answers);
           } else {
-            console.log("⚠️ Listening test not part of overall flow, skipping submission");
-            // You can either skip or use session token as fallback
+            console.log("⚠️ Dinleme testi genel akışın parçası değil, gönderim atlanıyor");
+            // Atlayabilir veya oturum token'ını yedek olarak kullanabilirsiniz
             // await listeningSubmissionService.submitAnswers(listeningData.testId, listeningData.answers);
           }
         }
       }
       
-      // Submit writing test
+      // Yazma testini gönder
       const writingAnswers = sessionStorage.getItem(`writing_answers_${testId}`);
-      console.log("Retrieved writing answers from sessionStorage:", writingAnswers);
+      console.log("SessionStorage'dan yazma cevapları alındı:", writingAnswers);
       if (writingAnswers) {
         const writingData = JSON.parse(writingAnswers);
-        console.log("Parsed writing data:", writingData);
-        console.log("Writing answers in data:", writingData.answers);
+        console.log("Ayrıştırılmış yazma verisi:", writingData);
+        console.log("Verideki yazma cevapları:", writingData.answers);
         const payload = {
           writingTestId: writingData.testId,
           sections: writingData.sections.map((section: any, sectionIndex: number) => {

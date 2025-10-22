@@ -183,10 +183,18 @@ export const authService = {
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
       const currentTime = Math.floor(Date.now() / 1000);
-      return payload.exp < currentTime;
+      const isExpired = payload.exp < currentTime;
+      console.log('🔍 Token expiration check:', {
+        exp: payload.exp,
+        currentTime,
+        isExpired,
+        expiresIn: payload.exp - currentTime
+      });
+      return isExpired;
     } catch (error) {
       console.error('Error parsing token:', error);
-      return true; // If we can't parse it, consider it expired
+      // If we can't parse it, don't consider it expired - let the server decide
+      return false;
     }
   },
 
@@ -214,8 +222,8 @@ export const authService = {
       
     } catch (error) {
       console.error('Error during token cleanup:', error);
-      // If there's any error, clear everything to be safe
-      this.clearStoredTokens();
+      // Don't clear tokens on error - just log the error
+      // Only clear tokens if they are actually expired
     }
   },
 

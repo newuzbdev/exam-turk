@@ -140,8 +140,8 @@ export default function WritingTestResults() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900"></h1>
-              <p className="text-gray-600 mt-1">Review your performance and feedback</p>
+              <h1 className="text-3xl font-bold text-gray-900">Yazma Testi Sonuçları</h1>
+              <p className="text-gray-600 mt-1">Performansınızı ve geri bildirimi inceleyin</p>
             </div>
           </div>
 
@@ -149,12 +149,12 @@ export default function WritingTestResults() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">Overall Score</h2>
-                <p className="text-gray-600">Your writing test performance</p>
+                <h2 className="text-2xl font-bold text-gray-900">Genel Puan</h2>
+                <p className="text-gray-600">Yazma testi performansınız</p>
               </div>
               <div className="text-right">
                 <div className="text-4xl font-bold text-red-600">{scores.overall}</div>
-                <div className="text-sm text-gray-500">out of 9</div>
+                <div className="text-sm text-gray-500">9 üzerinden</div>
               </div>
             </div>
           </div>
@@ -164,7 +164,7 @@ export default function WritingTestResults() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-gray-900">Coherence & Cohesion</h3>
+                <h3 className="font-semibold text-gray-900">Tutarlılık ve Bağlılık</h3>
               <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
             </div>
             <p className="text-sm text-gray-600 leading-relaxed">
@@ -173,7 +173,7 @@ export default function WritingTestResults() {
           </div>
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-gray-900">Grammar</h3>
+                <h3 className="font-semibold text-gray-900">Dil Bilgisi</h3>
               <div className="w-3 h-3 bg-green-500 rounded-full"></div>
             </div>
             <p className="text-sm text-gray-600 leading-relaxed">
@@ -182,7 +182,7 @@ export default function WritingTestResults() {
           </div>
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-gray-900">Lexical Resource</h3>
+                <h3 className="font-semibold text-gray-900">Kelime Kaynağı</h3>
               <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
             </div>
             <p className="text-sm text-gray-600 leading-relaxed">
@@ -191,7 +191,7 @@ export default function WritingTestResults() {
           </div>
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-gray-900">Task Achievement</h3>
+                <h3 className="font-semibold text-gray-900">Görev Başarısı</h3>
               <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
             </div>
             <p className="text-sm text-gray-600 leading-relaxed">
@@ -202,7 +202,7 @@ export default function WritingTestResults() {
 
         {/* Task Navigation - Redesigned */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-6">Writing Tasks</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-6">Yazma Görevleri</h3>
           
           {/* All Tasks in One Row - Wider */}
           <div className="grid grid-cols-3 gap-4">
@@ -220,8 +220,8 @@ export default function WritingTestResults() {
               }`}
             >
               <div className="text-center">
-                <div className="font-semibold">Task 1.1</div>
-                <div className="text-xs opacity-75">Part 1</div>
+                <div className="font-semibold">Görev 1.1</div>
+                <div className="text-xs opacity-75">Bölüm 1</div>
               </div>
             </Button>
 
@@ -239,8 +239,8 @@ export default function WritingTestResults() {
               }`}
             >
               <div className="text-center">
-                <div className="font-semibold">Task 1.2</div>
-                <div className="text-xs opacity-75">Part 2</div>
+                <div className="font-semibold">Görev 1.2</div>
+                <div className="text-xs opacity-75">Bölüm 2</div>
               </div>
             </Button>
 
@@ -255,8 +255,8 @@ export default function WritingTestResults() {
               }`}
             >
               <div className="text-center">
-                <div className="font-semibold">Task 2</div>
-                <div className="text-xs opacity-75">Essay</div>
+                <div className="font-semibold">Görev 2</div>
+                <div className="text-xs opacity-75">Makale</div>
               </div>
             </Button>
           </div>
@@ -270,7 +270,7 @@ export default function WritingTestResults() {
               <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
                 <span className="text-blue-600 font-semibold text-sm">Q</span>
               </div>
-              <h2 className="text-lg font-semibold text-gray-900">Question</h2>
+                <h2 className="text-lg font-semibold text-gray-900">Soru</h2>
             </div>
             <div className="bg-gray-50 rounded-lg p-4">
               <p className="text-gray-700 leading-relaxed">{currentData.question}</p>
@@ -283,7 +283,7 @@ export default function WritingTestResults() {
               <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
                 <span className="text-green-600 font-semibold text-sm">A</span>
               </div>
-              <h2 className="text-lg font-semibold text-gray-900">Your Answer</h2>
+                <h2 className="text-lg font-semibold text-gray-900">Cevabınız</h2>
             </div>
             <div className="bg-gray-50 rounded-lg p-4">
               <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{currentData.answer}</p>
@@ -296,7 +296,7 @@ export default function WritingTestResults() {
               <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
                 <span className="text-purple-600 font-semibold text-sm">💬</span>
               </div>
-              <h2 className="text-lg font-semibold text-gray-900">AI Feedback</h2>
+                <h2 className="text-lg font-semibold text-gray-900">AI Geri Bildirimi</h2>
             </div>
             <div className="bg-gray-50 rounded-lg p-4">
               <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{currentData.comment}</p>
@@ -310,7 +310,7 @@ export default function WritingTestResults() {
             onClick={() => navigate("/test")}
             className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
           >
-            Take Another Test
+            Başka Test Al
           </Button>
         </div>
       </div>

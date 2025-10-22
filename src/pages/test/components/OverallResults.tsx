@@ -580,16 +580,16 @@ export default function OverallResults() {
         <div className="max-w-7xl mx-auto px-4">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-foreground mb-2">
-              {testType === 'listening' && 'Listening Test Results'}
-              {testType === 'reading' && 'Reading Test Results'}
-              {/* {testType === 'writing' && 'Writing Test Results'} */}
-              {testType === 'speaking' && 'Speaking Test Results'}
+              {testType === 'listening' && 'Dinleme Testi Sonuçları'}
+              {testType === 'reading' && 'Okuma Testi Sonuçları'}
+              {testType === 'writing' && 'Yazma Testi Sonuçları'}
+              {testType === 'speaking' && 'Konuşma Testi Sonuçları'}
             </h1>
             <p className="text-muted-foreground">
-              {testType === 'listening' && 'Review your listening test performance'}
-              {testType === 'reading' && 'Review your reading test performance'}
-              {/* {testType === 'writing' && 'Review your writing test performance'} */}
-              {testType === 'speaking' && 'Review your speaking test performance'}
+              {testType === 'listening' && 'Dinleme testi performansınızı inceleyin'}
+              {testType === 'reading' && 'Okuma testi performansınızı inceleyin'}
+              {testType === 'writing' && 'Yazma testi performansınızı inceleyin'}
+              {testType === 'speaking' && 'Konuşma testi performansınızı inceleyin'}
             </p>
           </div>
           
@@ -613,15 +613,15 @@ export default function OverallResults() {
     <div className="min-h-screen bg-gray-50 py-10">
       <div className="max-w-7xl mx-auto px-4">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Overall Results</h1>
-          <p className="text-muted-foreground">Comprehensive overview of your IELTS test performance</p>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Genel Sonuçlar</h1>
+          <p className="text-muted-foreground">IELTS test performansınızın kapsamlı özeti</p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="listening" className="flex items-center gap-2">
-              <span className="hidden sm:inline">Listening</span>
-              <span className="sm:hidden">L</span>
+              <span className="hidden sm:inline">Dinleme</span>
+              <span className="sm:hidden">D</span>
               {data?.listening && (
                 <span className="ml-1 text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full">
                   {data.listening.score || 0}
@@ -629,8 +629,8 @@ export default function OverallResults() {
               )}
             </TabsTrigger>
             <TabsTrigger value="reading" className="flex items-center gap-2">
-              <span className="hidden sm:inline">Reading</span>
-              <span className="sm:hidden">R</span>
+              <span className="hidden sm:inline">Okuma</span>
+              <span className="sm:hidden">O</span>
               {data?.reading && (
                 <span className="ml-1 text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full">
                   {data.reading.score || 0}
@@ -638,8 +638,8 @@ export default function OverallResults() {
               )}
             </TabsTrigger>
             <TabsTrigger value="writing" className="flex items-center gap-2">
-              <span className="hidden sm:inline">Writing</span>
-              <span className="sm:hidden">W</span>
+              <span className="hidden sm:inline">Yazma</span>
+              <span className="sm:hidden">Y</span>
               {data?.writing && (
                 <span className="ml-1 text-xs bg-red-100 text-red-800 px-1.5 py-0.5 rounded-full">
                   {data.writing.score || 0}
@@ -647,8 +647,8 @@ export default function OverallResults() {
               )}
             </TabsTrigger>
             <TabsTrigger value="speaking" className="flex items-center gap-2">
-              <span className="hidden sm:inline">Speaking</span>
-              <span className="sm:hidden">S</span>
+              <span className="hidden sm:inline">Konuşma</span>
+              <span className="sm:hidden">K</span>
               {data?.speaking && (
                 <span className="ml-1 text-xs bg-red-100 text-red-800 px-1.5 py-0.5 rounded-full">
                   {data.speaking.score || 0}

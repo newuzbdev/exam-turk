@@ -159,16 +159,16 @@ export const listeningSubmissionService = {
         localStorage.getItem("accessToken") ||
         token;
       
-      console.log("🔍 Listening test submission debug:", {
+      console.log("🔍 Dinleme testi gönderim hata ayıklama:", {
         testId,
         hasOverallToken: !!overallTestTokenStore.getByTestId(testId),
         hasSessionToken: !!sessionToken,
-        tokenSource: overallTestTokenStore.getByTestId(testId) ? 'overall' : 'session'
+        tokenSource: overallTestTokenStore.getByTestId(testId) ? 'genel' : 'oturum'
       });
 
       if (!sessionToken) {
         toast.error("Javoblarni yuborish uchun tizimga kirishingiz kerak.");
-        throw new Error("Authentication required to submit exam results.");
+        throw new Error("Sınav sonuçlarını göndermek için kimlik doğrulama gerekli.");
       }
 
       const payload = { testId, sessionToken, answers };
@@ -189,7 +189,7 @@ export const listeningSubmissionService = {
       if (status === 401 || status === 403) {
         toast.error("Javoblarni yuborish uchun tizimga kirishingiz kerak.");
         throw new Error(
-          "Authentication required to submit exam results (401/403)."
+          "Sınav sonuçlarını göndermek için kimlik doğrulama gerekli (401/403)."
         );
       }
       console.error("submitAnswers error:", error);

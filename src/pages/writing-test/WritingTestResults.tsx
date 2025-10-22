@@ -127,126 +127,188 @@ export default function WritingTestResults() {
   const currentData = getCurrentQuestionAndAnswer();
 
   return (
-    <div className="w-full bg-gray-50 p-8">
-      <div className="mx-auto max-w-4xl">
-        {/* Debug info - remove this later */}
-      
-        {/* Back button */}
-        <div className="mb-6">
-          <Button
-            variant="ghost"
-            onClick={() => navigate("/test")}
-            className="p-2 hover:bg-gray-100 rounded-full"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </div>
-
-        {/* Header with overall score */}
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        {/* Header Section */}
         <div className="mb-8">
-          <h1 className="text-lg font-semibold text-foreground">
-            Writing overall score: {scores.overall}{" "}
-        
-          </h1>
-        </div>
-
-        {/* Scoring categories */}
-        <div className="mb-8 grid grid-cols-4 gap-6">
-          <div className="text-center">
-            <p className="mb-2 text-sm font-medium text-foreground">Coherence cohesion</p>
-            <p className="text-sm text-gray-700 leading-relaxed">{writingData?.aiFeedback?.coherenceAndCohesion || "No feedback available"}</p>
-          </div>
-          <div className="text-center">
-            <p className="mb-2 text-sm font-medium text-foreground">Grammar</p>
-            <p className="text-sm text-gray-700 leading-relaxed">{writingData?.aiFeedback?.grammaticalRangeAndAccuracy || "No feedback available"}</p>
-          </div>
-          <div className="text-center">
-            <p className="mb-2 text-sm font-medium text-foreground">Lexical resource</p>
-            <p className="text-sm text-gray-700 leading-relaxed">{writingData?.aiFeedback?.lexicalResource || "No feedback available"}</p>
-          </div>
-          <div className="text-center">
-            <p className="mb-2 text-sm font-medium text-foreground">Task achievement</p>
-            <p className="text-sm text-gray-700 leading-relaxed">{writingData?.aiFeedback?.taskAchievement || "No feedback available"}</p>
-          </div>
-        </div>
-
-        {/* Task tabs */}
-        <div className="mb-8 flex gap-4">
-          <Button
-            onClick={() => setActiveTask("task1")}
-            variant={activeTask === "task1" ? "default" : "outline"}
-            className={`flex-1 rounded-lg py-2 font-medium ${
-              activeTask === "task1"
-                ? "bg-red-600 text-white hover:bg-red-700"
-                : "bg-gray-200 text-foreground hover:bg-gray-300"
-            }`}
-          >
-            Task 1
-          </Button>
-          <Button
-            onClick={() => setActiveTask("task2")}
-            variant={activeTask === "task2" ? "default" : "outline"}
-            className={`flex-1 rounded-lg py-2 font-medium ${
-              activeTask === "task2"
-                ? "bg-red-600 text-white hover:bg-red-700"
-                : "bg-gray-200 text-foreground hover:bg-gray-300"
-            }`}
-          >
-            Task 2
-          </Button>
-        </div>
-
-        {/* Task 1 sub-tabs (only show when Task 1 is active) */}
-        {activeTask === "task1" && task1Answers.length > 1 && (
-          <div className="mb-8 flex gap-4">
+          <div className="flex items-center gap-4 mb-6">
             <Button
-              onClick={() => setActiveTask1Part("part1")}
-              variant={activeTask1Part === "part1" ? "default" : "outline"}
-              className={`flex-1 rounded-lg py-2 font-medium ${
-                activeTask1Part === "part1"
-                  ? "bg-red-600 text-white hover:bg-red-700"
-                  : "bg-gray-200 text-foreground hover:bg-gray-300"
+              variant="ghost"
+              onClick={() => navigate("/test")}
+              className="p-2 hover:bg-white/80 rounded-full transition-colors"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Writing Test Results</h1>
+              <p className="text-gray-600 mt-1">Review your performance and feedback</p>
+            </div>
+          </div>
+
+          {/* Overall Score Card */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Overall Score</h2>
+                <p className="text-gray-600">Your writing test performance</p>
+              </div>
+              <div className="text-right">
+                <div className="text-4xl font-bold text-red-600">{scores.overall}</div>
+                <div className="text-sm text-gray-500">out of 9</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Scoring Categories Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-gray-900">Coherence & Cohesion</h3>
+              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+            </div>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              {writingData?.aiFeedback?.coherenceAndCohesion || "No feedback available"}
+            </p>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-gray-900">Grammar</h3>
+              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+            </div>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              {writingData?.aiFeedback?.grammaticalRangeAndAccuracy || "No feedback available"}
+            </p>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-gray-900">Lexical Resource</h3>
+              <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+            </div>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              {writingData?.aiFeedback?.lexicalResource || "No feedback available"}
+            </p>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-gray-900">Task Achievement</h3>
+              <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+            </div>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              {writingData?.aiFeedback?.taskAchievement || "No feedback available"}
+            </p>
+          </div>
+        </div>
+
+        {/* Task Navigation - Redesigned */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+          <h3 className="text-lg font-semibold text-gray-900 mb-6">Writing Tasks</h3>
+          
+          {/* All Tasks in One Row - Wider */}
+          <div className="grid grid-cols-3 gap-4">
+            {/* Task 1.1 */}
+            <Button
+              onClick={() => {
+                setActiveTask("task1");
+                setActiveTask1Part("part1");
+              }}
+              variant="outline"
+              className={`h-16 rounded-lg font-medium transition-all ${
+                activeTask === "task1" && activeTask1Part === "part1"
+                  ? "bg-red-600 text-white hover:bg-red-700 shadow-md border-red-600"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-300 hover:border-gray-400"
               }`}
             >
-              Part 1.1
+              <div className="text-center">
+                <div className="font-semibold">Task 1.1</div>
+                <div className="text-xs opacity-75">Part 1</div>
+              </div>
             </Button>
+
+            {/* Task 1.2 */}
             <Button
-              onClick={() => setActiveTask1Part("part2")}
-              variant={activeTask1Part === "part2" ? "default" : "outline"}
-              className={`flex-1 rounded-lg py-2 font-medium ${
-                activeTask1Part === "part2"
-                  ? "bg-red-600 text-white hover:bg-red-700"
-                  : "bg-gray-200 text-foreground hover:bg-gray-300"
+              onClick={() => {
+                setActiveTask("task1");
+                setActiveTask1Part("part2");
+              }}
+              variant="outline"
+              className={`h-16 rounded-lg font-medium transition-all ${
+                activeTask === "task1" && activeTask1Part === "part2"
+                  ? "bg-red-600 text-white hover:bg-red-700 shadow-md border-red-600"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-300 hover:border-gray-400"
               }`}
             >
-              Part 1.2
+              <div className="text-center">
+                <div className="font-semibold">Task 1.2</div>
+                <div className="text-xs opacity-75">Part 2</div>
+              </div>
+            </Button>
+
+            {/* Task 2 */}
+            <Button
+              onClick={() => setActiveTask("task2")}
+              variant="outline"
+              className={`h-16 rounded-lg font-medium transition-all ${
+                activeTask === "task2"
+                  ? "bg-red-600 text-white hover:bg-red-700 shadow-md border-red-600"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-300 hover:border-gray-400"
+              }`}
+            >
+              <div className="text-center">
+                <div className="font-semibold">Task 2</div>
+                <div className="text-xs opacity-75">Essay</div>
+              </div>
             </Button>
           </div>
-        )}
-
-        {/* Question section */}
-        <div className="mb-8 rounded-lg bg-white p-6">
-          <h2 className="mb-4 text-base font-semibold text-foreground">Question:</h2>
-          <p className="text-sm text-gray-700">{currentData.question}</p>
         </div>
 
-        {/* Answer section */}
-        <div className="mb-8 rounded-lg bg-white p-6">
-          <h2 className="mb-4 text-base font-semibold text-foreground">Answer:</h2>
-          <p className="text-sm text-gray-700">{currentData.answer}</p>
-        </div>
+        {/* Content Sections */}
+        <div className="space-y-6">
+          {/* Question Section */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                <span className="text-blue-600 font-semibold text-sm">Q</span>
+              </div>
+              <h2 className="text-lg font-semibold text-gray-900">Question</h2>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <p className="text-gray-700 leading-relaxed">{currentData.question}</p>
+            </div>
+          </div>
 
-        {/* Comment section */}
-        <div className="rounded-lg bg-white p-6">
-          <h2 className="mb-4 text-base font-semibold text-foreground">Comment:</h2>
-          <p className="text-sm text-gray-700">{currentData.comment}</p>
+          {/* Answer Section */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                <span className="text-green-600 font-semibold text-sm">A</span>
+              </div>
+              <h2 className="text-lg font-semibold text-gray-900">Your Answer</h2>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{currentData.answer}</p>
+            </div>
+          </div>
+
+          {/* Comment Section */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                <span className="text-purple-600 font-semibold text-sm">💬</span>
+              </div>
+              <h2 className="text-lg font-semibold text-gray-900">AI Feedback</h2>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{currentData.comment}</p>
+            </div>
+          </div>
         </div>
 
         {/* Action Button */}
-        <div className="mt-8">
+        <div className="mt-8 flex justify-center">
           <Button
             onClick={() => navigate("/test")}
-            className="w-full bg-red-500 hover:bg-red-600 text-white py-4 rounded-md font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200"
+            className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
           >
             Take Another Test
           </Button>

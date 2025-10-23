@@ -229,9 +229,8 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
     if (question.type === "TRUE_FALSE") {
       return (
         <div key={question.id} className="space-y-3">
-          <div className="font-bold text-lg">S{questionNumber}.</div>
           <div className="space-y-2">
-            <p className="text-lg text-gray-700 leading-relaxed">{question.text}</p>
+            <p className="text-lg text-black leading-relaxed font-bold">{questionNumber}. {question.text}</p>
             
             <div className="flex gap-6">
               <label 
@@ -257,7 +256,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                 onFocus={(e) => e.target.blur()}
                 tabIndex={-1}
               />
-                <span className="text-lg text-gray-700 ml-1">Doğru</span>
+                <span className="text-lg text-black ml-1">Doğru</span>
               </label>
 
               <label 
@@ -283,7 +282,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                   onFocus={(e) => e.target.blur()}
                   tabIndex={-1}
                 />
-                <span className="text-lg text-gray-700 ml-1">Yanlış</span>
+                <span className="text-lg text-black ml-1">Yanlış</span>
               </label>
             </div>
           </div>
@@ -295,7 +294,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
     return (
       <div key={question.id} className="space-y-3">
         <div className="space-y-2">
-          <p className="text-lg text-gray-700 leading-relaxed font-bold">{question.text}.</p>
+          <p className="text-lg text-black leading-relaxed font-bold">{questionNumber}. {question.text}.</p>
           
           {question.answers?.map((answer: any) => (
             <label
@@ -316,7 +315,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                 </div>
               </div>
               <div className="flex-1">
-                <span className="text-lg text-gray-700 ml-1">{answer.answer}</span>
+                <span className="text-lg text-black ml-1">{answer.answer}</span>
               </div>
               <input
                 type="radio"
@@ -412,7 +411,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                     <div className="text-sm flex items-center justify-center font-bold bg-gray-100 rounded-full w-6 h-6 flex-shrink-0">
                       {option.letter}
                     </div>
-                    <p className="text-sm text-gray-700 leading-relaxed flex-1">
+                    <p className="text-sm text-black leading-relaxed flex-1">
                       {option.text}
                     </p>
                   </div>
@@ -465,7 +464,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                         <div className="text-lg flex items-center justify-center font-bold bg-gray-100 rounded-full w-8 h-8 flex-shrink-0">
                           {option.letter}
                         </div>
-                        <p className="text-lg text-gray-700 leading-relaxed flex-1">
+                        <p className="text-lg text-black leading-relaxed flex-1">
                           {option.text}
                         </p>
                       </div>
@@ -1154,7 +1153,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
             <h3 className="text-base sm:text-lg lg:text-2xl font-bold text-gray-800 mb-2 sm:mb-3">
               BÖLÜM {bolum} - DİNLEME METNİ
             </h3>
-            <p className="text-xs sm:text-sm lg:text-lg text-gray-700 leading-relaxed">
+            <p className="text-xs sm:text-sm lg:text-lg text-black leading-relaxed">
               {getStaticHeader(bolum)}
             </p>
           </div>

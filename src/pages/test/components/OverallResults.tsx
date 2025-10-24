@@ -121,12 +121,12 @@ export default function OverallResults() {
     }
 
     const examData = data.listening.questions.map((q, index) => {
-      const doğruAnswer = q.doğruAnswers[0]?.text || "";
+      const doğruAnswer = q.doğruAnswers?.[0]?.text || "";
       return {
         no: q.questionNumber || index + 1,
         userAnswer: q.userAnswer || "Seçilmedi",
         doğruAnswer: doğruAnswer,
-        result: q.doğruAnswers.some(ca => ca.text === q.userAnswer) ? "Doğru" : "Yanlış"
+        result: q.doğruAnswers?.some(ca => ca.text === q.userAnswer) ? "Doğru" : "Yanlış"
       };
     });
 
@@ -210,12 +210,12 @@ export default function OverallResults() {
     }
 
     const examData = data.reading.questions.map((q, index) => {
-      const doğruAnswer = q.doğruAnswers[0]?.text || "";
+      const doğruAnswer = q.doğruAnswers?.[0]?.text || "";
       return {
         no: q.questionNumber || index + 1,
         userAnswer: q.userAnswer || "Seçilmedi",
         doğruAnswer: doğruAnswer,
-        result: q.doğruAnswers.some(ca => ca.text === q.userAnswer) ? "Doğru" : "Yanlış"
+        result: q.doğruAnswers?.some(ca => ca.text === q.userAnswer) ? "Doğru" : "Yanlış"
       };
     });
 

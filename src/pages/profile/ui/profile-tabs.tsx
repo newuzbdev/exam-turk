@@ -5,12 +5,28 @@ import { useNavigate } from "react-router"
 import { TrendingUp, Eye, Calendar } from "lucide-react"
 import { authService } from "@/services/auth.service"
 import axiosPrivate from "@/config/api"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from "@/components/ui/pagination"
 
 interface TopResult {
   id: string
   type: string
   score: number
   createdAt: string
+}
+
+interface PaginationData {
+  total: number
+  page: number
+  limit: number
+  data: TopResult[]
 }
 
 const typeLabels: Record<string, string> = {
@@ -24,38 +40,65 @@ const ProfileTabs = () => {
   const navigate = useNavigate()
   const [results, setResults] = useState<TopResult[]>([])
   const [loading, setLoading] = useState(true)
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    limit: 10,
+    totalPages: 0
+  })
+
+  const fetchUserResults = async (page: number = 1) => {
+    try {
+      setLoading(true)
+      console.log(`Fetching user overall test results for page ${page}...`)
+      
+      // Make API call to get paginated user test results
+      const response = await axiosPrivate.get(`/api/overal-test-result/get-users?page=${page}&limit=10`)
+      console.log("User results response:", response.data)
+      
+      // Extract pagination data from response
+      const paginationData: PaginationData = response.data
+      setResults(paginationData.data || [])
+      
+      // Update pagination state
+      const totalPages = Math.ceil(paginationData.total / paginationData.limit)
+      setPagination({
+        total: paginationData.total,
+        page: paginationData.page,
+        limit: paginationData.limit,
+        totalPages
+      })
+      
+      console.log("User results loaded:", paginationData.data?.length || 0, "results")
+    } catch (error) {
+      console.error("Error fetching user results:", error)
+      // Fallback to topResults from user data if API fails
+      try {
+        const userData = await authService.getCurrentUser()
+        setResults(userData?.topResults || [])
+        setPagination({
+          total: userData?.topResults?.length || 0,
+          page: 1,
+          limit: 10,
+          totalPages: 1
+        })
+      } catch (fallbackError) {
+        console.error("Fallback also failed:", fallbackError)
+        setResults([])
+        setPagination({
+          total: 0,
+          page: 1,
+          limit: 10,
+          totalPages: 0
+        })
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const fetchUserResults = async () => {
-      try {
-        setLoading(true)
-        console.log("Fetching user overall test results...")
-        
-        // Make API call to get all user test results
-        const response = await axiosPrivate.get("/api/overal-test-result/get-users")
-        console.log("User results response:", response.data)
-        
-        // Extract results from response
-        const userResults = response.data?.data || response.data || []
-        setResults(userResults)
-        
-        console.log("User results loaded:", userResults.length, "results")
-      } catch (error) {
-        console.error("Error fetching user results:", error)
-        // Fallback to topResults from user data if API fails
-        try {
-          const userData = await authService.getCurrentUser()
-          setResults(userData?.topResults || [])
-        } catch (fallbackError) {
-          console.error("Fallback also failed:", fallbackError)
-          setResults([])
-        }
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchUserResults()
+    fetchUserResults(1)
   }, [])
 
   if (loading) {
@@ -184,6 +227,84 @@ const ProfileTabs = () => {
               <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 to-red-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {pagination.totalPages > 1 && (
+        <div className="mt-8 flex justify-center">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious 
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    if (pagination.page > 1) {
+                      fetchUserResults(pagination.page - 1)
+                    }
+                  }}
+                  className={pagination.page <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+              
+              {/* Page numbers */}
+              {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                let pageNumber
+                if (pagination.totalPages <= 5) {
+                  pageNumber = i + 1
+                } else if (pagination.page <= 3) {
+                  pageNumber = i + 1
+                } else if (pagination.page >= pagination.totalPages - 2) {
+                  pageNumber = pagination.totalPages - 4 + i
+                } else {
+                  pageNumber = pagination.page - 2 + i
+                }
+                
+                return (
+                  <PaginationItem key={pageNumber}>
+                    <PaginationLink
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        fetchUserResults(pageNumber)
+                      }}
+                      isActive={pagination.page === pageNumber}
+                      className="cursor-pointer"
+                    >
+                      {pageNumber}
+                    </PaginationLink>
+                  </PaginationItem>
+                )
+              })}
+              
+              {pagination.totalPages > 5 && pagination.page < pagination.totalPages - 2 && (
+                <PaginationItem>
+                  <PaginationEllipsis />
+                </PaginationItem>
+              )}
+              
+              <PaginationItem>
+                <PaginationNext 
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    if (pagination.page < pagination.totalPages) {
+                      fetchUserResults(pagination.page + 1)
+                    }
+                  }}
+                  className={pagination.page >= pagination.totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      )}
+
+      {/* Pagination Info */}
+      {pagination.total > 0 && (
+        <div className="mt-4 text-center text-sm text-gray-600">
+          Sayfa {pagination.page} / {pagination.totalPages} - Toplam {pagination.total} sonuç
         </div>
       )}
     </div>

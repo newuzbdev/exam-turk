@@ -69,12 +69,12 @@ export default function ListeningPart2() {
       </div>
 
       <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-        {questions.map((question) => (
+        {questions.map((question, index) => (
           <div
             key={question.id}
             className="bg-white  border-gray-300 p-4 rounded"
           >
-            <p className="text-lg mb-4 leading-relaxed font-bold">{question.text}</p>
+            <p className="text-lg mb-4 leading-relaxed font-bold">{9 + index}. {question.text}</p>
 
             <div className="flex gap-6">
               <label className="flex items-center gap-2 cursor-pointer">

@@ -230,7 +230,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
       return (
         <div key={question.id} className="space-y-3">
           <div className="space-y-2">
-            <p className="text-lg text-black leading-relaxed font-bold">{questionNumber}. {question.text}</p>
+            <p className="text-lg text-black leading-relaxed font-bold">S{questionNumber}. {question.text}</p>
             
             <div className="flex gap-6">
               <label 
@@ -294,7 +294,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
     return (
       <div key={question.id} className="space-y-3">
         <div className="space-y-2">
-          <p className="text-lg text-black leading-relaxed font-bold">{questionNumber}. {question.text}.</p>
+          <p className="text-lg text-black leading-relaxed font-bold">S{questionNumber}. {question.text}</p>
           
           {question.answers?.map((answer: any) => (
             <label

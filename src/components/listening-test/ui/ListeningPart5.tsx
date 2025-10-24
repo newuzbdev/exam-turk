@@ -78,11 +78,11 @@ export default function ListeningPart5({ sections: apiSections }: ListeningPart5
               <h2 className="font-bold text-lg">{section.title}</h2>
             </div>
 
-            {section.questions.map((question) => (
+            {section.questions.map((question, index) => (
               <div key={question.id} className="mb-8">
                 <div className="mb-4">
                   <p className="font-bold text-lg leading-relaxed">
-                    {question.number && question.number > 0 ? `${question.number}.` : 'N/A.'} {question.text}
+                    {24 + index}. {question.text}
                   </p>
                   {/* Debug info - remove in production */}
                   <p className="text-xs text-gray-500">

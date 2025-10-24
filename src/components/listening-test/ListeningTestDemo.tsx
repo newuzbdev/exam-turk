@@ -223,14 +223,16 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
     return questions;
   };
 
-  const renderQuestion = (question: any, questionNumber: number) => {
+  const renderQuestion = (question: any, questionNumber: number, partNumber?: number) => {
     const selectedAnswer = userAnswers[question.id];
 
     if (question.type === "TRUE_FALSE") {
       return (
         <div key={question.id} className="space-y-3">
           <div className="space-y-2">
-            <p className="text-lg text-black leading-relaxed font-bold">S{questionNumber}. {question.text}</p>
+            <p className="text-lg text-black leading-relaxed font-bold">
+              {partNumber === 1 ? `${question.text}.` : `S${questionNumber}. ${question.text}`}
+            </p>
             
             <div className="flex gap-6">
               <label 
@@ -294,7 +296,9 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
     return (
       <div key={question.id} className="space-y-3">
         <div className="space-y-2">
-          <p className="text-lg text-black leading-relaxed font-bold">S{questionNumber}. {question.text}</p>
+          <p className="text-lg text-black leading-relaxed font-bold">
+            {partNumber === 1 ? `${question.text}.` : `S${questionNumber}. ${question.text}`}
+          </p>
           
           {question.answers?.map((answer: any) => (
             <label
@@ -642,7 +646,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                   
                   {/* Question */}
                   <div className="mb-8">
-                    {renderQuestion(question, currentQuestionNumber)}
+                    {renderQuestion(question, currentQuestionNumber, bolum)}
                   </div>
                   
                   {/* Dialog Separator - show after second question of each dialog */}
@@ -700,7 +704,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                   
                   {/* Question */}
                   <div className="mb-8">
-                    {renderQuestion(question, currentQuestionNumber)}
+                    {renderQuestion(question, currentQuestionNumber, bolum)}
                   </div>
                 </div>
               );

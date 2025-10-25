@@ -95,17 +95,6 @@ const ProfileTabs = () => {
     fetchUserResults(1)
   }, [])
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString("en-US", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      timeZone: "UTC",
-    })
-  }
 
   if (loading) {
     return (
@@ -127,83 +116,72 @@ const ProfileTabs = () => {
         </div>
       </div>
 
-      {/* Tab Navigation */}
-      <div className="border-b border-slate-200 dark:border-slate-800">
-        <div className="max-w-7xl mx-auto px-6 py-6 flex gap-4">
-          <button
-            className="px-6 py-3 rounded-full font-semibold bg-white text-black cursor-pointer"
-          >
-            Tam sınav raporları
-          </button>
-        </div>
-      </div>
 
       {/* Table Content */}
-      <div className="max-w-7xl mx-auto px-6 py-12">
+      <div className="max-w-6xl mx-auto px-4 py-8">
         {results.length === 0 ? (
-          <div className="text-center py-24">
-            <h3 className="text-2xl font-bold text-black mb-3">Henüz sınav sonucu yok</h3>
-            <p className="text-slate-600 max-w-md mx-auto text-lg">
+          <div className="text-center py-16">
+            <div className="text-6xl mb-4">📊</div>
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">Henüz sınav sonucu yok</h3>
+            <p className="text-gray-600">
               Sınavınızı tamamladığınızda sonuçlar burada görünecek.
             </p>
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto rounded-lg">
+            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
               <table className="w-full">
-                <thead>
-                  <tr className="border-b border-black bg-slate-50">
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-black">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
                       Sınav ID
                     </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-black">
-                      Seçilen Testler
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+                      Testler
                     </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-black">
-                      Genel Puan
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+                      Puan
                     </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-black">
-                      Genel Coin
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+                      Coin
                     </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-black">
-                      Oluşturulma Tarihi
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+                      Tarih
                     </th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-black">
+                    <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">
                       İşlem
                     </th>
                   </tr>
                 </thead>
-                <tbody>
-                  {results.map((test, index) => (
-                    <tr
-                      key={test.id}
-                      className={`border-b border-black ${
-                        index === results.length - 1 ? "border-b-0" : ""
-                      }`}
-                    >
-                      <td className="px-6 py-4 text-sm font-medium text-black">{test.id}</td>
-                      <td className="px-6 py-4 text-sm text-black">
+                <tbody className="divide-y divide-gray-200">
+                  {results.map((test) => (
+                    <tr key={test.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm text-gray-900 font-mono">
+                        {test.id.slice(0, 8)}...
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">
                         {getSelectedTests(test)}
                       </td>
-                      <td className="px-6 py-4 text-sm text-black">
-                        {test.overallScore}
+                      <td className="px-4 py-3 text-sm">
+                        <span className="font-semibold text-gray-900">{test.overallScore}</span>
+                        <span className="text-gray-500 ml-1">/75</span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-black">
-                        {test.overallCoin}
+                      <td className="px-4 py-3 text-sm">
+                        <span className="font-semibold text-yellow-600">{test.overallCoin}</span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-black">
-                        {formatDate(test.createdAt)}
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {new Date(test.createdAt).toLocaleDateString('tr-TR')}
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-4 py-3 text-center">
                         <button 
                           onClick={() => {
                             console.log("Navigating to detailed results for test:", test.id)
                             navigate(`/overall-results/${test.id}`)
                           }}
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white font-semibold rounded cursor-pointer whitespace-nowrap"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 transition-colors cursor-pointer"
                         >
-                          <Eye className="w-4 h-4" />
-                          Raporu Gör
+                          <Eye className="w-3 h-3" />
+                          Görüntüle
                         </button>
                       </td>
                     </tr>
@@ -214,64 +192,34 @@ const ProfileTabs = () => {
 
             {/* Pagination */}
             {pagination.totalPages > 1 && (
-              <div className="mt-8 flex items-center justify-between">
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      if (pagination.page > 1) {
-                        fetchUserResults(pagination.page - 1)
-                      }
-                    }}
-                    disabled={pagination.page <= 1}
-                    className="px-4 py-2 border border-black text-black rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                  >
-                    Önceki
-                  </button>
-
-                  {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                    let pageNumber
-                    if (pagination.totalPages <= 5) {
-                      pageNumber = i + 1
-                    } else if (pagination.page <= 3) {
-                      pageNumber = i + 1
-                    } else if (pagination.page >= pagination.totalPages - 2) {
-                      pageNumber = pagination.totalPages - 4 + i
-                    } else {
-                      pageNumber = pagination.page - 2 + i
+              <div className="mt-6 flex items-center justify-center gap-2">
+                <button
+                  onClick={() => {
+                    if (pagination.page > 1) {
+                      fetchUserResults(pagination.page - 1)
                     }
+                  }}
+                  disabled={pagination.page <= 1}
+                  className="px-3 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  ← Önceki
+                </button>
 
-                    return (
-                      <button
-                        key={pageNumber}
-                        onClick={() => fetchUserResults(pageNumber)}
-                        className={`px-4 py-2 rounded font-medium cursor-pointer ${
-                          pagination.page === pageNumber
-                            ? "bg-red-600 text-white"
-                            : "border border-black text-black"
-                        }`}
-                      >
-                        {pageNumber}
-                      </button>
-                    )
-                  })}
+                <span className="px-3 py-2 text-sm text-gray-600">
+                  {pagination.page} / {pagination.totalPages}
+                </span>
 
-                  <button
-                    onClick={() => {
-                      if (pagination.page < pagination.totalPages) {
-                        fetchUserResults(pagination.page + 1)
-                      }
-                    }}
-                    disabled={pagination.page >= pagination.totalPages}
-                    className="px-4 py-2 border border-black text-black rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                  >
-                    Sonraki
-                  </button>
-                </div>
-
-                <p className="text-sm text-black font-medium">
-                  Sayfa <span className="text-red-600 font-bold">{pagination.page}</span> /{" "}
-                  <span className="text-black font-bold">{pagination.totalPages}</span>
-                </p>
+                <button
+                  onClick={() => {
+                    if (pagination.page < pagination.totalPages) {
+                      fetchUserResults(pagination.page + 1)
+                    }
+                  }}
+                  disabled={pagination.page >= pagination.totalPages}
+                  className="px-3 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Sonraki →
+                </button>
               </div>
             )}
           </>

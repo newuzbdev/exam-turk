@@ -223,7 +223,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
     return questions;
   };
 
-  const renderQuestion = (question: any, questionNumber: number, partNumber?: number) => {
+  const renderQuestion = (question: any, _questionNumber: number, _partNumber?: number) => {
     const selectedAnswer = userAnswers[question.id];
 
     if (question.type === "TRUE_FALSE") {
@@ -231,7 +231,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
         <div key={question.id} className="space-y-3">
           <div className="space-y-2">
             <p className="text-lg text-black leading-relaxed font-bold">
-              {partNumber === 1 ? `${question.text}.` : `S${questionNumber}. ${question.text}`}
+              {question.text || question.content}
             </p>
             
             <div className="flex gap-6">
@@ -297,7 +297,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
       <div key={question.id} className="space-y-3">
         <div className="space-y-2">
           <p className="text-lg text-black leading-relaxed font-bold">
-            {partNumber === 1 ? `${question.text}.` : `S${questionNumber}. ${question.text}`}
+            {question.text || question.content}
           </p>
           
           {question.answers?.map((answer: any) => (
@@ -381,11 +381,10 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
             <div className="p-3 border-b border-gray-300">
               <h4 className="text-base font-bold text-gray-800 mb-3">Sorular</h4>
               <div className="space-y-2">
-                {questions.map((question, index) => {
-                  const currentQuestionNumber = questionNumber + index;
+                {questions.map((question) => {
                   return (
                     <div key={question.id} className="flex items-center gap-2 py-1">
-                      <span className="font-bold text-sm">S{currentQuestionNumber}.</span>
+                      {/* number comes from backend inside text if needed */}
                       <span className="text-sm flex-1">{question.text || question.content}</span>
                       <Select
                         value={userAnswers[question.id] || ""}
@@ -433,11 +432,10 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                 <div className="p-4 border-r border-gray-300 h-full overflow-y-auto">
                   <div className="space-y-3">
                     <h4 className="text-lg font-bold text-gray-800 mb-3">Sorular</h4>
-                    {questions.map((question, index) => {
-                      const currentQuestionNumber = questionNumber + index;
+                    {questions.map((question) => {
                       return (
                         <div key={question.id} className="flex items-center gap-3 py-2">
-                          <span className="font-bold text-lg">S{currentQuestionNumber}.</span>
+                          {/* number comes from backend inside text if needed */}
                           <span className="text-lg">{question.text || question.content}</span>
                           <Select
                             value={userAnswers[question.id] || ""}

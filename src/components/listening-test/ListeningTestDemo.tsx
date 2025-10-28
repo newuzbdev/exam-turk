@@ -362,14 +362,16 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
 
     // Special layout for Part 3 (questions on left, answer options on right)
     if (bolum === 3) {
-      const answerOptions = [
-        { letter: "A", text: "Terapi merkezinin tanıtım reklamı verilmiştir" },
-        { letter: "B", text: "Manav ürünlerinin fiyatlarında indirim fırsatı" },
-        { letter: "C", text: "Kara yolu seferleri düzenlendiğine dair bilgiler var" },
-        { letter: "D", text: "İvedilik söz konusudur." },
-        { letter: "E", text: "Kara yolu ulaşım aracıyla ilgili uyarı niteliğindedir" },
-        { letter: "F", text: "Mesai zamanı belirtilmiştir." }
-      ];
+      // Build options dynamically from API answers (union across questions)
+      const optionMap = new Map<string, any>();
+      questions.forEach((q: any) => {
+        (q.answers || []).forEach((a: any) => {
+          if (a?.variantText && !optionMap.has(a.variantText)) {
+            optionMap.set(a.variantText, a);
+          }
+        });
+      });
+      const answerOptions = Array.from(optionMap.values()).sort((a: any, b: any) => String(a.variantText).localeCompare(String(b.variantText)));
 
       return (
         <div key={`bolum-${bolum}`} className="w-full mx-auto bg-white border-gray-800 rounded-lg overflow-hidden pb-28 md:pb-36 lg:pb-40">
@@ -384,7 +386,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                   return (
                     <div key={question.id} className="flex items-center gap-2 py-1">
                       <span className="font-bold text-sm">S{currentQuestionNumber}.</span>
-                      <span className="text-sm flex-1">1. konuşmacı ...</span>
+                      <span className="text-sm flex-1">{question.text || question.content}</span>
                       <Select
                         value={userAnswers[question.id] || ""}
                         onValueChange={(value) => handleAnswerSelect(question.id, value)}
@@ -393,9 +395,9 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                           <SelectValue placeholder="Seç" />
                         </SelectTrigger>
                         <SelectContent className="bg-white">
-                          {answerOptions.map((option) => (
-                            <SelectItem key={option.letter} value={option.letter}>
-                              {option.letter}
+                          {answerOptions.map((option: any) => (
+                            <SelectItem key={option.id || option.variantText} value={option.variantText}>
+                              {option.variantText}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -410,13 +412,13 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
             <div className="p-3">
               <h4 className="text-base font-bold text-gray-800 mb-3">Seçenekler</h4>
               <div className="space-y-2">
-                {answerOptions.map((option) => (
-                  <div key={option.letter} className="flex items-start gap-2 py-1">
+                {answerOptions.map((option: any) => (
+                  <div key={option.id || option.variantText} className="flex items-start gap-2 py-1">
                     <div className="text-sm flex items-center justify-center font-bold bg-gray-100 rounded-full w-6 h-6 flex-shrink-0">
-                      {option.letter}
+                      {option.variantText}
                     </div>
                     <p className="text-sm text-black leading-relaxed flex-1">
-                      {option.text}
+                      {option.answer}
                     </p>
                   </div>
                 ))}
@@ -436,7 +438,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                       return (
                         <div key={question.id} className="flex items-center gap-3 py-2">
                           <span className="font-bold text-lg">S{currentQuestionNumber}.</span>
-                          <span className="text-lg">1. konuşmacı ...</span>
+                          <span className="text-lg">{question.text || question.content}</span>
                           <Select
                             value={userAnswers[question.id] || ""}
                             onValueChange={(value) => handleAnswerSelect(question.id, value)}
@@ -445,9 +447,9 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                               <SelectValue placeholder="Seç" />
                             </SelectTrigger>
                             <SelectContent className="bg-white">
-                              {answerOptions.map((option) => (
-                                <SelectItem key={option.letter} value={option.letter}>
-                                  {option.letter}
+                              {answerOptions.map((option: any) => (
+                                <SelectItem key={option.id || option.variantText} value={option.variantText}>
+                                  {option.variantText}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -463,13 +465,13 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                 <div className="p-4 h-full overflow-y-auto">
                   <div className="space-y-3">
                     <h4 className="text-lg font-bold text-gray-800 mb-3">Seçenekler</h4>
-                    {answerOptions.map((option) => (
-                      <div key={option.letter} className="flex items-start gap-3 py-2">
+                    {answerOptions.map((option: any) => (
+                      <div key={option.id || option.variantText} className="flex items-start gap-3 py-2">
                         <div className="text-lg flex items-center justify-center font-bold bg-gray-100 rounded-full w-8 h-8 flex-shrink-0">
-                          {option.letter}
+                          {option.variantText}
                         </div>
                         <p className="text-lg text-black leading-relaxed flex-1">
-                          {option.text}
+                          {option.answer}
                         </p>
                       </div>
                     ))}

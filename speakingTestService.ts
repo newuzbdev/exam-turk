@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE_URL = "https://api.turkcetest.uz/api";
+const API_BASE_URL = "https://api.turkishmock.uz/api";
 
 export const findOneSpeakingTest = async (id: string) => {
   try {

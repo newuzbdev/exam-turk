@@ -88,7 +88,7 @@ const ProfileHeader = () => {
                   src={user.avatarUrl || user.avatar ? 
                     (user.avatarUrl || user.avatar).startsWith('http') ? 
                       (user.avatarUrl || user.avatar) : 
-                      `https://api.turkcetest.uz/${user.avatarUrl || user.avatar}` 
+                      `https://api.turkishmock.uz/${user.avatarUrl || user.avatar}` 
                     : undefined}
                   alt={user.name}
                 />
@@ -152,7 +152,7 @@ const ProfileHeader = () => {
                           {avatarPreview || form.avatarUrl ? (
                             <div className="flex justify-center">
                               <img 
-                                src={avatarPreview || (form.avatarUrl?.startsWith('http') ? form.avatarUrl : `https://api.turkcetest.uz/${form.avatarUrl}`)} 
+                                src={avatarPreview || (form.avatarUrl?.startsWith('http') ? form.avatarUrl : `https://api.turkishmock.uz/${form.avatarUrl}`)} 
                                 alt="Önizleme" 
                                 className="w-24 h-24 rounded-full object-cover border-2 border-gray-200 shadow-sm" 
                               />

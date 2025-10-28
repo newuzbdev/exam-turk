@@ -27,7 +27,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange }: Read
   const makeImageSrc = (u: string) => {
     let src = u.trim();
     if (/^(?:\/)?uploads\//i.test(src)) {
-      src = `https://api.turkcetest.uz/${src.replace(/^\//, '')}`;
+      src = `https://api.turkishmock.uz/${src.replace(/^\//, '')}`;
     }
     return src;
   };
@@ -50,7 +50,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange }: Read
       let src = urlFromMd || urlFromHttp || urlFromUploads || "";
       src = src.replace(/^\(|\)/g, "");
       if (/^(?:\/)?uploads\//i.test(src)) {
-        src = `https://api.turkcetest.uz/${src.replace(/^\//, '')}`;
+        src = `https://api.turkishmock.uz/${src.replace(/^\//, '')}`;
       }
       if (src) {
         nodes.push(

@@ -1,7 +1,7 @@
 import axios from "axios";
 import { SecureStorage } from "@/utils/secureStorage";
 
-const baseURL = import.meta.env.VITE_API_URL || "https://api.turkcetest.uz";
+const baseURL = import.meta.env.VITE_API_URL || "https://api.turkishmock.uz";
 
 const axiosPrivate = axios.create({
   baseURL,

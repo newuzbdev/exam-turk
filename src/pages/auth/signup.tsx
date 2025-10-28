@@ -166,7 +166,7 @@ const SignUp = () => {
   const handleGoogleLogin = () => {
     setLoading(true);
     // Redirect to Google OAuth with proper callback URL
-    const baseUrl = import.meta.env.VITE_API_URL || "https://api.turkcetest.uz";
+    const baseUrl = import.meta.env.VITE_API_URL || "https://api.turkishmock.uz";
     const callbackUrl = `${window.location.origin}/oauth-callback`;
     window.location.href = `${baseUrl}/api/auth/google/redirect?callback=${encodeURIComponent(
       callbackUrl

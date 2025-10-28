@@ -11,7 +11,7 @@ import SimpleTextDisplay from "@/components/speaking-test/SimpleTextDisplay"
 // import ResultModal from "./components/ResultModal"
 // import DisableKeys from "./components/DisableKeys"
 
-const baseURL = import.meta.env.VITE_API_URL || "https://api.turkcetest.uz"
+const baseURL = import.meta.env.VITE_API_URL || "https://api.turkishmock.uz"
 
 interface Question {
   id: string

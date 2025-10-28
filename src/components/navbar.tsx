@@ -169,7 +169,7 @@ const Navbar = () => {
                           src={(user.avatarUrl || user.avatar)
                             ? ((user.avatarUrl || user.avatar)!.startsWith('http')
                                 ? (user.avatarUrl || user.avatar)!
-                                : `https://api.turkcetest.uz/${user.avatarUrl || user.avatar}`)
+                                : `https://api.turkishmock.uz/${user.avatarUrl || user.avatar}`)
                             : undefined}
                           alt={user.name}
                         />
@@ -260,7 +260,7 @@ const Navbar = () => {
                                 src={(user.avatarUrl || user.avatar)
                                   ? ((user.avatarUrl || user.avatar)!.startsWith('http')
                                       ? (user.avatarUrl || user.avatar)!
-                                      : `https://api.turkcetest.uz/${user.avatarUrl || user.avatar}`)
+                                  : `https://api.turkishmock.uz/${user.avatarUrl || user.avatar}`)
                                   : undefined}
                                 alt={user.name}
                               />

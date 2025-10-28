@@ -93,7 +93,7 @@
 
 import axios from "axios";
 
-const baseURL = import.meta.env.VITE_API_URL || "https://api.turkcetest.uz";
+const baseURL = import.meta.env.VITE_API_URL || "https://api.turkishmock.uz";
 
 // Create axios instance configured for HttpOnly cookies
 const axiosCookie = axios.create({

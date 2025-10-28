@@ -496,7 +496,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
               <div className="flex justify-center">
               {imageUrl ? (
                 <img 
-                  src={`https://api.turkcetest.uz/${imageUrl}`} 
+                  src={`https://api.turkishmock.uz/${imageUrl}`} 
                   alt="Map for questions 19-23" 
                     className="w-full max-w-[400px] h-auto"
                   onError={(e) => {
@@ -559,7 +559,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                   <div className="flex-1 flex items-center justify-center">
                     {imageUrl ? (
                       <img 
-                        src={`https://api.turkcetest.uz/${imageUrl}`} 
+                        src={`https://api.turkishmock.uz/${imageUrl}`} 
                         alt="Map for questions 19-23" 
                         className="w-full h-auto max-h-[400px] object-contain"
                         onError={(e) => {
@@ -689,7 +689,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                       <div className="w-full max-w-2xl mx-auto">
                         <div className="aspect-[4/3] bg-transparent rounded-2xl overflow-hidden flex items-center justify-center">
                           <img
-                            src={`https://api.turkcetest.uz/${question.imageUrl}`}
+                            src={`https://api.turkishmock.uz/${question.imageUrl}`}
                             alt="Question image"
                             className="w-full h-full object-contain"
                             onError={(e) => {
@@ -1139,7 +1139,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
               {/* Single Audio Player rendered only when isLg is true in this spot */}
               {isLg && testData?.audioUrl && (
                 <AudioPlayer
-                  src={`https://api.turkcetest.uz/${testData.audioUrl}`}
+                  src={`https://api.turkishmock.uz/${testData.audioUrl}`}
                   onAudioEnded={handleAudioEnded}
                 />
               )}

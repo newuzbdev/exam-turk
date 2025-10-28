@@ -319,7 +319,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                 </div>
               </div>
               <div className="flex-1">
-                <span className="text-lg text-black ml-1">{answer.answer}</span>
+                <span className="text-lg text-black ml-1">{answer.answer.replace(/^[A-Z]\)\s*/, '')}</span>
               </div>
               <input
                 type="radio"
@@ -384,7 +384,6 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                 {questions.map((question) => {
                   return (
                     <div key={question.id} className="flex items-center gap-2 py-1">
-                      {/* number comes from backend inside text if needed */}
                       <span className="text-sm flex-1">{question.text || question.content}</span>
                       <Select
                         value={userAnswers[question.id] || ""}
@@ -417,7 +416,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                       {option.variantText}
                     </div>
                     <p className="text-sm text-black leading-relaxed flex-1">
-                      {option.answer}
+                      {option.answer.replace(/^[A-Z]\)\s*/, '')}
                     </p>
                   </div>
                 ))}
@@ -435,7 +434,6 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                     {questions.map((question) => {
                       return (
                         <div key={question.id} className="flex items-center gap-3 py-2">
-                          {/* number comes from backend inside text if needed */}
                           <span className="text-lg">{question.text || question.content}</span>
                           <Select
                             value={userAnswers[question.id] || ""}
@@ -469,7 +467,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                           {option.variantText}
                         </div>
                         <p className="text-lg text-black leading-relaxed flex-1">
-                          {option.answer}
+                          {option.answer.replace(/^[A-Z]\)\s*/, '')}
                         </p>
                       </div>
                     ))}
@@ -519,11 +517,9 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                 <div className="text-center text-gray-600 py-4">Bu bölüm için soru bulunamadı.</div>
                 )}
               <div className="space-y-2">
-                {questions.map((question, index) => {
-                  const currentQuestionNumber = questionNumber + index;
+                {questions.map((question) => {
                   return (
                     <div key={question.id} className="flex items-center gap-2 w-full py-1">
-                      <span className="font-bold text-sm">S{currentQuestionNumber}.</span>
                       <span className="text-sm flex-1">{question.text}</span>
                       <Select
                         value={userAnswers[question.id] || ""}
@@ -583,11 +579,9 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                     {questions.length === 0 && (
                       <div className="text-center text-gray-600 py-6">Bu bölüm için soru bulunamadı.</div>
                     )}
-                    {questions.map((question, index) => {
-                      const currentQuestionNumber = questionNumber + index;
+                    {questions.map((question) => {
                       return (
                         <div key={question.id} className="flex items-center gap-3 w-full py-2">
-                          <span className="font-bold text-lg">S{currentQuestionNumber}.</span>
                           <span className="text-lg flex-1">{question.text}</span>
                           <Select
                             value={userAnswers[question.id] || ""}
@@ -630,7 +624,6 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
               <div className="text-center text-gray-600 py-6">Bu bölüm için soru bulunamadı.</div>
             )}
             {questions.map((question, index) => {
-              const currentQuestionNumber = questionNumber + index;
               const dialogNumber = Math.floor(index / 2) + 1;
               const isFirstInDialog = index % 2 === 0;
               const isLastInDialog = index % 2 === 1;
@@ -646,7 +639,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                   
                   {/* Question */}
                   <div className="mb-8">
-                    {renderQuestion(question, currentQuestionNumber, bolum)}
+                    {renderQuestion(question, 0, bolum)}
                   </div>
                   
                   {/* Dialog Separator - show after second question of each dialog */}
@@ -671,7 +664,6 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
               <div className="col-span-2 text-center text-gray-600 py-6">Bu bölüm için soru bulunamadı.</div>
             )}
             {questions.map((question, index) => {
-              const currentQuestionNumber = questionNumber + index;
               const isDialogSection = question.sectionTitle?.includes("diyalog") || question.sectionContent?.includes("diyalog");
               
               return (
@@ -704,7 +696,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                   
                   {/* Question */}
                   <div className="mb-8">
-                    {renderQuestion(question, currentQuestionNumber, bolum)}
+                    {renderQuestion(question, 0, bolum)}
                   </div>
                 </div>
               );

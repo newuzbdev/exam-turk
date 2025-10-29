@@ -225,12 +225,13 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
 
   const renderQuestion = (question: any, _questionNumber: number, _partNumber?: number) => {
     const selectedAnswer = userAnswers[question.id];
+    const isSecondBolum = _partNumber === 2;
 
     if (question.type === "TRUE_FALSE") {
       return (
         <div key={question.id} className="space-y-3">
           <div className="space-y-2">
-            <p className="text-lg text-black leading-relaxed font-bold">
+            <p className={`text-lg text-black leading-relaxed ${isSecondBolum ? '' : 'font-bold'}`}>
               {question.text || question.content}
             </p>
             
@@ -296,7 +297,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
     return (
       <div key={question.id} className="space-y-3">
         <div className="space-y-2">
-          <p className="text-lg text-black leading-relaxed font-bold">
+          <p className={`text-lg text-black leading-relaxed ${isSecondBolum ? '' : 'font-bold'}`}>
             {question.text || question.content}
           </p>
           
@@ -379,12 +380,12 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
           <div className="block lg:hidden">
             {/* Questions Section */}
             <div className="p-3 border-b border-gray-300">
-              <h4 className="text-base font-bold text-gray-800 mb-3">Sorular</h4>
+              <h4 className="text-lg font-bold text-gray-800 mb-3">Sorular</h4>
               <div className="space-y-2">
                 {questions.map((question) => {
                   return (
                     <div key={question.id} className="flex items-center gap-2 py-1">
-                      <span className="text-sm flex-1">{question.text || question.content}</span>
+                      <span className="text-base flex-1">{question.text || question.content}</span>
                       <Select
                         value={userAnswers[question.id] || ""}
                         onValueChange={(value) => handleAnswerSelect(question.id, value)}
@@ -430,11 +431,11 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
               <ResizablePanel defaultSize={50} minSize={5} maxSize={95}>
                 <div className="p-4 border-r border-gray-300 h-full overflow-y-auto">
                   <div className="space-y-3">
-                    <h4 className="text-lg font-bold text-gray-800 mb-3">Sorular</h4>
+                    <h4 className="text-xl font-bold text-gray-800 mb-3">Sorular</h4>
                     {questions.map((question) => {
                       return (
                         <div key={question.id} className="flex items-center gap-3 py-2">
-                          <span className="text-lg">{question.text || question.content}</span>
+                          <span className="text-xl">{question.text || question.content}</span>
                           <Select
                             value={userAnswers[question.id] || ""}
                             onValueChange={(value) => handleAnswerSelect(question.id, value)}

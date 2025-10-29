@@ -52,7 +52,7 @@ export default function ReadingPart3({ testData, answers, onAnswerChange }: Read
                 const romans = ["I", "II", "III", "IV", "V", "VI"];
                 const label = `S${displayNum}. ${romans[idx]}. paragraf`;
                 return (
-                  <div key={q.id} className="bg-white rounded-lg p-3 border border-gray-200">
+                  <div key={q.id} className="rounded-lg p-3">
                     <div className="flex items-center justify-between mb-2">
                       <div className="text-sm font-bold text-gray-800">{label}</div>
                       <Select

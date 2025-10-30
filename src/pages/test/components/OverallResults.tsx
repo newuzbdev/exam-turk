@@ -12,7 +12,7 @@ interface Question {
   questionContent: string;
   questionType: string;
   userAnswer: string;
-  doğruAnswers: Array<{
+  correctAnswers: Array<{
     id: string;
     text: string;
   }>;
@@ -121,12 +121,16 @@ export default function OverallResults() {
     }
 
     const examData = data.listening.questions.map((q, index) => {
-      const doğruAnswer = q.doğruAnswers?.[0]?.text || "";
+      const correctTexts = (q.correctAnswers || []).map(a => a.text).filter(Boolean);
+      const correctAnswer = correctTexts.join(" / ");
+      const isCorrect = correctTexts.length > 0
+        ? correctTexts.includes(q.userAnswer)
+        : false;
       return {
         no: q.questionNumber || index + 1,
         userAnswer: q.userAnswer || "Seçilmedi",
-        doğruAnswer: doğruAnswer,
-        result: q.doğruAnswers?.some(ca => ca.text === q.userAnswer) ? "Doğru" : "Yanlış"
+        correctAnswer,
+        result: isCorrect ? "Doğru" : "Yanlış"
       };
     });
 
@@ -177,7 +181,7 @@ export default function OverallResults() {
                     >
                       <td className="px-4 py-3 text-gray-700 font-medium">{item.no}</td>
                       <td className="px-4 py-3 text-gray-600">{item.userAnswer}</td>
-                      <td className="px-4 py-3 text-gray-800 font-medium">{item.doğruAnswer}</td>
+                      <td className="px-4 py-3 text-gray-800 font-medium">{item.correctAnswer}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                           item.result === "Doğru" 
@@ -210,12 +214,16 @@ export default function OverallResults() {
     }
 
     const examData = data.reading.questions.map((q, index) => {
-      const doğruAnswer = q.doğruAnswers?.[0]?.text || "";
+      const correctTexts = (q.correctAnswers || []).map(a => a.text).filter(Boolean);
+      const correctAnswer = correctTexts.join(" / ");
+      const isCorrect = correctTexts.length > 0
+        ? correctTexts.includes(q.userAnswer)
+        : false;
       return {
         no: q.questionNumber || index + 1,
         userAnswer: q.userAnswer || "Seçilmedi",
-        doğruAnswer: doğruAnswer,
-        result: q.doğruAnswers?.some(ca => ca.text === q.userAnswer) ? "Doğru" : "Yanlış"
+        correctAnswer,
+        result: isCorrect ? "Doğru" : "Yanlış"
       };
     });
 
@@ -266,7 +274,7 @@ export default function OverallResults() {
                     >
                       <td className="px-4 py-3 text-gray-700 font-medium">{item.no}</td>
                       <td className="px-4 py-3 text-gray-600">{item.userAnswer}</td>
-                      <td className="px-4 py-3 text-gray-800 font-medium">{item.doğruAnswer}</td>
+                      <td className="px-4 py-3 text-gray-800 font-medium">{item.correctAnswer}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                           item.result === "Doğru" 
@@ -613,8 +621,6 @@ export default function OverallResults() {
     <div className="min-h-screen bg-gray-50 py-10">
       <div className="max-w-7xl mx-auto px-4">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Genel Sonuçlar</h1>
-          <p className="text-muted-foreground">IELTS test performansınızın kapsamlı özeti</p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Clock, Play, Pause, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -26,6 +26,7 @@ export const Timer = ({
   const [timeLeft, setTimeLeft] = useState(duration);
   const [isRunning, setIsRunning] = useState(autoStart);
   const [hasStarted, setHasStarted] = useState(autoStart);
+  const hasCompletedRef = useRef(false);
 
   const formatTime = useCallback((seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -49,13 +50,24 @@ export const Timer = ({
     setTimeLeft(duration);
     setIsRunning(false);
     setHasStarted(false);
+    hasCompletedRef.current = false;
   }, [duration]);
 
   useEffect(() => {
-    setTimeLeft(duration);
-    setIsRunning(autoStart);
-    setHasStarted(autoStart);
-  }, [duration, autoStart]);
+    // Only reset timer if it hasn't started yet to prevent restarting mid-countdown
+    if (!hasStarted && !isRunning && !hasCompletedRef.current) {
+      setTimeLeft(duration);
+      setIsRunning(autoStart);
+      setHasStarted(autoStart);
+    }
+  }, [duration, autoStart, hasStarted, isRunning]);
+
+  // Reset completion flag when timer is reset externally
+  useEffect(() => {
+    if (timeLeft === duration && !isRunning && !hasStarted) {
+      hasCompletedRef.current = false;
+    }
+  }, [duration, timeLeft, isRunning, hasStarted]);
 
   useEffect(() => {
     if (!isActive) {
@@ -70,8 +82,9 @@ export const Timer = ({
         setTimeLeft((prev) => {
           if (prev <= 1) {
             setIsRunning(false);
-            // Only auto-complete for preparation phase
-            if (type === "preparation") {
+            // Only call onComplete once to prevent double triggers
+            if (!hasCompletedRef.current) {
+              hasCompletedRef.current = true;
               onComplete();
             }
             return 0;

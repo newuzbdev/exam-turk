@@ -120,6 +120,18 @@ const Part3Section = ({
     if (isRecording) {
       onStop();
     }
+    // Mark question as answered and navigate to next section
+    const question = getQuestion();
+    if (question && !answeredQuestions.has(question.id)) {
+      // The question will be marked as answered when recording stops
+      // After a brief delay to ensure recording is saved, navigate
+      setTimeout(() => {
+        onNextSection();
+      }, 500);
+    } else if (question && answeredQuestions.has(question.id)) {
+      // Already answered, navigate immediately
+      onNextSection();
+    }
   };
 
   // Handle timer complete based on current phase

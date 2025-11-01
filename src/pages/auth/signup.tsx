@@ -466,7 +466,7 @@ const SignUp = () => {
             Zaten hesabınız var mı?{" "}
             <NavLink
               to="/login"
-              className="text-red-600 hover:text-red-700 font-medium underline"
+              className="text-white hover:text-red-700 font-medium underline"
             >
               Giriş Yap
             </NavLink>

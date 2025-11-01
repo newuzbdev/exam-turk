@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Mic, ArrowLeft, Volume2 } from "lucide-react"
 import axiosPrivate from "@/config/api"
 import { toast } from "sonner"
+import { speakingSubmissionService } from "@/services/speakingSubmission.service"
 import { MicrophoneCheck } from "./components/MicrophoneCheck"
 import { getInstructionForSection } from "@/config/speakingInstructions"
 import SimpleTextDisplay from "@/components/speaking-test/SimpleTextDisplay"
@@ -1169,7 +1170,7 @@ export default function ImprovedSpeakingTest() {
             return p;
           });
           
-          await axiosPrivate.post("/api/speaking-submission", {
+          await speakingSubmissionService.submitSpeakingTest({
             speakingTestId: speakingData.testId,
             parts,
           });

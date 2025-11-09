@@ -61,6 +61,8 @@ export default function OverallResults() {
   const [activeTab, setActiveTab] = useState("listening");
   const [activeTask, setActiveTask] = useState("task2");
   const [activeTask1Part, setActiveTask1Part] = useState("part1");
+  const [activeSpeakingPart, setActiveSpeakingPart] = useState(0);
+  const [activeSpeakingQuestion, setActiveSpeakingQuestion] = useState(0);
 
   useEffect(() => {
     const id = params.overallId;
@@ -536,37 +538,221 @@ export default function OverallResults() {
       );
     }
 
+    const { speaking } = data;
+    const aiFeedback = speaking.aiFeedback;
+
+    // Extract scores from AI feedback or use defaults
+    const extractScoreFromFeedback = (feedbackText: string) => {
+      const match = feedbackText?.match(/(\d+)/);
+      return match ? parseInt(match[1]) : 0;
+    };
+
+    const scores = {
+      overall: speaking?.score || 0,
+      coherence: extractScoreFromFeedback(aiFeedback?.coherenceAndCohesion) || 0,
+      grammar: extractScoreFromFeedback(aiFeedback?.grammaticalRangeAndAccuracy) || 0,
+      lexical: extractScoreFromFeedback(aiFeedback?.lexicalResource) || 0,
+      achievement: extractScoreFromFeedback(aiFeedback?.taskAchievement) || 0,
+    };
+
+    // Get answers array
+    const answers = speaking?.answers || [];
+    
+    // Organize answers by parts (typically 3 parts for speaking tests)
+    const organizeAnswersByParts = () => {
+      if (answers.length === 0) return [[], [], []];
+      
+      const totalQuestions = answers.length;
+      const part1Count = Math.ceil(totalQuestions * 0.4); // ~40% for Part 1
+      const part2Count = Math.ceil(totalQuestions * 0.3); // ~30% for Part 2
+      // Rest goes to Part 3
+      
+      const part1 = answers.slice(0, part1Count);
+      const part2 = answers.slice(part1Count, part1Count + part2Count);
+      const part3 = answers.slice(part1Count + part2Count);
+      
+      return [part1, part2, part3].filter(part => part.length > 0);
+    };
+
+    const parts = organizeAnswersByParts();
+    
+    // Get current question and answer based on active part
+    const getCurrentQuestionAndAnswer = () => {
+      if (parts.length > 0 && parts[activeSpeakingPart] && parts[activeSpeakingPart].length > 0) {
+        const partQuestions = parts[activeSpeakingPart];
+        const currentQuestionIndex = Math.min(activeSpeakingQuestion, partQuestions.length - 1);
+        const currentAnswer = partQuestions[currentQuestionIndex];
+        
+        return {
+          question: currentAnswer?.questionText || `Bölüm ${activeSpeakingPart + 1} Sorusu ${currentQuestionIndex + 1}`,
+          answer: (currentAnswer?.userAnswer && typeof currentAnswer.userAnswer === 'string' && currentAnswer.userAnswer.trim() !== "") 
+            ? currentAnswer.userAnswer 
+            : "Cevap verilmedi",
+          comment: aiFeedback?.taskAchievement || `Bölüm ${activeSpeakingPart + 1} geri bildirimi burada gösterilecek`
+        };
+      }
+      
+      return {
+        question: "Soru metni burada gösterilecek",
+        answer: "Cevap verilmedi",
+        comment: aiFeedback?.taskAchievement || "Geri bildirim mevcut değil"
+      };
+    };
+
+    const currentData = getCurrentQuestionAndAnswer();
+
     return (
-      <div className="min-h-screen bg-gray-50">
-        {/* Header */}
-        <div className="bg-white shadow-sm border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 py-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-black">Konuşma Testi Sonuçları</h1>
-                <p className="text-gray-600">IELTS Değerlendirmesi Tamamlandı</p>
-              </div>
-              <div className="text-right">
-                <div className="text-3xl font-black text-red-500">
-                  {data.speaking.score || "N/A"}
+      <div className="w-full bg-gradient-to-br from-gray-50 to-gray-100 p-8">
+        <div className="mx-auto max-w-6xl">
+          {/* Header Section */}
+          <div className="mb-8">
+            {/* Overall Score Card */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Genel Puan</h2>
+                  <p className="text-gray-600">Konuşma testi performansınız</p>
                 </div>
-                <div className="text-sm text-gray-600">Bant Puanı</div>
+                <div className="text-right">
+                  <div className="text-4xl font-bold text-red-600">{scores.overall}</div>
+                  <div className="text-sm text-gray-500">Bant Puanı</div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Content */}
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          {/* Hero Section */}
-          <div className="bg-white rounded-3xl shadow-lg border border-gray-200 p-8 mb-8 text-center">
-            <div className="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
-              <span className="text-white text-3xl font-bold">
-                {data.speaking.score || "N/A"}
-              </span>
+          {/* Scoring Categories Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-gray-900">Tutarlılık ve Bağlılık</h3>
+                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+              </div>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                {aiFeedback?.coherenceAndCohesion || "Geri bildirim mevcut değil"}
+              </p>
             </div>
-            <h2 className="text-3xl font-bold text-black mb-2">Test Tamamlandı!</h2>
-            <p className="text-gray-600 text-lg mb-6">IELTS Konuşma Değerlendirmesi Sonuçlarınız</p>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-gray-900">Dil Bilgisi</h3>
+                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+              </div>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                {aiFeedback?.grammaticalRangeAndAccuracy || "Geri bildirim mevcut değil"}
+              </p>
+            </div>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-gray-900">Kelime Kaynağı</h3>
+                <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+              </div>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                {aiFeedback?.lexicalResource || "Geri bildirim mevcut değil"}
+              </p>
+            </div>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-gray-900">Görev Başarısı</h3>
+                <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+              </div>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                {aiFeedback?.taskAchievement || "Geri bildirim mevcut değil"}
+              </p>
+            </div>
+          </div>
+
+          {/* Part Navigation - Redesigned */}
+          {parts.length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+              <h3 className="text-lg font-semibold text-gray-900 mb-6">Konuşma Bölümleri</h3>
+              
+              {/* All Parts in One Row */}
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                {parts.map((part, index) => (
+                  <Button
+                    key={index}
+                    onClick={() => {
+                      setActiveSpeakingPart(index);
+                      setActiveSpeakingQuestion(0);
+                    }}
+                    variant="outline"
+                    className={`h-16 rounded-lg font-medium transition-all ${
+                      activeSpeakingPart === index
+                        ? "bg-red-600 text-white hover:bg-red-700 shadow-md border-red-600"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-300 hover:border-gray-400"
+                    }`}
+                  >
+                    <div className="text-center">
+                      <div className="font-semibold">Bölüm {index + 1}</div>
+                      <div className="text-xs opacity-75">Part {index + 1}</div>
+                    </div>
+                  </Button>
+                ))}
+              </div>
+
+              {/* Question Navigation within Part */}
+              {parts[activeSpeakingPart] && parts[activeSpeakingPart].length > 1 && (
+                <div className="flex flex-wrap gap-2">
+                  {parts[activeSpeakingPart].map((_, index) => (
+                    <Button
+                      key={index}
+                      onClick={() => setActiveSpeakingQuestion(index)}
+                      variant="outline"
+                      size="sm"
+                      className={`transition-all ${
+                        activeSpeakingQuestion === index
+                          ? "bg-red-600 text-white hover:bg-red-700 border-red-600"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-300"
+                      }`}
+                    >
+                      Soru {index + 1}
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Content Sections */}
+          <div className="space-y-6">
+            {/* Question Section */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <span className="text-blue-600 font-semibold text-sm">Q</span>
+                </div>
+                <h2 className="text-lg font-semibold text-gray-900">Soru</h2>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-gray-700 leading-relaxed">{currentData.question}</p>
+              </div>
+            </div>
+
+            {/* Answer Section */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                  <span className="text-green-600 font-semibold text-sm">A</span>
+                </div>
+                <h2 className="text-lg font-semibold text-gray-900">Cevabınız</h2>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{currentData.answer}</p>
+              </div>
+            </div>
+
+            {/* Comment Section */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <span className="text-purple-600 font-semibold text-sm">💬</span>
+                </div>
+                <h2 className="text-lg font-semibold text-gray-900">AI Geri Bildirimi</h2>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{currentData.comment}</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

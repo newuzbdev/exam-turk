@@ -1,14 +1,22 @@
-import { ArrowLeft, FileText } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import speakingSubmissionService from "@/services/speakingSubmission.service";
+import axiosPrivate from "@/config/api";
 
 interface SpeakingAIFeedback {
   taskAchievement?: string;
   coherenceAndCohesion?: string;
   lexicalResource?: string;
   grammaticalRangeAndAccuracy?: string;
+}
+
+interface SpeakingAnswer {
+  questionId: string;
+  questionText: string;
+  userAnswer: string | null;
+  questionOrder?: number;
 }
 
 interface SpeakingResult {
@@ -20,6 +28,19 @@ interface SpeakingResult {
   submittedAt?: string;
   createdAt?: string;
   updatedAt?: string;
+  speaking?: any;
+  parts?: any[];
+  answers?: SpeakingAnswer[];
+  test?: {
+    id: string;
+    title: string;
+  };
+}
+
+interface OverallTestResult {
+  id: string;
+  speaking?: SpeakingResult;
+  [key: string]: any;
 }
 
 export default function SpeakingTestResults() {
@@ -27,6 +48,8 @@ export default function SpeakingTestResults() {
   const navigate = useNavigate();
   const [result, setResult] = useState<SpeakingResult | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activePart, setActivePart] = useState(0);
+  const [activeQuestion, setActiveQuestion] = useState(0);
 
   useEffect(() => {
     if (!resultId) {
@@ -36,6 +59,22 @@ export default function SpeakingTestResults() {
 
     (async () => {
       try {
+        // Try to fetch as overall test result first
+        try {
+          const overallRes = await axiosPrivate.get(`/api/overal-test-result/${resultId}/results`);
+          const overallData = (overallRes?.data?.data || overallRes?.data) as OverallTestResult;
+          
+          if (overallData?.speaking) {
+            // Extract speaking data from overall result
+            setResult(overallData.speaking);
+            return;
+          }
+        } catch (e) {
+          // If it fails, try as direct speaking submission
+          console.log("Not an overall test result, trying direct submission...");
+        }
+
+        // Try direct speaking submission
         const data = await speakingSubmissionService.getById(resultId);
         setResult(data);
       } catch (e) {
@@ -71,146 +110,250 @@ export default function SpeakingTestResults() {
     );
   }
 
+  // Extract data from the result structure
+  const speakingData = result.speaking || result;
+  
+  // Extract scores from AI feedback or use defaults
+  const extractScoreFromFeedback = (feedbackText: string) => {
+    // Try to extract numeric score from feedback text
+    const match = feedbackText?.match(/(\d+)/);
+    return match ? parseInt(match[1]) : 0;
+  };
+
+  const scores = {
+    overall: speakingData?.score || 0,
+    coherence: extractScoreFromFeedback(speakingData?.aiFeedback?.coherenceAndCohesion) || 0,
+    grammar: extractScoreFromFeedback(speakingData?.aiFeedback?.grammaticalRangeAndAccuracy) || 0,
+    lexical: extractScoreFromFeedback(speakingData?.aiFeedback?.lexicalResource) || 0,
+    achievement: extractScoreFromFeedback(speakingData?.aiFeedback?.taskAchievement) || 0,
+  };
+
+  // Get answers array
+  const answers = speakingData?.answers || result.answers || [];
+  
+  // Organize answers by parts (typically 3 parts for speaking tests)
+  // Part 1: Usually first 6-8 questions
+  // Part 2: Middle questions
+  // Part 3: Last questions
+  const organizeAnswersByParts = () => {
+    if (answers.length === 0) return [[], [], []];
+    
+    const totalQuestions = answers.length;
+    const part1Count = Math.ceil(totalQuestions * 0.4); // ~40% for Part 1
+    const part2Count = Math.ceil(totalQuestions * 0.3); // ~30% for Part 2
+    // Rest goes to Part 3
+    
+    const part1 = answers.slice(0, part1Count);
+    const part2 = answers.slice(part1Count, part1Count + part2Count);
+    const part3 = answers.slice(part1Count + part2Count);
+    
+    return [part1, part2, part3].filter(part => part.length > 0);
+  };
+
+  const parts = organizeAnswersByParts();
+  
+  // Get current question and answer based on active part
+  const getCurrentQuestionAndAnswer = () => {
+    if (parts.length > 0 && parts[activePart] && parts[activePart].length > 0) {
+      const partQuestions = parts[activePart];
+      const currentQuestionIndex = Math.min(activeQuestion, partQuestions.length - 1);
+      const currentAnswer = partQuestions[currentQuestionIndex];
+      
+      return {
+        question: currentAnswer?.questionText || `Bölüm ${activePart + 1} Sorusu ${currentQuestionIndex + 1}`,
+        answer: (currentAnswer?.userAnswer && typeof currentAnswer.userAnswer === 'string' && currentAnswer.userAnswer.trim() !== "") 
+          ? currentAnswer.userAnswer 
+          : "Cevap verilmedi",
+        comment: speakingData?.aiFeedback?.taskAchievement || `Bölüm ${activePart + 1} geri bildirimi burada gösterilecek`
+      };
+    }
+    
+    return {
+      question: "Soru metni burada gösterilecek",
+      answer: "Cevap verilmedi",
+      comment: speakingData?.aiFeedback?.taskAchievement || "Geri bildirim mevcut değil"
+    };
+  };
+
+  const currentData = getCurrentQuestionAndAnswer();
+  
+  // Reset active question when part changes
+  useEffect(() => {
+    setActiveQuestion(0);
+  }, [activePart]);
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                onClick={() => navigate("/test")}
-                className="p-2 hover:bg-gray-100 rounded-full"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        {/* Header Section */}
+        <div className="mb-8">
+          <div className="flex items-center gap-4 mb-6">
+            <Button
+              variant="ghost"
+              onClick={() => navigate("/test")}
+              className="p-2 hover:bg-white/80 rounded-full transition-colors"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Konuşma Testi Sonuçları</h1>
+              <p className="text-gray-600 mt-1">Performansınızı ve geri bildirimi inceleyin</p>
+            </div>
+          </div>
+
+          {/* Overall Score Card */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+            <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-black">Konuşma Testi Sonuçları</h1>
-                <p className="text-gray-600">IELTS Değerlendirmesi Tamamlandı</p>
+                <h2 className="text-2xl font-bold text-gray-900">Genel Puan</h2>
+                <p className="text-gray-600">Konuşma testi performansınız</p>
               </div>
-            </div>
-
-            <div className="text-right">
-              <div className="text-3xl font-black text-red-500">
-                {result.score ?? "N/A"}
+              <div className="text-right">
+                <div className="text-4xl font-bold text-red-600">{scores.overall}</div>
+                <div className="text-sm text-gray-500">Bant Puanı</div>
               </div>
-              <div className="text-sm text-gray-600">Bant Puanı</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Hero Section */}
-        <div className="bg-white rounded-3xl shadow-lg border border-gray-200 p-8 mb-8 text-center">
-          <div className="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
-            <span className="text-white text-3xl font-bold">
-              {result.score ?? "N/A"}
-            </span>
-          </div>
-          <h2 className="text-3xl font-bold text-black mb-2">Test Tamamlandı!</h2>
-          <p className="text-gray-600 text-lg mb-6">IELTS Konuşma Değerlendirmesi Sonuçlarınız</p>
-
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <div className="bg-gray-50 rounded-2xl p-4">
-              <div className="text-2xl font-bold text-black mb-1">{result.score ?? "N/A"}</div>
-              <div className="text-sm text-gray-600">Bant Puanı</div>
-            </div>
-            <div className="bg-gray-50 rounded-2xl p-4">
-              <div className="text-2xl font-bold text-black mb-1">4</div>
-              <div className="text-sm text-gray-600">Criteria</div>
-            </div>
-            <div className="bg-gray-50 rounded-2xl p-4">
-              <div className="text-2xl font-bold text-black mb-1">
-                {new Date(result.submittedAt || result.createdAt || Date.now()).toLocaleDateString()}
-              </div>
-              <div className="text-sm text-gray-600">Completed</div>
-            </div>
-            <div className="bg-gray-50 rounded-2xl p-4">
-              <div className="text-2xl font-bold text-black mb-1">✓</div>
-              <div className="text-sm text-gray-600">Submitted</div>
             </div>
           </div>
         </div>
 
-        {/* Detailed Feedback */}
-        {result.aiFeedback && (
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Task Achievement */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center">
-                  <FileText className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-black">Görev Başarısı</h3>
-                  <p className="text-sm text-gray-600">Görevi ne kadar iyi ele aldığınız</p>
-                </div>
-              </div>
-              <p className="text-gray-700 leading-relaxed">
-                {result.aiFeedback.taskAchievement}
-              </p>
+        {/* Scoring Categories Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-gray-900">Tutarlılık ve Bağlılık</h3>
+              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+            </div>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              {speakingData?.aiFeedback?.coherenceAndCohesion || "Geri bildirim mevcut değil"}
+            </p>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-gray-900">Dil Bilgisi</h3>
+              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+            </div>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              {speakingData?.aiFeedback?.grammaticalRangeAndAccuracy || "Geri bildirim mevcut değil"}
+            </p>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-gray-900">Kelime Kaynağı</h3>
+              <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+            </div>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              {speakingData?.aiFeedback?.lexicalResource || "Geri bildirim mevcut değil"}
+            </p>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-gray-900">Görev Başarısı</h3>
+              <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+            </div>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              {speakingData?.aiFeedback?.taskAchievement || "Geri bildirim mevcut değil"}
+            </p>
+          </div>
+        </div>
+
+        {/* Part Navigation - Redesigned */}
+        {parts.length > 0 && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+            <h3 className="text-lg font-semibold text-gray-900 mb-6">Konuşma Bölümleri</h3>
+            
+            {/* All Parts in One Row */}
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              {parts.map((part, index) => (
+                <Button
+                  key={index}
+                  onClick={() => setActivePart(index)}
+                  variant="outline"
+                  className={`h-16 rounded-lg font-medium transition-all ${
+                    activePart === index
+                      ? "bg-red-600 text-white hover:bg-red-700 shadow-md border-red-600"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-300 hover:border-gray-400"
+                  }`}
+                >
+                  <div className="text-center">
+                    <div className="font-semibold">Bölüm {index + 1}</div>
+                    <div className="text-xs opacity-75">Part {index + 1}</div>
+                  </div>
+                </Button>
+              ))}
             </div>
 
-            {/* Coherence & Cohesion */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center">
-                  <span className="text-white font-bold">CC</span>
-                </div>
-                <div>
-                  <h3 className="font-bold text-black">Tutarlılık ve Bağlılık</h3>
-                  <p className="text-sm text-gray-600">Structure and flow of your speaking</p>
-                </div>
+            {/* Question Navigation within Part */}
+            {parts[activePart] && parts[activePart].length > 1 && (
+              <div className="flex flex-wrap gap-2">
+                {parts[activePart].map((_, index) => (
+                  <Button
+                    key={index}
+                    onClick={() => setActiveQuestion(index)}
+                    variant="outline"
+                    size="sm"
+                    className={`transition-all ${
+                      activeQuestion === index
+                        ? "bg-red-600 text-white hover:bg-red-700 border-red-600"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-300"
+                    }`}
+                  >
+                    Soru {index + 1}
+                  </Button>
+                ))}
               </div>
-              <p className="text-gray-700 leading-relaxed">
-                {result.aiFeedback.coherenceAndCohesion}
-              </p>
-            </div>
-
-            {/* Lexical Resource */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center">
-                  <span className="text-white font-bold">LR</span>
-                </div>
-                <div>
-                  <h3 className="font-bold text-black">Lexical Resource</h3>
-                  <p className="text-sm text-gray-600">Vocabulary range and accuracy</p>
-                </div>
-              </div>
-              <p className="text-gray-700 leading-relaxed">
-                {result.aiFeedback.lexicalResource}
-              </p>
-            </div>
-
-            {/* Grammar & Accuracy */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center">
-                  <span className="text-white font-bold">GA</span>
-                </div>
-                <div>
-                  <h3 className="font-bold text-black">Grammar & Accuracy</h3>
-                  <p className="text-sm text-gray-600">Language structure and correctness</p>
-                </div>
-              </div>
-              <p className="text-gray-700 leading-relaxed">
-                {result.aiFeedback.grammaticalRangeAndAccuracy}
-              </p>
-            </div>
+            )}
           </div>
         )}
 
+        {/* Content Sections */}
+        <div className="space-y-6">
+          {/* Question Section */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                <span className="text-blue-600 font-semibold text-sm">Q</span>
+              </div>
+              <h2 className="text-lg font-semibold text-gray-900">Soru</h2>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <p className="text-gray-700 leading-relaxed">{currentData.question}</p>
+            </div>
+          </div>
+
+          {/* Answer Section */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                <span className="text-green-600 font-semibold text-sm">A</span>
+              </div>
+              <h2 className="text-lg font-semibold text-gray-900">Cevabınız</h2>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{currentData.answer}</p>
+            </div>
+          </div>
+
+          {/* Comment Section */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                <span className="text-purple-600 font-semibold text-sm">💬</span>
+              </div>
+              <h2 className="text-lg font-semibold text-gray-900">AI Geri Bildirimi</h2>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{currentData.comment}</p>
+            </div>
+          </div>
+        </div>
+
         {/* Action Button */}
-        <div className="mt-8">
+        <div className="mt-8 flex justify-center">
           <Button
             onClick={() => navigate("/test")}
-            className="w-full bg-red-500 hover:bg-red-600 text-white py-4 rounded-md font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200"
+            className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
           >
-            Take Another Test
+            Başka Test Al
           </Button>
         </div>
       </div>

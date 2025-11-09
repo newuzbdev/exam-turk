@@ -558,23 +558,34 @@ export default function OverallResults() {
     // Get answers array
     const answers = speaking?.answers || [];
     
-    // Organize answers by parts (typically 3 parts for speaking tests)
+    // Organize answers by parts: Part 1.1, Part 1.2, Part 2, Part 3
     const organizeAnswersByParts = () => {
-      if (answers.length === 0) return [[], [], []];
+      if (answers.length === 0) return [[], [], [], []];
       
       const totalQuestions = answers.length;
-      const part1Count = Math.ceil(totalQuestions * 0.4); // ~40% for Part 1
+      const part1TotalCount = Math.ceil(totalQuestions * 0.4); // ~40% for Part 1 total
+      const part1_1Count = Math.ceil(part1TotalCount / 2); // Split Part 1 into 1.1 and 1.2
       const part2Count = Math.ceil(totalQuestions * 0.3); // ~30% for Part 2
       // Rest goes to Part 3
       
-      const part1 = answers.slice(0, part1Count);
-      const part2 = answers.slice(part1Count, part1Count + part2Count);
-      const part3 = answers.slice(part1Count + part2Count);
+      const part1_1 = answers.slice(0, part1_1Count);
+      const part1_2 = answers.slice(part1_1Count, part1TotalCount);
+      const part2 = answers.slice(part1TotalCount, part1TotalCount + part2Count);
+      const part3 = answers.slice(part1TotalCount + part2Count);
       
-      return [part1, part2, part3].filter(part => part.length > 0);
+      return [part1_1, part1_2, part2, part3].filter(part => part.length > 0);
     };
 
     const parts = organizeAnswersByParts();
+    
+    // Get part label based on index
+    const getPartLabel = (index: number) => {
+      if (index === 0) return { main: "Bölüm 1.1", sub: "Part 1.1" };
+      if (index === 1) return { main: "Bölüm 1.2", sub: "Part 1.2" };
+      if (index === 2) return { main: "Bölüm 2", sub: "Part 2" };
+      if (index === 3) return { main: "Bölüm 3", sub: "Part 3" };
+      return { main: `Bölüm ${index + 1}`, sub: `Part ${index + 1}` };
+    };
     
     // Get current question and answer based on active part
     const getCurrentQuestionAndAnswer = () => {
@@ -582,13 +593,14 @@ export default function OverallResults() {
         const partQuestions = parts[activeSpeakingPart];
         const currentQuestionIndex = Math.min(activeSpeakingQuestion, partQuestions.length - 1);
         const currentAnswer = partQuestions[currentQuestionIndex];
+        const partLabel = getPartLabel(activeSpeakingPart);
         
         return {
-          question: currentAnswer?.questionText || `Bölüm ${activeSpeakingPart + 1} Sorusu ${currentQuestionIndex + 1}`,
+          question: currentAnswer?.questionText || `${partLabel.main} Sorusu ${currentQuestionIndex + 1}`,
           answer: (currentAnswer?.userAnswer && typeof currentAnswer.userAnswer === 'string' && currentAnswer.userAnswer.trim() !== "") 
             ? currentAnswer.userAnswer 
             : "Cevap verilmedi",
-          comment: aiFeedback?.taskAchievement || `Bölüm ${activeSpeakingPart + 1} geri bildirimi burada gösterilecek`
+          comment: aiFeedback?.taskAchievement || `${partLabel.main} geri bildirimi burada gösterilecek`
         };
       }
       
@@ -667,31 +679,36 @@ export default function OverallResults() {
               <h3 className="text-lg font-semibold text-gray-900 mb-6">Konuşma Bölümleri</h3>
               
               {/* All Parts in One Row */}
-              <div className="grid grid-cols-3 gap-4 mb-6">
-                {parts.map((part, index) => (
-                  <Button
-                    key={index}
-                    onClick={() => {
-                      setActiveSpeakingPart(index);
-                      setActiveSpeakingQuestion(0);
-                    }}
-                    variant="outline"
-                    className={`h-16 rounded-lg font-medium transition-all ${
-                      activeSpeakingPart === index
-                        ? "bg-red-600 text-white hover:bg-red-700 shadow-md border-red-600"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-300 hover:border-gray-400"
-                    }`}
-                  >
-                    <div className="text-center">
-                      <div className="font-semibold">Bölüm {index + 1}</div>
-                      <div className="text-xs opacity-75">Part {index + 1}</div>
-                    </div>
-                  </Button>
-                ))}
+              <div className="grid grid-cols-4 gap-4 mb-6">
+                {parts.map((part, index) => {
+                  const partLabel = getPartLabel(index);
+                  return (
+                    <Button
+                      key={index}
+                      onClick={() => {
+                        setActiveSpeakingPart(index);
+                        setActiveSpeakingQuestion(0);
+                      }}
+                      variant="outline"
+                      className={`h-16 rounded-lg font-medium transition-all ${
+                        activeSpeakingPart === index
+                          ? "bg-red-600 text-white hover:bg-red-700 shadow-md border-red-600"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-300 hover:border-gray-400"
+                      }`}
+                    >
+                      <div className="text-center">
+                        <div className="font-semibold">{partLabel.main}</div>
+                        <div className="text-xs opacity-75">{partLabel.sub}</div>
+                      </div>
+                    </Button>
+                  );
+                })}
               </div>
 
-              {/* Question Navigation within Part */}
-              {parts[activeSpeakingPart] && parts[activeSpeakingPart].length > 1 && (
+              {/* Question Navigation within Part - Only for Part 1.1 and Part 1.2 */}
+              {parts[activeSpeakingPart] && 
+               parts[activeSpeakingPart].length > 1 && 
+               (activeSpeakingPart === 0 || activeSpeakingPart === 1) && (
                 <div className="flex flex-wrap gap-2">
                   {parts[activeSpeakingPart].map((_, index) => (
                     <Button

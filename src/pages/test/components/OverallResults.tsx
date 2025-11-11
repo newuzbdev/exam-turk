@@ -30,6 +30,7 @@ interface TestSonuç {
   questions?: Question[];
   overallScore?: number;
   answers?: Array<{
+    questionText: string;
     questionId: string;
     userAnswer: string;
   }>;
@@ -122,7 +123,7 @@ export default function OverallResults() {
       );
     }
 
-    const examData = data.listening.questions.map((q, index) => {
+    const examData = data.listening.questions.map((q, index: number) => {
       const correctTexts = (q.correctAnswers || []).map(a => a.text).filter(Boolean);
       const correctAnswer = correctTexts.join(" / ");
       const isCorrect = correctTexts.length > 0
@@ -176,7 +177,7 @@ export default function OverallResults() {
                   </tr>
                 </thead>
                 <tbody>
-                  {examData.map((item, index) => (
+                  {examData.map((item, index: number) => (
                     <tr
                       key={item.no}
                       className={`border-b border-gray-200 last:border-b-0 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
@@ -215,7 +216,7 @@ export default function OverallResults() {
       );
     }
 
-    const examData = data.reading.questions.map((q, index) => {
+    const examData = data.reading.questions.map((q, index: number) => {
       const correctTexts = (q.correctAnswers || []).map(a => a.text).filter(Boolean);
       const correctAnswer = correctTexts.join(" / ");
       const isCorrect = correctTexts.length > 0
@@ -269,7 +270,7 @@ export default function OverallResults() {
                   </tr>
                 </thead>
                 <tbody>
-                  {examData.map((item, index) => (
+                  {examData.map((item, index: number) => (
                     <tr
                       key={item.no}
                       className={`border-b border-gray-200 last:border-b-0 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
@@ -680,7 +681,7 @@ export default function OverallResults() {
               
               {/* All Parts in One Row */}
               <div className="grid grid-cols-4 gap-4 mb-6">
-                {parts.map((part, index) => {
+                {parts.map((_part, index: number) => {
                   const partLabel = getPartLabel(index);
                   return (
                     <Button
@@ -710,7 +711,7 @@ export default function OverallResults() {
                parts[activeSpeakingPart].length > 1 && 
                (activeSpeakingPart === 0 || activeSpeakingPart === 1) && (
                 <div className="flex flex-wrap gap-2">
-                  {parts[activeSpeakingPart].map((_, index) => (
+                  {parts[activeSpeakingPart].map((_, index: number) => (
                     <Button
                       key={index}
                       onClick={() => setActiveSpeakingQuestion(index)}

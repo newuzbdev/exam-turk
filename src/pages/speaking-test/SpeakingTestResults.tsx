@@ -263,7 +263,7 @@ export default function SpeakingTestResults() {
             
             {/* All Parts in One Row */}
             <div className="grid grid-cols-3 gap-4 mb-6">
-              {parts.map((part, index) => (
+              {parts.map((_part, index: number) => (
                 <Button
                   key={index}
                   onClick={() => setActivePart(index)}
@@ -285,7 +285,7 @@ export default function SpeakingTestResults() {
             {/* Question Navigation within Part */}
             {parts[activePart] && parts[activePart].length > 1 && (
               <div className="flex flex-wrap gap-2">
-                {parts[activePart].map((_, index) => (
+                {parts[activePart].map((_question: any, index: number) => (
                   <Button
                     key={index}
                     onClick={() => setActiveQuestion(index)}

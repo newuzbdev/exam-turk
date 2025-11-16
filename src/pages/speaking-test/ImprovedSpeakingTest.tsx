@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { speakingSubmissionService } from "@/services/speakingSubmission.service"
 import { MicrophoneCheck } from "./components/MicrophoneCheck"
 import { getInstructionForSection } from "@/config/speakingInstructions"
+import { speechToTextService } from "@/services/speechToText.service"
 import SimpleTextDisplay from "@/components/speaking-test/SimpleTextDisplay"
 // import ResultModal from "./components/ResultModal"
 // import DisableKeys from "./components/DisableKeys"
@@ -124,7 +125,8 @@ export default function ImprovedSpeakingTest() {
   // speaking/answer timer (seconds)
   const [timeLeft, setTimeLeft] = useState(RECORD_SECONDS_PER_QUESTION)
   const [_recordingTime, setRecordingTime] = useState(0)
-  const [recordings, setRecordings] = useState<Map<string, Recording>>(new Map())
+  const [_recordings, setRecordings] = useState<Map<string, Recording>>(new Map())
+  const [answers, setAnswers] = useState<Map<string, { text: string; duration: number }>>(new Map())
   // preparation timer (seconds)
   const [prepSeconds, setPrepSeconds] = useState<number>(0)
   const [isPrepRunning, setIsPrepRunning] = useState(false)
@@ -503,6 +505,16 @@ export default function ImprovedSpeakingTest() {
         ttsAudio.onended = () => {
           setIsPlayingTTS(false)
           ttsAudioRef.current = null
+          // After question TTS ends, start preparation for PART1 automatically
+          if (currentSection?.type === "PART1" && currentQuestion) {
+            const key = `${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
+            if (prepStartedKeyRef.current !== key) {
+              prepStartedKeyRef.current = key
+              beginPreparation(5, () => {
+                startRecording(30, true)
+              })
+            }
+          }
         }
         ttsAudio.onerror = () => {
           setIsPlayingTTS(false)
@@ -528,7 +540,8 @@ export default function ImprovedSpeakingTest() {
       currentQuestion &&
       !isPlayingInstructions &&
       !isRecording &&
-      !isPrepRunning
+      !isPrepRunning &&
+      !isPlayingTTS
     ) {
       const key = `${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
       console.log(`🎯 Question changed effect: Starting preparation for question ${currentQuestionIndex + 1}`)
@@ -699,6 +712,15 @@ export default function ImprovedSpeakingTest() {
         const key = currentQuestion?.id || currentSection?.id || `${currentSectionIndex}`
         const rec: Recording = { blob, duration, questionId: key }
         setRecordings((prev) => new Map(prev).set(key, rec))
+
+        // Transcribe immediately and store text answer
+        try {
+          const stt = await speechToTextService.convertAudioToText(blob)
+          const text = stt.success ? (stt.text || "") : "[Ses metne dönüştürülemedi]"
+          setAnswers(prev => new Map(prev).set(key, { text: text || "[Cevap bulunamadı]", duration }))
+        } catch {
+          setAnswers(prev => new Map(prev).set(key, { text: "[Ses metne dönüştürülemedi]", duration }))
+        }
         
         // For PART1, automatically advance to next question after recording
         if (currentSection?.type === "PART1") {
@@ -979,9 +1001,10 @@ export default function ImprovedSpeakingTest() {
 
     try {
       // Store answers locally for later submission
+      const answersObj = Object.fromEntries(Array.from(answers.entries()).map(([qid, v]) => [qid, { text: v.text, duration: v.duration }]))
       const answersData = {
         testId: testData.id,
-        recordings: Array.from(recordings.entries()),
+        answers: answersObj,
         sections: testData.sections,
         timestamp: new Date().toISOString()
       };
@@ -1119,19 +1142,26 @@ export default function ImprovedSpeakingTest() {
         if (speakingAnswers) {
           const speakingData = JSON.parse(speakingAnswers);
           console.log("Submitting speaking test:", speakingData.testId, "with recordings:", speakingData.recordings?.length || 0);
-          const answerMap = new Map();
-          for (const [qid, rec] of speakingData.recordings) {
-            try {
-              const fd = new FormData();
-              fd.append("audio", rec.blob, "recording.webm");
-              const res = await axiosPrivate.post("/api/speaking-submission/speech-to-text", fd, {
-                headers: { "Content-Type": "multipart/form-data" },
-                timeout: 30000,
-              });
-              const text = res.data?.text || "[Ses metne dönüştürülemedi]";
-              answerMap.set(qid, { text, duration: rec.duration });
-            } catch (e) {
-              answerMap.set(qid, { text: "[Ses metne dönüştürülemedi]", duration: rec.duration || 0 });
+          const answerMap = new Map<string, { text: string; duration: number }>();
+          if (speakingData.answers) {
+            for (const [qid, val] of Object.entries(speakingData.answers)) {
+              const v: any = val;
+              answerMap.set(qid, { text: v?.text ?? "[Cevap bulunamadı]", duration: Number(v?.duration) || 0 });
+            }
+          } else if (speakingData.recordings) {
+            for (const [qid, rec] of speakingData.recordings) {
+              try {
+                const fd = new FormData();
+                fd.append("audio", rec.blob, "recording.webm");
+                const res = await axiosPrivate.post("/api/speaking-submission/speech-to-text", fd, {
+                  headers: { "Content-Type": "multipart/form-data" },
+                  timeout: 30000,
+                });
+                const text = res.data?.text || "[Ses metne dönüştürülemedi]";
+                answerMap.set(qid, { text, duration: rec.duration });
+              } catch (e) {
+                answerMap.set(qid, { text: "[Ses metne dönüştürülemedi]", duration: rec.duration || 0 });
+              }
             }
           }
           

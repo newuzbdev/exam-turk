@@ -1369,7 +1369,7 @@ export default function ImprovedSpeakingTest() {
             <div className="bg-red-600 text-white px-3 py-1.5 rounded font-bold text-sm">
               TURKISHMOCK
             </div>
-            <div className="font-bold text-lg text-gray-800">Speaking</div>
+            <div className="font-bold text-lg text-gray-800">Konuşma</div>
           </div>
           
           {/* Progress indicator */}
@@ -1462,7 +1462,7 @@ export default function ImprovedSpeakingTest() {
           
           {/* Centered Speaking text */}
           <div className="absolute left-1/2 transform -translate-x-1/2 font-bold text-2xl text-gray-800">
-            Speaking
+            Konuşma
           </div>
           
           {/* Progress indicator - Right side */}
@@ -1602,7 +1602,7 @@ export default function ImprovedSpeakingTest() {
           {currentSection?.type !== "PART2" && currentSection?.type !== "PART3" && !isPlayingInstructions && (
              <div className="text-center">
                <div className="text-black font-bold text-2xl sm:text-3xl">
-                 QUESTION {currentQuestionIndex + 1}
+                 Soru {currentQuestionIndex + 1}
                </div>
              </div>
            )}

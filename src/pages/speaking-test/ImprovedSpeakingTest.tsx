@@ -1184,7 +1184,8 @@ export default function ImprovedSpeakingTest() {
                   headers: { "Content-Type": "multipart/form-data" },
                   timeout: 30000,
                 });
-                const text = res.data?.text || "[Ses metne dönüştürülemedi]";
+                const rawText = res.data?.text ?? res.data?.transcript;
+                const text = rawText || "[Ses metne dönüştürülemedi]";
                 answerMap.set(qid, { text, duration: rec.duration });
               } catch (e) {
                 answerMap.set(qid, { text: "[Ses metne dönüştürülemedi]", duration: rec.duration || 0 });

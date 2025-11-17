@@ -29,10 +29,13 @@ export const speechToTextService = {
         timeout: 30000, // 30 second timeout for speech processing
       });
 
-      if (response.data && response.data.text !== undefined) {
+      // Backend may return either `text` or `transcript`
+      const rawText = response.data?.text ?? response.data?.transcript;
+
+      if (response.data && rawText !== undefined) {
         return {
           success: true,
-          text: response.data.text || '' // Return empty string if text is null/undefined
+          text: rawText || '' // Return empty string if text is null/undefined
         };
       } else {
         return {

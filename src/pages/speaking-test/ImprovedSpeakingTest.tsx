@@ -1000,53 +1000,80 @@ export default function ImprovedSpeakingTest() {
     setIsSubmitting(true)
 
     try {
-      // Store answers locally for later submission
-      const answersObj = Object.fromEntries(Array.from(answers.entries()).map(([qid, v]) => [qid, { text: v.text, duration: v.duration }]))
+      const answersEntries = Array.from(answers.entries())
+
+      // Persist detailed answers (with duration) for potential overall submission
+      const answersObj = Object.fromEntries(
+        answersEntries.map(([qid, v]) => [qid, { text: v.text, duration: v.duration }])
+      )
+
+      // Keep a simple questionId -> transcript map for direct submission
+      const answerTextRecord = answersEntries.reduce<Record<string, string>>((acc, [qid, v]) => {
+        const cleaned = v?.text?.trim()
+        acc[qid] = cleaned ? v.text : "[Cevap bulunamadı]"
+        return acc
+      }, {})
+
       const answersData = {
         testId: testData.id,
         answers: answersObj,
         sections: testData.sections,
         timestamp: new Date().toISOString()
-      };
-      // Store in sessionStorage for later submission
-      sessionStorage.setItem(`speaking_answers_${testData.id}`, JSON.stringify(answersData));
+      }
 
-      // Just navigate to next test without submitting
-      const nextPath = overallTestFlowStore.onTestCompleted("SPEAKING", testData.id);
+      sessionStorage.setItem(`speaking_answers_${testData.id}`, JSON.stringify(answersData))
+
+      const wasOverallFlowActive = overallTestFlowStore.hasActive()
+      const nextPath = overallTestFlowStore.onTestCompleted("SPEAKING", testData.id)
+
       if (nextPath) {
-        // Keep exam mode and fullscreen active for next test
         if (typeof document !== "undefined") {
-          document.body.classList.add("exam-mode");
-          // Immediately re-enter fullscreen before navigation
+          document.body.classList.add("exam-mode")
           const enterFullscreen = async () => {
             try {
-              const el: any = document.documentElement as any;
-              if (el.requestFullscreen) await el.requestFullscreen();
-              else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
-              else if (el.msRequestFullscreen) await el.msRequestFullscreen();
+              const el: any = document.documentElement as any
+              if (el.requestFullscreen) await el.requestFullscreen()
+              else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen()
+              else if (el.msRequestFullscreen) await el.msRequestFullscreen()
             } catch {}
-          };
-          await enterFullscreen();
+          }
+          await enterFullscreen()
         }
-        navigate(nextPath);
-        return;
+        navigate(nextPath)
+        return
       }
-      
-      // If no next test, we're at the end - submit all tests
-      const overallId = overallTestFlowStore.getOverallId();
+
+      const overallId = overallTestFlowStore.getOverallId()
       if (overallId && overallTestFlowStore.isAllDone()) {
-        // Submit all tests at once
-        await submitAllTests(overallId);
-        return;
+        await submitAllTests(overallId)
+        return
       }
-      
-      // Fallback to single test results
-      navigate(`/speaking-test/results/temp`, { state: { summary: { testId: testData.id } } });
+
+      if (!wasOverallFlowActive) {
+        const formattedSubmission = speakingSubmissionService.formatSubmissionData(testData, answerTextRecord)
+        if (!speakingSubmissionService.validateSubmissionData(formattedSubmission)) {
+          return
+        }
+
+        const submissionResult = await speakingSubmissionService.submitSpeakingTest(formattedSubmission)
+        if (!submissionResult.success) {
+          return
+        }
+
+        if (submissionResult.submissionId) {
+          navigate(`/speaking-test/results/${submissionResult.submissionId}`)
+        } else {
+          navigate(`/speaking-test/results/temp`, { state: { summary: { testId: testData.id } } })
+        }
+        return
+      }
+
+      navigate(`/speaking-test/results/temp`, { state: { summary: { testId: testData.id } } })
     } catch (e) {
-      console.error("speaking navigation error", e);
-      toast.error("Test geçişinde hata oluştu");
+      console.error("speaking navigation error", e)
+      toast.error("Test geçişinde hata oluştu")
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
   }
 

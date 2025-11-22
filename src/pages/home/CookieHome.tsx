@@ -85,7 +85,7 @@ export default function CookieHome() {
               size="lg"
               className="bg-white text-red-600 hover:bg-gray-100 px-8 py-4 text-lg shadow-lg"
             >
-              Ücretsiz Teste Başla
+               Teste Başla
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </NavLink>

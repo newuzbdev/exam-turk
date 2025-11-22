@@ -149,7 +149,9 @@ export const listeningSubmissionService = {
   submitAnswers: async (
     testId: string,
     answers: { questionId: string; userAnswer: string }[],
-    token?: string | null
+    token?: string | null,
+    audioUrl?: string | null,
+    imageUrls?: string[]
   ) => {
     try {
       const { overallTestTokenStore } = await import("./overallTest.service");
@@ -163,7 +165,9 @@ export const listeningSubmissionService = {
         testId,
         hasOverallToken: !!overallTestTokenStore.getByTestId(testId),
         hasSessionToken: !!sessionToken,
-        tokenSource: overallTestTokenStore.getByTestId(testId) ? 'genel' : 'oturum'
+        tokenSource: overallTestTokenStore.getByTestId(testId) ? 'genel' : 'oturum',
+        hasAudioUrl: !!audioUrl,
+        imageUrlsCount: imageUrls?.length || 0
       });
 
       if (!sessionToken) {
@@ -171,7 +175,20 @@ export const listeningSubmissionService = {
         throw new Error("Sınav sonuçlarını göndermek için kimlik doğrulama gerekli.");
       }
 
-      const payload = { testId, sessionToken, answers };
+      const payload: any = { 
+        testId, 
+        sessionToken, 
+        answers 
+      };
+      
+      // Add audio and images if provided
+      if (audioUrl) {
+        payload.audioUrl = audioUrl;
+      }
+      if (imageUrls && imageUrls.length > 0) {
+        payload.imageUrls = imageUrls;
+      }
+      
       const opts = { headers: { Authorization: `Bearer ${sessionToken}` } };
 
       const res = await axiosPrivate.post(

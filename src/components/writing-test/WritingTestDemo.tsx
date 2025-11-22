@@ -438,7 +438,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
         const listeningAnswers = sessionStorage.getItem(key);
         if (listeningAnswers) {
           const listeningData = JSON.parse(listeningAnswers);
-          console.log("Dinleme testi gönderiliyor:", listeningData.testId, "cevaplarla:", listeningData.answers);
+          console.log("Dinleme testi gönderiliyor:", listeningData.testId, "cevaplarla:", listeningData.answers, "audioUrl:", listeningData.audioUrl, "imageUrls:", listeningData.imageUrls);
           
           // Bu testin genel test akışının parçası olup olmadığını kontrol et
           const { overallTestTokenStore } = await import("@/services/overallTest.service");
@@ -446,7 +446,13 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
           
           if (hasOverallToken) {
             console.log("✅ Dinleme testi genel token'a sahip, gönderiliyor...");
-            await listeningSubmissionService.submitAnswers(listeningData.testId, listeningData.answers);
+            await listeningSubmissionService.submitAnswers(
+              listeningData.testId, 
+              listeningData.answers,
+              undefined, // token
+              listeningData.audioUrl,
+              listeningData.imageUrls
+            );
           } else {
             console.log("⚠️ Dinleme testi genel akışın parçası değil, gönderim atlanıyor");
             // Atlayabilir veya oturum token'ını yedek olarak kullanabilirsiniz

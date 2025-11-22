@@ -856,9 +856,25 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
       
       // Store answers locally for later submission
       if (testData?.id) {
+        // Collect all image URLs from sections
+        const imageUrls: string[] = [];
+        if (testData.parts) {
+          testData.parts.forEach((part: any) => {
+            if (part.sections) {
+              part.sections.forEach((section: any) => {
+                if (section.imageUrl) {
+                  imageUrls.push(section.imageUrl);
+                }
+              });
+            }
+          });
+        }
+        
         const answersData = {
           testId: testData.id,
           answers: Object.entries(userAnswers).map(([questionId, userAnswer]) => ({ questionId, userAnswer })),
+          audioUrl: testData.audioUrl || null,
+          imageUrls: imageUrls,
           timestamp: new Date().toISOString()
         };
         // Store in sessionStorage for later submission
@@ -931,8 +947,14 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
         const listeningAnswers = sessionStorage.getItem(key);
         if (listeningAnswers) {
           const listeningData = JSON.parse(listeningAnswers);
-          console.log("Submitting listening test:", listeningData.testId, "with answers:", listeningData.answers);
-          await listeningSubmissionService.submitAnswers(listeningData.testId, listeningData.answers);
+          console.log("Submitting listening test:", listeningData.testId, "with answers:", listeningData.answers, "audioUrl:", listeningData.audioUrl, "imageUrls:", listeningData.imageUrls);
+          await listeningSubmissionService.submitAnswers(
+            listeningData.testId, 
+            listeningData.answers,
+            undefined, // token
+            listeningData.audioUrl,
+            listeningData.imageUrls
+          );
         }
       }
       
@@ -1101,43 +1123,38 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
 
   return (
     <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
-        <div className="bg-white px-3 sm:px-6 py-3 border-2 border-gray-300 rounded-lg mt-2 sm:mt-4">
-          {/* Mobile Header - Single Line Layout */}
-          <div className="block lg:hidden mb-3">
-            <div className="flex items-center justify-between">
-              <div className="bg-red-600 text-white px-2 py-1 rounded font-bold text-sm">
-                TURKISHMOCK
-              </div>
-              <div className="font-bold text-base">Listening</div>
-              <div className={`font-bold text-sm ${timerActive ? 'text-red-600' : 'text-gray-600'}`}>
-                {timerActive ? formatTime(timeLeft) : '10:00'}
-              </div>
-              <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 text-xs font-bold">
-                GÖNDER
-              </Button>
-            </div>
-            {/* Removed duplicate mobile-only audio player to avoid double playback */}
-          </div>
-
-          {/* Desktop Header - Horizontal Layout */}
-          <div className="hidden lg:flex items-center justify-between mb-3">
-            <div className="bg-red-600 text-white px-3 py-1 rounded font-bold text-lg">
+        <div className="bg-white px-2 sm:px-4 lg:px-6 py-2 sm:py-3 border-2 border-gray-300 rounded-lg mt-2 sm:mt-4">
+          {/* Responsive Header */}
+          <div className="flex items-center justify-between mb-3 relative">
+            {/* Left: TURKISHMOCK */}
+            <div className="bg-red-600 text-white px-2 sm:px-3 py-1 rounded font-bold text-xs sm:text-sm lg:text-lg flex-shrink-0 z-10">
               TURKISHMOCK
             </div>
-            <div className="font-bold text-2xl">Listening</div>
-            <div className="flex items-center gap-4">
-              <div className={`font-bold text-lg ${timerActive ? 'text-red-600' : 'text-gray-600'}`}>
+            
+            {/* Center: Dinleme - centered on all screens, but on lg it's truly centered */}
+            <div className="flex-1 flex items-center justify-center mx-2 sm:mx-4">
+              <div className="font-bold text-sm sm:text-base lg:text-2xl whitespace-nowrap">Dinleme</div>
+            </div>
+            
+            {/* Right: Volume + Timer + GÖNDER - on lg, volume is close to timer */}
+            <div className="flex items-center gap-1 sm:gap-2 lg:gap-3 flex-shrink-0 z-10">
+              {/* Audio Player - hidden on mobile, visible on desktop, close to timer on lg */}
+              {testData?.audioUrl && (
+                <div className="hidden sm:block">
+                  <AudioPlayer
+                    src={
+                      testData.audioUrl.startsWith('http://') || testData.audioUrl.startsWith('https://')
+                        ? testData.audioUrl
+                        : `https://api.turkishmock.uz/${testData.audioUrl}`
+                    }
+                    onAudioEnded={handleAudioEnded}
+                  />
+                </div>
+              )}
+              <div className={`font-bold text-xs sm:text-sm lg:text-lg ${timerActive ? 'text-red-600' : 'text-gray-600'} whitespace-nowrap`}>
                 {timerActive ? formatTime(timeLeft) : '10:00'}
               </div>
-              {/* Single Audio Player rendered only when isLg is true in this spot */}
-              {isLg && testData?.audioUrl && (
-                <AudioPlayer
-                  src={`https://api.turkishmock.uz/${testData.audioUrl}`}
-                  onAudioEnded={handleAudioEnded}
-                />
-              )}
-              
-              <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 text-sm font-bold">
+              <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 text-white px-2 sm:px-3 lg:px-4 py-1 text-xs sm:text-sm font-bold whitespace-nowrap">
                 GÖNDER
               </Button>
             </div>

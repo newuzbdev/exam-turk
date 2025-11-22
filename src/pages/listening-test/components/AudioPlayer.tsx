@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Volume2 } from "lucide-react";
 
 interface AudioPlayerProps {
   src: string;
@@ -8,23 +7,25 @@ interface AudioPlayerProps {
 
 export const AudioPlayer = ({ src, onAudioEnded }: AudioPlayerProps) => {
   const [volume, setVolume] = useState(0.7);
-  const [_isPlaying, setIsPlaying] = useState(false);
-  const [_showPlayButton, setShowPlayButton] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const hasStartedRef = useRef(false);
   // Web Audio removed: rely on native element volume/muted only for reliability
 
   // Debug: Log the src when component mounts
   useEffect(() => {
     console.log("AudioPlayer mounted with src:", src);
+    hasStartedRef.current = false;
   }, [src]);
 
-  // Auto-play when component mounts
+  // Auto-play when component mounts - only once
   useEffect(() => {
     const audio = audioRef.current;
-    if (audio && src) {
+    if (audio && src && !hasStartedRef.current) {
       console.log("Attempting auto-play...");
       
       const tryAutoPlay = async () => {
+        if (hasStartedRef.current) return; // Prevent double play
+        
         try {
           // Ensure audio is loaded before playing
           if (audio.readyState < 2) {
@@ -34,16 +35,20 @@ export const AudioPlayer = ({ src, onAudioEnded }: AudioPlayerProps) => {
             });
           }
           
-          await audio.play();
-          console.log("Auto-play successful!");
-          setIsPlaying(true);
-          setShowPlayButton(false);
+          if (!hasStartedRef.current && audio.paused) {
+            hasStartedRef.current = true;
+            await audio.play();
+            console.log("Auto-play successful!");
+          }
         } catch (error) {
           console.log("Auto-play failed:", error);
-          // Don't show play button, just keep trying
-          setShowPlayButton(false);
-          // Retry after a longer delay
-          setTimeout(tryAutoPlay, 2000);
+          hasStartedRef.current = false;
+          // Retry after a delay only if not already started
+          setTimeout(() => {
+            if (!hasStartedRef.current) {
+              tryAutoPlay();
+            }
+          }, 2000);
         }
       };
 
@@ -52,48 +57,37 @@ export const AudioPlayer = ({ src, onAudioEnded }: AudioPlayerProps) => {
     }
   }, [src]);
 
-  // Add click handler to trigger audio on user interaction
-  useEffect(() => {
-    const handleUserInteraction = () => {
-      const audio = audioRef.current;
-      if (audio && src && audio.paused) {
-        audio.play().catch(console.error);
-      }
-    };
-
-    // Add event listeners for user interaction
-    document.addEventListener('click', handleUserInteraction, { once: true });
-    document.addEventListener('keydown', handleUserInteraction, { once: true });
-    document.addEventListener('touchstart', handleUserInteraction, { once: true });
-
-    return () => {
-      document.removeEventListener('click', handleUserInteraction);
-      document.removeEventListener('keydown', handleUserInteraction);
-      document.removeEventListener('touchstart', handleUserInteraction);
-    };
-  }, [src]);
-
   // Removed Web Audio pipeline
 
   // Keep the underlying audio element in sync with React volume state
   useEffect(() => {
     const audio = audioRef.current;
     if (audio) {
-      audio.volume = volume;
-      audio.muted = volume === 0;
+      if (volume === 0) {
+        // Just mute when volume is 0, don't stop
+        audio.muted = true;
+      } else {
+        audio.muted = false;
+        audio.volume = volume;
+      }
     }
   }, [volume]);
 
 
-  // Handle audio ended event
+  // Handle audio ended event - start timer
   useEffect(() => {
     const audio = audioRef.current;
     if (audio) {
       const handleEnded = () => {
+        console.log("Audio ended - starting timer");
         onAudioEnded();
       };
+      
       audio.addEventListener('ended', handleEnded);
-      return () => audio.removeEventListener('ended', handleEnded);
+      
+      return () => {
+        audio.removeEventListener('ended', handleEnded);
+      };
     }
   }, [onAudioEnded]);
 
@@ -104,7 +98,7 @@ export const AudioPlayer = ({ src, onAudioEnded }: AudioPlayerProps) => {
   };
 
   return (
-    <div className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-lg">
+    <div className="flex items-center gap-1 sm:gap-2 bg-gray-100 px-2 sm:px-3 py-1 sm:py-2 rounded-lg border border-gray-300">
       <audio 
         ref={audioRef} 
         src={src} 
@@ -114,16 +108,14 @@ export const AudioPlayer = ({ src, onAudioEnded }: AudioPlayerProps) => {
         onCanPlay={() => console.log("Audio can play")}
         onError={(e) => console.error("Audio error:", e)}
         onEnded={() => {
-          console.log("Audio ended");
-          setIsPlaying(false);
+          console.log("Audio ended - starting timer");
           onAudioEnded();
         }}
       />
       
-      
       {/* Volume Slider */}
-      <div className="flex items-center gap-2">
-        <Volume2 className="h-4 w-4 text-gray-600" />
+      <div className="flex items-center gap-1 sm:gap-2">
+        <span className="text-xs text-gray-600 hidden sm:inline">Volume:</span>
         <input
           type="range"
           min="0"
@@ -131,18 +123,15 @@ export const AudioPlayer = ({ src, onAudioEnded }: AudioPlayerProps) => {
           step="0.01"
           value={volume}
           onChange={handleVolumeChange}
-          className="w-16 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+          className="w-12 sm:w-16 lg:w-20 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
           style={{
             background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${volume * 100}%, #e5e7eb ${volume * 100}%, #e5e7eb 100%)`
           }}
         />
-        <span className="text-xs text-gray-600 min-w-[25px]">
+        <span className="text-xs text-gray-600 min-w-[25px] sm:min-w-[30px]">
           {Math.round(volume * 100)}%
         </span>
       </div>
-      
-      {/* Status indicator */}
-     
     </div>
   );
 };

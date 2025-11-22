@@ -1108,8 +1108,14 @@ export default function ImprovedSpeakingTest() {
         const listeningAnswers = sessionStorage.getItem(key);
         if (listeningAnswers) {
           const listeningData = JSON.parse(listeningAnswers);
-          console.log("Submitting listening test:", listeningData.testId, "with answers:", listeningData.answers);
-          await listeningSubmissionService.submitAnswers(listeningData.testId, listeningData.answers);
+          console.log("Submitting listening test:", listeningData.testId, "with answers:", listeningData.answers, "audioUrl:", listeningData.audioUrl, "imageUrls:", listeningData.imageUrls);
+          await listeningSubmissionService.submitAnswers(
+            listeningData.testId, 
+            listeningData.answers,
+            undefined, // token
+            listeningData.audioUrl,
+            listeningData.imageUrls
+          );
         }
       }
       

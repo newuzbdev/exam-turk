@@ -140,26 +140,26 @@ export default function OverallResults() {
     return (
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between mx-4">
-          <h1 className="text-3xl font-bold text-foreground">Sınav Sonuçları</h1>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mx-4 gap-3">
+          {/* <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Sınav Sonuçları</h1> */}
         </div>
         
         <div className="mx-4 space-y-6">
 
           {/* Report Info */}
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <div className="flex items-center gap-6">
-              <span>Report ID: {data.id}</span>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-muted-foreground">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
+              <span className="break-all">Report ID: {data.id}</span>
               <span>İsim: {data.user.name}</span>
             </div>
-            <span>Tarih: {new Date(data.listening.completedAt || data.startedAt).toISOString().replace('T', ' ').substring(0, 19) + " "}</span>
+            <span className="text-xs sm:text-sm">Tarih: {new Date(data.listening.completedAt || data.startedAt).toISOString().replace('T', ' ').substring(0, 19) + " "}</span>
           </div>
 
           {/* Listening Score */}
           <div className="mb-6">
-            <h2 className="text-xl font-semibold text-foreground">
+            <h2 className="text-lg sm:text-xl font-semibold text-foreground">
               Dinleme Puanı: {data.listening.score}
-              <span className="ml-3 text-base text-muted-foreground">
+              <span className="ml-2 sm:ml-3 text-sm sm:text-base text-muted-foreground">
                 ({examData.filter(r => r.result === "Doğru").length} / {examData.length} doğru)
               </span>
             </h2>
@@ -169,13 +169,13 @@ export default function OverallResults() {
           <Card className="overflow-hidden rounded-lg border border-gray-200">
             <CardContent className="p-0">
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full min-w-[600px]">
                   <thead>
                     <tr className="bg-green-600 text-white">
-                      <th className="px-4 py-3 text-left font-medium rounded-tl-lg">No.</th>
-                      <th className="px-4 py-3 text-left font-medium">Kullanıcı Cevabı</th>
-                      <th className="px-4 py-3 text-left font-medium">Doğru Cevap</th>
-                      <th className="px-4 py-3 text-left font-medium rounded-tr-lg">Sonuç</th>
+                      <th className="px-2 sm:px-4 py-2 sm:py-3 text-left font-medium rounded-tl-lg text-xs sm:text-base">No.</th>
+                      <th className="px-2 sm:px-4 py-2 sm:py-3 text-left font-medium text-xs sm:text-base">Kullanıcı Cevabı</th>
+                      <th className="px-2 sm:px-4 py-2 sm:py-3 text-left font-medium text-xs sm:text-base">Doğru Cevap</th>
+                      <th className="px-2 sm:px-4 py-2 sm:py-3 text-left font-medium rounded-tr-lg text-xs sm:text-base">Sonuç</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -184,11 +184,11 @@ export default function OverallResults() {
                         key={item.no}
                         className={`border-b border-gray-200 last:border-b-0 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
                       >
-                        <td className="px-4 py-3 text-gray-700 font-medium">{item.no}</td>
-                        <td className="px-4 py-3 text-gray-600">{item.userAnswer}</td>
-                        <td className="px-4 py-3 text-gray-800 font-medium">{item.correctAnswer}</td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-gray-700 font-medium text-xs sm:text-sm">{item.no}</td>
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-gray-600 text-xs sm:text-sm break-words">{item.userAnswer}</td>
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-gray-800 font-medium text-xs sm:text-sm break-words">{item.correctAnswer}</td>
+                        <td className="px-2 sm:px-4 py-2 sm:py-3">
+                          <span className={`inline-flex items-center px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium ${
                             item.result === "Doğru" 
                               ? "bg-green-100 text-green-800" 
                               : item.result === "Yanlış" 
@@ -813,8 +813,8 @@ export default function OverallResults() {
           {testType === 'writing' && renderWritingResults()}
           {testType === 'speaking' && renderSpeakingResults()}
 
-          <div className="mt-8 flex justify-center">
-            <Button variant="outline" onClick={() => navigate("/test")}>
+          <div className="mt-6 sm:mt-8 flex justify-center mx-4">
+            <Button variant="outline" onClick={() => navigate("/test")} className="w-full sm:w-auto">
               Testlere Dön
             </Button>
           </div>

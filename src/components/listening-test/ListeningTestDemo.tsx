@@ -483,7 +483,10 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
 
     // Special layout for Part 4 (image matching questions)
     if (bolum === 4) {
-      const imageUrl = questions.find(q => q.imageUrl)?.imageUrl;
+      // Get imageUrl from section, not from question
+      const sections = getAllSections();
+      const part4Section = sections.find((s: any) => s.partNumber === 4);
+      const imageUrl = part4Section?.imageUrl || questions.find(q => q.imageUrl)?.imageUrl;
       
       return (
         <div key={`bolum-${bolum}`} className="w-full mx-auto bg-white border-gray-800 rounded-lg overflow-hidden pb-28 md:pb-36 lg:pb-40">
@@ -492,10 +495,14 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
             {/* Image Section */}
             <div className="p-3 border-b border-gray-300">
               <h4 className="text-base font-bold text-gray-800 mb-3">Harita</h4>
-              <div className="flex justify-center">
+              <div className="flex justify-center mt-4">
               {imageUrl ? (
                 <img 
-                  src={`https://api.turkishmock.uz/${imageUrl}`} 
+                  src={
+                    imageUrl.startsWith('http://') || imageUrl.startsWith('https://')
+                      ? imageUrl
+                      : `https://api.turkishmock.uz/${imageUrl}`
+                  }
                   alt="Map for questions 19-23" 
                     className="w-full max-w-[400px] h-auto"
                   onError={(e) => {
@@ -553,10 +560,14 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
               <ResizablePanel defaultSize={60} minSize={5} maxSize={95}>
                 <div className="border-r border-gray-300 p-4 h-full flex flex-col">
                   <h4 className="text-lg font-bold text-gray-800 mb-3">Harita</h4>
-                  <div className="flex-1 flex items-center justify-center">
+                  <div className="flex-1 flex items-center justify-center mt-4">
                     {imageUrl ? (
                       <img 
-                        src={`https://api.turkishmock.uz/${imageUrl}`} 
+                        src={
+                          imageUrl.startsWith('http://') || imageUrl.startsWith('https://')
+                            ? imageUrl
+                            : `https://api.turkishmock.uz/${imageUrl}`
+                        }
                         alt="Map for questions 19-23" 
                         className="w-full h-auto max-h-[400px] object-contain"
                         onError={(e) => {
@@ -682,7 +693,11 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                       <div className="w-full max-w-2xl mx-auto">
                         <div className="aspect-[4/3] bg-transparent rounded-2xl overflow-hidden flex items-center justify-center">
                           <img
-                            src={`https://api.turkishmock.uz/${question.imageUrl}`}
+                            src={
+                              question.imageUrl.startsWith('http://') || question.imageUrl.startsWith('https://')
+                                ? question.imageUrl
+                                : `https://api.turkishmock.uz/${question.imageUrl}`
+                            }
                             alt="Question image"
                             className="w-full h-full object-contain"
                             onError={(e) => {

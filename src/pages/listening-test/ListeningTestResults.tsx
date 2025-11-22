@@ -158,8 +158,9 @@ export default function ListeningResultsPage() {
   if (!hasDetailedData && hasSummaryData) {
     return (
       <div className="max-w-6xl mx-auto space-y-5 p-4 sm:p-6">
-        {/* Header */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mx-4 space-y-5">
+          {/* Header */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-xl sm:text-3xl font-bold text-foreground">Sınav Sonuçları</h1>
           <div className="w-full sm:w-auto">
             <div className="flex items-center gap-2">
@@ -272,14 +273,16 @@ export default function ListeningResultsPage() {
             </CardContent>
           </Card>
         )}
+        </div>
       </div>
     );
   }
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="mx-4 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-foreground">Sınav Sonuçları</h1>
         <div className="flex items-center gap-3">
           <Input
@@ -357,6 +360,7 @@ export default function ListeningResultsPage() {
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

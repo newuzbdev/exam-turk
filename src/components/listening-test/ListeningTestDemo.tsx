@@ -22,7 +22,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
   const [timerActive, setTimerActive] = useState<boolean>(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLg, setIsLg] = useState<boolean>(false);
+  const [_isLg, setIsLg] = useState<boolean>(false);
   // Removed exam-mode body lock for listening; keep state local if needed later
   
   const navigate = useNavigate();

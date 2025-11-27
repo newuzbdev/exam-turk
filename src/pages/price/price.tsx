@@ -8,11 +8,20 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, Zap, Target, Trophy, Users, CreditCard } from "lucide-react";
+import {
+  CheckCircle,
+  Zap,
+  Target,
+  Trophy,
+  Users,
+  CreditCard,
+  Coins,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import PaymeCheckoutModal from "@/components/payme/PaymeCheckoutModal";
 import { toast } from "@/utils/toast";
 import testCoinPriceService from "@/services/testCoinPrice.service";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Pricing plans configuration
 const pricingPlans = [
@@ -68,6 +77,8 @@ export default function Price() {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [initialUnits, setInitialUnits] = useState<number | undefined>(undefined);
   const [coinPrices, setCoinPrices] = useState<any[] | null>(null);
+  const { user } = useAuth();
+  const currentCoins = user?.coin ?? 0;
 
   useEffect(() => {
     let mounted = true;
@@ -122,30 +133,70 @@ export default function Price() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Hero Section */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Premium Test Planları
+        {/* Balance Overview */}
+        <section className="mb-10">
+          <Card className="border-red-100 bg-white shadow-sm">
+            <CardContent className="p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Coins className="h-5 w-5 text-red-600" />
+                  <span className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
+                    Mevcut Bakiyeniz
+                  </span>
+                </div>
+                <div className="flex items-baseline gap-2 mb-1">
+                  <span className="text-3xl font-bold text-gray-900">
+                    {currentCoins}U
+                  </span>
+                  <span className="text-sm text-gray-500">
+                    (Türkçe deneme sınavları için kullanılabilir)
+                  </span>
+                </div>
+                <p className="text-sm text-gray-500 max-w-xl">
+                  Dinleme, Okuma, Yazma ve Konuşma testleri için yalnızca U
+                  birimi harcarsınız. Yeterli bakiyeniz yoksa aşağıdan hızlıca
+                  yükleyebilirsiniz.
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                <Button
+                  className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white"
+                  onClick={() => {
+                    const fallback = pricingPlans.find(p => p.id === "quick") || pricingPlans[0];
+                    setSelectedPlan(fallback);
+                    setInitialUnits(undefined);
+                    setIsCheckoutOpen(true);
+                  }}
+                >
+                  Hızlı Bakiye Yükle
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* Hero / Explanation Section */}
+        <section className="text-center mb-10">
+          <Badge className="mb-4 bg-red-100 text-red-700 border-red-200">
+            Fiyatlandırma ve Bakiye
+          </Badge>
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            Türkçe Deneme Sınavları için Esnek Bakiye Sistemi
           </h1>
-          <p className="text-lg text-gray-600 max-w-3xl mx-auto mb-2">
-            Öğrencilerimiz TestMaster Deneme sonuçlarıyla tutarlı Türkçe
-            Yeterlilik puanları elde ediyor.
+          <p className="text-lg text-gray-600 max-w-3xl mx-auto mb-3">
+            Abonelik yok, taahhüt yok. Yalnızca çözdüğünüz deneme sınavları
+            için U birimi harcarsınız.
           </p>
-          <p className="text-lg text-gray-600 max-w-3xl mx-auto mb-6">
-            TestMaster, 12.000'den fazla öğrencinin hedef puanlarına ulaşmasına
-            yardımcı oldu.
+          <p className="text-sm text-gray-500 max-w-3xl mx-auto">
+            Her beceri için ayrı ayrı ödeme yapabilir veya tam sınav paketi
+            oluşturarak en verimli şekilde pratiğinizi planlayabilirsiniz.
           </p>
-          <p className="text-xl font-semibold text-gray-900 mb-8">
-            Geleceğinize yatırım yapın - aşağıdan size uygun planı seçin.
-          </p>
-        </div>
+        </section>
 
         {/* Test Pricing Overview (dynamic) */}
-        <div className="rounded-xl p-6 mb-12">
+        <div className="rounded-xl p-6 mb-12 bg-white border border-gray-100 shadow-sm">
           <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">
             Bireysel Test Ücretleri
           </h3>
@@ -182,7 +233,7 @@ export default function Price() {
 
         {/* Custom coin purchase */}
         <div className="mb-10">
-          <Card className="border-2 border-blue-200">
+          <Card className="border border-blue-200 bg-white">
             <CardHeader>
               <CardTitle>İstediğiniz Kadar Birim Satın Alın</CardTitle>
               <CardDescription>Kaç birime ihtiyacınız varsa girin ve Payme ile ödeyin</CardDescription>
@@ -203,7 +254,7 @@ export default function Price() {
           </Card>
         </div>
 
-        {/* Pricing Cards */}
+        {/* Recommended Packs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {pricingPlans.map((plan) => {
             const IconComponent = plan.icon;

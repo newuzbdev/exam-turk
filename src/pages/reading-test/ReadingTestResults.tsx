@@ -4,6 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { useLocation, useParams } from "react-router-dom";
 import { readingSubmissionService, readingTestService, type ReadingTestItem, type TestResultData } from "@/services/readingTest.service";
+import { Download } from "lucide-react";
+import { overallTestService, overallTestFlowStore } from "@/services/overallTest.service";
 
 export default function ReadingTestResults() {
   const { resultId } = useParams<{ resultId: string }>();
@@ -11,9 +13,25 @@ export default function ReadingTestResults() {
   const [loading, setLoading] = useState(true);
   const [reportId, setReportId] = useState(resultId || "");
   const [testData, setTestData] = useState<ReadingTestItem | null>(null);
+  const [downloadingPDF, setDownloadingPDF] = useState(false);
   const location = useLocation();
   const navState: any = (location && (location as any).state) || {};
   const summary = navState?.summary || null;
+
+  const handleDownloadPDF = async () => {
+    // Try to get overall test result ID from session storage, otherwise use individual result ID
+    const overallId = overallTestFlowStore.getOverallId() || resultId;
+    if (!overallId) return;
+    
+    setDownloadingPDF(true);
+    try {
+      await overallTestService.downloadPDF(overallId, `reading-certificate-${overallId}.pdf`);
+    } catch (error) {
+      console.error("Error downloading PDF:", error);
+    } finally {
+      setDownloadingPDF(false);
+    }
+  };
 
   useEffect(() => {
     if (!resultId) {
@@ -316,6 +334,18 @@ export default function ReadingTestResults() {
             </CardContent>
           </Card>
         )}
+
+        {/* Download PDF Button */}
+        <div className="flex justify-end mt-6">
+          <Button
+            onClick={handleDownloadPDF}
+            disabled={downloadingPDF}
+            className="bg-red-600 hover:bg-red-700 text-white"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            {downloadingPDF ? "İndiriliyor..." : "Sertifikayı İndir (PDF)"}
+          </Button>
+        </div>
       </div>
     );
   }
@@ -338,6 +368,18 @@ export default function ReadingTestResults() {
             Raporu Al
           </Button>
         </div>
+      </div>
+
+      {/* Download PDF Button */}
+      <div className="flex justify-end">
+        <Button
+          onClick={handleDownloadPDF}
+          disabled={downloadingPDF}
+          className="bg-red-600 hover:bg-red-700 text-white"
+        >
+          <Download className="w-4 h-4 mr-2" />
+          {downloadingPDF ? "İndiriliyor..." : "Sertifikayı İndir (PDF)"}
+        </Button>
       </div>
 
       <div className="flex items-center justify-between text-sm text-muted-foreground">
@@ -397,6 +439,18 @@ export default function ReadingTestResults() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Download PDF Button */}
+      <div className="flex justify-end mt-6">
+        <Button
+          onClick={handleDownloadPDF}
+          disabled={downloadingPDF}
+          className="bg-red-600 hover:bg-red-700 text-white"
+        >
+          <Download className="w-4 h-4 mr-2" />
+          {downloadingPDF ? "İndiriliyor..." : "Sertifikayı İndir (PDF)"}
+        </Button>
+      </div>
     </div>
   );
 }

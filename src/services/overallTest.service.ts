@@ -200,6 +200,34 @@ export const overallTestService = {
       return false;
     }
   },
+  downloadPDF: async (overallId: string, filename?: string): Promise<void> => {
+    try {
+      const res = await axiosPrivate.get(`/api/overal-test-result/${overallId}/pdf`, {
+        responseType: 'blob',
+      });
+      
+      // Create a blob from the response
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      
+      // Create a URL for the blob
+      const url = window.URL.createObjectURL(blob);
+      
+      // Create a temporary anchor element and trigger download
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename || `certificate-${overallId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Clean up
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error: any) {
+      const message = error?.response?.data?.message || "Failed to download certificate";
+      toast.error(message);
+      throw error;
+    }
+  },
 };
 
 export default overallTestService;

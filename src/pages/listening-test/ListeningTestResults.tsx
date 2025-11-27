@@ -4,6 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { useLocation, useParams } from "react-router-dom";
 import { listeningSubmissionService, listeningTestService, type ListeningTestItem, type TestResultData } from "@/services/listeningTest.service";
+import { Download } from "lucide-react";
+import { overallTestService, overallTestFlowStore } from "@/services/overallTest.service";
 
 export default function ListeningResultsPage() {
   const { resultId } = useParams<{ resultId: string }>();
@@ -11,9 +13,25 @@ export default function ListeningResultsPage() {
   const [loading, setLoading] = useState(true);
   const [reportId, setReportId] = useState(resultId || "");
   const [testData, setTestData] = useState<ListeningTestItem | null>(null);
+  const [downloadingPDF, setDownloadingPDF] = useState(false);
   const location = useLocation();
   const navState: any = (location && (location as any).state) || {};
   const summary = navState?.summary || null;
+
+  const handleDownloadPDF = async () => {
+    // Try to get overall test result ID from session storage, otherwise use individual result ID
+    const overallId = overallTestFlowStore.getOverallId() || resultId;
+    if (!overallId) return;
+    
+    setDownloadingPDF(true);
+    try {
+      await overallTestService.downloadPDF(overallId, `listening-certificate-${overallId}.pdf`);
+    } catch (error) {
+      console.error("Error downloading PDF:", error);
+    } finally {
+      setDownloadingPDF(false);
+    }
+  };
 
   useEffect(() => {
     if (!resultId) {
@@ -279,7 +297,7 @@ export default function ListeningResultsPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 p-6">
+      <div className="max-w-6xl mx-auto space-y-6 p-6">
       <div className="mx-4 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -298,6 +316,18 @@ export default function ListeningResultsPage() {
             Get Report
           </Button>
         </div>
+      </div>
+
+      {/* Download PDF Button */}
+      <div className="flex justify-end">
+        <Button
+          onClick={handleDownloadPDF}
+          disabled={downloadingPDF}
+          className="bg-red-600 hover:bg-red-700 text-white"
+        >
+          <Download className="w-4 h-4 mr-2" />
+          {downloadingPDF ? "İndiriliyor..." : "Sertifikayı İndir (PDF)"}
+        </Button>
       </div>
 
       {/* Report Info */}
@@ -360,6 +390,18 @@ export default function ListeningResultsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Download PDF Button */}
+      <div className="flex justify-end mt-6">
+        <Button
+          onClick={handleDownloadPDF}
+          disabled={downloadingPDF}
+          className="bg-red-600 hover:bg-red-700 text-white"
+        >
+          <Download className="w-4 h-4 mr-2" />
+          {downloadingPDF ? "İndiriliyor..." : "Sertifikayı İndir (PDF)"}
+        </Button>
+      </div>
       </div>
     </div>
   );

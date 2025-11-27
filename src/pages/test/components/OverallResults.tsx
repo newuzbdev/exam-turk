@@ -4,6 +4,8 @@ import axiosPrivate from "@/config/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Download } from "lucide-react";
+import { overallTestService } from "@/services/overallTest.service";
 
 interface Question {
   questionId: string;
@@ -64,6 +66,21 @@ export default function OverallResults() {
   const [activeTask1Part, setActiveTask1Part] = useState("part1");
   const [activeSpeakingPart, setActiveSpeakingPart] = useState(0);
   const [activeSpeakingQuestion, setActiveSpeakingQuestion] = useState(0);
+  const [downloadingPDF, setDownloadingPDF] = useState(false);
+
+  const handleDownloadPDF = async () => {
+    const id = params.overallId;
+    if (!id) return;
+    
+    setDownloadingPDF(true);
+    try {
+      await overallTestService.downloadPDF(id, `certificate-${id}.pdf`);
+    } catch (error) {
+      console.error("Error downloading PDF:", error);
+    } finally {
+      setDownloadingPDF(false);
+    }
+  };
 
   useEffect(() => {
     const id = params.overallId;
@@ -813,7 +830,15 @@ export default function OverallResults() {
           {testType === 'writing' && renderWritingResults()}
           {testType === 'speaking' && renderSpeakingResults()}
 
-          <div className="mt-6 sm:mt-8 flex justify-center mx-4">
+          <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row gap-4 justify-center mx-4">
+            <Button
+              onClick={handleDownloadPDF}
+              disabled={downloadingPDF}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              {downloadingPDF ? "İndiriliyor..." : "Sertifikayı İndir (PDF)"}
+            </Button>
             <Button variant="outline" onClick={() => navigate("/test")} className="w-full sm:w-auto">
               Testlere Dön
             </Button>
@@ -827,7 +852,16 @@ export default function OverallResults() {
   return (
     <div className="min-h-screen bg-gray-50 py-10">
       <div className="max-w-7xl mx-auto px-4">
-        <div className="mb-8">
+        <div className="mb-8 flex items-center justify-between">
+          <div></div>
+          <Button
+            onClick={handleDownloadPDF}
+            disabled={downloadingPDF}
+            className="bg-red-600 hover:bg-red-700 text-white"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            {downloadingPDF ? "İndiriliyor..." : "Sertifikayı İndir (PDF)"}
+          </Button>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -887,10 +921,18 @@ export default function OverallResults() {
           </TabsContent>
         </Tabs>
 
-        <div className="mt-8 flex justify-center">
+        <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
+          <Button
+            onClick={handleDownloadPDF}
+            disabled={downloadingPDF}
+            className="bg-red-600 hover:bg-red-700 text-white"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            {downloadingPDF ? "İndiriliyor..." : "Sertifikayı İndir (PDF)"}
+          </Button>
           <Button variant="outline" onClick={() => navigate("/test")}>
             Testlere Dön
-                    </Button>
+          </Button>
         </div>
       </div>
     </div>

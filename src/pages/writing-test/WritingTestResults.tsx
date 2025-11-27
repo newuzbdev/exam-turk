@@ -1,9 +1,10 @@
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Download } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import writingSubmissionService from "@/services/writingSubmission.service";
+import { overallTestService, overallTestFlowStore } from "@/services/overallTest.service";
 
 // interface TestResult {
 //   id: string;
@@ -29,6 +30,22 @@ export default function WritingTestResults() {
   const [loading, setLoading] = useState(true);
   const [activeTask, setActiveTask] = useState("task2");
   const [activeTask1Part, setActiveTask1Part] = useState("part1");
+  const [downloadingPDF, setDownloadingPDF] = useState(false);
+
+  const handleDownloadPDF = async () => {
+    // Try to get overall test result ID from session storage, otherwise use individual result ID
+    const overallId = overallTestFlowStore.getOverallId() || resultId;
+    if (!overallId) return;
+    
+    setDownloadingPDF(true);
+    try {
+      await overallTestService.downloadPDF(overallId, `writing-certificate-${overallId}.pdf`);
+    } catch (error) {
+      console.error("Error downloading PDF:", error);
+    } finally {
+      setDownloadingPDF(false);
+    }
+  };
 
   useEffect(() => {
     if (!resultId) {
@@ -304,11 +321,20 @@ export default function WritingTestResults() {
           </div>
         </div>
 
-        {/* Action Button */}
-        <div className="mt-8 flex justify-center">
+        {/* Action Buttons */}
+        <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
+          <Button
+            onClick={handleDownloadPDF}
+            disabled={downloadingPDF}
+            className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200"
+          >
+            <Download className="w-5 h-5 mr-2" />
+            {downloadingPDF ? "İndiriliyor..." : "Sertifikayı İndir (PDF)"}
+          </Button>
           <Button
             onClick={() => navigate("/test")}
-            className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+            variant="outline"
+            className="px-8 py-3 rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200"
           >
             Başka Test Al
           </Button>

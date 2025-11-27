@@ -1,151 +1,105 @@
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { CheckCircle, Star, TrendingUp } from "lucide-react";
-import { NavLink } from "react-router";
+import { Card, CardContent } from "@/components/ui/card";
+import { ArrowRight, Coins, TrendingUp } from "lucide-react";
 
 const HomePricing = () => {
   return (
     <div>
-      <section id="pricing" className="py-24 bg-white">
+      <section id="pricing" className="py-24 bg-white border-t border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-20">
-            <Badge className="mb-6 bg-red-100 text-red-700 border-red-200">
+          {/* Header with highlight card under title */}
+          <div className="max-w-3xl mx-auto text-center mb-14">
+            <Badge className="mb-4 bg-red-100 text-red-700 border-red-200">
               <TrendingUp className="h-4 w-4 mr-2" />
-              Fiyatlar
+              Fiyatlandırma
             </Badge>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-              Fiyat Planları
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
+              Basit ve Şeffaf Ücretlendirme
             </h2>
-            <p className="text-xl text-gray-600">
-              İhtiyacınıza uygun planı seçin
-            </p>
+
+            {/* Highlight card directly under heading */}
+            <Card className="border-gray-100 shadow-sm bg-white/80">
+              <CardContent className="px-6 py-5 md:px-8">
+                <p className="text-base md:text-lg text-gray-700 mb-2">
+                  TurkTest&apos;te{" "}
+                  <span className="font-semibold">abonelik yo‘q</span>,{" "}
+                  <span className="font-semibold">gizli ücret yo‘q</span>. Yalnızca
+                  çözdüğünüz deneme imtihonlar uchun U birimi harcarsiz.
+                </p>
+                <p className="text-sm md:text-base text-gray-500">
+                  Her beceri uchun alohida yoki tam imtihon paketi sifatida to‘lash
+                  mumkin, bakiyenizi dilediğiniz vaqt Payme bilan ishonch bilan
+                  yuklashingiz mumkin.
+                </p>
+              </CardContent>
+            </Card>
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
-            <Card className="relative border-2 border-gray-200 hover:border-red-300 transition-colors h-[450px] flex flex-col">
-              <CardHeader className="text-center pb-4">
-                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <CheckCircle className="w-6 h-6 text-green-600" />
+          {/* Small conceptual overview */}
+          <div className="grid md:grid-cols-3 gap-5 mb-10">
+            {/* U Birimi card */}
+            <Card className="border-gray-100 shadow-sm bg-red-50/60">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <Coins className="h-5 w-5 text-red-600" />
+                  <span className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
+                    U Birimi Nedir?
+                  </span>
                 </div>
-                <CardTitle className="text-xl font-bold">
-                  Başlangıç Deneme
-                </CardTitle>
-                <div className="text-sm">
-                  Platformumuzu deneyimlemek isteyen yeni kullanıcılar için
-                  mükemmel
-                </div>
-              </CardHeader>
-
-              <CardContent className="text-center flex-1 flex flex-col justify-between">
-                <div>
-                  <div className="mb-4">
-                    <span className="text-sm text-gray-600">Birim dahil: </span>
-                    <span className="text-lg font-bold text-yellow-600">
-                      8U
-                    </span>
-                  </div>
-                  <div className="text-3xl font-bold text-gray-900 mb-2">
-                    Ücretsiz
-                  </div>
-                  <p className="text-sm text-gray-600">
-                    İlk kayıt olduğunuzda bonus birimler kazanın
-                  </p>
-                </div>
-
-                <NavLink to="/price" className="mt-auto">
-                  <Button className="w-full bg-red-600 hover:bg-red-700 text-white">
-                    Ücretsiz Bonusu Al
-                  </Button>
-                </NavLink>
+                <p className="text-sm md:text-base text-gray-700 leading-relaxed">
+                  Her deneme imtihon uchun ishlatiladigan{" "}
+                  <span className="font-semibold">sanal birim</span>dir. Hisobingizga
+                  U yuklab, Dinleme, Okuma, Yazma ve Konuşma testlaringizni
+                  bemalol va tartibli tarzda olishingiz mumkin.
+                </p>
               </CardContent>
             </Card>
-            <Card className="relative border-2 border-gray-200 hover:border-red-300 transition-colors h-[450px] flex flex-col">
-              <CardHeader className="text-center pb-4">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <Star className="w-6 h-6 text-blue-600" />
-                </div>
 
-                <CardTitle className="text-xl font-bold">
-                  Hızlı Değerlendirme
-                </CardTitle>
-                <div className="text-sm">
-                  Hedefli pratik testlerle tahmini puanınızı alın
+            {/* Esnek Kullanım card */}
+            <Card className="border-gray-100 shadow-sm">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="h-5 w-5 text-red-600" />
+                  <span className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
+                    Esnek Kullanım
+                  </span>
                 </div>
-              </CardHeader>
-
-              <CardContent className="text-center flex-1 flex flex-col justify-between">
-                <div>
-                  <div className="mb-4">
-                    <span className="text-sm text-gray-600">Birim dahil: </span>
-                    <span className="text-lg font-bold text-yellow-600">
-                      15U
-                    </span>
-                  </div>
-                  <div className="text-3xl font-bold text-gray-900 mb-2">
-                    25.000 TL
-                  </div>
-                  <p className="text-sm text-gray-600">
-                    Bir kapsamlı sınav veya birden fazla odaklı bölüm için ideal
-                  </p>
-                </div>
-
-                <NavLink to="/price" className="mt-auto">
-                  <Button className="w-full bg-red-600 hover:bg-red-700 text-white">
-                    15U Paketi Satın Al
-                  </Button>
-                </NavLink>
+                <p className="text-sm md:text-base text-gray-700 leading-relaxed">
+                  Har bir beceri uchun odatda faqat bir necha U harcanadi. Tam bir
+                  imtihon uchun toplam U ehtiyojini narx sahifasida{" "}
+                  <span className="font-semibold">aniq va shaffof</span> tarzda
+                  ko‘rishingiz mumkin.
+                </p>
               </CardContent>
             </Card>
-            <Card className="relative border-2 border-red-300 hover:border-red-400 transition-colors h-[450px] flex flex-col">
-              <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-red-600 text-white">
-                En Popüler
-              </Badge>
-              <CardHeader className="text-center pb-4 pt-6">
-                <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <Star className="w-6 h-6 text-yellow-600" />
-                </div>
 
-                <CardTitle className="text-xl font-bold">
-                  Yoğun Hazırlık ⚡
-                </CardTitle>
-                <div className="text-sm">
-                  6-8 tam sınav veya odaklı beceri pratiği için mükemmel
+            {/* İlk Giriş Avantajı card */}
+            <Card className="border-gray-100 shadow-sm">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <ArrowRight className="h-5 w-5 text-red-600" />
+                  <span className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
+                    İlk Giriş Avantajı
+                  </span>
                 </div>
-              </CardHeader>
-
-              <CardContent className="flex-1 flex flex-col justify-between">
-                <ul className="space-y-4">
-                  <li className="flex items-center">
-                    <CheckCircle className="h-5 w-5 text-green-600 mr-3" />
-                    <span>Profesyonel'deki Her Şey</span>
-                  </li>
-                  <li className="flex items-center">
-                    <CheckCircle className="h-5 w-5 text-green-600 mr-3" />
-                    <span>Ekip Yönetimi</span>
-                  </li>
-                  <li className="flex items-center">
-                    <CheckCircle className="h-5 w-5 text-green-600 mr-3" />
-                    <span>Özel Raporlama</span>
-                  </li>
-                  <li className="flex items-center">
-                    <CheckCircle className="h-5 w-5 text-green-600 mr-3" />
-                    <span>Öncelikli Destek</span>
-                  </li>
-                </ul>
-                <Button
-                  variant="outline"
-                  className="w-full border-red-200 text-red-600 hover:bg-red-50 mt-auto"
-                >
-                  İletişime Geç
-                </Button>
+                <p className="text-sm md:text-base text-gray-700 leading-relaxed">
+                  Yangi qayd bo‘lgan foydalanuvchilar uchun{" "}
+                  <span className="font-semibold">bepul boshlang‘ich U birimi</span>{" "}
+                  beriladi. Shu bilan tizimni risksiz sinab ko‘rib, keyin
+                  ehtiyojingizga qarab istalgan payt bakiye yuklashingiz
+                  mumkin.
+                </p>
               </CardContent>
             </Card>
+          </div>
+
+          {/* Info text about detailed pricing (CTA button removed by request) */}
+          <div className="max-w-3xl mx-auto text-center mt-10">
+            <p className="text-sm text-gray-500">
+              Detaylı U birimi fiyatlarını, test başına ortalama maliyetleri ve
+              Payme ile ödeme seçeneklerini Fiyatlar sayfasında
+              inceleyebilirsiniz.
+            </p>
           </div>
         </div>
       </section>

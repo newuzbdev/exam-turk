@@ -9,8 +9,11 @@ import FeaturedSection from "@/pages/home/featured-section";
 import HomeLastMonthTopResults from "./ui/home-last-month-top-results";
 import HeroSection from "./ui/hero-section";
 import HowItWorks from "./ui/how-it-works";
+import HomeWhoIsFor from "./ui/home-who-is-for";
+// import HomeSampleQuestionPreview from "./ui/home-sample-question-preview";
 import HomeTestimonials from "./ui/home-testimonials";
 import HomePricing from "./ui/home-pricing";
+import HomeProgressPreview from "./ui/home-progress-preview";
 import { BannerSection } from "@/components/banner";
 import { bannerService } from "@/services/banner.service";
 
@@ -106,8 +109,14 @@ export default function Home() {
 
       <FeaturedSection />
 
+      {/* Sample Questions Preview */}
+      {/* <HomeSampleQuestionPreview /> */}
+
       {/* How it Works */}
       <HowItWorks />
+
+      {/* Who is this for */}
+      <HomeWhoIsFor />
 
       {/* Testimonials */}
       <HomeTestimonials />
@@ -120,6 +129,9 @@ export default function Home() {
 
       {/* Pricing */}
       <HomePricing />
+
+      {/* Progress preview for logged-in users */}
+      <HomeProgressPreview />
 
       {/* CTA Section */}
       <section className="py-24 bg-gradient-to-r from-red-600 to-red-700">

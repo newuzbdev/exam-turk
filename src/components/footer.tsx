@@ -23,7 +23,7 @@ export const Footer = () => {
               <ul className="space-y-3 text-gray-600">
                 <li>
                   <NavLink
-                    to="#"
+                    to="/"
                     className="hover:text-red-600 transition-colors"
                   >
                     Ana Sayfa
@@ -47,7 +47,7 @@ export const Footer = () => {
                 </li>
                 <li>
                   <NavLink
-                    to="#pricing"
+                    to="/price"
                     className="hover:text-red-600 transition-colors"
                   >
                     Fiyatlar

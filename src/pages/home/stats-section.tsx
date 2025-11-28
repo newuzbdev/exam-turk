@@ -6,7 +6,7 @@ const StatsSection = () => {
           <div className="grid md:grid-cols-4 gap-8 text-center">
             <div className="group">
               <div className="text-4xl font-bold bg-gradient-to-r from-red-600 to-red-500 bg-clip-text text-transparent mb-2 group-hover:scale-110 transition-transform duration-200">
-                15,000+
+                1,500+
               </div>
               <div className="text-gray-600">
                 Aktif Kullanıcı
@@ -17,7 +17,7 @@ const StatsSection = () => {
             </div>
             <div className="group">
               <div className="text-4xl font-bold bg-gradient-to-r from-red-600 to-red-500 bg-clip-text text-transparent mb-2 group-hover:scale-110 transition-transform duration-200">
-                50,000+
+                5,000+
               </div>
               <div className="text-gray-600">
                 Tamamlanan Test

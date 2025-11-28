@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import axiosPrivate from "@/config/api";
 import { toast } from "sonner";
 import TestModal from "./components/TestModal";
-import MainTestCard from "./components/MainTestCard";
 import EmptyState from "./components/EmptyState";
 import { useLocation, } from "react-router-dom";
 import { authService } from "@/services/auth.service";
@@ -74,6 +73,7 @@ const TestPage = () => {
   const [_selectedTestType, setSelectedTestType] = useState<TestType>("all");
   const [showTestModal, setShowTestModal] = useState(false);
   const [currentTestForModal, setCurrentTestForModal] = useState<TurkishTest | null>(null);
+  const [selectedTestId, setSelectedTestId] = useState<string | null>(null);
   const location = useLocation();
 
   useEffect(() => {
@@ -112,11 +112,6 @@ const TestPage = () => {
     fetchTurkishTestData();
   }, [location.state]);
 
-  const getTestImage = () => {
-    // Default image for main tests - Modern digital learning
-    return "https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=400&h=250&fit=crop&auto=format";
-  };
-
   const getAvailableTestTypes = (testId: string) => {
     if (!turkishTestData)
       return { writing: [], speaking: [], listening: [], reading: [] };
@@ -135,14 +130,6 @@ const TestPage = () => {
 
 
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("tr-TR", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
   const handleTestModalOpen = (test: TurkishTest) => {
     setCurrentTestForModal(test);
     setShowTestModal(true);
@@ -155,16 +142,23 @@ const TestPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-100 via-gray-50 to-blue-50 p-6">
-        <div className="max-w-7xl mx-auto">
+      <div className="min-h-screen bg-white p-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-64 mb-8"></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="mb-8">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-1 h-8 bg-gray-200 rounded-full"></div>
+                <div className="h-8 bg-gray-200 rounded w-48"></div>
+              </div>
+              <div className="h-4 bg-gray-200 rounded w-64 ml-4"></div>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="bg-white rounded-lg p-6">
-                  <div className="h-40 bg-gray-200 rounded mb-4"></div>
-                  <div className="h-6 bg-gray-200 rounded mb-2"></div>
-                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                <div key={i} className="bg-white border border-gray-200 rounded-lg p-6 md:p-8 min-h-[140px] md:min-h-[160px] flex items-center justify-center">
+                  <div className="text-center w-full">
+                    <div className="h-12 bg-gray-200 rounded mb-2 mx-auto w-24"></div>
+                    <div className="h-4 bg-gray-200 rounded w-20 mx-auto"></div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -175,27 +169,66 @@ const TestPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-100 via-gray-50 to-blue-50 p-6">
-      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
-        {/* Header */}
-        
+    <div className="min-h-screen bg-white p-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header with red vertical bar */}
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-1 h-8 bg-red-600 rounded-full"></div>
+            <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">
+              Test Seçimi
+            </h1>
+          </div>
+          <p className="text-sm text-gray-500 ml-4">
+            Başlamak istediğiniz testi seçin
+          </p>
+        </div>
 
         {/* Test Cards with Modal */}
         <div>
-          
           {turkishTestData?.ieltsData &&
           turkishTestData.ieltsData.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {turkishTestData.ieltsData.map((test) => (
-                <MainTestCard
-                  key={test.id}
-                  test={test}
-                  onTestStart={handleTestModalOpen}
-                  getTestImage={getTestImage}
-                  formatDate={formatDate}
-                  availableTestTypes={getAvailableTestTypes(test.id)}
-                />
-              ))}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+              {turkishTestData.ieltsData.map((test) => {
+                const isSelected = selectedTestId === test.id;
+                const availableTypes = getAvailableTestTypes(test.id);
+                const hasTests = 
+                  availableTypes.writing.length > 0 ||
+                  availableTypes.speaking.length > 0 ||
+                  availableTypes.listening.length > 0 ||
+                  availableTypes.reading.length > 0;
+
+                return (
+                  <div
+                    key={test.id}
+                    onClick={() => hasTests && handleTestModalOpen(test)}
+                    className={`
+                      relative cursor-pointer transition-all duration-200
+                      ${isSelected 
+                        ? 'border-2 border-red-600 shadow-md' 
+                        : 'border border-gray-200 hover:border-gray-300'
+                      }
+                      ${!hasTests ? 'opacity-50 cursor-not-allowed' : ''}
+                      bg-white rounded-lg p-6 md:p-8
+                      flex flex-col items-center justify-center
+                      min-h-[140px] md:min-h-[160px]
+                    `}
+                    onMouseEnter={() => setSelectedTestId(test.id)}
+                    onMouseLeave={() => setSelectedTestId(null)}
+                  >
+                    <div className="text-center">
+                      <div className={`text-4xl md:text-5xl font-bold mb-2 ${
+                        isSelected ? 'text-red-600' : 'text-gray-900'
+                      }`}>
+                        {test.title}
+                      </div>
+                      <div className="text-xs md:text-sm text-gray-500 uppercase tracking-wide">
+                        {hasTests ? 'Test Mevcut' : 'Test Yok'}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <EmptyState selectedTestType="all" isMainTestSelection={true} />

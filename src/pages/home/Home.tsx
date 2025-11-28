@@ -131,7 +131,7 @@ export default function Home() {
       <HomePricing />
 
       {/* Progress preview for logged-in users */}
-      <HomeProgressPreview />
+      {/* <HomeProgressPreview /> */}
 
       {/* CTA Section */}
       <section className="py-24 bg-gradient-to-r from-red-600 to-red-700">

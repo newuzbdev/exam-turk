@@ -1,3 +1,64 @@
+import { useEffect, useRef, useState } from "react";
+
+interface AnimatedStatProps {
+  value: number;
+  suffix?: string;
+  className?: string;
+}
+
+const AnimatedStat = ({ value, suffix = "", className }: AnimatedStatProps) => {
+  const [count, setCount] = useState(0);
+  const [started, setStarted] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  // Start animation when stat is in viewport
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setStarted(true);
+            observer.disconnect();
+          }
+        });
+      },
+      { threshold: 0.4 }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // Simple count-up animation
+  useEffect(() => {
+    if (!started) return;
+
+    const duration = 2200;
+    const startTime = performance.now();
+
+    const step = (now: number) => {
+      const progress = Math.min((now - startTime) / duration, 1);
+      const current = Math.round(progress * value);
+      setCount(current);
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      }
+    };
+
+    requestAnimationFrame(step);
+  }, [started, value]);
+
+  return (
+    <div ref={ref} className={className}>
+      {count.toLocaleString("tr-TR")}
+      {suffix}
+    </div>
+  );
+};
+
 const StatsSection = () => {
   return (
     <div>
@@ -5,36 +66,36 @@ const StatsSection = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-4 gap-8 text-center">
             <div className="group">
-              <div className="text-4xl font-bold bg-gradient-to-r from-red-600 to-red-500 bg-clip-text text-transparent mb-2 group-hover:scale-110 transition-transform duration-200">
-                1,500+
-              </div>
+              <AnimatedStat
+                value={1500}
+                suffix="+"
+                className="text-4xl font-bold bg-gradient-to-r from-red-600 to-red-500 bg-clip-text text-transparent mb-2 group-hover:scale-110 transition-transform duration-200"
+              />
               <div className="text-gray-600">
                 Aktif Kullanıcı
-                <span className="block text-xs text-gray-400 mt-1">
-                  Her gün yeni deneme sınavları çözüyor
-                </span>
+           
               </div>
             </div>
             <div className="group">
-              <div className="text-4xl font-bold bg-gradient-to-r from-red-600 to-red-500 bg-clip-text text-transparent mb-2 group-hover:scale-110 transition-transform duration-200">
-                5,000+
-              </div>
+              <AnimatedStat
+                value={5000}
+                suffix="+"
+                className="text-4xl font-bold bg-gradient-to-r from-red-600 to-red-500 bg-clip-text text-transparent mb-2 group-hover:scale-110 transition-transform duration-200"
+              />
               <div className="text-gray-600">
                 Tamamlanan Test
-                <span className="block text-xs text-gray-400 mt-1">
-                  Soru seviyeleri gerçek verilerle kalibre edildi
-                </span>
+              
               </div>
             </div>
             <div className="group">
-              <div className="text-4xl font-bold bg-gradient-to-r from-red-600 to-red-500 bg-clip-text text-transparent mb-2 group-hover:scale-110 transition-transform duration-200">
-                98%
-              </div>
+              <AnimatedStat
+                value={98}
+                suffix="%"
+                className="text-4xl font-bold bg-gradient-to-r from-red-600 to-red-500 bg-clip-text text-transparent mb-2 group-hover:scale-110 transition-transform duration-200"
+              />
               <div className="text-gray-600">
                 Memnuniyet Oranı
-                <span className="block text-xs text-gray-400 mt-1">
-                  Kullanıcı geri bildirimlerine göre sürekli iyileşen sistem
-                </span>
+             
               </div>
             </div>
             <div className="group">
@@ -43,9 +104,7 @@ const StatsSection = () => {
               </div>
               <div className="text-gray-600">
                 Destek Hizmeti
-                <span className="block text-xs text-gray-400 mt-1">
-                  Sınav öncesi ve sonrası sorularınız için yanınızdayız
-                </span>
+           
               </div>
             </div>
           </div>

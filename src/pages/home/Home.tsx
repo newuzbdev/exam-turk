@@ -13,7 +13,6 @@ import HomeWhoIsFor from "./ui/home-who-is-for";
 // import HomeSampleQuestionPreview from "./ui/home-sample-question-preview";
 import HomeTestimonials from "./ui/home-testimonials";
 import HomePricing from "./ui/home-pricing";
-import HomeProgressPreview from "./ui/home-progress-preview";
 import { BannerSection } from "@/components/banner";
 import { bannerService } from "@/services/banner.service";
 

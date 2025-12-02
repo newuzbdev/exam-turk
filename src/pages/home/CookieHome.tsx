@@ -12,6 +12,8 @@ import HowItWorks from "./ui/how-it-works";
 import HomeTestimonials from "./ui/home-testimonials";
 import HomePricing from "./ui/home-pricing";
 
+// Telegram config must come from env for security
+
 export default function CookieHome() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();

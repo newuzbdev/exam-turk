@@ -4,7 +4,8 @@ export const Footer = () => {
   return (
     <div className="site-footer">
       <footer id="contact" className="bg-gray-50 pt-20 pb-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+          {/* Main footer content */}
           <div className="grid md:grid-cols-4 gap-8">
             <div>
               <div className="text-2xl font-bold text-red-600 mb-4">
@@ -95,10 +96,15 @@ export const Footer = () => {
             </div>
 
             <div>
-              <h3 className="font-semibold text-gray-900 mb-4">İletişim</h3>
-              <div className="text-gray-600 space-y-3">
+              <h3 className="font-semibold text-gray-900 mb-4">
+                İletişim Bilgileri
+              </h3>
+              <div className="text-gray-600 space-y-3 text-sm">
+                <p className="font-medium text-gray-800">
+                  Hafta içi 09:00 – 18:00
+                </p>
                 <p>destek@turktest.com</p>
-                <p>+90 (212) 123-4567</p>
+                <p>+998 97 777-79-07</p>
                 <p>
                   Türkiye Caddesi No:123
                   <br />
@@ -108,11 +114,17 @@ export const Footer = () => {
             </div>
           </div>
 
-          <div className="border-t border-gray-200 mt-12 pt-8 text-center text-gray-500 flex items-center justify-between flex-col sm:flex-row">
+          <div className="border-t border-gray-200 mt-8 pt-6 text-center text-gray-500 flex items-center justify-between flex-col sm:flex-row gap-3">
+            
             <p>
               &copy; {new Date().getFullYear()} TürkTest. Tüm hakları saklıdır.
             </p>
-            <a href="https:t.me/new_uzb_dev">Created and designed by Ochilov Jaxongirmirzo</a>
+            <a
+              href="https://t.me/new_uzb_dev"
+              className="text-sm text-gray-500 hover:text-red-600 transition-colors"
+            >
+              Created and designed by Ochilov Jaxongirmirzo
+            </a>
           </div>
         </div>
       </footer>

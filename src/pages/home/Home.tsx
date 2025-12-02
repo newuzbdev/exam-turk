@@ -16,6 +16,8 @@ import HomePricing from "./ui/home-pricing";
 import { BannerSection } from "@/components/banner";
 import { bannerService } from "@/services/banner.service";
 
+// Telegram config must come from env for security
+
 export default function Home() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -100,6 +102,7 @@ export default function Home() {
     
     checkActiveBanners();
   }, []);
+
   return (
     <div className=" bg-white">
       <HeroSection />
@@ -142,6 +145,7 @@ export default function Home() {
             Binlerce kullanıcının güvendiği platformda Türkçe dil yeterlilik
             testinizi hemen başlatın.
           </p>
+
           <NavLink to="/test">
             <Button
               size="lg"

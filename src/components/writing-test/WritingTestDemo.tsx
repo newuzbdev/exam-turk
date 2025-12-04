@@ -417,15 +417,15 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
           
           // Bu testin genel test akışının parçası olup olmadığını kontrol et
           const { overallTestTokenStore } = await import("@/services/overallTest.service");
-          const hasOverallToken = overallTestTokenStore.getByTestId(readingData.testId);
+          const overallToken = overallTestTokenStore.getByTestId(readingData.testId);
           
-          if (hasOverallToken) {
+          if (overallToken) {
             console.log("✅ Okuma testi genel token'a sahip, gönderiliyor...");
             const payload = Object.entries(readingData.answers).map(([questionId, userAnswer]) => ({ 
               questionId, 
               userAnswer: String(userAnswer) 
             }));
-            await readingSubmissionService.submitAnswers(readingData.testId, payload);
+            await readingSubmissionService.submitAnswers(readingData.testId, payload, overallToken);
           } else {
             console.log("⚠️ Okuma testi genel akışın parçası değil, gönderim atlanıyor");
           }
@@ -442,14 +442,14 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
           
           // Bu testin genel test akışının parçası olup olmadığını kontrol et
           const { overallTestTokenStore } = await import("@/services/overallTest.service");
-          const hasOverallToken = overallTestTokenStore.getByTestId(listeningData.testId);
+          const overallToken = overallTestTokenStore.getByTestId(listeningData.testId);
           
-          if (hasOverallToken) {
+          if (overallToken) {
             console.log("✅ Dinleme testi genel token'a sahip, gönderiliyor...");
             await listeningSubmissionService.submitAnswers(
               listeningData.testId, 
               listeningData.answers,
-              undefined, // token
+              overallToken,
               listeningData.audioUrl,
               listeningData.imageUrls
             );

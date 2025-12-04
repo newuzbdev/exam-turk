@@ -172,6 +172,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
       const { readingSubmissionService } = await import("@/services/readingTest.service");
       const { listeningSubmissionService } = await import("@/services/listeningTest.service");
       const { writingSubmissionService } = await import("@/services/writingSubmission.service");
+      const { overallTestTokenStore } = await import("@/services/overallTest.service");
       const axiosPrivate = (await import("@/config/api")).default;
       
       // Submit reading test - look for reading answers from any test
@@ -185,7 +186,12 @@ export default function ReadingPage({ testId }: { testId: string }) {
             questionId, 
             userAnswer: String(userAnswer) 
           }));
-          await readingSubmissionService.submitAnswers(readingData.testId, payload);
+          const overallToken = overallTestTokenStore.getByTestId(readingData.testId);
+          if (!overallToken) {
+            console.warn("Skipping reading submit-all; overall token not found for testId:", readingData.testId);
+            continue;
+          }
+          await readingSubmissionService.submitAnswers(readingData.testId, payload, overallToken);
         }
       }
       
@@ -196,10 +202,15 @@ export default function ReadingPage({ testId }: { testId: string }) {
         if (listeningAnswers) {
           const listeningData = JSON.parse(listeningAnswers);
           console.log("Submitting listening test:", listeningData.testId, "with answers:", listeningData.answers, "audioUrl:", listeningData.audioUrl, "imageUrls:", listeningData.imageUrls);
+          const overallToken = overallTestTokenStore.getByTestId(listeningData.testId);
+          if (!overallToken) {
+            console.warn("Skipping listening submit-all; overall token not found for testId:", listeningData.testId);
+            continue;
+          }
           await listeningSubmissionService.submitAnswers(
             listeningData.testId, 
             listeningData.answers,
-            undefined, // token
+            overallToken,
             listeningData.audioUrl,
             listeningData.imageUrls
           );

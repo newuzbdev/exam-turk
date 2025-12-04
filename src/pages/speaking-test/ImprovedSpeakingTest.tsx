@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
-import { overallTestFlowStore } from "@/services/overallTest.service"
+import { overallTestFlowStore, overallTestTokenStore } from "@/services/overallTest.service"
 import { motion, AnimatePresence } from "framer-motion"
 import { Mic, ArrowLeft, Volume2 } from "lucide-react"
 import axiosPrivate from "@/config/api"
@@ -1098,7 +1098,12 @@ export default function ImprovedSpeakingTest() {
             questionId: questionId as string, 
             userAnswer: String(userAnswer) 
           }));
-          await readingSubmissionService.submitAnswers(readingData.testId, payload);
+          const overallToken = overallTestTokenStore.getByTestId(readingData.testId);
+          if (!overallToken) {
+            console.warn("Skipping reading submit-all; overall token not found for testId:", readingData.testId);
+            continue;
+          }
+          await readingSubmissionService.submitAnswers(readingData.testId, payload, overallToken);
         }
       }
       
@@ -1109,10 +1114,15 @@ export default function ImprovedSpeakingTest() {
         if (listeningAnswers) {
           const listeningData = JSON.parse(listeningAnswers);
           console.log("Submitting listening test:", listeningData.testId, "with answers:", listeningData.answers, "audioUrl:", listeningData.audioUrl, "imageUrls:", listeningData.imageUrls);
+          const overallToken = overallTestTokenStore.getByTestId(listeningData.testId);
+          if (!overallToken) {
+            console.warn("Skipping listening submit-all; overall token not found for testId:", listeningData.testId);
+            continue;
+          }
           await listeningSubmissionService.submitAnswers(
             listeningData.testId, 
             listeningData.answers,
-            undefined, // token
+            overallToken,
             listeningData.audioUrl,
             listeningData.imageUrls
           );

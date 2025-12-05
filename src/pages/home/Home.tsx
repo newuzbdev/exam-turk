@@ -109,16 +109,13 @@ export default function Home() {
 
       <StatsSection />
 
-      <FeaturedSection />
 
       {/* Sample Questions Preview */}
       {/* <HomeSampleQuestionPreview /> */}
 
       {/* How it Works */}
-      <HowItWorks />
 
       {/* Who is this for */}
-      <HomeWhoIsFor />
 
       {/* Testimonials */}
       <HomeTestimonials />

@@ -13,6 +13,7 @@ import HomeWhoIsFor from "./ui/home-who-is-for";
 // import HomeSampleQuestionPreview from "./ui/home-sample-question-preview";
 import HomeTestimonials from "./ui/home-testimonials";
 import HomePricing from "./ui/home-pricing";
+import HomeFAQ from "./ui/home-faq";
 import { BannerSection } from "@/components/banner";
 import { bannerService } from "@/services/banner.service";
 
@@ -122,6 +123,9 @@ export default function Home() {
 
       {/* Last 30 Days Results */}
       <HomeLastMonthTopResults />
+
+      {/* FAQ Section */}
+      <HomeFAQ />
 
       {/* Banner before Pricing - only show if there are active banners */}
       {hasActiveBanners && <BannerSection position="top" className="py-8" />}

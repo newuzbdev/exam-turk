@@ -228,6 +228,15 @@ export const overallTestService = {
       throw error;
     }
   },
+  getTopOverallTestsLast30Days: async (): Promise<any[]> => {
+    try {
+      const res = await axiosPrivate.get("/api/overal-test-result/top");
+      return res.data?.data || res.data || [];
+    } catch (error: any) {
+      console.error("Error fetching top overall tests:", error);
+      return [];
+    }
+  },
 };
 
 export default overallTestService;

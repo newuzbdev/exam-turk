@@ -27,17 +27,15 @@ const HeroSection = () => {
             </Badge> */}
 
             <h1 className="text-4xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-4 sm:mb-6">
-              Türkçe Dil
+            TÜRKÇE SEVİYENİ
               <br />
               <span className="bg-gradient-to-r from-red-600 to-red-500 bg-clip-text text-transparent">
-                Yeterlilik Testi
+              HEMEN ÖĞREN
               </span>
             </h1>
 
             <p className="text-lg sm:text-lg md:text-xl text-gray-600 max-w-4xl mx-auto mb-6 sm:mb-8 leading-relaxed">
-              Profesyonel Türkçe dil seviyenizi ölçün. Dinleme, okuma, yazma ve
-              konuşma becerilerinizi kapsamlı şekilde değerlendirin ve
-              sertifikanızı alın.
+            Gerçek sınav deneyimi. Yapay zekâ destekli değerlendirme.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center mb-8 sm:mb-10">
@@ -55,7 +53,7 @@ const HeroSection = () => {
                 size="lg"
                 className="border-red-200 text-red-600 hover:bg-red-50 px-4 sm:px-6 py-2 sm:py-3 text-lg sm:text-xl w-full sm:w-auto"
               >
-                Demo İzle
+                Nasıl Çalışır
               </Button>
             </div>
 
@@ -85,11 +83,11 @@ const HeroSection = () => {
                   <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition-transform duration-200">
                     <Headphones className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                   </div>
-                  <CardTitle className="text-lg sm:text-xl">Dinleme</CardTitle>
+                  <CardTitle className="text-lg sm:text-xl">DİNLEME</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm sm:text-base text-gray-600">
-                    Türkçe dinleme becerinizi test edin
+                    Konuşmaları ve duyuruları doğru anlama.
                   </p>
                 </CardContent>
               </Card>
@@ -99,11 +97,11 @@ const HeroSection = () => {
                   <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition-transform duration-200">
                     <BookOpen className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                   </div>
-                  <CardTitle className="text-lg sm:text-xl">Okuma</CardTitle>
+                  <CardTitle className="text-lg sm:text-xl">OKUMA</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm sm:text-base text-gray-600">
-                    Metin anlama ve yorumlama
+                    Metinleri çözümleme ve çıkarım yapma.
                   </p>
                 </CardContent>
               </Card>
@@ -113,11 +111,11 @@ const HeroSection = () => {
                   <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition-transform duration-200">
                     <PenTool className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                   </div>
-                  <CardTitle className="text-lg sm:text-xl">Yazma</CardTitle>
+                  <CardTitle className="text-lg sm:text-xl">YAZMA</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm sm:text-base text-gray-600">
-                    Yazılı ifade becerinizi ölçün
+                    Tutarlı ve amaç odaklı metin yazma.
                   </p>
                 </CardContent>
               </Card>
@@ -127,11 +125,11 @@ const HeroSection = () => {
                   <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition-transform duration-200">
                     <Mic className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                   </div>
-                  <CardTitle className="text-lg sm:text-xl">Konuşma</CardTitle>
+                  <CardTitle className="text-lg sm:text-xl">KONUŞMA</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm sm:text-base text-gray-600">
-                    Sözlü ifade ve telaffuz
+                    Düşünceleri açık ve akıcı ifade etme.
                   </p>
                 </CardContent>
               </Card>

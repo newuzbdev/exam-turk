@@ -1,4 +1,4 @@
-import { BookOpen, CheckCircle2, Coins, Headphones, Mic, PenTool, ArrowRight } from "lucide-react";
+import { BookOpen, Headphones, Mic, PenTool, ArrowRight, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import {
   Dialog,
@@ -297,110 +297,120 @@ const TestModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl w-[95vw] bg-white text-gray-900 rounded-xl border border-gray-200 shadow-xl">
+      <DialogContent className="max-w-xl w-[90vw] bg-white text-gray-900 rounded-lg border border-gray-200 shadow-xl p-0">
         {/* Header */}
-        <div className="p-6 pb-4 border-b border-gray-100">
+        <div className="relative p-4 pb-3">
+          <button
+            onClick={() => onOpenChange(false)}
+            className="absolute top-3 right-3 w-7 h-7 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4 text-gray-500" />
+          </button>
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-1">
+            <h2 className="text-2xl font-bold text-gray-900 mb-1">
               {selectedTest.title}
             </h2>
-            <p className="text-gray-600 text-sm">
+            <p className="text-xs text-gray-600">
               Almak istediğiniz test bölümlerini seçin
             </p>
           </div>
         </div>
 
         {/* Content */}
-        <div className="p-6">
-          <div className="space-y-3">
+        <div className="px-4 pb-4">
+          <div className="space-y-2">
             {testSections.map((s) => {
               const Icon = s.icon;
               const available = s.tests && s.tests.length > 0;
               const selected = !!selectedMap[s.id];
               const testCount = s.tests?.length || 0;
-              
-              return (
-                <Card
-                  key={s.id}
-                  className={`cursor-pointer focus:outline-none focus:ring-0 ${
-                    selected 
-                      ? "bg-red-100 border-gray-200 shadow-md" 
-                      : "bg-white border-gray-200"
-                  } ${!available ? "opacity-50 cursor-not-allowed" : ""}`}
-                >
-                  <button
-                    className="w-full p-4 text-left cursor-pointer disabled:cursor-not-allowed focus:outline-none focus:ring-0"
-                    onClick={() => available && toggle(s.id)}
-                    disabled={!available}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-6 h-6 rounded border-2 flex items-center justify-center ${
-                            selected 
-                              ? "bg-red-600 border-red-600 shadow-sm" 
-                              : "border-gray-300"
-                          }`}
-                        >
-                          {selected && <CheckCircle2 className="h-4 w-4 text-white" />}
-                        </div>
-                        <Icon className={`h-5 w-5 ${selected ? "text-red-600" : "text-gray-500"}`} />
-                        <div>
-                          <span className={`font-semibold text-base ${selected ? "text-red-900" : "text-gray-900"}`}>
-                            {s.title}
-                          </span>
-                          <div className="flex items-center gap-3 mt-1">
-                            <span className="text-xs text-gray-500">
-                              {s.id === "listening" ? "30-40 dk" :
+              const duration = s.id === "listening" ? "30-40 dk" :
                                s.id === "reading" ? "60 dk" :
                                s.id === "writing" ? "60 dk" :
-                               "11-14 dk"}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              {testCount} test
-                            </span>
-                          </div>
+                               "11-14 dk";
+              
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => available && toggle(s.id)}
+                  disabled={!available}
+                  className={`w-full text-left p-3 rounded-lg border focus:outline-none focus:ring-0 ${
+                    selected 
+                      ? "bg-red-50 border-red-500 border-2 shadow-sm transition-all" 
+                      : "bg-white border-gray-200 border"
+                  } ${!available ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${
+                        selected ? "bg-red-500" : "bg-gray-100"
+                      }`}>
+                        <Icon className={`h-5 w-5 ${
+                          selected ? "text-white" : "text-gray-600"
+                        }`} />
+                      </div>
+                      <div>
+                        <div className={`font-bold text-sm uppercase ${
+                          selected ? "text-red-600" : "text-gray-900"
+                        }`}>
+                          {s.title}
+                        </div>
+                        <div className={`text-[10px] mt-0.5 ${
+                          selected ? "text-red-500" : "text-gray-600"
+                        }`}>
+                          {duration} • {testCount} test
                         </div>
                       </div>
-                      
-                      <div className="flex items-center gap-1 text-amber-600">
-                        <Coins className="h-4 w-4" />
-                        <span className="font-medium text-sm">{s.cost}</span>
-                      </div>
                     </div>
-                  </button>
-                </Card>
+                    
+                    <div className={`px-2.5 py-1 rounded-full flex items-center gap-1 ${
+                      selected 
+                        ? "bg-red-500 text-white" 
+                        : "bg-gray-100 text-gray-700"
+                    }`}>
+                      <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center ${
+                        selected ? "bg-white/30" : "bg-gray-200"
+                      }`}>
+                        <span className={`text-[9px] font-bold ${
+                          selected ? "text-white" : "text-gray-600"
+                        }`}>K</span>
+                      </div>
+                      <span className="text-xs font-medium">{s.cost} kredi</span>
+                    </div>
+                  </div>
+                </button>
               );
             })}
           </div>
         </div>
 
         {/* Footer */}
-        <div className="p-6 pt-4 border-t border-gray-100 bg-gray-50">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-gray-700 font-medium">Toplam Maliyet</span>
-            <div className="flex items-center gap-1 text-amber-600">
-              <Coins className="h-5 w-5" />
-              <span className="text-lg font-semibold">{totalCoins}</span>
+        <div className="px-4 py-3 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs text-gray-700 mb-0.5">Toplam Maliyet</div>
+              <div className="flex items-center gap-1">
+                <span className="text-xl font-bold text-gray-900">{totalCoins}</span>
+                <div className="w-4 h-4 rounded-full bg-gray-200 flex items-center justify-center">
+                  <span className="text-[9px] font-bold text-gray-700">K</span>
+                </div>
+              </div>
+              <a href="#" className="text-[10px] text-gray-500 hover:text-gray-700 mt-0.5 inline-block">
+                Kredi nedir?
+              </a>
             </div>
+            <Button
+              className="h-9 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg px-5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={handleCta}
+              disabled={totalCoins === 0}
+            >
+              <span className="flex items-center gap-1.5">
+                {isAuthenticated ? "Teste Başla" : "Başlamak İçin Kayıt Ol"}
+                <ArrowRight className="h-3.5 w-3.5" />
+              </span>
+            </Button>
           </div>
-
-          <Button
-            className="w-full h-11 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={handleCta}
-            disabled={totalCoins === 0}
-          >
-            <span className="flex items-center gap-2">
-              {isAuthenticated ? "Teste Başla" : "Başlamak İçin Kayıt Ol"}
-              <ArrowRight className="h-4 w-4" />
-            </span>
-          </Button>
-          
-          {!isAuthenticated && (
-            <p className="text-center text-xs text-gray-500 mt-2">
-              Teste katılmak için kayıt olmanız gerekiyor
-            </p>
-          )}
         </div>
       </DialogContent>
     </Dialog>

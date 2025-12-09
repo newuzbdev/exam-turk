@@ -13,6 +13,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import BalanceTopUp from "@/components/payme/BalanceTopUp";
+import AuthModal from "@/components/auth/AuthModal";
 // removed unused paymeService import
 import {
   NavigationMenu,
@@ -72,6 +73,8 @@ const Navbar = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout, refreshUser } = useAuth();
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<"login" | "register">("login");
 
   // Get balance and coin from user object
   const balance = user?.balance || 0;
@@ -205,21 +208,26 @@ const Navbar = () => {
                 </DropdownMenu>
               </div>
             ) : (
-              <div className="hidden sm:flex space-x-2">
-                <NavLink to="/login">
-                  <Button
-                    variant="ghost"
-                    className="text-gray-600 hover:text-red-600"
-                  >
-                    Giriş Yap
-                  </Button>
-                </NavLink>
-                <NavLink to="/signup">
-                  <Button className="bg-red-600 hover:bg-red-700 text-white">
-                    Kayıt Ol
-                  </Button>
-                </NavLink>
-              </div>
+              <nav className="flex items-center gap-4">
+                <button
+                  onClick={() => {
+                    setAuthModalMode("login");
+                    setIsAuthModalOpen(true);
+                  }}
+                  className="text-sm font-medium text-gray-900 hover:text-red-600 transition-colors px-3 py-2"
+                >
+                  Giriş Yap
+                </button>
+                <button
+                  onClick={() => {
+                    setAuthModalMode("register");
+                    setIsAuthModalOpen(true);
+                  }}
+                  className="text-sm font-medium bg-red-600 hover:bg-red-700 text-white py-2.5 px-5 rounded transition-colors"
+                >
+                  Kayıt Ol
+                </button>
+              </nav>
             )}
 
             {/* Mobile quick coin access */}
@@ -427,6 +435,12 @@ const Navbar = () => {
         onClose={() => setIsCoinModalOpen(false)}
         planName="Birim Satın Al"
         planId="quick"
+      />
+      {/* Auth Modal */}
+      <AuthModal
+        open={isAuthModalOpen}
+        onOpenChange={setIsAuthModalOpen}
+        initialMode={authModalMode}
       />
     </nav>
   );

@@ -1,11 +1,4 @@
-import { BookOpen, Headphones, Mic, PenTool, ArrowRight, X } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-} from "@/components/ui/dialog";
-
-import { Button } from "@/components/ui/button";
+import { BookOpen, Headphones, PenTool, X, Coins, MessageCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useMemo, useState } from "react";
@@ -13,6 +6,7 @@ import overallTestService, { overallTestFlowStore } from "@/services/overallTest
 import { toast } from "sonner";
 import testCoinPriceService from "@/services/testCoinPrice.service";
 import type { TestCoinPriceItem } from "@/services/testCoinPrice.service";
+import TestConfirmationModal from "./TestConfirmationModal";
 
 interface TurkishTest {
   id: string;
@@ -83,16 +77,25 @@ const TestModal = ({
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
 
-  // selection state for simple checklist UI
-  const [selectedMap, setSelectedMap] = useState<Record<string, boolean>>({
-    listening: true,
-    reading: true,
-    writing: true,
-    speaking: true,
-  });
+  // selection state - start with empty selection
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
 
-  const toggle = (key: string) =>
-    setSelectedMap((p) => ({ ...p, [key]: !p[key] }));
+  // Reset selection when modal opens
+  useEffect(() => {
+    if (open) {
+      setSelectedSkills([]);
+      setShowConfirmationModal(false);
+    }
+  }, [open]);
+
+  const toggleSkill = (skillId: string) => {
+    setSelectedSkills(prev => 
+      prev.includes(skillId) 
+        ? prev.filter(id => id !== skillId) 
+        : [...prev, skillId]
+    );
+  };
 
 
   console.log("TestModal - Selected test:", selectedTest);
@@ -114,50 +117,50 @@ const TestModal = ({
     return map;
   }, [coinPrices]);
 
-  const testSections = [
-    {
-      id: "listening",
-      title: "DİNLEME",
-      icon: Headphones,
-      tests: listeningTests,
-      cost: coinByType["LISTENING"] ?? 3,
+  const skillsData = [
+    { 
+      id: 'listening', 
+      name: 'DİNLEME', 
+      duration: '30–40 dk', 
+      testCount: listeningTests.length > 0 ? `${listeningTests.length} test` : '0 test', 
+      cost: coinByType["LISTENING"] ?? 2, 
+      icon: Headphones 
     },
-    {
-      id: "reading",
-      title: "OKUMA",
-      icon: BookOpen,
-      tests: readingTests,
-      cost: coinByType["READING"] ?? 3,
+    { 
+      id: 'reading', 
+      name: 'OKUMA', 
+      duration: '60 dk', 
+      testCount: readingTests.length > 0 ? `${readingTests.length} test` : '0 test', 
+      cost: coinByType["READING"] ?? 2, 
+      icon: BookOpen 
     },
-    {
-      id: "writing",
-      title: "YAZMA",
-      icon: PenTool,
-      tests: writingTests,
-      cost: coinByType["WRITING"] ?? 4,
+    { 
+      id: 'writing', 
+      name: 'YAZMA', 
+      duration: '60 dk', 
+      testCount: writingTests.length > 0 ? `${writingTests.length} test` : '0 test', 
+      cost: coinByType["WRITING"] ?? 5, 
+      icon: PenTool 
     },
-    {
-      id: "speaking",
-      title: "KONUŞMA",
-      icon: Mic,
-      tests: speakingTests,
-      cost: coinByType["SPEAKING"] ?? 2,
+    { 
+      id: 'speaking', 
+      name: 'KONUŞMA', 
+      duration: '11–14 dk', 
+      testCount: speakingTests.length > 0 ? `${speakingTests.length} test` : '0 test', 
+      cost: coinByType["SPEAKING"] ?? 5, 
+      icon: MessageCircle 
     },
   ];
 
-  const totalCoins = testSections.reduce((acc, s) => {
-    const available = s.tests && s.tests.length > 0;
-    return acc + (available && selectedMap[s.id] ? s.cost : 0);
-  }, 0);
+  const totalCost = useMemo(() => {
+    return selectedSkills.reduce((total, skillId) => {
+      const skill = skillsData.find(s => s.id === skillId);
+      return total + (skill ? skill.cost : 0);
+    }, 0);
+  }, [selectedSkills]);
 
-  const handleCta = async () => {
-    // Determine selected tests and call overall start API first
-    const readingId = selectedMap.reading && readingTests?.[0]?.id ? readingTests[0].id : undefined;
-    const listeningId = selectedMap.listening && listeningTests?.[0]?.id ? listeningTests[0].id : undefined;
-    const writingId = selectedMap.writing && writingTests?.[0]?.id ? writingTests[0].id : undefined;
-    const speakingId = selectedMap.speaking && speakingTests?.[0]?.id ? speakingTests[0].id : undefined;
-
-    if (!readingId && !listeningId && !writingId && !speakingId) {
+  const handleCta = () => {
+    if (selectedSkills.length === 0) {
       toast.error("Lütfen en az bir test bölümü seçin");
       return;
     }
@@ -169,7 +172,7 @@ const TestModal = ({
         { id: "reading", tests: readingTests },
         { id: "writing", tests: writingTests },
         { id: "speaking", tests: speakingTests },
-      ].find((s) => selectedMap[s.id] && s.tests && s.tests.length > 0);
+      ].find((s) => selectedSkills.includes(s.id) && s.tests && s.tests.length > 0);
       const test = chosen?.tests?.[0];
       const path = !chosen || !test
         ? "/"
@@ -186,11 +189,25 @@ const TestModal = ({
 
     // Preflight coin check: redirect to pricing if not enough coins
     const userCoins = user?.coin ?? 0;
-    if (userCoins < totalCoins) {
+    if (userCoins < totalCost) {
       toast.error("Yetersiz birim. Başlamak için lütfen daha fazla satın alın.");
-      navigate(`/price?neededCoins=${totalCoins - userCoins}`);
+      navigate(`/price?neededCoins=${totalCost - userCoins}`);
       return;
     }
+
+    // Show confirmation modal instead of immediately starting
+    setShowConfirmationModal(true);
+  };
+
+  const handleConfirmStart = async () => {
+    // Determine selected tests and call overall start API first
+    const readingId = selectedSkills.includes('reading') && readingTests?.[0]?.id ? readingTests[0].id : undefined;
+    const listeningId = selectedSkills.includes('listening') && listeningTests?.[0]?.id ? listeningTests[0].id : undefined;
+    const writingId = selectedSkills.includes('writing') && writingTests?.[0]?.id ? writingTests[0].id : undefined;
+    const speakingId = selectedSkills.includes('speaking') && speakingTests?.[0]?.id ? speakingTests[0].id : undefined;
+
+    // Close confirmation modal
+    setShowConfirmationModal(false);
 
     // Show loading state
     // toast.info("Starting test session...");
@@ -204,16 +221,16 @@ const TestModal = ({
 
     // Build ordered queue based on selection order in UI (listening -> reading -> writing -> speaking)
     const queue = [
-      selectedMap.listening && listeningTests?.[0]?.id
+      selectedSkills.includes('listening') && listeningTests?.[0]?.id
         ? { testType: "LISTENING" as const, testId: listeningTests[0].id, path: `/listening-test/${listeningTests[0].id}` }
         : null,
-      selectedMap.reading && readingTests?.[0]?.id
+      selectedSkills.includes('reading') && readingTests?.[0]?.id
         ? { testType: "READING" as const, testId: readingTests[0].id, path: `/reading-test/${readingTests[0].id}` }
         : null,
-      selectedMap.writing && writingTests?.[0]?.id
+      selectedSkills.includes('writing') && writingTests?.[0]?.id
         ? { testType: "WRITING" as const, testId: writingTests[0].id, path: `/writing-test/${writingTests[0].id}` }
         : null,
-      selectedMap.speaking && speakingTests?.[0]?.id
+      selectedSkills.includes('speaking') && speakingTests?.[0]?.id
         ? { testType: "SPEAKING" as const, testId: speakingTests[0].id, path: `/speaking-test/${speakingTests[0].id}` }
         : null,
     ].filter(Boolean) as { testType: any; testId: string; path: string }[];
@@ -295,125 +312,117 @@ const TestModal = ({
     if (first?.path) navigate(first.path);
   };
 
+  const handleCancelConfirmation = () => {
+    setShowConfirmationModal(false);
+    // Don't deduct coins - just close the modal
+  };
+
+  if (!open) return null;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl w-[90vw] bg-white text-gray-900 rounded-lg border border-gray-200 shadow-xl p-0">
-        {/* Header */}
-        <div className="relative p-4 pb-3">
-          <button
-            onClick={() => onOpenChange(false)}
-            className="absolute top-3 right-3 w-7 h-7 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors"
-            aria-label="Close"
-          >
-            <X className="h-4 w-4 text-gray-500" />
-          </button>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-1">
-              {selectedTest.title}
-            </h2>
-            <p className="text-xs text-gray-600">
-              Almak istediğiniz test bölümlerini seçin
-            </p>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="px-4 pb-4">
-          <div className="space-y-2">
-            {testSections.map((s) => {
-              const Icon = s.icon;
-              const available = s.tests && s.tests.length > 0;
-              const selected = !!selectedMap[s.id];
-              const testCount = s.tests?.length || 0;
-              const duration = s.id === "listening" ? "30-40 dk" :
-                               s.id === "reading" ? "60 dk" :
-                               s.id === "writing" ? "60 dk" :
-                               "11-14 dk";
+    <>
+      <div 
+        className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 animate-in fade-in"
+        onClick={() => onOpenChange(false)}
+      >
+        <div 
+          className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-in slide-in-from-bottom-5"
+          onClick={(e) => e.stopPropagation()}
+        >
               
-              return (
-                <button
-                  key={s.id}
-                  onClick={() => available && toggle(s.id)}
-                  disabled={!available}
-                  className={`w-full text-left p-3 rounded-lg border focus:outline-none focus:ring-0 ${
-                    selected 
-                      ? "bg-red-50 border-red-500 border-2 shadow-sm transition-all" 
-                      : "bg-white border-gray-200 border"
-                  } ${!available ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg ${
-                        selected ? "bg-red-500" : "bg-gray-100"
-                      }`}>
-                        <Icon className={`h-5 w-5 ${
-                          selected ? "text-white" : "text-gray-600"
-                        }`} />
-                      </div>
-                      <div>
-                        <div className={`font-bold text-sm uppercase ${
-                          selected ? "text-red-600" : "text-gray-900"
-                        }`}>
-                          {s.title}
-                        </div>
-                        <div className={`text-[10px] mt-0.5 ${
-                          selected ? "text-red-500" : "text-gray-600"
-                        }`}>
-                          {duration} • {testCount} test
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className={`px-2.5 py-1 rounded-full flex items-center gap-1 ${
-                      selected 
-                        ? "bg-red-500 text-white" 
-                        : "bg-gray-100 text-gray-700"
-                    }`}>
-                      <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center ${
-                        selected ? "bg-white/30" : "bg-gray-200"
-                      }`}>
-                        <span className={`text-[9px] font-bold ${
-                          selected ? "text-white" : "text-gray-600"
-                        }`}>K</span>
-                      </div>
-                      <span className="text-xs font-medium">{s.cost} kredi</span>
-                    </div>
+              {/* Modal Header */}
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h2 className="font-serif text-2xl font-bold text-gray-900">{selectedTest.title}</h2>
+                    <p className="text-sm text-gray-500 mt-1">Almak istediğiniz test bölümlerini seçin</p>
                   </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="px-4 py-3 border-t border-gray-200 bg-gray-50 rounded-b-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-xs text-gray-700 mb-0.5">Toplam Maliyet</div>
-              <div className="flex items-center gap-1">
-                <span className="text-xl font-bold text-gray-900">{totalCoins}</span>
-                <div className="w-4 h-4 rounded-full bg-gray-200 flex items-center justify-center">
-                  <span className="text-[9px] font-bold text-gray-700">K</span>
+                  <button 
+                    onClick={() => onOpenChange(false)} 
+                    className="text-gray-400 hover:text-gray-800 transition-colors"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
                 </div>
               </div>
-              <a href="#" className="text-[10px] text-gray-500 hover:text-gray-700 mt-0.5 inline-block">
-                Kredi nedir?
-              </a>
+              
+              {/* Modal Body */}
+              <div className="p-6 space-y-4 overflow-y-auto">
+                {skillsData.map((skill) => {
+                  const isSelected = selectedSkills.includes(skill.id);
+                  const isAvailable = skill.testCount !== '0 test';
+                  
+                  return (
+                    <div 
+                      key={skill.id}
+                      onClick={() => isAvailable && toggleSkill(skill.id)}
+                      className={`p-4 rounded-xl border-2 flex items-center justify-between transition-all duration-200 ${
+                        !isAvailable ? 'opacity-50 cursor-not-allowed bg-gray-50 border-gray-100' :
+                        isSelected 
+                          ? 'bg-red-600/5 border-red-600 text-red-600 cursor-pointer' 
+                          : 'bg-gray-50 border-gray-200 hover:border-gray-400 text-gray-900 cursor-pointer'
+                      }`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`p-2 rounded-lg ${isSelected ? 'bg-red-600/10' : 'bg-gray-100'}`}>
+                          <skill.icon className={`w-5 h-5 ${isSelected ? 'text-red-600' : 'text-gray-600'}`} />
+                        </div>
+                        <div>
+                          <p className="font-bold uppercase tracking-wide">{skill.name}</p>
+                          <p className={`text-xs font-medium ${isSelected ? 'text-red-600/80' : 'text-gray-500'}`}>
+                            {skill.duration} • {skill.testCount}
+                          </p>
+                        </div>
+                      </div>
+                      <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${isSelected ? 'bg-red-600/10 text-red-600' : 'bg-gray-200 text-gray-700'}`}>
+                        <Coins className="w-4 h-4" />
+                        <span>{skill.cost} kredi</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-6 border-t border-gray-200 mt-auto bg-gray-50/50 rounded-b-2xl">
+                <div className="flex flex-col sm:flex-row items-end justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-medium text-gray-500">Toplam Maliyet</p>
+                    <p className="text-2xl font-bold font-serif text-gray-900 flex items-center gap-2">
+                      {totalCost} <Coins className="w-5 h-5" />
+                    </p>
+                    <div className="relative group mt-2">
+                      <span className="text-xs text-gray-500 cursor-pointer hover:text-gray-800 transition-colors">
+                        Kredi nedir?
+                      </span>
+                      <div className="absolute bottom-full left-0 mb-2 w-64 bg-[#1D1D1D] text-white text-xs rounded-lg p-3 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
+                        Kredi, TurkishMock testlerine giriş yapmak için kullanılan dijital birimdir. Her test bölümü belirli miktarda kredi gerektirir.
+                        <svg className="absolute left-4 -bottom-2 w-4 h-2 text-[#1D1D1D]" viewBox="0 0 16 8" fill="currentColor">
+                          <path d="M0 8L8 0L16 8H0Z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={handleCta}
+                    disabled={selectedSkills.length === 0}
+                    className="w-full sm:w-auto bg-red-600 cursor-pointer text-white font-medium py-3 px-8 rounded-lg shadow-lg shadow-red-600/20 transition-all hover:-translate-y-0.5 disabled:bg-gray-300 disabled:shadow-none disabled:cursor-not-allowed"
+                  >
+                    {isAuthenticated ? "Teste Başla →" : "Başlamak İçin Kayıt Ol →"}
+                  </button>
+                </div>
+              </div>
             </div>
-            <Button
-              className="h-9 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg px-5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              onClick={handleCta}
-              disabled={totalCoins === 0}
-            >
-              <span className="flex items-center gap-1.5">
-                {isAuthenticated ? "Teste Başla" : "Başlamak İçin Kayıt Ol"}
-                <ArrowRight className="h-3.5 w-3.5" />
-              </span>
-            </Button>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+
+      {/* Confirmation Modal */}
+      <TestConfirmationModal
+        open={showConfirmationModal}
+        onOpenChange={setShowConfirmationModal}
+        onConfirm={handleConfirmStart}
+        onCancel={handleCancelConfirmation}
+      />
+    </>
   );
 };
 

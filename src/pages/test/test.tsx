@@ -73,7 +73,6 @@ const TestPage = () => {
   const [_selectedTestType, setSelectedTestType] = useState<TestType>("all");
   const [showTestModal, setShowTestModal] = useState(false);
   const [currentTestForModal, setCurrentTestForModal] = useState<TurkishTest | null>(null);
-  const [selectedTestId, setSelectedTestId] = useState<string | null>(null);
   const location = useLocation();
 
   useEffect(() => {
@@ -142,19 +141,16 @@ const TestPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white p-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="animate-pulse">
-            <div className="mb-8">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-1 h-8 bg-gray-200 rounded-full"></div>
-                <div className="h-8 bg-gray-200 rounded w-48"></div>
-              </div>
-              <div className="h-4 bg-gray-200 rounded w-64 ml-4"></div>
+      <div className="flex flex-col min-h-screen bg-gray-50 font-sans text-gray-900">
+        <div className="flex-grow py-12">
+          <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
+            <div className="mb-12 animate-pulse">
+              <div className="h-10 bg-gray-200 rounded w-48 mb-2"></div>
+              <div className="h-4 bg-gray-200 rounded w-64"></div>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="bg-white border border-gray-200 rounded-lg p-6 md:p-8 min-h-[140px] md:min-h-[160px] flex items-center justify-center">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8 min-h-[160px] flex items-center justify-center">
                   <div className="text-center w-full">
                     <div className="h-12 bg-gray-200 rounded mb-2 mx-auto w-24"></div>
                     <div className="h-4 bg-gray-200 rounded w-20 mx-auto"></div>
@@ -169,28 +165,18 @@ const TestPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white p-6">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header with red vertical bar */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-1 h-8 bg-red-600 rounded-full"></div>
-            <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">
-              Test Seçimi
-            </h1>
+    <div className="flex flex-col min-h-screen bg-gray-50 font-sans text-gray-900">
+      <main className="flex-grow py-12">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
+          <div className="mb-12">
+            <h1 className="font-serif text-3xl md:text-4xl font-bold text-gray-900">Test Seçimi</h1>
+            <p className="text-gray-500 mt-2 font-light">Başlamak istediğiniz testi seçin</p>
           </div>
-          <p className="text-sm text-gray-500 ml-4">
-            Başlamak istediğiniz testi seçin
-          </p>
-        </div>
-
-        {/* Test Cards with Modal */}
-        <div>
-          {turkishTestData?.ieltsData &&
-          turkishTestData.ieltsData.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-              {turkishTestData.ieltsData.map((test) => {
-                const isSelected = selectedTestId === test.id;
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {turkishTestData?.ieltsData &&
+            turkishTestData.ieltsData.length > 0 ? (
+              turkishTestData.ieltsData.map((test) => {
                 const availableTypes = getAvailableTestTypes(test.id);
                 const hasTests = 
                   availableTypes.writing.length > 0 ||
@@ -199,56 +185,45 @@ const TestPage = () => {
                   availableTypes.reading.length > 0;
 
                 return (
-                  <div
+                  <button 
                     key={test.id}
                     onClick={() => hasTests && handleTestModalOpen(test)}
-                    className={`
-                      relative cursor-pointer transition-all duration-200
-                      ${isSelected 
-                        ? 'border-2 border-red-600 shadow-md' 
-                        : 'border border-gray-200 hover:border-gray-300'
-                      }
-                      ${!hasTests ? 'opacity-50 cursor-not-allowed' : ''}
-                      bg-white rounded-lg p-6 md:p-8
-                      flex flex-col items-center justify-center
-                      min-h-[140px] md:min-h-[160px]
-                    `}
-                    onMouseEnter={() => setSelectedTestId(test.id)}
-                    onMouseLeave={() => setSelectedTestId(null)}
+                    disabled={!hasTests}
+                    className={`group bg-white rounded-2xl shadow-lg border border-gray-200 p-8 text-center hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ${
+                      !hasTests ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                    }`}
                   >
-                    <div className="text-center">
-                      <div className={`text-4xl md:text-5xl font-bold mb-2 ${
-                        isSelected ? 'text-red-600' : 'text-gray-900'
-                      }`}>
-                        {test.title}
-                      </div>
-                      <div className="text-xs md:text-sm text-gray-500 uppercase tracking-wide">
-                        {hasTests ? 'Test Mevcut' : 'Test Yok'}
-                      </div>
-                    </div>
-                  </div>
+                    <h2 className="text-2xl font-bold font-serif text-gray-900 mb-2">{test.title}</h2>
+                    <p className={`text-sm font-medium transition-colors ${
+                      hasTests 
+                        ? 'text-gray-400 group-hover:text-red-600' 
+                        : 'text-gray-400'
+                    }`}>
+                      {hasTests ? 'TEST MEVCUT' : 'TEST YOK'}
+                    </p>
+                  </button>
                 );
-              })}
-            </div>
-          ) : (
-            <EmptyState selectedTestType="all" isMainTestSelection={true} />
-          )}
+              })
+            ) : (
+              <EmptyState selectedTestType="all" isMainTestSelection={true} />
+            )}
+          </div>
         </div>
+      </main>
 
-        {/* Test Modal */}
-        {currentTestForModal && (
-          <TestModal
-            open={showTestModal}
-            onOpenChange={setShowTestModal}
-            selectedTest={currentTestForModal}
-            writingTests={turkishTestData?.writingTests.filter(t => t.ieltsId === currentTestForModal.id) || []}
-            speakingTests={turkishTestData?.speakingTests.filter(t => t.ieltsId === currentTestForModal.id) || []}
-            listeningTests={turkishTestData?.listeningTests.filter(t => t.ieltsId === currentTestForModal.id) || []}
-            readingTests={turkishTestData?.readingTests.filter(t => t.ieltsId === currentTestForModal.id) || []}
-            onTestTypeClick={handleTestTypeClick}
-          />
-        )}
-      </div>
+      {/* Test Modal */}
+      {currentTestForModal && (
+        <TestModal
+          open={showTestModal}
+          onOpenChange={setShowTestModal}
+          selectedTest={currentTestForModal}
+          writingTests={turkishTestData?.writingTests.filter(t => t.ieltsId === currentTestForModal.id) || []}
+          speakingTests={turkishTestData?.speakingTests.filter(t => t.ieltsId === currentTestForModal.id) || []}
+          listeningTests={turkishTestData?.listeningTests.filter(t => t.ieltsId === currentTestForModal.id) || []}
+          readingTests={turkishTestData?.readingTests.filter(t => t.ieltsId === currentTestForModal.id) || []}
+          onTestTypeClick={handleTestTypeClick}
+        />
+      )}
     </div>
   );
 };

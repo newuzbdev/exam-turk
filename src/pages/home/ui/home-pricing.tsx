@@ -1,7 +1,4 @@
 import { useState } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { ArrowRight, Coins, TrendingUp } from "lucide-react";
 import { toast } from "@/utils/toast";
 
 // Telegram config only from env

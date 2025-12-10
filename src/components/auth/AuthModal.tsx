@@ -438,7 +438,7 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
                   ) : (
                     <button
                       type="button"
-                      onClick={() => handleLoginPhone()}
+                      onClick={(e: React.MouseEvent<HTMLButtonElement>) => handleLoginPhone(e)}
                       disabled={loading || !canResend}
                       className="text-sm text-red-600 hover:text-red-700 disabled:opacity-50"
                     >
@@ -617,7 +617,7 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
                   ) : (
                     <button
                       type="button"
-                      onClick={() => handleRegisterPhone()}
+                      onClick={(e) => handleRegisterPhone(e)}
                       disabled={loading || !canResend}
                       className="text-sm text-red-600 hover:text-red-700 disabled:opacity-50"
                     >

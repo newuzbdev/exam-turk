@@ -108,7 +108,15 @@ const Navbar = () => {
             className="flex items-center cursor-pointer"
             onClick={() => navigate("/")}
           >
-            <div className="text-red-600 font-bold text-2xl uppercase">TURKISHMOCK</div>
+            <img 
+              src="/logo.png" 
+              alt="TURKISHMOCK" 
+              className="h-24 sm:h-28 md:h-32 lg:h-36 xl:h-52 w-auto object-contain"
+              onError={(e) => {
+                console.error("Logo failed to load");
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
           </div>
 
           <div className="hidden lg:block">

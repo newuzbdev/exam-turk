@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import testCoinPriceService from "@/services/testCoinPrice.service";
 import type { TestCoinPriceItem } from "@/services/testCoinPrice.service";
 import TestConfirmationModal from "./TestConfirmationModal";
+import AuthModal from "@/components/auth/AuthModal";
 
 interface TurkishTest {
   id: string;
@@ -80,6 +81,7 @@ const TestModal = ({
   // selection state - start with empty selection
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   // Reset selection when modal opens
   useEffect(() => {
@@ -166,24 +168,8 @@ const TestModal = ({
     }
 
     if (!isAuthenticated) {
-      // compute first path for redirect after signup
-      const chosen = [
-        { id: "listening", tests: listeningTests },
-        { id: "reading", tests: readingTests },
-        { id: "writing", tests: writingTests },
-        { id: "speaking", tests: speakingTests },
-      ].find((s) => selectedSkills.includes(s.id) && s.tests && s.tests.length > 0);
-      const test = chosen?.tests?.[0];
-      const path = !chosen || !test
-        ? "/"
-        : chosen.id === "speaking"
-          ? `/speaking-test/${test.id}`
-          : chosen.id === "writing"
-            ? `/writing-test/${test.id}`
-            : chosen.id === "listening"
-              ? `/listening-test/${test.id}`
-              : `/reading-test/${test.id}`;
-      navigate("/signup", { state: { redirectTo: path } });
+      // Open auth modal in register mode instead of navigating
+      setIsAuthModalOpen(true);
       return;
     }
 
@@ -421,6 +407,13 @@ const TestModal = ({
         onOpenChange={setShowConfirmationModal}
         onConfirm={handleConfirmStart}
         onCancel={handleCancelConfirmation}
+      />
+
+      {/* Auth Modal */}
+      <AuthModal
+        open={isAuthModalOpen}
+        onOpenChange={setIsAuthModalOpen}
+        initialMode="register"
       />
     </>
   );

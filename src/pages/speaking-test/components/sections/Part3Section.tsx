@@ -324,7 +324,7 @@ const Part3Section = ({
                 </div>
               </div>
               <div>
-                <div className="font-bold text-lg text-gray-800">Turkce test</div>
+                <div className="font-bold text-lg text-gray-800">TurkishMock</div>
                 <div className="text-sm text-gray-600">Platform</div>
               </div>
             </div>

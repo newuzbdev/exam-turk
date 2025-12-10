@@ -616,19 +616,40 @@ export default function OverallResults() {
         const currentAnswer = partQuestions[currentQuestionIndex];
         const partLabel = getPartLabel(activeSpeakingPart);
         
+        // Map part index to feedback key
+        // Code organizes into: part1_1 (index 0), part1_2 (index 1), part2 (index 2), part3 (index 3)
+        // User feedback has: part1, part2, part3, part4
+        // Map: part1_1 -> part1, part1_2 -> part2, part2 -> part3, part3 -> part4
+        let feedbackKey: string;
+        if (activeSpeakingPart === 0) {
+          feedbackKey = 'part1';
+        } else if (activeSpeakingPart === 1) {
+          feedbackKey = 'part2';
+        } else if (activeSpeakingPart === 2) {
+          feedbackKey = 'part3';
+        } else if (activeSpeakingPart === 3) {
+          feedbackKey = 'part4';
+        } else {
+          feedbackKey = `part${activeSpeakingPart + 1}`;
+        }
+        
+        const partFeedback = (aiFeedback as any)?.[feedbackKey] || 
+                           aiFeedback?.taskAchievement || 
+                           `${partLabel.main} geri bildirimi burada gösterilecek`;
+        
         return {
           question: currentAnswer?.questionText || `${partLabel.main} Sorusu ${currentQuestionIndex + 1}`,
           answer: (currentAnswer?.userAnswer && typeof currentAnswer.userAnswer === 'string' && currentAnswer.userAnswer.trim() !== "") 
             ? currentAnswer.userAnswer 
             : "Cevap verilmedi",
-          comment: aiFeedback?.taskAchievement || `${partLabel.main} geri bildirimi burada gösterilecek`
+          comment: partFeedback
         };
       }
       
       return {
         question: "Soru metni burada gösterilecek",
         answer: "Cevap verilmedi",
-        comment: aiFeedback?.taskAchievement || "Geri bildirim mevcut değil"
+        comment: (aiFeedback as any)?.part1 || aiFeedback?.taskAchievement || "Geri bildirim mevcut değil"
       };
     };
 
@@ -655,44 +676,96 @@ export default function OverallResults() {
           </div>
 
           {/* Scoring Categories Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-gray-900">Tutarlılık ve Bağlılık</h3>
-                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-              </div>
-              <p className="text-sm text-gray-600 leading-relaxed">
-                {aiFeedback?.coherenceAndCohesion || "Geri bildirim mevcut değil"}
-              </p>
+          {aiFeedback && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              {(aiFeedback as any).part1 && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-gray-900">Bölüm 1</h3>
+                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                  </div>
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    {(aiFeedback as any).part1}
+                  </p>
+                </div>
+              )}
+              {(aiFeedback as any).part2 && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-gray-900">Bölüm 2</h3>
+                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                  </div>
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    {(aiFeedback as any).part2}
+                  </p>
+                </div>
+              )}
+              {(aiFeedback as any).part3 && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-gray-900">Bölüm 3</h3>
+                    <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                  </div>
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    {(aiFeedback as any).part3}
+                  </p>
+                </div>
+              )}
+              {(aiFeedback as any).part4 && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-gray-900">Bölüm 4</h3>
+                    <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                  </div>
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    {(aiFeedback as any).part4}
+                  </p>
+                </div>
+              )}
+              {/* Fallback to IELTS-style feedback if part1-4 not available */}
+              {!(aiFeedback as any).part1 && !(aiFeedback as any).part2 && 
+               !(aiFeedback as any).part3 && !(aiFeedback as any).part4 && (
+                <>
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-semibold text-gray-900">Tutarlılık ve Bağlılık</h3>
+                      <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                    </div>
+                    <p className="text-sm text-gray-600 leading-relaxed">
+                      {aiFeedback.coherenceAndCohesion || "Geri bildirim mevcut değil"}
+                    </p>
+                  </div>
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-semibold text-gray-900">Dil Bilgisi</h3>
+                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    </div>
+                    <p className="text-sm text-gray-600 leading-relaxed">
+                      {aiFeedback.grammaticalRangeAndAccuracy || "Geri bildirim mevcut değil"}
+                    </p>
+                  </div>
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-semibold text-gray-900">Kelime Kaynağı</h3>
+                      <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                    </div>
+                    <p className="text-sm text-gray-600 leading-relaxed">
+                      {aiFeedback.lexicalResource || "Geri bildirim mevcut değil"}
+                    </p>
+                  </div>
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-semibold text-gray-900">Görev Başarısı</h3>
+                      <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                    </div>
+                    <p className="text-sm text-gray-600 leading-relaxed">
+                      {aiFeedback.taskAchievement || "Geri bildirim mevcut değil"}
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-gray-900">Dil Bilgisi</h3>
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-              </div>
-              <p className="text-sm text-gray-600 leading-relaxed">
-                {aiFeedback?.grammaticalRangeAndAccuracy || "Geri bildirim mevcut değil"}
-              </p>
-            </div>
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-gray-900">Kelime Kaynağı</h3>
-                <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-              </div>
-              <p className="text-sm text-gray-600 leading-relaxed">
-                {aiFeedback?.lexicalResource || "Geri bildirim mevcut değil"}
-              </p>
-            </div>
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-gray-900">Görev Başarısı</h3>
-                <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-              </div>
-              <p className="text-sm text-gray-600 leading-relaxed">
-                {aiFeedback?.taskAchievement || "Geri bildirim mevcut değil"}
-              </p>
-            </div>
-          </div>
+          )}
 
           {/* Part Navigation - Redesigned */}
           {parts.length > 0 && (

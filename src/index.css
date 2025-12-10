@@ -1,6 +1,23 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Custom Font Families */
+@theme {
+  --font-sans: 'Inter', sans-serif;
+  --font-serif: 'Lora', serif;
+  --font-georgia: 'Georgia', serif;
+  --font-merriweather: 'Merriweather', serif;
+  
+  /* Custom Colors */
+  --color-brand-red: #E60023;
+  --color-brand-red-dark: #C2001E;
+  --color-brand-green: #1EA55B;
+  --color-brand-gray-100: #F8F8F8;
+  --color-brand-gray-200: #EAEAEA;
+  --color-brand-gray-300: #D1D1D1;
+  --color-brand-gray-800: #333333;
+}
+
 /* Clean white backgrounds with red accents for test type cards */
 .listening-card {
   background: white;

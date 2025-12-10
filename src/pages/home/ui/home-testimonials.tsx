@@ -31,7 +31,7 @@ const HomeTestimonials = () => {
                   ))}
                 </div>
                 <blockquote className="text-gray-700 mb-6 leading-relaxed">
-                  "TürkTest sayesinde Türkçe seviyemi doğru şekilde belirledim.
+                  "TURKISHMOCK sayesinde Türkçe seviyemi doğru şekilde belirledim.
                   Test sonuçları çok detaylı ve profesyonel. Kesinlikle tavsiye
                   ederim."
                 </blockquote>

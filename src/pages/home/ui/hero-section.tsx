@@ -48,13 +48,15 @@ const HeroSection = () => {
                   <ArrowRight className="ml-2 h-5 w-5 sm:h-6 sm:w-6" />
                 </Button>
               </NavLink>
-              <Button
-                variant="outline"
-                size="lg"
-                className="border-red-200 text-red-600 hover:bg-red-50 px-4 sm:px-6 py-2 sm:py-3 text-lg sm:text-xl w-full sm:w-auto"
-              >
-                Nasıl Çalışır
-              </Button>
+              <NavLink to="/how-it-works">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="border-red-200 text-red-600 hover:bg-red-50 px-4 sm:px-6 py-2 sm:py-3 text-lg sm:text-xl w-full sm:w-auto"
+                >
+                  Nasıl Çalışır
+                </Button>
+              </NavLink>
             </div>
 
             <div className="flex flex-wrap justify-center items-center gap-4 sm:gap-6 text-sm sm:text-base text-gray-500 mb-8 sm:mb-12">

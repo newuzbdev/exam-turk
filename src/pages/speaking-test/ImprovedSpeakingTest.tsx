@@ -122,6 +122,7 @@ export default function ImprovedSpeakingTest() {
   const [isPaused, setIsPaused] = useState(false)
   const [isPlayingInstructions, setIsPlayingInstructions] = useState(false)
   const [isPlayingTTS, setIsPlayingTTS] = useState(false)
+  const [isProcessingSpeechToText, setIsProcessingSpeechToText] = useState(false)
   // speaking/answer timer (seconds)
   const [timeLeft, setTimeLeft] = useState(RECORD_SECONDS_PER_QUESTION)
   const [_recordingTime, setRecordingTime] = useState(0)
@@ -714,12 +715,15 @@ export default function ImprovedSpeakingTest() {
         setRecordings((prev) => new Map(prev).set(key, rec))
 
         // Transcribe immediately and store text answer
+        setIsProcessingSpeechToText(true)
         try {
           const stt = await speechToTextService.convertAudioToText(blob)
           const text = stt.success ? (stt.text || "") : "[Ses metne dönüştürülemedi]"
           setAnswers(prev => new Map(prev).set(key, { text: text || "[Cevap bulunamadı]", duration }))
         } catch {
           setAnswers(prev => new Map(prev).set(key, { text: "[Ses metne dönüştürülemedi]", duration }))
+        } finally {
+          setIsProcessingSpeechToText(false)
         }
         
         // For PART1, automatically advance to next question after recording
@@ -1796,36 +1800,62 @@ export default function ImprovedSpeakingTest() {
           )}
         </AnimatePresence>
 
-        <div className="relative">
-          {isRecording && !isPaused && !isPlayingInstructions && !isPrepRunning && (
-            <>
-              <span className="absolute inset-0 w-32 h-32 sm:w-40 sm:h-40 -left-3 -top-3 sm:-left-4 sm:-top-4 rounded-full bg-red-400 opacity-30 animate-ping" style={{ animationDuration: '2.5s' }}></span>
-              <span className="absolute inset-0 w-36 h-36 sm:w-48 sm:h-48 -left-6 -top-6 sm:-left-8 sm:-top-8 rounded-full bg-red-500 opacity-20 animate-ping" style={{ animationDuration: '3s' }}></span>
-            </>
-          )}
-          <motion.button
-            onClick={() => {
-              if (isPlayingInstructions || isPrepRunning) return
-              if (isRecording) stopRecording()
-              else startRecording()
-            }}
-            disabled={isPlayingInstructions || isPrepRunning || isPlayingTTS}
-            className={`w-20 h-20 sm:w-24 sm:h-24 lg:w-32 lg:h-32 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 ${
-              isRecording
-                ? "bg-red-600 hover:bg-red-700"
-                : "bg-gradient-to-br from-red-400 to-red-600 hover:from-red-500 hover:to-red-700"
-            } ${(isPlayingInstructions || isPrepRunning) ? "opacity-50 cursor-not-allowed" : ""}`}
-            whileHover={{ scale: (isPlayingInstructions || isPrepRunning) ? 1 : 1.05 }}
-            whileTap={{ scale: (isPlayingInstructions || isPrepRunning) ? 1 : 0.95 }}
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.4, type: "spring", stiffness: 200 }}
-          >
-            <div>
+        {/* Hide microphone button until TTS finishes and preparation time completes */}
+        {!isPlayingInstructions && !isPlayingTTS && !isPrepRunning ? (
+          <div className="relative">
+            {isRecording && !isPaused && (
+              <>
+                <span className="absolute inset-0 w-32 h-32 sm:w-40 sm:h-40 -left-3 -top-3 sm:-left-4 sm:-top-4 rounded-full bg-red-400 opacity-30 animate-ping" style={{ animationDuration: '2.5s' }}></span>
+                <span className="absolute inset-0 w-36 h-36 sm:w-48 sm:h-48 -left-6 -top-6 sm:-left-8 sm:-top-8 rounded-full bg-red-500 opacity-20 animate-ping" style={{ animationDuration: '3s' }}></span>
+              </>
+            )}
+            <motion.button
+              onClick={() => {
+                if (isProcessingSpeechToText) return
+                if (isRecording) stopRecording()
+                else startRecording()
+              }}
+              disabled={isProcessingSpeechToText}
+              className={`w-20 h-20 sm:w-24 sm:h-24 lg:w-32 lg:h-32 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 ${
+                isRecording
+                  ? "bg-red-600 hover:bg-red-700"
+                  : isProcessingSpeechToText
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-gradient-to-br from-red-400 to-red-600 hover:from-red-500 hover:to-red-700"
+              }`}
+              whileHover={{ scale: isProcessingSpeechToText ? 1 : 1.05 }}
+              whileTap={{ scale: isProcessingSpeechToText ? 1 : 0.95 }}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.4, type: "spring", stiffness: 200 }}
+            >
               <Mic className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-white" />
-            </div>
-          </motion.button>
-        </div>
+            </motion.button>
+          </div>
+        ) : (
+          /* Show loading state when TTS is playing or preparation is running */
+          (isPlayingTTS || isPrepRunning) && !isPlayingInstructions && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-16 sm:mb-20 flex flex-col items-center justify-center"
+            >
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-red-200 border-t-red-600 mb-4"
+              />
+              <p className="text-lg sm:text-xl font-semibold text-gray-700">
+                {isPlayingTTS ? "Soru okunuyor..." : "Hazırlık süresi..."}
+              </p>
+              {isPrepRunning && (
+                <p className="text-2xl sm:text-3xl font-bold text-red-600 mt-2">
+                  {formatTime(prepSeconds)}
+                </p>
+              )}
+            </motion.div>
+          )
+        )}
 
         {/* {(() => {
           const key = currentQuestion?.id || currentSection?.id || `${currentSectionIndex}`
@@ -1845,11 +1875,17 @@ export default function ImprovedSpeakingTest() {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-4 flex items-center gap-2 text-blue-600 font-bold"
+            className="mt-4 flex items-center gap-2 text-red-600 font-bold"
           >
             <Volume2 className="w-5 h-5" />
             <span>Playing instructions...</span>
           </motion.div>
+        )}
+
+        {isProcessingSpeechToText && (
+          <div className="mt-4 text-center">
+            <p className="text-sm text-gray-500">İşleniyor...</p>
+          </div>
         )}
 {/* 
         {isPlayingTTS && (
@@ -1924,7 +1960,7 @@ export default function ImprovedSpeakingTest() {
             {isPrepRunning ? formatTime(prepSeconds) : formatTime(timeLeft)}
           </div>
           {isPrepRunning ? (
-          <div className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600 font-mono text-center mt-1 sm:mt-2">
+          <div className="text-lg sm:text-xl lg:text-2xl font-bold text-red-600 font-mono text-center mt-1 sm:mt-2">
              
           </div>
         ) : (

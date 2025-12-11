@@ -1,6 +1,5 @@
 import { NavLink } from "react-router";
 import { 
-  Wallet, 
   Coins, 
   BookOpen, 
   Headphones, 
@@ -9,16 +8,13 @@ import {
   ArrowRight,
   CheckCircle,
   X,
-  Info,
   Clock,
   FileText,
   Award,
-  AlertCircle,
   Sparkles,
   Zap,
   Target,
   TrendingUp,
-  ChevronRight
 } from "lucide-react";
 
 const HowItWorksPage = () => {

@@ -308,32 +308,33 @@ const TestModal = ({
   return (
     <>
       <div 
-        className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 animate-in fade-in"
+        className="fixed inset-0 bg-black/60 flex items-center justify-center p-2 sm:p-4 z-50 animate-in fade-in"
         onClick={() => onOpenChange(false)}
       >
         <div 
-          className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-in slide-in-from-bottom-5"
+          className="bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] flex flex-col animate-in slide-in-from-bottom-5"
           onClick={(e) => e.stopPropagation()}
         >
               
               {/* Modal Header */}
-              <div className="p-6 border-b border-gray-200">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h2 className="font-serif text-2xl font-bold text-gray-900">{selectedTest.title}</h2>
-                    <p className="text-sm text-gray-500 mt-1">Almak istediğiniz test bölümlerini seçin</p>
+              <div className="p-4 sm:p-6 border-b border-gray-200 flex-shrink-0">
+                <div className="flex justify-between items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <h2 className="font-serif text-xl sm:text-2xl font-bold text-gray-900 break-words">{selectedTest.title}</h2>
+                    <p className="text-xs sm:text-sm text-gray-500 mt-1">Almak istediğiniz test bölümlerini seçin</p>
                   </div>
                   <button 
                     onClick={() => onOpenChange(false)} 
-                    className="text-gray-400 hover:text-gray-800 transition-colors"
+                    className="text-gray-400 hover:text-gray-800 transition-colors flex-shrink-0"
+                    aria-label="Close modal"
                   >
-                    <X className="w-6 h-6" />
+                    <X className="w-5 h-5 sm:w-6 sm:h-6" />
                   </button>
                 </div>
               </div>
               
               {/* Modal Body */}
-              <div className="p-6 space-y-4 overflow-y-auto">
+              <div className="p-4 sm:p-6 space-y-3 sm:space-y-4 overflow-y-auto flex-1 min-h-0">
                 {skillsData.map((skill) => {
                   const isSelected = selectedSkills.includes(skill.id);
                   const isAvailable = skill.testCount !== '0 test';
@@ -342,26 +343,26 @@ const TestModal = ({
                     <div 
                       key={skill.id}
                       onClick={() => isAvailable && toggleSkill(skill.id)}
-                      className={`p-4 rounded-xl border-2 flex items-center justify-between transition-all duration-200 ${
+                      className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 transition-all duration-200 ${
                         !isAvailable ? 'opacity-50 cursor-not-allowed bg-gray-50 border-gray-100' :
                         isSelected 
                           ? 'bg-red-600/5 border-red-600 text-red-600 cursor-pointer' 
                           : 'bg-gray-50 border-gray-200 hover:border-gray-400 text-gray-900 cursor-pointer'
                       }`}
                     >
-                      <div className="flex items-center gap-4">
-                        <div className={`p-2 rounded-lg ${isSelected ? 'bg-red-600/10' : 'bg-gray-100'}`}>
-                          <skill.icon className={`w-5 h-5 ${isSelected ? 'text-red-600' : 'text-gray-600'}`} />
+                      <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                        <div className={`p-2 rounded-lg flex-shrink-0 ${isSelected ? 'bg-red-600/10' : 'bg-gray-100'}`}>
+                          <skill.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${isSelected ? 'text-red-600' : 'text-gray-600'}`} />
                         </div>
-                        <div>
-                          <p className="font-bold uppercase tracking-wide">{skill.name}</p>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold uppercase tracking-wide text-sm sm:text-base truncate">{skill.name}</p>
                           <p className={`text-xs font-medium ${isSelected ? 'text-red-600/80' : 'text-gray-500'}`}>
                             {skill.duration} • {skill.testCount}
                           </p>
                         </div>
                       </div>
-                      <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${isSelected ? 'bg-red-600/10 text-red-600' : 'bg-gray-200 text-gray-700'}`}>
-                        <Coins className="w-4 h-4" />
+                      <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium flex-shrink-0 ${isSelected ? 'bg-red-600/10 text-red-600' : 'bg-gray-200 text-gray-700'}`}>
+                        <Coins className="w-3 h-3 sm:w-4 sm:h-4" />
                         <span>{skill.cost} kredi</span>
                       </div>
                     </div>
@@ -370,18 +371,18 @@ const TestModal = ({
               </div>
 
               {/* Modal Footer */}
-              <div className="p-6 border-t border-gray-200 mt-auto bg-gray-50/50 rounded-b-2xl">
-                <div className="flex flex-col sm:flex-row items-end justify-between gap-4">
-                  <div>
+              <div className="p-4 sm:p-6 border-t border-gray-200 mt-auto bg-gray-50/50 rounded-b-xl sm:rounded-b-2xl flex-shrink-0 sticky bottom-0">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-end justify-between gap-4">
+                  <div className="flex-1">
                     <p className="text-xs font-medium text-gray-500">Toplam Maliyet</p>
-                    <p className="text-2xl font-bold font-serif text-gray-900 flex items-center gap-2">
-                      {totalCost} <Coins className="w-5 h-5" />
+                    <p className="text-xl sm:text-2xl font-bold font-serif text-gray-900 flex items-center gap-2">
+                      {totalCost} <Coins className="w-4 h-4 sm:w-5 sm:h-5" />
                     </p>
                     <div className="relative group mt-2">
                       <span className="text-xs text-gray-500 cursor-pointer hover:text-gray-800 transition-colors">
                         Kredi nedir?
                       </span>
-                      <div className="absolute bottom-full left-0 mb-2 w-64 bg-[#1D1D1D] text-white text-xs rounded-lg p-3 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
+                      <div className="absolute bottom-full left-0 mb-2 w-56 sm:w-64 bg-[#1D1D1D] text-white text-xs rounded-lg p-3 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
                         Kredi, TurkishMock testlerine giriş yapmak için kullanılan dijital birimdir. Her test bölümü belirli miktarda kredi gerektirir.
                         <svg className="absolute left-4 -bottom-2 w-4 h-2 text-[#1D1D1D]" viewBox="0 0 16 8" fill="currentColor">
                           <path d="M0 8L8 0L16 8H0Z" />
@@ -392,7 +393,7 @@ const TestModal = ({
                   <button 
                     onClick={handleCta}
                     disabled={selectedSkills.length === 0}
-                    className="w-full sm:w-auto bg-red-600 cursor-pointer text-white font-medium py-3 px-8 rounded-lg shadow-lg shadow-red-600/20 transition-all hover:-translate-y-0.5 disabled:bg-gray-300 disabled:shadow-none disabled:cursor-not-allowed"
+                    className="w-full sm:w-auto bg-red-600 cursor-pointer text-white font-medium py-3 px-6 sm:px-8 rounded-lg shadow-lg shadow-red-600/20 transition-all hover:-translate-y-0.5 disabled:bg-gray-300 disabled:shadow-none disabled:cursor-not-allowed text-sm sm:text-base flex-shrink-0"
                   >
                     {isAuthenticated ? "Teste Başla →" : "Başlamak İçin Kayıt Ol →"}
                   </button>

@@ -162,86 +162,86 @@ const Part3Section = ({
   // Preparation Phase - Show debate interface with timer
   if (currentPhase === "preparation") {
     return (
-      <div className="min-h-screen bg-amber-50 p-6">
+      <div className="min-h-screen bg-amber-50 p-3 sm:p-6">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <motion.div
-            className="flex items-center justify-between mb-8"
+            className="flex flex-col sm:flex-row items-center justify-between mb-4 sm:mb-8 gap-3 sm:gap-0"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center">
-                <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                  <div className="w-4 h-4 bg-green-600 rounded-full"></div>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-600 rounded-full flex items-center justify-center flex-shrink-0">
+                <div className="w-6 h-6 sm:w-8 sm:h-8 bg-white rounded-full flex items-center justify-center">
+                  <div className="w-3 h-3 sm:w-4 sm:h-4 bg-green-600 rounded-full"></div>
                 </div>
               </div>
-              <div className="bg-red-600 text-white px-3 py-1 rounded font-bold text-lg">
+              <div className="bg-red-600 text-white px-2 sm:px-3 py-1 rounded font-bold text-sm sm:text-lg">
                 TURKISHMOCK
               </div>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-1 sm:gap-2">
               <motion.div
-                className="w-16 h-16 bg-green-600 rounded-lg flex items-center justify-center"
+                className="w-12 h-12 sm:w-16 sm:h-16 bg-green-600 rounded-lg flex items-center justify-center"
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ delay: 0.1, duration: 0.3 }}
               >
-                <Check className="w-8 h-8 text-white" />
+                <Check className="w-5 h-5 sm:w-8 sm:h-8 text-white" />
               </motion.div>
               <motion.div
-                className="w-16 h-16 bg-green-600 rounded-lg flex items-center justify-center"
+                className="w-12 h-12 sm:w-16 sm:h-16 bg-green-600 rounded-lg flex items-center justify-center"
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ delay: 0.2, duration: 0.3 }}
               >
-                <Check className="w-8 h-8 text-white" />
+                <Check className="w-5 h-5 sm:w-8 sm:h-8 text-white" />
               </motion.div>
               <motion.div
-                className="w-16 h-16 bg-green-600 rounded-lg flex items-center justify-center"
+                className="w-12 h-12 sm:w-16 sm:h-16 bg-green-600 rounded-lg flex items-center justify-center"
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ delay: 0.3, duration: 0.3 }}
               >
-                <span className="text-white text-2xl font-bold">3</span>
+                <span className="text-white text-xl sm:text-2xl font-bold">3</span>
               </motion.div>
             </div>
 
-            <div className="text-2xl font-bold">
+            <div className="text-lg sm:text-2xl font-bold">
               <span className="text-green-600">MULTI</span>
-              <span className="text-xs bg-green-600 text-white px-1 ml-1 rounded">TEACH</span>
+              <span className="text-[10px] sm:text-xs bg-green-600 text-white px-1 ml-1 rounded">TEACH</span>
             </div>
           </motion.div>
 
           {/* Debate Table */}
           <motion.div
-            className="bg-amber-100 border-2 border-gray-400 rounded-lg overflow-hidden mb-8"
+            className="bg-amber-100 border-2 border-gray-400 rounded-lg overflow-hidden mb-4 sm:mb-8"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6, delay: 0.2 }}
           >
-            <div className="bg-amber-200 border-b-2 border-gray-400 p-4 text-center">
-              <h1 className="text-xl font-semibold text-gray-800 text-balance">
+            <div className="bg-amber-200 border-b-2 border-gray-400 p-3 sm:p-4 text-center">
+              <h1 className="text-base sm:text-xl font-semibold text-gray-800 text-balance">
                 {section.title === "Section 3" ? "Üniversite diplomanın iş alımda zorunlu olması" : section.title}
               </h1>
             </div>
 
-            <div className="grid grid-cols-2">
+            <div className="grid grid-cols-1 md:grid-cols-2">
               {/* For Column */}
               <motion.div
-                className="p-6 border-r-2 border-gray-400"
+                className="p-4 sm:p-6 md:border-r-2 border-gray-400 border-b-2 md:border-b-0"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6, delay: 0.4 }}
               >
-                <h2 className="text-lg font-semibold text-gray-700 mb-4">Lehte</h2>
-                <ul className="space-y-4 text-gray-700">
+                <h2 className="text-base sm:text-lg font-semibold text-gray-700 mb-3 sm:mb-4">Lehte</h2>
+                <ul className="space-y-3 sm:space-y-4 text-gray-700">
                   {advantages.map((advantage, index) => (
                     <li key={advantage.id} className="flex items-start gap-2">
                       <div className="w-2 h-2 bg-gray-600 rounded-full mt-2 flex-shrink-0"></div>
-                      <span className="leading-relaxed">
+                      <span className="leading-relaxed text-sm sm:text-base">
                         {advantage.example?.[0]?.text || `Avantaj ${index + 1}`}
                       </span>
                     </li>
@@ -251,17 +251,17 @@ const Part3Section = ({
 
               {/* Against Column */}
               <motion.div
-                className="p-6"
+                className="p-4 sm:p-6"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6, delay: 0.4 }}
               >
-                <h2 className="text-lg font-semibold text-gray-700 mb-4">Aleyhte</h2>
-                <ul className="space-y-4 text-gray-700">
+                <h2 className="text-base sm:text-lg font-semibold text-gray-700 mb-3 sm:mb-4">Aleyhte</h2>
+                <ul className="space-y-3 sm:space-y-4 text-gray-700">
                   {disadvantages.map((disadvantage, index) => (
                     <li key={disadvantage.id} className="flex items-start gap-2">
                       <div className="w-2 h-2 bg-gray-600 rounded-full mt-2 flex-shrink-0"></div>
-                      <span className="leading-relaxed">
+                      <span className="leading-relaxed text-sm sm:text-base">
                         {disadvantage.example?.[0]?.text || `Dezavantaj ${index + 1}`}
                       </span>
                     </li>
@@ -308,72 +308,72 @@ const Part3Section = ({
   // Speaking Phase
   if (currentPhase === "speaking") {
     return (
-      <div className="min-h-screen bg-amber-50 p-6">
+      <div className="min-h-screen bg-amber-50 p-3 sm:p-6">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <motion.div
-            className="flex items-center justify-between mb-8"
+            className="flex flex-col sm:flex-row items-center justify-between mb-4 sm:mb-8 gap-3 sm:gap-0"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center">
-                <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                  <div className="w-4 h-4 bg-green-600 rounded-full"></div>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-600 rounded-full flex items-center justify-center flex-shrink-0">
+                <div className="w-6 h-6 sm:w-8 sm:h-8 bg-white rounded-full flex items-center justify-center">
+                  <div className="w-3 h-3 sm:w-4 sm:h-4 bg-green-600 rounded-full"></div>
                 </div>
               </div>
               <div>
-                <div className="font-bold text-lg text-gray-800">TurkishMock</div>
-                <div className="text-sm text-gray-600">Platform</div>
+                <div className="font-bold text-base sm:text-lg text-gray-800">TurkishMock</div>
+                <div className="text-xs sm:text-sm text-gray-600">Platform</div>
               </div>
             </div>
 
-            <div className="flex gap-2">
-              <div className="w-16 h-16 bg-green-600 rounded-lg flex items-center justify-center">
-                <Check className="w-8 h-8 text-white" />
+            <div className="flex gap-1 sm:gap-2">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-green-600 rounded-lg flex items-center justify-center">
+                <Check className="w-5 h-5 sm:w-8 sm:h-8 text-white" />
               </div>
-              <div className="w-16 h-16 bg-green-600 rounded-lg flex items-center justify-center">
-                <Check className="w-8 h-8 text-white" />
+              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-green-600 rounded-lg flex items-center justify-center">
+                <Check className="w-5 h-5 sm:w-8 sm:h-8 text-white" />
               </div>
-              <div className="w-16 h-16 bg-green-600 rounded-lg flex items-center justify-center">
-                <span className="text-white text-2xl font-bold">3</span>
+              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-green-600 rounded-lg flex items-center justify-center">
+                <span className="text-white text-xl sm:text-2xl font-bold">3</span>
               </div>
             </div>
 
-            <div className="text-2xl font-bold">
+            <div className="text-lg sm:text-2xl font-bold">
               <span className="text-green-600">MULTI</span>
-              <span className="text-xs bg-green-600 text-white px-1 ml-1 rounded">TEACH</span>
+              <span className="text-[10px] sm:text-xs bg-green-600 text-white px-1 ml-1 rounded">TEACH</span>
             </div>
           </motion.div>
 
           {/* Debate Table */}
           <motion.div
-            className="bg-amber-100 border-2 border-gray-400 rounded-lg overflow-hidden mb-8"
+            className="bg-amber-100 border-2 border-gray-400 rounded-lg overflow-hidden mb-4 sm:mb-8"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6, delay: 0.2 }}
           >
-            <div className="bg-amber-200 border-b-2 border-gray-400 p-4 text-center">
-              <h1 className="text-xl font-semibold text-gray-800 text-balance">
+            <div className="bg-amber-200 border-b-2 border-gray-400 p-3 sm:p-4 text-center">
+              <h1 className="text-base sm:text-xl font-semibold text-gray-800 text-balance">
                 {section.title === "Section 3" ? "Üniversite diplomanın iş alımda zorunlu olması" : section.title}
               </h1>
             </div>
 
-            <div className="grid grid-cols-2">
+            <div className="grid grid-cols-1 md:grid-cols-2">
               {/* For Column */}
               <motion.div
-                className="p-6 border-r-2 border-gray-400"
+                className="p-4 sm:p-6 md:border-r-2 border-gray-400 border-b-2 md:border-b-0"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6, delay: 0.4 }}
               >
-                <h2 className="text-lg font-semibold text-gray-700 mb-4">Lehte</h2>
-                <ul className="space-y-4 text-gray-700">
+                <h2 className="text-base sm:text-lg font-semibold text-gray-700 mb-3 sm:mb-4">Lehte</h2>
+                <ul className="space-y-3 sm:space-y-4 text-gray-700">
                   {advantages.map((advantage, index) => (
                     <li key={advantage.id} className="flex items-start gap-2">
                       <div className="w-2 h-2 bg-gray-600 rounded-full mt-2 flex-shrink-0"></div>
-                      <span className="leading-relaxed">
+                      <span className="leading-relaxed text-sm sm:text-base">
                         {advantage.example?.[0]?.text || `Avantaj ${index + 1}`}
                       </span>
                     </li>
@@ -383,17 +383,17 @@ const Part3Section = ({
 
               {/* Against Column */}
               <motion.div
-                className="p-6"
+                className="p-4 sm:p-6"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6, delay: 0.4 }}
               >
-                <h2 className="text-lg font-semibold text-gray-700 mb-4">Aleyhte</h2>
-                <ul className="space-y-4 text-gray-700">
+                <h2 className="text-base sm:text-lg font-semibold text-gray-700 mb-3 sm:mb-4">Aleyhte</h2>
+                <ul className="space-y-3 sm:space-y-4 text-gray-700">
                   {disadvantages.map((disadvantage, index) => (
                     <li key={disadvantage.id} className="flex items-start gap-2">
                       <div className="w-2 h-2 bg-gray-600 rounded-full mt-2 flex-shrink-0"></div>
-                      <span className="leading-relaxed">
+                      <span className="leading-relaxed text-sm sm:text-base">
                         {disadvantage.example?.[0]?.text || `Dezavantaj ${index + 1}`}
                       </span>
                     </li>
@@ -405,27 +405,28 @@ const Part3Section = ({
 
           {/* Bottom Controls */}
           <motion.div
-            className="flex items-center justify-center gap-8"
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.6 }}
           >
             {/* Recording Controls */}
-            <div className="flex gap-4">
+            <div className="flex flex-wrap gap-2 sm:gap-4 justify-center">
               {isRecording && !isPaused && (
                 <>
                   <Button
                     onClick={onPause}
-                    className="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 flex items-center gap-2 rounded-xl"
+                    className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 sm:px-6 py-2 sm:py-3 flex items-center gap-2 rounded-xl text-sm sm:text-base"
                   >
-                    <Pause className="h-5 w-5" />
-                    Duraklat
+                    <Pause className="h-4 w-4 sm:h-5 sm:w-5" />
+                    <span className="hidden sm:inline">Duraklat</span>
+                    <span className="sm:hidden">Duraklat</span>
                   </Button>
                   <Button
                     onClick={onStop}
-                    className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 flex items-center gap-2 rounded-xl"
+                    className="bg-red-600 hover:bg-red-700 text-white px-4 sm:px-6 py-2 sm:py-3 flex items-center gap-2 rounded-xl text-sm sm:text-base"
                   >
-                    <Square className="h-5 w-5" />
+                    <Square className="h-4 w-4 sm:h-5 sm:w-5" />
                     Durdur
                   </Button>
                 </>
@@ -435,16 +436,17 @@ const Part3Section = ({
                 <>
                   <Button
                     onClick={onResume}
-                    className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 flex items-center gap-2 rounded-xl"
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 sm:px-6 py-2 sm:py-3 flex items-center gap-2 rounded-xl text-sm sm:text-base"
                   >
-                    <Play className="h-5 w-5" />
-                    Devam Et
+                    <Play className="h-4 w-4 sm:h-5 sm:w-5" />
+                    <span className="hidden sm:inline">Devam Et</span>
+                    <span className="sm:hidden">Devam</span>
                   </Button>
                   <Button
                     onClick={onStop}
-                    className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 flex items-center gap-2 rounded-xl"
+                    className="bg-red-600 hover:bg-red-700 text-white px-4 sm:px-6 py-2 sm:py-3 flex items-center gap-2 rounded-xl text-sm sm:text-base"
                   >
-                    <Square className="h-5 w-5" />
+                    <Square className="h-4 w-4 sm:h-5 sm:w-5" />
                     Durdur
                   </Button>
                 </>
@@ -453,7 +455,7 @@ const Part3Section = ({
 
             {/* Microphone */}
             <motion.div
-              className={`w-16 h-16 rounded-full flex items-center justify-center cursor-pointer ${isRecording
+              className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center cursor-pointer flex-shrink-0 ${isRecording
                 ? isPaused
                   ? "bg-yellow-500"
                   : "bg-red-500 animate-pulse"
@@ -464,19 +466,21 @@ const Part3Section = ({
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
             >
-              <Mic className="w-8 h-8 text-white" />
+              <Mic className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
             </motion.div>
 
             {/* Timer */}
-            <Timer
-              duration={120}
-              onComplete={handleTimerComplete}
-              autoStart={true}
-              showControls={false}
-              type="answer"
-              part={3}
-              isActive={isTimerRunning}
-            />
+            <div className="flex-shrink-0">
+              <Timer
+                duration={120}
+                onComplete={handleTimerComplete}
+                autoStart={true}
+                showControls={false}
+                type="answer"
+                part={3}
+                isActive={isTimerRunning}
+              />
+            </div>
           </motion.div>
 
           {/* Recording Status */}
@@ -486,11 +490,11 @@ const Part3Section = ({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
             >
-              <div className="inline-flex items-center gap-2 text-red-600 text-lg font-medium">
+              <div className="inline-flex items-center gap-2 text-red-600 text-base sm:text-lg font-medium">
                 <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse"></div>
-                {isPaused ? "Kayıt duraklatıldı" : "Kayıt yapılıyor..."}
+                <span className="text-sm sm:text-base">{isPaused ? "Kayıt duraklatıldı" : "Kayıt yapılıyor..."}</span>
               </div>
-              <div className="mt-2 text-lg font-semibold text-gray-800">
+              <div className="mt-2 text-base sm:text-lg font-semibold text-gray-800">
                 Süre: {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
               </div>
             </motion.div>
@@ -517,86 +521,86 @@ const Part3Section = ({
 
       {/* Instructions Phase */}
       {currentPhase === "instructions" && (
-        <div className="min-h-screen bg-amber-50 p-6">
+        <div className="min-h-screen bg-amber-50 p-3 sm:p-6">
           <div className="max-w-6xl mx-auto">
             {/* Header */}
             <motion.div
-              className="flex items-center justify-between mb-8"
+              className="flex flex-col sm:flex-row items-center justify-between mb-4 sm:mb-8 gap-3 sm:gap-0"
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
             >
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center">
-                  <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                    <div className="w-4 h-4 bg-red-600 rounded-full"></div>
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-600 rounded-full flex items-center justify-center flex-shrink-0">
+                  <div className="w-6 h-6 sm:w-8 sm:h-8 bg-white rounded-full flex items-center justify-center">
+                    <div className="w-3 h-3 sm:w-4 sm:h-4 bg-red-600 rounded-full"></div>
                   </div>
                 </div>
-                <div className="bg-red-600 text-white px-3 py-1 rounded font-bold text-lg">
+                <div className="bg-red-600 text-white px-2 sm:px-3 py-1 rounded font-bold text-sm sm:text-lg">
                   TURKISHMOCK
                 </div>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-1 sm:gap-2">
                 <motion.div
-                  className="w-16 h-16 bg-green-600 rounded-lg flex items-center justify-center"
+                  className="w-12 h-12 sm:w-16 sm:h-16 bg-green-600 rounded-lg flex items-center justify-center"
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ delay: 0.1, duration: 0.3 }}
                 >
-                  <Check className="w-8 h-8 text-white" />
+                  <Check className="w-5 h-5 sm:w-8 sm:h-8 text-white" />
                 </motion.div>
                 <motion.div
-                  className="w-16 h-16 bg-green-600 rounded-lg flex items-center justify-center"
+                  className="w-12 h-12 sm:w-16 sm:h-16 bg-green-600 rounded-lg flex items-center justify-center"
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ delay: 0.2, duration: 0.3 }}
                 >
-                  <Check className="w-8 h-8 text-white" />
+                  <Check className="w-5 h-5 sm:w-8 sm:h-8 text-white" />
                 </motion.div>
                 <motion.div
-                  className="w-16 h-16 bg-green-600 rounded-lg flex items-center justify-center"
+                  className="w-12 h-12 sm:w-16 sm:h-16 bg-green-600 rounded-lg flex items-center justify-center"
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ delay: 0.3, duration: 0.3 }}
                 >
-                  <span className="text-white text-2xl font-bold">3</span>
+                  <span className="text-white text-xl sm:text-2xl font-bold">3</span>
                 </motion.div>
               </div>
 
-              <div className="text-2xl font-bold">
+              <div className="text-lg sm:text-2xl font-bold">
                 <span className="text-green-600">MULTI</span>
-                <span className="text-xs bg-green-600 text-white px-1 ml-1 rounded">TEACH</span>
+                <span className="text-[10px] sm:text-xs bg-green-600 text-white px-1 ml-1 rounded">TEACH</span>
               </div>
             </motion.div>
 
             {/* Debate Table */}
             <motion.div
-              className="bg-amber-100 border-2 border-gray-400 rounded-lg overflow-hidden mb-8"
+              className="bg-amber-100 border-2 border-gray-400 rounded-lg overflow-hidden mb-4 sm:mb-8"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.6, delay: 0.2 }}
             >
-              <div className="bg-amber-200 border-b-2 border-gray-400 p-4 text-center">
-                <h1 className="text-xl font-semibold text-gray-800 text-balance">
+              <div className="bg-amber-200 border-b-2 border-gray-400 p-3 sm:p-4 text-center">
+                <h1 className="text-base sm:text-xl font-semibold text-gray-800 text-balance">
                   {section.title === "Section 3" ? "Üniversite diplomanın iş alımda zorunlu olması" : section.title}
                 </h1>
               </div>
 
-              <div className="grid grid-cols-2">
+              <div className="grid grid-cols-1 md:grid-cols-2">
                 {/* For Column */}
                 <motion.div
-                  className="p-6 border-r-2 border-gray-400"
+                  className="p-4 sm:p-6 md:border-r-2 border-gray-400 border-b-2 md:border-b-0"
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.6, delay: 0.4 }}
                 >
-                  <h2 className="text-lg font-semibold text-gray-700 mb-4">Lehte</h2>
-                  <ul className="space-y-4 text-gray-700">
+                  <h2 className="text-base sm:text-lg font-semibold text-gray-700 mb-3 sm:mb-4">Lehte</h2>
+                  <ul className="space-y-3 sm:space-y-4 text-gray-700">
                     {advantages.map((advantage, index) => (
                       <li key={advantage.id} className="flex items-start gap-2">
                         <div className="w-2 h-2 bg-gray-600 rounded-full mt-2 flex-shrink-0"></div>
-                        <span className="leading-relaxed">
+                        <span className="leading-relaxed text-sm sm:text-base">
                           {advantage.example?.[0]?.text || `Avantaj ${index + 1}`}
                         </span>
                       </li>
@@ -606,17 +610,17 @@ const Part3Section = ({
 
                 {/* Against Column */}
                 <motion.div
-                  className="p-6"
+                  className="p-4 sm:p-6"
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.6, delay: 0.4 }}
                 >
-                  <h2 className="text-lg font-semibold text-gray-700 mb-4">Aleyhte</h2>
-                  <ul className="space-y-4 text-gray-700">
+                  <h2 className="text-base sm:text-lg font-semibold text-gray-700 mb-3 sm:mb-4">Aleyhte</h2>
+                  <ul className="space-y-3 sm:space-y-4 text-gray-700">
                     {disadvantages.map((disadvantage, index) => (
                       <li key={disadvantage.id} className="flex items-start gap-2">
                         <div className="w-2 h-2 bg-gray-600 rounded-full mt-2 flex-shrink-0"></div>
-                        <span className="leading-relaxed">
+                        <span className="leading-relaxed text-sm sm:text-base">
                           {disadvantage.example?.[0]?.text || `Dezavantaj ${index + 1}`}
                         </span>
                       </li>
@@ -635,7 +639,7 @@ const Part3Section = ({
             >
               <button
                 onClick={handleStartPreparation}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-4 rounded-xl text-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                className="bg-purple-600 hover:bg-purple-700 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl text-lg sm:text-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 w-full sm:w-auto"
               >
                 Hazırım - Başlayalım! 🚀
               </button>

@@ -709,8 +709,22 @@ export default function ImprovedSpeakingTest() {
         const blob = new Blob(chunksRef.current, { type: supported ? "audio/webm;codecs=opus" : "audio/webm" })
         chunksRef.current = []
         const duration = await getBlobDuration(blob)
-        // Use question id when available, else fallback to section id
-        const key = currentQuestion?.id || currentSection?.id || `${currentSectionIndex}`
+        // Use question id when available, with better fallback logic
+        let key = currentQuestion?.id
+        if (!key && currentSection && currentSection.questions && currentSection.questions.length > 0 && currentSection.questions[currentQuestionIndex]) {
+          key = currentSection.questions[currentQuestionIndex].id
+        }
+        if (!key && currentSection?.subParts?.[currentSubPartIndex]?.questions && currentSection?.subParts?.[currentSubPartIndex]?.questions
+          ?.length > 0) {
+          const sortedQuestions = [...currentSection?.subParts?.[currentSubPartIndex]?.questions || []].sort((a, b) => a.order - b.order)
+          if (sortedQuestions[currentQuestionIndex]) {
+            key = sortedQuestions[currentQuestionIndex].id
+          }
+        }
+        if (!key) {
+          key = currentSection?.id || `${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
+        }
+        console.log(`🎤 Recording saved with key: ${key} for question:`, currentQuestion?.id || "unknown")
         const rec: Recording = { blob, duration, questionId: key }
         setRecordings((prev) => new Map(prev).set(key, rec))
 
@@ -718,9 +732,18 @@ export default function ImprovedSpeakingTest() {
         setIsProcessingSpeechToText(true)
         try {
           const stt = await speechToTextService.convertAudioToText(blob)
-          const text = stt.success ? (stt.text || "") : "[Ses metne dönüştürülemedi]"
-          setAnswers(prev => new Map(prev).set(key, { text: text || "[Cevap bulunamadı]", duration }))
-        } catch {
+          let text = ""
+          if (stt.success && stt.text) {
+            text = stt.text.trim()
+          }
+          // Only use placeholder if text is actually empty
+          if (!text) {
+            text = "[Ses metne dönüştürülemedi]"
+          }
+          console.log(`💾 Saving answer for question ${key}:`, text.substring(0, 50))
+          setAnswers(prev => new Map(prev).set(key, { text, duration }))
+        } catch (error) {
+          console.error("Error converting speech to text:", error)
           setAnswers(prev => new Map(prev).set(key, { text: "[Ses metne dönüştürülemedi]", duration }))
         } finally {
           setIsProcessingSpeechToText(false)
@@ -1005,16 +1028,22 @@ export default function ImprovedSpeakingTest() {
 
     try {
       const answersEntries = Array.from(answers.entries())
+      console.log("📝 Submitting test with answers:", answersEntries.map(([qid, v]) => ({ qid, text: v.text?.substring(0, 50) })))
 
       // Persist detailed answers (with duration) for potential overall submission
       const answersObj = Object.fromEntries(
-        answersEntries.map(([qid, v]) => [qid, { text: v.text, duration: v.duration }])
+        answersEntries.map(([qid, v]) => {
+          // Preserve the text as-is, don't overwrite with placeholder if it exists
+          const text = v.text || "[Cevap bulunamadı]"
+          return [qid, { text, duration: v.duration }]
+        })
       )
 
       // Keep a simple questionId -> transcript map for direct submission
       const answerTextRecord = answersEntries.reduce<Record<string, string>>((acc, [qid, v]) => {
         const cleaned = v?.text?.trim()
-        acc[qid] = cleaned ? v.text : "[Cevap bulunamadı]"
+        // Only use placeholder if text is truly empty or just whitespace
+        acc[qid] = cleaned || "[Cevap bulunamadı]"
         return acc
       }, {})
 
@@ -1025,6 +1054,11 @@ export default function ImprovedSpeakingTest() {
         timestamp: new Date().toISOString()
       }
 
+      console.log("💾 Saving to sessionStorage:", {
+        testId: testData.id,
+        answerCount: Object.keys(answersObj).length,
+        answerKeys: Object.keys(answersObj)
+      })
       sessionStorage.setItem(`speaking_answers_${testData.id}`, JSON.stringify(answersData))
 
       const wasOverallFlowActive = overallTestFlowStore.hasActive()
@@ -1188,37 +1222,65 @@ export default function ImprovedSpeakingTest() {
         const speakingAnswers = sessionStorage.getItem(key);
         if (speakingAnswers) {
           const speakingData = JSON.parse(speakingAnswers);
-          console.log("Submitting speaking test:", speakingData.testId, "with recordings:", speakingData.recordings?.length || 0);
+          console.log("Submitting speaking test:", speakingData.testId);
+          console.log("Available answers:", speakingData.answers);
+          console.log("Sections:", speakingData.sections);
+          
           const answerMap = new Map<string, { text: string; duration: number }>();
           if (speakingData.answers) {
             for (const [qid, val] of Object.entries(speakingData.answers)) {
               const v: any = val;
-              answerMap.set(qid, { text: v?.text ?? "[Cevap bulunamadı]", duration: Number(v?.duration) || 0 });
+              const answerText = v?.text?.trim();
+              // Only use the answer if it's not empty and not the placeholder
+              if (answerText && answerText !== "[Cevap bulunamadı]" && answerText !== "[Ses metne dönüştürülemedi]") {
+                answerMap.set(qid, { text: answerText, duration: Number(v?.duration) || 0 });
+              } else if (answerText) {
+                // Keep the placeholder if that's what was saved
+                answerMap.set(qid, { text: answerText, duration: Number(v?.duration) || 0 });
+              }
             }
           } else if (speakingData.recordings) {
-            for (const [qid, rec] of speakingData.recordings) {
+            // Handle recordings if answers are not available
+            for (const [qid, rec] of Object.entries(speakingData.recordings)) {
+              const recording: any = rec;
               try {
                 const fd = new FormData();
-                fd.append("audio", rec.blob, "recording.webm");
+                fd.append("audio", recording.blob, "recording.webm");
                 const res = await axiosPrivate.post("/api/speaking-submission/speech-to-text", fd, {
                   headers: { "Content-Type": "multipart/form-data" },
                   timeout: 30000,
                 });
                 const rawText = res.data?.text ?? res.data?.transcript;
-                const text = rawText || "[Ses metne dönüştürülemedi]";
-                answerMap.set(qid, { text, duration: rec.duration });
+                const text = rawText?.trim() || "[Ses metne dönüştürülemedi]";
+                answerMap.set(qid, { text, duration: recording.duration || 0 });
               } catch (e) {
-                answerMap.set(qid, { text: "[Ses metne dönüştürülemedi]", duration: rec.duration || 0 });
+                answerMap.set(qid, { text: "[Ses metne dönüştürülemedi]", duration: recording.duration || 0 });
               }
             }
           }
+          
+          console.log("Answer map after processing:", Array.from(answerMap.entries()));
           
           const parts = speakingData.sections.map((s: any) => {
             const p: any = { description: s.description, image: "" };
             if (s.subParts?.length) {
               const subParts = s.subParts.map((sp: any) => {
                 const questions = sp.questions.map((q: any) => {
-                  const a = answerMap.get(q.id);
+                  // Try multiple ID formats to find the answer
+                  let a = answerMap.get(q.id);
+                  if (!a && q.questionId) {
+                    a = answerMap.get(q.questionId);
+                  }
+                  // If still not found, try to find by matching any key that contains the question ID
+                  if (!a) {
+                    for (const [key, value] of answerMap.entries()) {
+                      if (key.includes(q.id) || q.id.includes(key)) {
+                        a = value;
+                        break;
+                      }
+                    }
+                  }
+                  console.log(`Question ${q.id}: Found answer:`, a ? a.text : "NOT FOUND");
                   return {
                     questionId: q.id,
                     userAnswer: a?.text ?? "[Cevap bulunamadı]",
@@ -1233,7 +1295,21 @@ export default function ImprovedSpeakingTest() {
               p.duration = duration;
             } else {
               const questions = s.questions.map((q: any) => {
-                const a = answerMap.get(q.id);
+                // Try multiple ID formats to find the answer
+                let a = answerMap.get(q.id);
+                if (!a && q.questionId) {
+                  a = answerMap.get(q.questionId);
+                }
+                // If still not found, try to find by matching any key that contains the question ID
+                if (!a) {
+                  for (const [key, value] of answerMap.entries()) {
+                    if (key.includes(q.id) || q.id.includes(key)) {
+                      a = value;
+                      break;
+                    }
+                  }
+                }
+                console.log(`Question ${q.id}: Found answer:`, a ? a.text : "NOT FOUND");
                 return {
                   questionId: q.id,
                   userAnswer: a?.text ?? "[Cevap bulunamadı]",
@@ -1439,25 +1515,25 @@ export default function ImprovedSpeakingTest() {
       {/* <DisableKeys /> */}
       
       {/* Header with section indicators */}
-      <div className="bg-white border-b border-gray-200 px-3 sm:px-6 py-3">
+      <div className="bg-white border-b border-gray-200 px-2 sm:px-4 md:px-6 py-2 sm:py-3">
         {/* Mobile Layout */}
         <div className="block sm:hidden">
           {/* Top row - TURKISHMOCK and Speaking */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="bg-red-600 text-white px-3 py-1.5 rounded font-bold text-sm">
+          <div className="flex items-center justify-between mb-3">
+            <div className="bg-red-600 text-white px-2 sm:px-3 py-1 sm:py-1.5 rounded font-bold text-xs sm:text-sm">
               TURKISHMOCK
             </div>
-            <div className="font-bold text-lg text-gray-800">Konuşma</div>
+            <div className="font-bold text-base sm:text-lg text-gray-800">Konuşma</div>
           </div>
           
           {/* Progress indicator */}
-          <div className="mb-3">
-            <div className="text-sm text-gray-500 text-center mb-3">
+          <div className="mb-2">
+            <div className="text-xs sm:text-sm text-gray-500 text-center mb-2">
               Test Bölümleri
             </div>
-            <div className="flex gap-2 justify-center">
+            <div className="flex gap-1.5 sm:gap-2 justify-center items-center">
               {/* Section 1.1 */}
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
+              <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm ${
                 currentSectionIndex === 0 && currentSubPartIndex === 0
                   ? "bg-green-600 text-white shadow-lg"
                   : currentSectionIndex > 0 || (currentSectionIndex === 0 && currentSubPartIndex > 0)
@@ -1468,14 +1544,14 @@ export default function ImprovedSpeakingTest() {
               </div>
               
               {/* Connector line */}
-              <div className={`w-6 h-0.5 mt-5 ${
+              <div className={`w-4 sm:w-6 h-0.5 ${
                 currentSectionIndex > 0 || (currentSectionIndex === 0 && currentSubPartIndex > 0)
                   ? "bg-green-300"
                   : "bg-gray-300"
               }`}></div>
               
               {/* Section 1.2 */}
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
+              <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm ${
                 currentSectionIndex === 0 && currentSubPartIndex === 1
                   ? "bg-green-600 text-white shadow-lg"
                   : currentSectionIndex > 0
@@ -1486,14 +1562,14 @@ export default function ImprovedSpeakingTest() {
               </div>
               
               {/* Connector line */}
-              <div className={`w-6 h-0.5 mt-5 ${
+              <div className={`w-4 sm:w-6 h-0.5 ${
                 currentSectionIndex > 0
                   ? "bg-green-300"
                   : "bg-gray-300"
               }`}></div>
               
               {/* Section 2 */}
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
+              <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm ${
                 currentSectionIndex === 1
                   ? "bg-green-600 text-white shadow-lg"
                   : currentSectionIndex > 1
@@ -1504,14 +1580,14 @@ export default function ImprovedSpeakingTest() {
               </div>
               
               {/* Connector line */}
-              <div className={`w-6 h-0.5 mt-5 ${
+              <div className={`w-4 sm:w-6 h-0.5 ${
                 currentSectionIndex > 1
                   ? "bg-green-300"
                   : "bg-gray-300"
               }`}></div>
               
               {/* Section 3 */}
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
+              <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm ${
                 currentSectionIndex === 2
                   ? "bg-green-600 text-white shadow-lg"
                   : "bg-gray-200 text-gray-600"
@@ -1668,7 +1744,7 @@ export default function ImprovedSpeakingTest() {
         </motion.header>
       )}
          {/* question rendering part */}
-     <main className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] px-4 sm:px-8">
+     <main className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] px-2 sm:px-4 md:px-8 pb-4 sm:pb-6 md:pb-8">
        <AnimatePresence mode="wait">
          <motion.div
            key={`${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`}
@@ -1678,8 +1754,8 @@ export default function ImprovedSpeakingTest() {
            className="mb-12 sm:mb-16"
          >
           {currentSection?.type !== "PART2" && currentSection?.type !== "PART3" && !isPlayingInstructions && (
-             <div className="text-center">
-               <div className="text-black font-bold text-2xl sm:text-3xl">
+             <div className="text-center px-2">
+               <div className="text-black font-bold text-xl sm:text-2xl md:text-3xl">
                  Soru {currentQuestionIndex + 1}
                </div>
              </div>
@@ -1689,7 +1765,7 @@ export default function ImprovedSpeakingTest() {
 
         {!isPlayingInstructions && currentSection?.subParts?.[currentSubPartIndex]?.images?.length ? (
           <motion.div 
-            className="mb-8" 
+            className="mb-4 sm:mb-6 md:mb-8 w-full px-2 sm:px-4" 
             initial={{ opacity: 0, scale: 0.95 }} 
             animate={{ opacity: 1, scale: 1 }}
           >
@@ -1697,11 +1773,11 @@ export default function ImprovedSpeakingTest() {
               const imgs = currentSection.subParts[currentSubPartIndex].images
               if (imgs.length === 1) {
                 return (
-                  <div className="w-full max-w-lg mx-auto aspect-[4/3] bg-transparent rounded-2xl overflow-hidden flex items-center justify-center">
+                  <div className="w-full max-w-xs sm:max-w-md md:max-w-lg mx-auto aspect-[4/3] bg-transparent rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex items-center justify-center shadow-sm border border-gray-200">
                     <motion.img
                       src={imgs[0]}
                       alt="Question image"
-                      className="w-full h-full object-contain"
+                      className="w-full h-full object-contain p-2 sm:p-3"
                       whileHover={{ scale: 1.02 }}
                       transition={{ duration: 0.3 }}
                       onError={(e) => {
@@ -1714,13 +1790,13 @@ export default function ImprovedSpeakingTest() {
               }
               if (imgs.length >= 2) {
                 return (
-                  <div className="w-full max-w-2xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="w-full max-w-xl sm:max-w-2xl md:max-w-3xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
                     {imgs.slice(0, 2).map((src, idx) => (
-                      <div key={`pimg-${idx}`} className="aspect-[4/3] bg-transparent rounded-2xl overflow-hidden flex items-center justify-center">
+                      <div key={`pimg-${idx}`} className="aspect-[4/3] bg-transparent rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex items-center justify-center shadow-sm border border-gray-200">
                         <motion.img
                           src={src}
                           alt={`Question image ${idx + 1}`}
-                          className="w-full h-full object-contain"
+                          className="w-full h-full object-contain p-2 sm:p-3"
                           whileHover={{ scale: 1.02 }}
                           transition={{ duration: 0.3 }}
                           onError={(e) => {
@@ -1746,53 +1822,53 @@ export default function ImprovedSpeakingTest() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ delay: 0.2 }}
-              className="mb-16 sm:mb-20"
+              className="mb-8 sm:mb-12 md:mb-16 lg:mb-20 px-2 sm:px-4"
             >
           {currentSection?.type === "PART2" ? (
-            <div className="max-w-3xl mx-auto bg-white p-4 sm:p-6 rounded-xl">
+            <div className="max-w-3xl mx-auto bg-white p-3 sm:p-4 md:p-6 rounded-lg sm:rounded-xl">
               <ul className="list-disc list-inside space-y-2 sm:space-y-3 text-black">
                 {(currentSection?.subParts?.[currentSubPartIndex]?.questions || currentSection?.questions || []).map((q) => (
-                  <li key={q.id} className="text-lg sm:text-xl leading-relaxed">
+                  <li key={q.id} className="text-base sm:text-lg md:text-xl leading-relaxed break-words">
                     {q.questionText}
                   </li>
                 ))}
               </ul>
             </div>
           ) : currentSection?.type === "PART3" ? (
-            <div className="max-w-5xl mx-auto bg-white p-0 rounded-xl overflow-hidden border border-gray-300">
+            <div className="w-full max-w-5xl mx-auto bg-white p-0 rounded-lg sm:rounded-xl overflow-hidden border border-gray-300 shadow-sm mb-4 sm:mb-6">
               {(() => {
                 const sp = currentSection?.subParts?.[currentSubPartIndex]
                 const questions = sp?.questions ? [...sp.questions].sort((a, b) => a.order - b.order) : []
                 const text = questions?.[0]?.questionText || currentSection?.description || ""
                 return text ? (
-                  <div className="border-b border-gray-300 px-4 sm:px-6 py-3 sm:py-4">
-                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 text-center whitespace-pre-line">
+                  <div className="border-b border-gray-300 px-3 sm:px-4 md:px-6 py-3 sm:py-4">
+                    <h3 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-gray-900 text-center whitespace-pre-line leading-relaxed break-words">
                       {text}
                     </h3>
                   </div>
                 ) : null
               })()}
               <div className="grid grid-cols-1 md:grid-cols-2">
-                <div className="p-4 sm:p-6 md:border-r border-gray-300">
-                  <h4 className="text-base sm:text-lg font-bold mb-3 text-gray-900">Lehine</h4>
-                  <ul className="list-disc list-inside space-y-2 text-black text-base sm:text-lg">
+                <div className="p-3 sm:p-4 md:p-5 lg:p-6 md:border-r border-gray-300 border-b md:border-b-0">
+                  <h4 className="text-xs sm:text-sm md:text-base lg:text-lg font-bold mb-2 sm:mb-3 text-gray-900">Lehine</h4>
+                  <ul className="list-disc list-inside space-y-2 sm:space-y-2.5 md:space-y-3 text-gray-800 text-xs sm:text-sm md:text-base lg:text-lg leading-relaxed">
                     {(currentSection as any)?.points?.filter((p: any) => p.type === 'ADVANTAGE')?.flatMap((p: any) => p.example || []).sort((a: any, b: any) => (a.order||0)-(b.order||0)).map((ex: any, idx: number) => (
-                      <li key={`adv-${idx}`}>{ex.text}</li>
+                      <li key={`adv-${idx}`} className="pl-1 break-words">{ex.text}</li>
                     ))}
                   </ul>
                 </div>
-                <div className="p-4 sm:p-6">
-                  <h4 className="text-base sm:text-lg font-bold mb-3 text-gray-900">Aleyhine</h4>
-                  <ul className="list-disc list-inside space-y-2 text-black text-base sm:text-lg">
+                <div className="p-3 sm:p-4 md:p-5 lg:p-6">
+                  <h4 className="text-xs sm:text-sm md:text-base lg:text-lg font-bold mb-2 sm:mb-3 text-gray-900">Aleyhine</h4>
+                  <ul className="list-disc list-inside space-y-2 sm:space-y-2.5 md:space-y-3 text-gray-800 text-xs sm:text-sm md:text-base lg:text-lg leading-relaxed">
                     {(currentSection as any)?.points?.filter((p: any) => p.type === 'DISADVANTAGE')?.flatMap((p: any) => p.example || []).sort((a: any, b: any) => (a.order||0)-(b.order||0)).map((ex: any, idx: number) => (
-                      <li key={`dis-${idx}`}>{ex.text}</li>
+                      <li key={`dis-${idx}`} className="pl-1 break-words">{ex.text}</li>
                     ))}
                   </ul>
                 </div>
               </div>
             </div>
               ) : (
-                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-medium text-gray-800 text-center leading-relaxed max-w-4xl px-4">
+                <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl font-medium text-gray-800 text-center leading-relaxed max-w-4xl mx-auto px-2 sm:px-4 break-words">
                   {currentQuestion?.questionText}
                 </h2>
               )}
@@ -1800,13 +1876,30 @@ export default function ImprovedSpeakingTest() {
           )}
         </AnimatePresence>
 
+        {/* Timer display for PART3 when recording */}
+        {currentSection?.type === "PART3" && isRecording && !isPlayingInstructions && !isPlayingTTS && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-3 sm:mb-4 md:mb-6 w-full max-w-sm mx-auto px-2"
+          >
+            <div className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 shadow-lg border-2 border-red-200">
+              <p className="text-xs sm:text-sm md:text-base font-medium text-gray-700 mb-1 sm:mb-2 text-center">Cevap Süresi</p>
+              <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-red-600 font-mono text-center">
+                {formatTime(timeLeft)}
+              </p>
+              <p className="text-[10px] sm:text-xs md:text-sm text-gray-500 mt-1 sm:mt-2 text-center">2 dakika cevap süresi</p>
+            </div>
+          </motion.div>
+        )}
+
         {/* Hide microphone button until TTS finishes and preparation time completes */}
         {!isPlayingInstructions && !isPlayingTTS && !isPrepRunning ? (
-          <div className="relative">
+          <div className="relative mt-2 sm:mt-4 md:mt-6">
             {isRecording && !isPaused && (
               <>
-                <span className="absolute inset-0 w-32 h-32 sm:w-40 sm:h-40 -left-3 -top-3 sm:-left-4 sm:-top-4 rounded-full bg-red-400 opacity-30 animate-ping" style={{ animationDuration: '2.5s' }}></span>
-                <span className="absolute inset-0 w-36 h-36 sm:w-48 sm:h-48 -left-6 -top-6 sm:-left-8 sm:-top-8 rounded-full bg-red-500 opacity-20 animate-ping" style={{ animationDuration: '3s' }}></span>
+                <span className="absolute inset-0 w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 -left-2 -top-2 sm:-left-3 sm:-top-3 md:-left-4 md:-top-4 rounded-full bg-red-400 opacity-30 animate-ping" style={{ animationDuration: '2.5s' }}></span>
+                <span className="absolute inset-0 w-28 h-28 sm:w-36 sm:h-36 md:w-48 md:h-48 -left-4 -top-4 sm:-left-6 sm:-top-6 md:-left-8 md:-top-8 rounded-full bg-red-500 opacity-20 animate-ping" style={{ animationDuration: '3s' }}></span>
               </>
             )}
             <motion.button
@@ -1816,7 +1909,7 @@ export default function ImprovedSpeakingTest() {
                 else startRecording()
               }}
               disabled={isProcessingSpeechToText}
-              className={`w-20 h-20 sm:w-24 sm:h-24 lg:w-32 lg:h-32 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 ${
+              className={`w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-32 lg:h-32 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 ${
                 isRecording
                   ? "bg-red-600 hover:bg-red-700"
                   : isProcessingSpeechToText
@@ -1829,7 +1922,7 @@ export default function ImprovedSpeakingTest() {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.4, type: "spring", stiffness: 200 }}
             >
-              <Mic className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-white" />
+              <Mic className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 text-white" />
             </motion.button>
           </div>
         ) : (

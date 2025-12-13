@@ -32,7 +32,7 @@ const HowItWorksPage = () => {
               Nasıl <span className="bg-gradient-to-r from-red-600 to-orange-600 bg-clip-text text-transparent">Çalışır?</span>
             </h1>
             <p className="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto mb-12 px-4 leading-relaxed">
-              TurkishMock platformunu kullanarak Türkçe seviyenizi öğrenmek için gereken tüm adımlar
+              TURKISHMOCK platformunu kullanarak Türkçe seviyenizi öğrenmek için gereken tüm adımlar
             </p>
             
             {/* Quick Stats */}
@@ -108,7 +108,7 @@ const HowItWorksPage = () => {
                       <div className="flex items-start gap-3">
                         <Zap className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
                         <p className="text-sm text-yellow-900">
-                          <strong>İpucu:</strong> Minimum yükleme tutarı 10.000 UZS'dir. Daha fazla yükleyerek daha fazla test çözebilirsiniz.
+                          <strong>İpucu:</strong> Minimum yükleme tutarı 1.000 UZS'dir. Daha fazla yükleyerek daha fazla test çözebilirsiniz.
                         </p>
                       </div>
                     </div>
@@ -201,8 +201,8 @@ const HowItWorksPage = () => {
                           <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                             <div className="bg-white/50 p-2 rounded">Okuma: 2 Kredi</div>
                             <div className="bg-white/50 p-2 rounded">Dinleme: 2 Kredi</div>
-                            <div className="bg-white/50 p-2 rounded">Yazma: 5 Kredi</div>
-                            <div className="bg-white/50 p-2 rounded">Konuşma: 5 Kredi</div>
+                            <div className="bg-white/50 p-2 rounded">Yazma: 4 Kredi</div>
+                            <div className="bg-white/50 p-2 rounded">Konuşma: 4 Kredi</div>
                           </div>
                         </div>
                       </div>
@@ -263,7 +263,7 @@ const HowItWorksPage = () => {
                       <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-xl border border-purple-200 text-center">
                         <Mic className="w-8 h-8 text-purple-600 mx-auto mb-2" />
                         <div className="font-bold text-sm text-gray-900">Yazma/Konuşma</div>
-                        <div className="text-xs text-gray-600 mt-1">5 Kredi</div>
+                        <div className="text-xs text-gray-600 mt-1">4 Kredi</div>
                       </div>
                     </div>
 
@@ -289,7 +289,7 @@ const HowItWorksPage = () => {
                       <div className="flex items-start gap-3 p-3 bg-red-50 rounded-xl">
                         <Target className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
                         <div>
-                          <div className="font-semibold text-gray-900 text-sm">"Başla" butonuna tıklayın - AI sınavınızı oluşturacak</div>
+                          <div className="font-semibold text-gray-900 text-sm">"Başla" butonuna tıklayın</div>
                         </div>
                       </div>
                     </div>
@@ -386,11 +386,15 @@ const HowItWorksPage = () => {
                     </li>
                     <li className="flex items-start gap-2">
                       <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                      <span>Audio dosyasını dinleyin</span>
+                      <span>Ses dosyasını dinleyin</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                      <span>Bir kez dinleme hakkı</span>
+                      <span>Her metin iki kere dinletilecek</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                      <span>Dinleme bittikten sonra cevaplamak için 10 dakıka süre verilecek </span>
                     </li>
                   </ul>
                 </div>
@@ -403,15 +407,15 @@ const HowItWorksPage = () => {
                   <ul className="space-y-2 text-sm text-gray-600">
                     <li className="flex items-start gap-2">
                       <CheckCircle className="w-4 h-4 text-orange-600 flex-shrink-0 mt-0.5" />
-                      <span>Kompozisyon yazın</span>
+                      <span>Görevleri okuyun</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <CheckCircle className="w-4 h-4 text-orange-600 flex-shrink-0 mt-0.5" />
-                      <span>Minimum kelime sayısına dikkat</span>
+                      <span>Minimum kelime sayısına dikkat edin</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <CheckCircle className="w-4 h-4 text-orange-600 flex-shrink-0 mt-0.5" />
-                      <span>AI değerlendirmesi yapılacak</span>
+                      <span>Süre bitmeden yazılarınızı gönderin</span>
                     </li>
                   </ul>
                 </div>
@@ -432,7 +436,7 @@ const HowItWorksPage = () => {
                     </li>
                     <li className="flex items-start gap-2">
                       <CheckCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
-                      <span>Süre bitmeden cevap verin</span>
+                      <span>Süreye dikkat edin </span>
                     </li>
                   </ul>
                 </div>
@@ -514,7 +518,7 @@ const HowItWorksPage = () => {
                           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl">
                             <div className="flex justify-between items-center mb-2">
                               <span className="text-sm font-medium text-gray-700">Toplam Puan</span>
-                              <span className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">85/100</span>
+                              <span className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">69/75</span>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-3">
                               <div className="bg-gradient-to-r from-blue-600 to-indigo-600 h-3 rounded-full" style={{ width: '85%' }}></div>
@@ -523,19 +527,19 @@ const HowItWorksPage = () => {
                           <div className="space-y-2">
                             <div className="flex justify-between text-sm">
                               <span className="text-gray-600">Okuma</span>
-                              <span className="font-bold text-gray-900">22/25</span>
+                              <span className="font-bold text-gray-900">75/75</span>
                             </div>
                             <div className="flex justify-between text-sm">
                               <span className="text-gray-600">Dinleme</span>
-                              <span className="font-bold text-gray-900">20/25</span>
+                              <span className="font-bold text-gray-900">75/75</span>
                             </div>
                             <div className="flex justify-between text-sm">
                               <span className="text-gray-600">Yazma</span>
-                              <span className="font-bold text-gray-900">21/25</span>
+                              <span className="font-bold text-gray-900">70/75</span>
                             </div>
                             <div className="flex justify-between text-sm">
                               <span className="text-gray-600">Konuşma</span>
-                              <span className="font-bold text-gray-900">22/25</span>
+                              <span className="font-bold text-gray-900">58/75</span>
                             </div>
                           </div>
                           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4">

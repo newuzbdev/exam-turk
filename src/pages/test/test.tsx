@@ -170,7 +170,7 @@ const TestPage = () => {
         <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
           <div className="mb-12">
             <h1 className="font-serif text-3xl md:text-4xl font-bold text-gray-900">Test Seçimi</h1>
-            <p className="text-gray-500 mt-2 font-light">Başlamak istediğiniz testi seçin</p>
+            <p className="text-gray-500 mt-2 font-light">Katılmak istediğiniz sınavı seçin</p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

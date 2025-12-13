@@ -23,7 +23,7 @@ const HeroSection = () => {
               className="mb-4 sm:mb-6 bg-red-100 text-red-700 border-red-200 px-3 sm:px-4 py-1.5 sm:py-2 text-base sm:text-lg"
             >
               <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-              Türkiye'nin En Güvenilir Dil Testi Platformu
+              En Güvenilir Türkçe Dil Testi Platformu
             </Badge> */}
 
             <h1 className="text-4xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-4 sm:mb-6">
@@ -63,19 +63,19 @@ const HeroSection = () => {
               <div className="flex items-center">
                 <Users className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-red-500" />
                 <span className="text-lg sm:text-xl">
-                  15,000+ aktif kullanıcı
+                  15,000+ Aktif Kullanıcı
                 </span>
               </div>
               <div className="flex items-center">
                 <Shield className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-red-500" />
                 <span className="text-lg sm:text-xl">
-                  Güvenli ve sertifikalı
+                  Güvenli Kullanım
                 </span>
               </div>
               <div className="flex items-center">
                 <Globe className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-red-500" />
                 <span className="text-lg sm:text-xl">
-                  Uluslararası standartlar
+                  Uluslararası Standart
                 </span>
               </div>
             </div>

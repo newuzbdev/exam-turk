@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { overallTestFlowStore, overallTestTokenStore } from "@/services/overallTest.service"
 import { motion, AnimatePresence } from "framer-motion"
-import { Mic, ArrowLeft, Volume2 } from "lucide-react"
+import { Mic, ArrowLeft, Volume2, Clock } from "lucide-react"
 import axiosPrivate from "@/config/api"
 import { toast } from "sonner"
 import { speakingSubmissionService } from "@/services/speakingSubmission.service"
@@ -422,14 +422,11 @@ export default function ImprovedSpeakingTest() {
           resetPerQuestionState()
           playSound("question")
           // Start first question based on section type
-          if (currentSection.type === "PART1") {
-            // Start hazırlık ONCE here and remember this key to avoid duplicates
-            const key = `${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
-            prepStartedKeyRef.current = key
-            beginPreparation(5, () => startRecording(30, true))
-          } else if (currentSection.type === "PART2" || currentSection.type === "PART3") {
-            autoStartKeyRef.current = `${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
-            beginPreparation(60, () => startRecording(120, true))
+          // Don't start preparation here - let TTS play first, then preparation will start after TTS ends
+          // For sections without TTS, preparation will start in the TTS effect's onerror handler
+          if (currentSection.type === "PART1" || currentSection.type === "PART2" || currentSection.type === "PART3") {
+            // TTS will handle starting preparation after it finishes
+            // If no TTS, the TTS effect will handle it
           } else {
             startRecording(undefined, true)
           }
@@ -470,13 +467,11 @@ export default function ImprovedSpeakingTest() {
             resetPerQuestionState()
             playSound("question")
             // Start first question based on section type
-            if (currentSection.type === "PART1") {
-              // start prep only once via the same path as instruction-present case
-              const key = `${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
-              prepStartedKeyRef.current = key
-              beginPreparation(5, () => startRecording(30, true))
-            } else if (currentSection.type === "PART2" || currentSection.type === "PART3") {
-              beginPreparation(60, () => startRecording(120, true))
+            // Don't start preparation here - let TTS play first, then preparation will start after TTS ends
+            // For sections without TTS, preparation will start in the TTS effect's onerror handler
+            if (currentSection.type === "PART1" || currentSection.type === "PART2" || currentSection.type === "PART3") {
+              // TTS will handle starting preparation after it finishes
+              // If no TTS, the TTS effect will handle it
             } else {
               startRecording(undefined, true)
             }
@@ -493,81 +488,107 @@ export default function ImprovedSpeakingTest() {
   }, [showSectionDescription, currentSection, micChecked, isPlayingInstructions, currentSectionIndex, currentSubPartIndex])
 
   // Play TTS audio when a new question becomes active (outside instructions)
+  // After TTS ends, start preparation timer
   useEffect(() => {
-    if (!showSectionDescription && currentSection && !isPlayingInstructions && currentQuestion) {
-      // Play TTS audio if available (skip for Part 2 and Part 3)
-      if (currentQuestion?.textToSpeechUrl && currentSection?.type !== "PART2" && currentSection?.type !== "PART3") {
-        const fullUrl = currentQuestion.textToSpeechUrl.startsWith('./')
-          ? `${baseURL}${currentQuestion.textToSpeechUrl.substring(1)}`
-          : currentQuestion.textToSpeechUrl
+    if (!showSectionDescription && currentSection && !isPlayingInstructions && !isRecording && !isPrepRunning && !isPlayingTTS) {
+      const key = `${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
+      
+      // If preparation already started for this question, skip
+      if (prepStartedKeyRef.current === key) {
+        return
+      }
+      
+      // For PART2/PART3, check if there are questions in subParts
+      let questionToUse = currentQuestion
+      if (!questionToUse && (currentSection.type === "PART2" || currentSection.type === "PART3")) {
+        // Try to get question from subParts
+        const subPart = currentSection.subParts?.[currentSubPartIndex]
+        if (subPart?.questions && subPart.questions.length > 0) {
+          questionToUse = subPart.questions[0]
+        } else if (currentSection.questions && currentSection.questions.length > 0) {
+          questionToUse = currentSection.questions[0]
+        }
+      }
+      
+      // Play TTS audio if available (for ALL sections - PART1, PART2, PART3)
+      if (questionToUse?.textToSpeechUrl) {
+        console.log(`🔊 Playing TTS for ${currentSection.type}, question: ${questionToUse.id}`)
+        const fullUrl = questionToUse.textToSpeechUrl.startsWith('./')
+          ? `${baseURL}${questionToUse.textToSpeechUrl.substring(1)}`
+          : questionToUse.textToSpeechUrl
         const ttsAudio = new Audio(fullUrl)
         ttsAudioRef.current = ttsAudio
         setIsPlayingTTS(true)
         ttsAudio.onended = () => {
+          console.log(`✅ TTS ended for ${currentSection.type}, starting preparation timer`)
           setIsPlayingTTS(false)
           ttsAudioRef.current = null
-          // After question TTS ends, start preparation for PART1 automatically
-          if (currentSection?.type === "PART1" && currentQuestion) {
-            const key = `${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
-            if (prepStartedKeyRef.current !== key) {
-              prepStartedKeyRef.current = key
-              beginPreparation(5, () => {
-                startRecording(30, true)
-              })
-            }
-          }
+          // After question TTS ends, ALWAYS start preparation for all sections
+          startPreparationAfterTTS()
         }
-        ttsAudio.onerror = () => {
+        ttsAudio.onerror = (e) => {
+          console.error(`❌ TTS error for ${currentSection.type}:`, e)
           setIsPlayingTTS(false)
           ttsAudioRef.current = null
-          toast.error("TTS audio yüklenemedi")
+          // If TTS fails, start preparation immediately
+          startPreparationAfterTTS()
         }
-        ttsAudio.play().catch(() => {
+        ttsAudio.play().catch((error) => {
+          console.error(`❌ TTS play failed for ${currentSection.type}:`, error)
           setIsPlayingTTS(false)
           ttsAudioRef.current = null
+          // If TTS play fails, start preparation immediately
+          startPreparationAfterTTS()
         })
+      } else {
+        // No TTS available, start preparation immediately
+        console.log(`⏭️ No TTS available for ${currentSection.type}, starting preparation immediately`)
+        startPreparationAfterTTS()
       }
     }
-  }, [currentSectionIndex, currentSubPartIndex, currentQuestionIndex, showSectionDescription, isPlayingInstructions, currentQuestion])
+  }, [currentSectionIndex, currentSubPartIndex, currentQuestionIndex, showSectionDescription, isPlayingInstructions, currentQuestion, isRecording, isPrepRunning, isPlayingTTS, currentSection])
+
+  // Helper function to start preparation after TTS (or immediately if no TTS)
+  const startPreparationAfterTTS = () => {
+    if (!currentSection) return
+    
+    // For PART2/PART3, there might not be a currentQuestion in the same way
+    // So we allow starting preparation even without currentQuestion for these sections
+    if (!currentQuestion && currentSection.type !== "PART2" && currentSection.type !== "PART3") {
+      return
+    }
+    
+    const key = `${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
+    
+    // Prevent duplicate preparation starts
+    if (prepStartedKeyRef.current === key) {
+      console.log(`⚠️ Preparation already started for key: ${key}`)
+      return
+    }
+    
+    console.log(`🎯 Starting preparation for ${currentSection.type}, key: ${key}`)
+    prepStartedKeyRef.current = key
+    
+    if (currentSection.type === "PART1") {
+      // Section 1.2 (subPartIndex === 1) gets 7 seconds, others get 5 seconds
+      const prepTime = currentSubPartIndex === 1 ? 7 : 5
+      console.log(`⏱️ PART1 preparation time: ${prepTime} seconds (subPart: ${currentSubPartIndex})`)
+      beginPreparation(prepTime, () => {
+        startRecording(30, true)
+      })
+    } else if (currentSection.type === "PART2" || currentSection.type === "PART3") {
+      console.log(`⏱️ ${currentSection.type} preparation time: 60 seconds`)
+      beginPreparation(60, () => {
+        startRecording(120, true)
+      })
+    } else {
+      startRecording(undefined, true)
+    }
+  }
 
   // Removed duplicate auto-advance effect to prevent loops
 
-  // Direct auto-start when question changes in PART1
-  useEffect(() => {
-    if (
-      !showSectionDescription &&
-      currentSection &&
-      currentSection.type === "PART1" &&
-      currentQuestion &&
-      !isPlayingInstructions &&
-      !isRecording &&
-      !isPrepRunning &&
-      !isPlayingTTS
-    ) {
-      const key = `${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
-      console.log(`🎯 Question changed effect: Starting preparation for question ${currentQuestionIndex + 1}`)
-      
-      // Only start if we haven't already started for this question
-      if (prepStartedKeyRef.current !== key) {
-        // Clear any existing preparation
-        if (prepIntervalRef.current) {
-          window.clearInterval(prepIntervalRef.current)
-          prepIntervalRef.current = null
-        }
-        
-        // Start preparation with a small delay to prevent loops
-        prepStartedKeyRef.current = key
-        setTimeout(() => {
-          beginPreparation(5, () => {
-            console.log(`🎤 Auto-starting recording for question ${currentQuestionIndex + 1}`)
-            startRecording(30, true)
-          })
-        }, 100)
-      } else {
-        console.log(`⚠️ Preparation already started for question ${currentQuestionIndex + 1}`)
-      }
-    }
-  }, [currentQuestionIndex, currentSubPartIndex, currentSectionIndex])
+  // Removed: Direct auto-start effect - now handled by TTS effect which ensures TTS plays first
 
   // Removed centralized auto-start to prevent double hazırlık
 
@@ -807,6 +828,15 @@ export default function ImprovedSpeakingTest() {
     }
     setIsPrepRunning(false)
     setPrepSeconds(0)
+    // Clear TTS state to allow next question's TTS to play
+    if (ttsAudioRef.current) {
+      ttsAudioRef.current.pause()
+      ttsAudioRef.current.currentTime = 0
+      ttsAudioRef.current = null
+    }
+    setIsPlayingTTS(false)
+    // Clear preparation key to allow next question to start preparation after TTS
+    prepStartedKeyRef.current = null
   }
 
   const nextQuestion = (force: boolean = false) => {
@@ -873,8 +903,7 @@ export default function ImprovedSpeakingTest() {
           // For PART1, let the auto-advance effect handle the preparation
           // This ensures proper state management and prevents conflicts
           if (currentSection.type === "PART1") {
-            console.log(`🔄 Question advanced, auto-advance effect should trigger for question ${nextIdx + 1}`)
-            // Don't clear the prep key - let the effect handle it
+            console.log(`🔄 Question advanced, TTS will play then preparation will start for question ${nextIdx + 1}`)
           }
           return
         }
@@ -933,18 +962,21 @@ export default function ImprovedSpeakingTest() {
 
   // preparation helper
   const beginPreparation = (seconds: number, after?: () => void) => {
+    console.log(`⏱️ beginPreparation called with ${seconds} seconds`)
+    
     // Clear any existing preparation timer
     if (prepIntervalRef.current) {
       window.clearInterval(prepIntervalRef.current)
       prepIntervalRef.current = null
     }
     
-    // Reset preparation state
+    // Reset preparation state immediately
     setIsPrepRunning(false)
     setPrepSeconds(0)
     
-    // Small delay to ensure state is reset
+    // Small delay to ensure state is reset, then start preparation
     setTimeout(() => {
+      console.log(`✅ Starting preparation timer: ${seconds} seconds`)
       setPrepSeconds(seconds)
       setIsPrepRunning(true)
       
@@ -952,6 +984,7 @@ export default function ImprovedSpeakingTest() {
       prepIntervalRef.current = window.setInterval(() => {
         setPrepSeconds((prev) => {
           if (prev <= 1) {
+            console.log(`⏰ Preparation time ended`)
             if (prepIntervalRef.current) {
               window.clearInterval(prepIntervalRef.current)
               prepIntervalRef.current = null
@@ -1776,7 +1809,7 @@ export default function ImprovedSpeakingTest() {
                   <div className="w-full max-w-xs sm:max-w-md md:max-w-lg mx-auto aspect-[4/3] bg-transparent rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex items-center justify-center shadow-sm border border-gray-200">
                     <motion.img
                       src={imgs[0]}
-                      alt="Question image"
+                      alt="Soru görseli"
                       className="w-full h-full object-contain p-2 sm:p-3"
                       whileHover={{ scale: 1.02 }}
                       transition={{ duration: 0.3 }}
@@ -1795,7 +1828,7 @@ export default function ImprovedSpeakingTest() {
                       <div key={`pimg-${idx}`} className="aspect-[4/3] bg-transparent rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex items-center justify-center shadow-sm border border-gray-200">
                         <motion.img
                           src={src}
-                          alt={`Question image ${idx + 1}`}
+                          alt={`Soru görseli ${idx + 1}`}
                           className="w-full h-full object-contain p-2 sm:p-3"
                           whileHover={{ scale: 1.02 }}
                           transition={{ duration: 0.3 }}
@@ -1971,7 +2004,7 @@ export default function ImprovedSpeakingTest() {
             className="mt-4 flex items-center gap-2 text-red-600 font-bold"
           >
             <Volume2 className="w-5 h-5" />
-            <span>Playing instructions...</span>
+            <span>Talimatlar oynatılıyor...</span>
           </motion.div>
         )}
 
@@ -2001,7 +2034,7 @@ export default function ImprovedSpeakingTest() {
               onClick={() => setIsTestComplete(true)}
               className="px-6 py-3 text-sm bg-white border-2 border-red-200 text-red-600 rounded-xl hover:bg-red-50 font-bold transition-all duration-200"
             >
-              Test Bitir (Debug)
+              Test Bitir
             </motion.button>
           )}
 
@@ -2042,17 +2075,17 @@ export default function ImprovedSpeakingTest() {
         </div>
       </main>
 
-      {!isPlayingInstructions && (
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.6 }}
-          className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6 lg:bottom-8 lg:right-8"
-        >
-          <div className="text-3xl sm:text-4xl lg:text-6xl font-bold text-gray-800 font-mono">
-            {isPrepRunning ? formatTime(prepSeconds) : formatTime(timeLeft)}
-          </div>
-          {isPrepRunning ? (
+      {/* Timer always at bottom for all sections */}
+      <motion.div
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.6 }}
+        className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 lg:bottom-8 lg:right-8 z-[900]"
+      >
+        <div className="text-3xl sm:text-4xl lg:text-6xl font-bold text-gray-800 font-mono">
+          {isPrepRunning ? formatTime(prepSeconds) : formatTime(timeLeft)}
+        </div>
+        {isPrepRunning ? (
           <div className="text-lg sm:text-xl lg:text-2xl font-bold text-red-600 font-mono text-center mt-1 sm:mt-2">
              
           </div>
@@ -2062,8 +2095,7 @@ export default function ImprovedSpeakingTest() {
             </div>
           )
         )}
-        </motion.div>
-      )}
+      </motion.div>
 
 
     </motion.div>

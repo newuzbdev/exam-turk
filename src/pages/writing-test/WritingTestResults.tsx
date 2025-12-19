@@ -115,9 +115,16 @@ export default function WritingTestResults() {
   // Get answers array
   const answers = writingData?.answers || [];
   
+  console.log("Writing results - All answers:", answers);
+  console.log("Writing results - Writing data:", writingData);
+  
   // Separate Task 1 and Task 2 answers
+  // Task 1 typically has 2 subparts (1.1 and 1.2), Task 2 has 1 answer
   const task1Answers = answers.filter((_: any, index: number) => index < 2); // First 2 answers are Task 1
   const task2Answers = answers.filter((_: any, index: number) => index >= 2); // Remaining answers are Task 2
+
+  console.log("Task 1 answers:", task1Answers);
+  console.log("Task 2 answers:", task2Answers);
 
   // Get current question and answer based on active task
   const getCurrentQuestionAndAnswer = () => {
@@ -125,18 +132,39 @@ export default function WritingTestResults() {
       // For Task 1, show the answer based on active part
       const answerIndex = activeTask1Part === "part1" ? 0 : 1;
       const currentAnswer = task1Answers[answerIndex];
+      console.log("Task 1 current answer:", currentAnswer, "index:", answerIndex);
+      const userAnswer = currentAnswer?.userAnswer;
+      
+      // Get feedback for the specific part
+      const feedbackKey = activeTask1Part === "part1" ? "part1_1" : "part1_2";
+      const feedback = writingData?.aiFeedback?.[feedbackKey] || 
+                      writingData?.aiFeedback?.taskAchievement || 
+                      `Görev 1 ${activeTask1Part === "part1" ? "Bölüm 1" : "Bölüm 2"} geri bildirimi burada gösterilecek`;
+      
       return {
         question: currentAnswer?.questionText || `Görev 1 ${activeTask1Part === "part1" ? "Bölüm 1" : "Bölüm 2"} Sorusu`,
-        answer: currentAnswer?.userAnswer || "Cevap verilmedi",
-        comment: writingData?.aiFeedback?.taskAchievement || `Görev 1 ${activeTask1Part === "part1" ? "Bölüm 1" : "Bölüm 2"} geri bildirimi burada gösterilecek`
+        answer: userAnswer && userAnswer.trim() ? userAnswer : "Cevap verilmedi",
+        comment: feedback
       };
     } else {
-      // For Task 2, show the first Task 2 answer
-      const firstTask2Answer = task2Answers[0];
+      // For Task 2, find the answer that has a non-empty userAnswer
+      const task2AnswerWithContent = task2Answers.find((ans: any) => 
+        ans?.userAnswer && typeof ans.userAnswer === 'string' && ans.userAnswer.trim() !== ""
+      ) || task2Answers[0]; // Fallback to first if none found
+      
+      console.log("Task 2 answers:", task2Answers);
+      console.log("Task 2 current answer with content:", task2AnswerWithContent);
+      const userAnswer = task2AnswerWithContent?.userAnswer;
+      
+      // Get feedback for Task 2
+      const feedback = writingData?.aiFeedback?.part2 || 
+                      writingData?.aiFeedback?.taskAchievement || 
+                      "Görev 2 geri bildirimi burada gösterilecek";
+      
       return {
-        question: firstTask2Answer?.questionText || "Görev 2 Sorusu",
-        answer: firstTask2Answer?.userAnswer || "Cevap verilmedi",
-        comment: writingData?.aiFeedback?.taskAchievement || "Görev 2 geri bildirimi burada gösterilecek"
+        question: task2AnswerWithContent?.questionText || "Görev 2 Sorusu",
+        answer: userAnswer && userAnswer.trim() ? userAnswer : "Cevap verilmedi",
+        comment: feedback
       };
     }
   };
@@ -185,7 +213,7 @@ export default function WritingTestResults() {
               <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
             </div>
             <p className="text-sm text-gray-600 leading-relaxed">
-              {writingData?.aiFeedback?.coherenceAndCohesion || "No feedback available"}
+              {writingData?.aiFeedback?.coherenceAndCohesion || "Geri bildirim mevcut değil"}
             </p>
           </div>
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -194,7 +222,7 @@ export default function WritingTestResults() {
               <div className="w-3 h-3 bg-green-500 rounded-full"></div>
             </div>
             <p className="text-sm text-gray-600 leading-relaxed">
-              {writingData?.aiFeedback?.grammaticalRangeAndAccuracy || "No feedback available"}
+              {writingData?.aiFeedback?.grammaticalRangeAndAccuracy || "Geri bildirim mevcut değil"}
             </p>
           </div>
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -203,7 +231,7 @@ export default function WritingTestResults() {
               <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
             </div>
             <p className="text-sm text-gray-600 leading-relaxed">
-              {writingData?.aiFeedback?.lexicalResource || "No feedback available"}
+              {writingData?.aiFeedback?.lexicalResource || "Geri bildirim mevcut değil"}
             </p>
           </div>
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">

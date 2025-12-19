@@ -108,7 +108,15 @@ const Navbar = () => {
             className="flex items-center cursor-pointer"
             onClick={() => navigate("/")}
           >
-            <div className="text-red-600 font-bold text-2xl uppercase">TURKISHMOCK</div>
+            <img 
+              src="/logo.png" 
+              alt="TURKISHMOCK" 
+              className="h-24 sm:h-28 md:h-32 lg:h-36 xl:h-52 w-auto object-contain"
+              onError={(e) => {
+                console.error("Logo failed to load");
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
           </div>
 
           <div className="hidden lg:block">
@@ -318,19 +326,25 @@ const Navbar = () => {
                       </div>
                     ) : (
                       <div className="flex space-x-2 px-3 py-2">
-                        <NavLink to="/login" className="flex-1">
-                          <Button
-                            variant="ghost"
-                            className="w-full text-gray-600 hover:text-red-600"
-                          >
-                            Giriş Yap
-                          </Button>
-                        </NavLink>
-                        <NavLink to="/signup" className="flex-1">
-                          <Button className="w-full bg-red-600 hover:bg-red-700 text-white">
-                            Kayıt Ol
-                          </Button>
-                        </NavLink>
+                        <Button
+                          variant="ghost"
+                          className="flex-1 text-gray-600 hover:text-red-600"
+                          onClick={() => {
+                            setAuthModalMode("login");
+                            setIsAuthModalOpen(true);
+                          }}
+                        >
+                          Giriş Yap
+                        </Button>
+                        <Button
+                          className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                          onClick={() => {
+                            setAuthModalMode("register");
+                            setIsAuthModalOpen(true);
+                          }}
+                        >
+                          Kayıt Ol
+                        </Button>
                       </div>
                     )}
 

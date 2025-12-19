@@ -23,7 +23,7 @@ const HeroSection = () => {
               className="mb-4 sm:mb-6 bg-red-100 text-red-700 border-red-200 px-3 sm:px-4 py-1.5 sm:py-2 text-base sm:text-lg"
             >
               <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-              Türkiye'nin En Güvenilir Dil Testi Platformu
+              En Güvenilir Türkçe Dil Testi Platformu
             </Badge> */}
 
             <h1 className="text-4xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-4 sm:mb-6">
@@ -48,32 +48,34 @@ const HeroSection = () => {
                   <ArrowRight className="ml-2 h-5 w-5 sm:h-6 sm:w-6" />
                 </Button>
               </NavLink>
-              <Button
-                variant="outline"
-                size="lg"
-                className="border-red-200 text-red-600 hover:bg-red-50 px-4 sm:px-6 py-2 sm:py-3 text-lg sm:text-xl w-full sm:w-auto"
-              >
-                Nasıl Çalışır
-              </Button>
+              <NavLink to="/how-it-works">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="border-red-200 text-red-600 hover:bg-red-50 px-4 sm:px-6 py-2 sm:py-3 text-lg sm:text-xl w-full sm:w-auto"
+                >
+                  Nasıl Çalışır
+                </Button>
+              </NavLink>
             </div>
 
             <div className="flex flex-wrap justify-center items-center gap-4 sm:gap-6 text-sm sm:text-base text-gray-500 mb-8 sm:mb-12">
               <div className="flex items-center">
                 <Users className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-red-500" />
                 <span className="text-lg sm:text-xl">
-                  15,000+ aktif kullanıcı
+                  15,000+ Aktif Kullanıcı
                 </span>
               </div>
               <div className="flex items-center">
                 <Shield className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-red-500" />
                 <span className="text-lg sm:text-xl">
-                  Güvenli ve sertifikalı
+                  Güvenli Kullanım
                 </span>
               </div>
               <div className="flex items-center">
                 <Globe className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-red-500" />
                 <span className="text-lg sm:text-xl">
-                  Uluslararası standartlar
+                  Uluslararası Standart
                 </span>
               </div>
             </div>

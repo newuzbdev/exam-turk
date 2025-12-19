@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { overallTestFlowStore, overallTestTokenStore } from "@/services/overallTest.service"
 import { motion, AnimatePresence } from "framer-motion"
-import { Mic, ArrowLeft, Volume2 } from "lucide-react"
+import { Mic, ArrowLeft, Volume2, Clock } from "lucide-react"
 import axiosPrivate from "@/config/api"
 import { toast } from "sonner"
 import { speakingSubmissionService } from "@/services/speakingSubmission.service"
@@ -122,6 +122,7 @@ export default function ImprovedSpeakingTest() {
   const [isPaused, setIsPaused] = useState(false)
   const [isPlayingInstructions, setIsPlayingInstructions] = useState(false)
   const [isPlayingTTS, setIsPlayingTTS] = useState(false)
+  const [isProcessingSpeechToText, setIsProcessingSpeechToText] = useState(false)
   // speaking/answer timer (seconds)
   const [timeLeft, setTimeLeft] = useState(RECORD_SECONDS_PER_QUESTION)
   const [_recordingTime, setRecordingTime] = useState(0)
@@ -421,14 +422,11 @@ export default function ImprovedSpeakingTest() {
           resetPerQuestionState()
           playSound("question")
           // Start first question based on section type
-          if (currentSection.type === "PART1") {
-            // Start hazırlık ONCE here and remember this key to avoid duplicates
-            const key = `${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
-            prepStartedKeyRef.current = key
-            beginPreparation(5, () => startRecording(30, true))
-          } else if (currentSection.type === "PART2" || currentSection.type === "PART3") {
-            autoStartKeyRef.current = `${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
-            beginPreparation(60, () => startRecording(120, true))
+          // Don't start preparation here - let TTS play first, then preparation will start after TTS ends
+          // For sections without TTS, preparation will start in the TTS effect's onerror handler
+          if (currentSection.type === "PART1" || currentSection.type === "PART2" || currentSection.type === "PART3") {
+            // TTS will handle starting preparation after it finishes
+            // If no TTS, the TTS effect will handle it
           } else {
             startRecording(undefined, true)
           }
@@ -469,13 +467,11 @@ export default function ImprovedSpeakingTest() {
             resetPerQuestionState()
             playSound("question")
             // Start first question based on section type
-            if (currentSection.type === "PART1") {
-              // start prep only once via the same path as instruction-present case
-              const key = `${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
-              prepStartedKeyRef.current = key
-              beginPreparation(5, () => startRecording(30, true))
-            } else if (currentSection.type === "PART2" || currentSection.type === "PART3") {
-              beginPreparation(60, () => startRecording(120, true))
+            // Don't start preparation here - let TTS play first, then preparation will start after TTS ends
+            // For sections without TTS, preparation will start in the TTS effect's onerror handler
+            if (currentSection.type === "PART1" || currentSection.type === "PART2" || currentSection.type === "PART3") {
+              // TTS will handle starting preparation after it finishes
+              // If no TTS, the TTS effect will handle it
             } else {
               startRecording(undefined, true)
             }
@@ -492,81 +488,107 @@ export default function ImprovedSpeakingTest() {
   }, [showSectionDescription, currentSection, micChecked, isPlayingInstructions, currentSectionIndex, currentSubPartIndex])
 
   // Play TTS audio when a new question becomes active (outside instructions)
+  // After TTS ends, start preparation timer
   useEffect(() => {
-    if (!showSectionDescription && currentSection && !isPlayingInstructions && currentQuestion) {
-      // Play TTS audio if available (skip for Part 2 and Part 3)
-      if (currentQuestion?.textToSpeechUrl && currentSection?.type !== "PART2" && currentSection?.type !== "PART3") {
-        const fullUrl = currentQuestion.textToSpeechUrl.startsWith('./')
-          ? `${baseURL}${currentQuestion.textToSpeechUrl.substring(1)}`
-          : currentQuestion.textToSpeechUrl
+    if (!showSectionDescription && currentSection && !isPlayingInstructions && !isRecording && !isPrepRunning && !isPlayingTTS) {
+      const key = `${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
+      
+      // If preparation already started for this question, skip
+      if (prepStartedKeyRef.current === key) {
+        return
+      }
+      
+      // For PART2/PART3, check if there are questions in subParts
+      let questionToUse = currentQuestion
+      if (!questionToUse && (currentSection.type === "PART2" || currentSection.type === "PART3")) {
+        // Try to get question from subParts
+        const subPart = currentSection.subParts?.[currentSubPartIndex]
+        if (subPart?.questions && subPart.questions.length > 0) {
+          questionToUse = subPart.questions[0]
+        } else if (currentSection.questions && currentSection.questions.length > 0) {
+          questionToUse = currentSection.questions[0]
+        }
+      }
+      
+      // Play TTS audio if available (for ALL sections - PART1, PART2, PART3)
+      if (questionToUse?.textToSpeechUrl) {
+        console.log(`🔊 Playing TTS for ${currentSection.type}, question: ${questionToUse.id}`)
+        const fullUrl = questionToUse.textToSpeechUrl.startsWith('./')
+          ? `${baseURL}${questionToUse.textToSpeechUrl.substring(1)}`
+          : questionToUse.textToSpeechUrl
         const ttsAudio = new Audio(fullUrl)
         ttsAudioRef.current = ttsAudio
         setIsPlayingTTS(true)
         ttsAudio.onended = () => {
+          console.log(`✅ TTS ended for ${currentSection.type}, starting preparation timer`)
           setIsPlayingTTS(false)
           ttsAudioRef.current = null
-          // After question TTS ends, start preparation for PART1 automatically
-          if (currentSection?.type === "PART1" && currentQuestion) {
-            const key = `${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
-            if (prepStartedKeyRef.current !== key) {
-              prepStartedKeyRef.current = key
-              beginPreparation(5, () => {
-                startRecording(30, true)
-              })
-            }
-          }
+          // After question TTS ends, ALWAYS start preparation for all sections
+          startPreparationAfterTTS()
         }
-        ttsAudio.onerror = () => {
+        ttsAudio.onerror = (e) => {
+          console.error(`❌ TTS error for ${currentSection.type}:`, e)
           setIsPlayingTTS(false)
           ttsAudioRef.current = null
-          toast.error("TTS audio yüklenemedi")
+          // If TTS fails, start preparation immediately
+          startPreparationAfterTTS()
         }
-        ttsAudio.play().catch(() => {
+        ttsAudio.play().catch((error) => {
+          console.error(`❌ TTS play failed for ${currentSection.type}:`, error)
           setIsPlayingTTS(false)
           ttsAudioRef.current = null
+          // If TTS play fails, start preparation immediately
+          startPreparationAfterTTS()
         })
+      } else {
+        // No TTS available, start preparation immediately
+        console.log(`⏭️ No TTS available for ${currentSection.type}, starting preparation immediately`)
+        startPreparationAfterTTS()
       }
     }
-  }, [currentSectionIndex, currentSubPartIndex, currentQuestionIndex, showSectionDescription, isPlayingInstructions, currentQuestion])
+  }, [currentSectionIndex, currentSubPartIndex, currentQuestionIndex, showSectionDescription, isPlayingInstructions, currentQuestion, isRecording, isPrepRunning, isPlayingTTS, currentSection])
+
+  // Helper function to start preparation after TTS (or immediately if no TTS)
+  const startPreparationAfterTTS = () => {
+    if (!currentSection) return
+    
+    // For PART2/PART3, there might not be a currentQuestion in the same way
+    // So we allow starting preparation even without currentQuestion for these sections
+    if (!currentQuestion && currentSection.type !== "PART2" && currentSection.type !== "PART3") {
+      return
+    }
+    
+    const key = `${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
+    
+    // Prevent duplicate preparation starts
+    if (prepStartedKeyRef.current === key) {
+      console.log(`⚠️ Preparation already started for key: ${key}`)
+      return
+    }
+    
+    console.log(`🎯 Starting preparation for ${currentSection.type}, key: ${key}`)
+    prepStartedKeyRef.current = key
+    
+    if (currentSection.type === "PART1") {
+      // Section 1.2 (subPartIndex === 1) gets 7 seconds, others get 5 seconds
+      const prepTime = currentSubPartIndex === 1 ? 7 : 5
+      console.log(`⏱️ PART1 preparation time: ${prepTime} seconds (subPart: ${currentSubPartIndex})`)
+      beginPreparation(prepTime, () => {
+        startRecording(30, true)
+      })
+    } else if (currentSection.type === "PART2" || currentSection.type === "PART3") {
+      console.log(`⏱️ ${currentSection.type} preparation time: 60 seconds`)
+      beginPreparation(60, () => {
+        startRecording(120, true)
+      })
+    } else {
+      startRecording(undefined, true)
+    }
+  }
 
   // Removed duplicate auto-advance effect to prevent loops
 
-  // Direct auto-start when question changes in PART1
-  useEffect(() => {
-    if (
-      !showSectionDescription &&
-      currentSection &&
-      currentSection.type === "PART1" &&
-      currentQuestion &&
-      !isPlayingInstructions &&
-      !isRecording &&
-      !isPrepRunning &&
-      !isPlayingTTS
-    ) {
-      const key = `${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
-      console.log(`🎯 Question changed effect: Starting preparation for question ${currentQuestionIndex + 1}`)
-      
-      // Only start if we haven't already started for this question
-      if (prepStartedKeyRef.current !== key) {
-        // Clear any existing preparation
-        if (prepIntervalRef.current) {
-          window.clearInterval(prepIntervalRef.current)
-          prepIntervalRef.current = null
-        }
-        
-        // Start preparation with a small delay to prevent loops
-        prepStartedKeyRef.current = key
-        setTimeout(() => {
-          beginPreparation(5, () => {
-            console.log(`🎤 Auto-starting recording for question ${currentQuestionIndex + 1}`)
-            startRecording(30, true)
-          })
-        }, 100)
-      } else {
-        console.log(`⚠️ Preparation already started for question ${currentQuestionIndex + 1}`)
-      }
-    }
-  }, [currentQuestionIndex, currentSubPartIndex, currentSectionIndex])
+  // Removed: Direct auto-start effect - now handled by TTS effect which ensures TTS plays first
 
   // Removed centralized auto-start to prevent double hazırlık
 
@@ -708,18 +730,44 @@ export default function ImprovedSpeakingTest() {
         const blob = new Blob(chunksRef.current, { type: supported ? "audio/webm;codecs=opus" : "audio/webm" })
         chunksRef.current = []
         const duration = await getBlobDuration(blob)
-        // Use question id when available, else fallback to section id
-        const key = currentQuestion?.id || currentSection?.id || `${currentSectionIndex}`
+        // Use question id when available, with better fallback logic
+        let key = currentQuestion?.id
+        if (!key && currentSection && currentSection.questions && currentSection.questions.length > 0 && currentSection.questions[currentQuestionIndex]) {
+          key = currentSection.questions[currentQuestionIndex].id
+        }
+        if (!key && currentSection?.subParts?.[currentSubPartIndex]?.questions && currentSection?.subParts?.[currentSubPartIndex]?.questions
+          ?.length > 0) {
+          const sortedQuestions = [...currentSection?.subParts?.[currentSubPartIndex]?.questions || []].sort((a, b) => a.order - b.order)
+          if (sortedQuestions[currentQuestionIndex]) {
+            key = sortedQuestions[currentQuestionIndex].id
+          }
+        }
+        if (!key) {
+          key = currentSection?.id || `${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
+        }
+        console.log(`🎤 Recording saved with key: ${key} for question:`, currentQuestion?.id || "unknown")
         const rec: Recording = { blob, duration, questionId: key }
         setRecordings((prev) => new Map(prev).set(key, rec))
 
         // Transcribe immediately and store text answer
+        setIsProcessingSpeechToText(true)
         try {
           const stt = await speechToTextService.convertAudioToText(blob)
-          const text = stt.success ? (stt.text || "") : "[Ses metne dönüştürülemedi]"
-          setAnswers(prev => new Map(prev).set(key, { text: text || "[Cevap bulunamadı]", duration }))
-        } catch {
+          let text = ""
+          if (stt.success && stt.text) {
+            text = stt.text.trim()
+          }
+          // Only use placeholder if text is actually empty
+          if (!text) {
+            text = "[Ses metne dönüştürülemedi]"
+          }
+          console.log(`💾 Saving answer for question ${key}:`, text.substring(0, 50))
+          setAnswers(prev => new Map(prev).set(key, { text, duration }))
+        } catch (error) {
+          console.error("Error converting speech to text:", error)
           setAnswers(prev => new Map(prev).set(key, { text: "[Ses metne dönüştürülemedi]", duration }))
+        } finally {
+          setIsProcessingSpeechToText(false)
         }
         
         // For PART1, automatically advance to next question after recording
@@ -780,6 +828,15 @@ export default function ImprovedSpeakingTest() {
     }
     setIsPrepRunning(false)
     setPrepSeconds(0)
+    // Clear TTS state to allow next question's TTS to play
+    if (ttsAudioRef.current) {
+      ttsAudioRef.current.pause()
+      ttsAudioRef.current.currentTime = 0
+      ttsAudioRef.current = null
+    }
+    setIsPlayingTTS(false)
+    // Clear preparation key to allow next question to start preparation after TTS
+    prepStartedKeyRef.current = null
   }
 
   const nextQuestion = (force: boolean = false) => {
@@ -846,8 +903,7 @@ export default function ImprovedSpeakingTest() {
           // For PART1, let the auto-advance effect handle the preparation
           // This ensures proper state management and prevents conflicts
           if (currentSection.type === "PART1") {
-            console.log(`🔄 Question advanced, auto-advance effect should trigger for question ${nextIdx + 1}`)
-            // Don't clear the prep key - let the effect handle it
+            console.log(`🔄 Question advanced, TTS will play then preparation will start for question ${nextIdx + 1}`)
           }
           return
         }
@@ -906,18 +962,21 @@ export default function ImprovedSpeakingTest() {
 
   // preparation helper
   const beginPreparation = (seconds: number, after?: () => void) => {
+    console.log(`⏱️ beginPreparation called with ${seconds} seconds`)
+    
     // Clear any existing preparation timer
     if (prepIntervalRef.current) {
       window.clearInterval(prepIntervalRef.current)
       prepIntervalRef.current = null
     }
     
-    // Reset preparation state
+    // Reset preparation state immediately
     setIsPrepRunning(false)
     setPrepSeconds(0)
     
-    // Small delay to ensure state is reset
+    // Small delay to ensure state is reset, then start preparation
     setTimeout(() => {
+      console.log(`✅ Starting preparation timer: ${seconds} seconds`)
       setPrepSeconds(seconds)
       setIsPrepRunning(true)
       
@@ -925,6 +984,7 @@ export default function ImprovedSpeakingTest() {
       prepIntervalRef.current = window.setInterval(() => {
         setPrepSeconds((prev) => {
           if (prev <= 1) {
+            console.log(`⏰ Preparation time ended`)
             if (prepIntervalRef.current) {
               window.clearInterval(prepIntervalRef.current)
               prepIntervalRef.current = null
@@ -1001,16 +1061,22 @@ export default function ImprovedSpeakingTest() {
 
     try {
       const answersEntries = Array.from(answers.entries())
+      console.log("📝 Submitting test with answers:", answersEntries.map(([qid, v]) => ({ qid, text: v.text?.substring(0, 50) })))
 
       // Persist detailed answers (with duration) for potential overall submission
       const answersObj = Object.fromEntries(
-        answersEntries.map(([qid, v]) => [qid, { text: v.text, duration: v.duration }])
+        answersEntries.map(([qid, v]) => {
+          // Preserve the text as-is, don't overwrite with placeholder if it exists
+          const text = v.text || "[Cevap bulunamadı]"
+          return [qid, { text, duration: v.duration }]
+        })
       )
 
       // Keep a simple questionId -> transcript map for direct submission
       const answerTextRecord = answersEntries.reduce<Record<string, string>>((acc, [qid, v]) => {
         const cleaned = v?.text?.trim()
-        acc[qid] = cleaned ? v.text : "[Cevap bulunamadı]"
+        // Only use placeholder if text is truly empty or just whitespace
+        acc[qid] = cleaned || "[Cevap bulunamadı]"
         return acc
       }, {})
 
@@ -1021,6 +1087,11 @@ export default function ImprovedSpeakingTest() {
         timestamp: new Date().toISOString()
       }
 
+      console.log("💾 Saving to sessionStorage:", {
+        testId: testData.id,
+        answerCount: Object.keys(answersObj).length,
+        answerKeys: Object.keys(answersObj)
+      })
       sessionStorage.setItem(`speaking_answers_${testData.id}`, JSON.stringify(answersData))
 
       const wasOverallFlowActive = overallTestFlowStore.hasActive()
@@ -1184,37 +1255,65 @@ export default function ImprovedSpeakingTest() {
         const speakingAnswers = sessionStorage.getItem(key);
         if (speakingAnswers) {
           const speakingData = JSON.parse(speakingAnswers);
-          console.log("Submitting speaking test:", speakingData.testId, "with recordings:", speakingData.recordings?.length || 0);
+          console.log("Submitting speaking test:", speakingData.testId);
+          console.log("Available answers:", speakingData.answers);
+          console.log("Sections:", speakingData.sections);
+          
           const answerMap = new Map<string, { text: string; duration: number }>();
           if (speakingData.answers) {
             for (const [qid, val] of Object.entries(speakingData.answers)) {
               const v: any = val;
-              answerMap.set(qid, { text: v?.text ?? "[Cevap bulunamadı]", duration: Number(v?.duration) || 0 });
+              const answerText = v?.text?.trim();
+              // Only use the answer if it's not empty and not the placeholder
+              if (answerText && answerText !== "[Cevap bulunamadı]" && answerText !== "[Ses metne dönüştürülemedi]") {
+                answerMap.set(qid, { text: answerText, duration: Number(v?.duration) || 0 });
+              } else if (answerText) {
+                // Keep the placeholder if that's what was saved
+                answerMap.set(qid, { text: answerText, duration: Number(v?.duration) || 0 });
+              }
             }
           } else if (speakingData.recordings) {
-            for (const [qid, rec] of speakingData.recordings) {
+            // Handle recordings if answers are not available
+            for (const [qid, rec] of Object.entries(speakingData.recordings)) {
+              const recording: any = rec;
               try {
                 const fd = new FormData();
-                fd.append("audio", rec.blob, "recording.webm");
+                fd.append("audio", recording.blob, "recording.webm");
                 const res = await axiosPrivate.post("/api/speaking-submission/speech-to-text", fd, {
                   headers: { "Content-Type": "multipart/form-data" },
                   timeout: 30000,
                 });
                 const rawText = res.data?.text ?? res.data?.transcript;
-                const text = rawText || "[Ses metne dönüştürülemedi]";
-                answerMap.set(qid, { text, duration: rec.duration });
+                const text = rawText?.trim() || "[Ses metne dönüştürülemedi]";
+                answerMap.set(qid, { text, duration: recording.duration || 0 });
               } catch (e) {
-                answerMap.set(qid, { text: "[Ses metne dönüştürülemedi]", duration: rec.duration || 0 });
+                answerMap.set(qid, { text: "[Ses metne dönüştürülemedi]", duration: recording.duration || 0 });
               }
             }
           }
+          
+          console.log("Answer map after processing:", Array.from(answerMap.entries()));
           
           const parts = speakingData.sections.map((s: any) => {
             const p: any = { description: s.description, image: "" };
             if (s.subParts?.length) {
               const subParts = s.subParts.map((sp: any) => {
                 const questions = sp.questions.map((q: any) => {
-                  const a = answerMap.get(q.id);
+                  // Try multiple ID formats to find the answer
+                  let a = answerMap.get(q.id);
+                  if (!a && q.questionId) {
+                    a = answerMap.get(q.questionId);
+                  }
+                  // If still not found, try to find by matching any key that contains the question ID
+                  if (!a) {
+                    for (const [key, value] of answerMap.entries()) {
+                      if (key.includes(q.id) || q.id.includes(key)) {
+                        a = value;
+                        break;
+                      }
+                    }
+                  }
+                  console.log(`Question ${q.id}: Found answer:`, a ? a.text : "NOT FOUND");
                   return {
                     questionId: q.id,
                     userAnswer: a?.text ?? "[Cevap bulunamadı]",
@@ -1229,7 +1328,21 @@ export default function ImprovedSpeakingTest() {
               p.duration = duration;
             } else {
               const questions = s.questions.map((q: any) => {
-                const a = answerMap.get(q.id);
+                // Try multiple ID formats to find the answer
+                let a = answerMap.get(q.id);
+                if (!a && q.questionId) {
+                  a = answerMap.get(q.questionId);
+                }
+                // If still not found, try to find by matching any key that contains the question ID
+                if (!a) {
+                  for (const [key, value] of answerMap.entries()) {
+                    if (key.includes(q.id) || q.id.includes(key)) {
+                      a = value;
+                      break;
+                    }
+                  }
+                }
+                console.log(`Question ${q.id}: Found answer:`, a ? a.text : "NOT FOUND");
                 return {
                   questionId: q.id,
                   userAnswer: a?.text ?? "[Cevap bulunamadı]",
@@ -1435,25 +1548,25 @@ export default function ImprovedSpeakingTest() {
       {/* <DisableKeys /> */}
       
       {/* Header with section indicators */}
-      <div className="bg-white border-b border-gray-200 px-3 sm:px-6 py-3">
+      <div className="bg-white border-b border-gray-200 px-2 sm:px-4 md:px-6 py-2 sm:py-3">
         {/* Mobile Layout */}
         <div className="block sm:hidden">
           {/* Top row - TURKISHMOCK and Speaking */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="bg-red-600 text-white px-3 py-1.5 rounded font-bold text-sm">
+          <div className="flex items-center justify-between mb-3">
+            <div className="bg-red-600 text-white px-2 sm:px-3 py-1 sm:py-1.5 rounded font-bold text-xs sm:text-sm">
               TURKISHMOCK
             </div>
-            <div className="font-bold text-lg text-gray-800">Konuşma</div>
+            <div className="font-bold text-base sm:text-lg text-gray-800">Konuşma</div>
           </div>
           
           {/* Progress indicator */}
-          <div className="mb-3">
-            <div className="text-sm text-gray-500 text-center mb-3">
+          <div className="mb-2">
+            <div className="text-xs sm:text-sm text-gray-500 text-center mb-2">
               Test Bölümleri
             </div>
-            <div className="flex gap-2 justify-center">
+            <div className="flex gap-1.5 sm:gap-2 justify-center items-center">
               {/* Section 1.1 */}
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
+              <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm ${
                 currentSectionIndex === 0 && currentSubPartIndex === 0
                   ? "bg-green-600 text-white shadow-lg"
                   : currentSectionIndex > 0 || (currentSectionIndex === 0 && currentSubPartIndex > 0)
@@ -1464,14 +1577,14 @@ export default function ImprovedSpeakingTest() {
               </div>
               
               {/* Connector line */}
-              <div className={`w-6 h-0.5 mt-5 ${
+              <div className={`w-4 sm:w-6 h-0.5 ${
                 currentSectionIndex > 0 || (currentSectionIndex === 0 && currentSubPartIndex > 0)
                   ? "bg-green-300"
                   : "bg-gray-300"
               }`}></div>
               
               {/* Section 1.2 */}
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
+              <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm ${
                 currentSectionIndex === 0 && currentSubPartIndex === 1
                   ? "bg-green-600 text-white shadow-lg"
                   : currentSectionIndex > 0
@@ -1482,14 +1595,14 @@ export default function ImprovedSpeakingTest() {
               </div>
               
               {/* Connector line */}
-              <div className={`w-6 h-0.5 mt-5 ${
+              <div className={`w-4 sm:w-6 h-0.5 ${
                 currentSectionIndex > 0
                   ? "bg-green-300"
                   : "bg-gray-300"
               }`}></div>
               
               {/* Section 2 */}
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
+              <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm ${
                 currentSectionIndex === 1
                   ? "bg-green-600 text-white shadow-lg"
                   : currentSectionIndex > 1
@@ -1500,14 +1613,14 @@ export default function ImprovedSpeakingTest() {
               </div>
               
               {/* Connector line */}
-              <div className={`w-6 h-0.5 mt-5 ${
+              <div className={`w-4 sm:w-6 h-0.5 ${
                 currentSectionIndex > 1
                   ? "bg-green-300"
                   : "bg-gray-300"
               }`}></div>
               
               {/* Section 3 */}
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
+              <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm ${
                 currentSectionIndex === 2
                   ? "bg-green-600 text-white shadow-lg"
                   : "bg-gray-200 text-gray-600"
@@ -1664,7 +1777,7 @@ export default function ImprovedSpeakingTest() {
         </motion.header>
       )}
          {/* question rendering part */}
-     <main className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] px-4 sm:px-8">
+     <main className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] px-2 sm:px-4 md:px-8 pb-4 sm:pb-6 md:pb-8">
        <AnimatePresence mode="wait">
          <motion.div
            key={`${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`}
@@ -1674,8 +1787,8 @@ export default function ImprovedSpeakingTest() {
            className="mb-12 sm:mb-16"
          >
           {currentSection?.type !== "PART2" && currentSection?.type !== "PART3" && !isPlayingInstructions && (
-             <div className="text-center">
-               <div className="text-black font-bold text-2xl sm:text-3xl">
+             <div className="text-center px-2">
+               <div className="text-black font-bold text-xl sm:text-2xl md:text-3xl">
                  Soru {currentQuestionIndex + 1}
                </div>
              </div>
@@ -1685,7 +1798,7 @@ export default function ImprovedSpeakingTest() {
 
         {!isPlayingInstructions && currentSection?.subParts?.[currentSubPartIndex]?.images?.length ? (
           <motion.div 
-            className="mb-8" 
+            className="mb-4 sm:mb-6 md:mb-8 w-full px-2 sm:px-4" 
             initial={{ opacity: 0, scale: 0.95 }} 
             animate={{ opacity: 1, scale: 1 }}
           >
@@ -1693,11 +1806,11 @@ export default function ImprovedSpeakingTest() {
               const imgs = currentSection.subParts[currentSubPartIndex].images
               if (imgs.length === 1) {
                 return (
-                  <div className="w-full max-w-lg mx-auto aspect-[4/3] bg-transparent rounded-2xl overflow-hidden flex items-center justify-center">
+                  <div className="w-full max-w-xs sm:max-w-md md:max-w-lg mx-auto aspect-[4/3] bg-transparent rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex items-center justify-center shadow-sm border border-gray-200">
                     <motion.img
                       src={imgs[0]}
-                      alt="Question image"
-                      className="w-full h-full object-contain"
+                      alt="Soru görseli"
+                      className="w-full h-full object-contain p-2 sm:p-3"
                       whileHover={{ scale: 1.02 }}
                       transition={{ duration: 0.3 }}
                       onError={(e) => {
@@ -1710,13 +1823,13 @@ export default function ImprovedSpeakingTest() {
               }
               if (imgs.length >= 2) {
                 return (
-                  <div className="w-full max-w-2xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="w-full max-w-xl sm:max-w-2xl md:max-w-3xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
                     {imgs.slice(0, 2).map((src, idx) => (
-                      <div key={`pimg-${idx}`} className="aspect-[4/3] bg-transparent rounded-2xl overflow-hidden flex items-center justify-center">
+                      <div key={`pimg-${idx}`} className="aspect-[4/3] bg-transparent rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex items-center justify-center shadow-sm border border-gray-200">
                         <motion.img
                           src={src}
-                          alt={`Question image ${idx + 1}`}
-                          className="w-full h-full object-contain"
+                          alt={`Soru görseli ${idx + 1}`}
+                          className="w-full h-full object-contain p-2 sm:p-3"
                           whileHover={{ scale: 1.02 }}
                           transition={{ duration: 0.3 }}
                           onError={(e) => {
@@ -1742,53 +1855,53 @@ export default function ImprovedSpeakingTest() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ delay: 0.2 }}
-              className="mb-16 sm:mb-20"
+              className="mb-8 sm:mb-12 md:mb-16 lg:mb-20 px-2 sm:px-4"
             >
           {currentSection?.type === "PART2" ? (
-            <div className="max-w-3xl mx-auto bg-white p-4 sm:p-6 rounded-xl">
+            <div className="max-w-3xl mx-auto bg-white p-3 sm:p-4 md:p-6 rounded-lg sm:rounded-xl">
               <ul className="list-disc list-inside space-y-2 sm:space-y-3 text-black">
                 {(currentSection?.subParts?.[currentSubPartIndex]?.questions || currentSection?.questions || []).map((q) => (
-                  <li key={q.id} className="text-lg sm:text-xl leading-relaxed">
+                  <li key={q.id} className="text-base sm:text-lg md:text-xl leading-relaxed break-words">
                     {q.questionText}
                   </li>
                 ))}
               </ul>
             </div>
           ) : currentSection?.type === "PART3" ? (
-            <div className="max-w-5xl mx-auto bg-white p-0 rounded-xl overflow-hidden border border-gray-300">
+            <div className="w-full max-w-5xl mx-auto bg-white p-0 rounded-lg sm:rounded-xl overflow-hidden border border-gray-300 shadow-sm mb-4 sm:mb-6">
               {(() => {
                 const sp = currentSection?.subParts?.[currentSubPartIndex]
                 const questions = sp?.questions ? [...sp.questions].sort((a, b) => a.order - b.order) : []
                 const text = questions?.[0]?.questionText || currentSection?.description || ""
                 return text ? (
-                  <div className="border-b border-gray-300 px-4 sm:px-6 py-3 sm:py-4">
-                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 text-center whitespace-pre-line">
+                  <div className="border-b border-gray-300 px-3 sm:px-4 md:px-6 py-3 sm:py-4">
+                    <h3 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-gray-900 text-center whitespace-pre-line leading-relaxed break-words">
                       {text}
                     </h3>
                   </div>
                 ) : null
               })()}
               <div className="grid grid-cols-1 md:grid-cols-2">
-                <div className="p-4 sm:p-6 md:border-r border-gray-300">
-                  <h4 className="text-base sm:text-lg font-bold mb-3 text-gray-900">Lehine</h4>
-                  <ul className="list-disc list-inside space-y-2 text-black text-base sm:text-lg">
+                <div className="p-3 sm:p-4 md:p-5 lg:p-6 md:border-r border-gray-300 border-b md:border-b-0">
+                  <h4 className="text-xs sm:text-sm md:text-base lg:text-lg font-bold mb-2 sm:mb-3 text-gray-900">Lehine</h4>
+                  <ul className="list-disc list-inside space-y-2 sm:space-y-2.5 md:space-y-3 text-gray-800 text-xs sm:text-sm md:text-base lg:text-lg leading-relaxed">
                     {(currentSection as any)?.points?.filter((p: any) => p.type === 'ADVANTAGE')?.flatMap((p: any) => p.example || []).sort((a: any, b: any) => (a.order||0)-(b.order||0)).map((ex: any, idx: number) => (
-                      <li key={`adv-${idx}`}>{ex.text}</li>
+                      <li key={`adv-${idx}`} className="pl-1 break-words">{ex.text}</li>
                     ))}
                   </ul>
                 </div>
-                <div className="p-4 sm:p-6">
-                  <h4 className="text-base sm:text-lg font-bold mb-3 text-gray-900">Aleyhine</h4>
-                  <ul className="list-disc list-inside space-y-2 text-black text-base sm:text-lg">
+                <div className="p-3 sm:p-4 md:p-5 lg:p-6">
+                  <h4 className="text-xs sm:text-sm md:text-base lg:text-lg font-bold mb-2 sm:mb-3 text-gray-900">Aleyhine</h4>
+                  <ul className="list-disc list-inside space-y-2 sm:space-y-2.5 md:space-y-3 text-gray-800 text-xs sm:text-sm md:text-base lg:text-lg leading-relaxed">
                     {(currentSection as any)?.points?.filter((p: any) => p.type === 'DISADVANTAGE')?.flatMap((p: any) => p.example || []).sort((a: any, b: any) => (a.order||0)-(b.order||0)).map((ex: any, idx: number) => (
-                      <li key={`dis-${idx}`}>{ex.text}</li>
+                      <li key={`dis-${idx}`} className="pl-1 break-words">{ex.text}</li>
                     ))}
                   </ul>
                 </div>
               </div>
             </div>
               ) : (
-                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-medium text-gray-800 text-center leading-relaxed max-w-4xl px-4">
+                <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl font-medium text-gray-800 text-center leading-relaxed max-w-4xl mx-auto px-2 sm:px-4 break-words">
                   {currentQuestion?.questionText}
                 </h2>
               )}
@@ -1796,36 +1909,79 @@ export default function ImprovedSpeakingTest() {
           )}
         </AnimatePresence>
 
-        <div className="relative">
-          {isRecording && !isPaused && !isPlayingInstructions && !isPrepRunning && (
-            <>
-              <span className="absolute inset-0 w-32 h-32 sm:w-40 sm:h-40 -left-3 -top-3 sm:-left-4 sm:-top-4 rounded-full bg-red-400 opacity-30 animate-ping" style={{ animationDuration: '2.5s' }}></span>
-              <span className="absolute inset-0 w-36 h-36 sm:w-48 sm:h-48 -left-6 -top-6 sm:-left-8 sm:-top-8 rounded-full bg-red-500 opacity-20 animate-ping" style={{ animationDuration: '3s' }}></span>
-            </>
-          )}
-          <motion.button
-            onClick={() => {
-              if (isPlayingInstructions || isPrepRunning) return
-              if (isRecording) stopRecording()
-              else startRecording()
-            }}
-            disabled={isPlayingInstructions || isPrepRunning || isPlayingTTS}
-            className={`w-20 h-20 sm:w-24 sm:h-24 lg:w-32 lg:h-32 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 ${
-              isRecording
-                ? "bg-red-600 hover:bg-red-700"
-                : "bg-gradient-to-br from-red-400 to-red-600 hover:from-red-500 hover:to-red-700"
-            } ${(isPlayingInstructions || isPrepRunning) ? "opacity-50 cursor-not-allowed" : ""}`}
-            whileHover={{ scale: (isPlayingInstructions || isPrepRunning) ? 1 : 1.05 }}
-            whileTap={{ scale: (isPlayingInstructions || isPrepRunning) ? 1 : 0.95 }}
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.4, type: "spring", stiffness: 200 }}
+        {/* Timer display for PART3 when recording */}
+        {currentSection?.type === "PART3" && isRecording && !isPlayingInstructions && !isPlayingTTS && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-3 sm:mb-4 md:mb-6 w-full max-w-sm mx-auto px-2"
           >
-            <div>
-              <Mic className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-white" />
+            <div className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 shadow-lg border-2 border-red-200">
+              <p className="text-xs sm:text-sm md:text-base font-medium text-gray-700 mb-1 sm:mb-2 text-center">Cevap Süresi</p>
+              <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-red-600 font-mono text-center">
+                {formatTime(timeLeft)}
+              </p>
+              <p className="text-[10px] sm:text-xs md:text-sm text-gray-500 mt-1 sm:mt-2 text-center">2 dakika cevap süresi</p>
             </div>
-          </motion.button>
-        </div>
+          </motion.div>
+        )}
+
+        {/* Hide microphone button until TTS finishes and preparation time completes */}
+        {!isPlayingInstructions && !isPlayingTTS && !isPrepRunning ? (
+          <div className="relative mt-2 sm:mt-4 md:mt-6">
+            {isRecording && !isPaused && (
+              <>
+                <span className="absolute inset-0 w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 -left-2 -top-2 sm:-left-3 sm:-top-3 md:-left-4 md:-top-4 rounded-full bg-red-400 opacity-30 animate-ping" style={{ animationDuration: '2.5s' }}></span>
+                <span className="absolute inset-0 w-28 h-28 sm:w-36 sm:h-36 md:w-48 md:h-48 -left-4 -top-4 sm:-left-6 sm:-top-6 md:-left-8 md:-top-8 rounded-full bg-red-500 opacity-20 animate-ping" style={{ animationDuration: '3s' }}></span>
+              </>
+            )}
+            <motion.button
+              onClick={() => {
+                if (isProcessingSpeechToText) return
+                if (isRecording) stopRecording()
+                else startRecording()
+              }}
+              disabled={isProcessingSpeechToText}
+              className={`w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-32 lg:h-32 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 ${
+                isRecording
+                  ? "bg-red-600 hover:bg-red-700"
+                  : isProcessingSpeechToText
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-gradient-to-br from-red-400 to-red-600 hover:from-red-500 hover:to-red-700"
+              }`}
+              whileHover={{ scale: isProcessingSpeechToText ? 1 : 1.05 }}
+              whileTap={{ scale: isProcessingSpeechToText ? 1 : 0.95 }}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.4, type: "spring", stiffness: 200 }}
+            >
+              <Mic className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 text-white" />
+            </motion.button>
+          </div>
+        ) : (
+          /* Show loading state when TTS is playing or preparation is running */
+          (isPlayingTTS || isPrepRunning) && !isPlayingInstructions && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-16 sm:mb-20 flex flex-col items-center justify-center"
+            >
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-red-200 border-t-red-600 mb-4"
+              />
+              <p className="text-lg sm:text-xl font-semibold text-gray-700">
+                {isPlayingTTS ? "Soru okunuyor..." : "Hazırlık süresi..."}
+              </p>
+              {isPrepRunning && (
+                <p className="text-2xl sm:text-3xl font-bold text-red-600 mt-2">
+                  {formatTime(prepSeconds)}
+                </p>
+              )}
+            </motion.div>
+          )
+        )}
 
         {/* {(() => {
           const key = currentQuestion?.id || currentSection?.id || `${currentSectionIndex}`
@@ -1845,11 +2001,17 @@ export default function ImprovedSpeakingTest() {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-4 flex items-center gap-2 text-blue-600 font-bold"
+            className="mt-4 flex items-center gap-2 text-red-600 font-bold"
           >
             <Volume2 className="w-5 h-5" />
-            <span>Playing instructions...</span>
+            <span>Talimatlar oynatılıyor...</span>
           </motion.div>
+        )}
+
+        {isProcessingSpeechToText && (
+          <div className="mt-4 text-center">
+            <p className="text-sm text-gray-500">İşleniyor...</p>
+          </div>
         )}
 {/* 
         {isPlayingTTS && (
@@ -1872,7 +2034,7 @@ export default function ImprovedSpeakingTest() {
               onClick={() => setIsTestComplete(true)}
               className="px-6 py-3 text-sm bg-white border-2 border-red-200 text-red-600 rounded-xl hover:bg-red-50 font-bold transition-all duration-200"
             >
-              Test Bitir (Debug)
+              Test Bitir
             </motion.button>
           )}
 
@@ -1913,18 +2075,18 @@ export default function ImprovedSpeakingTest() {
         </div>
       </main>
 
-      {!isPlayingInstructions && (
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.6 }}
-          className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6 lg:bottom-8 lg:right-8"
-        >
-          <div className="text-3xl sm:text-4xl lg:text-6xl font-bold text-gray-800 font-mono">
-            {isPrepRunning ? formatTime(prepSeconds) : formatTime(timeLeft)}
-          </div>
-          {isPrepRunning ? (
-          <div className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600 font-mono text-center mt-1 sm:mt-2">
+      {/* Timer always at bottom for all sections */}
+      <motion.div
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.6 }}
+        className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 lg:bottom-8 lg:right-8 z-[900]"
+      >
+        <div className="text-3xl sm:text-4xl lg:text-6xl font-bold text-gray-800 font-mono">
+          {isPrepRunning ? formatTime(prepSeconds) : formatTime(timeLeft)}
+        </div>
+        {isPrepRunning ? (
+          <div className="text-lg sm:text-xl lg:text-2xl font-bold text-red-600 font-mono text-center mt-1 sm:mt-2">
              
           </div>
         ) : (
@@ -1933,8 +2095,7 @@ export default function ImprovedSpeakingTest() {
             </div>
           )
         )}
-        </motion.div>
-      )}
+      </motion.div>
 
 
     </motion.div>

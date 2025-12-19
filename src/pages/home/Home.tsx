@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ShieldCheck, Zap, Layout } from "lucide-react";
 import { NavLink, useSearchParams, useNavigate } from "react-router";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -107,6 +107,61 @@ export default function Home() {
 
       <StatsSection />
 
+      {/* ADVANTAGES SECTION */}
+      <section className="py-16 sm:py-20 md:py-24 bg-white relative">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-16 md:mb-20">
+            <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-4 sm:mb-6">
+              Neden TURKISHMOCK?
+            </h2>
+            <p className="text-base sm:text-lg text-gray-600 leading-relaxed font-light">
+              Türkçe seviyeni doğru, hızlı ve güvenilir şekilde ölçmek için tasarlanmış yapay zekâ destekli sınav platformu.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+            {/* Card 1 */}
+            <div className="p-6 sm:p-8 bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-2xl transition-all duration-300">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4 sm:mb-6">
+                <ShieldCheck className="w-6 h-6 sm:w-7 sm:h-7" />
+              </div>
+              <h3 className="font-serif text-xl sm:text-2xl font-bold text-gray-900 mb-2 sm:mb-3">
+                Gerçeğe En Yakın Sınav Deneyimi
+              </h3>
+              <p className="text-sm sm:text-base text-gray-500 leading-relaxed">
+                CEFR standartlarına bire bir uyumlu testler ile gerçek sınavı tam olarak simüle edin.
+              </p>
+            </div>
+
+            {/* Card 2 */}
+            <div className="p-6 sm:p-8 bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-2xl transition-all duration-300 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-20 h-20 sm:w-24 sm:h-24 bg-red-600/5 rounded-bl-full -z-10"></div>
+              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mb-4 sm:mb-6">
+                <Zap className="w-6 h-6 sm:w-7 sm:h-7" />
+              </div>
+              <h3 className="font-serif text-xl sm:text-2xl font-bold text-gray-900 mb-2 sm:mb-3">
+                Anında ve Güvenilir Sonuç
+              </h3>
+              <p className="text-sm sm:text-base text-gray-500 leading-relaxed">
+                Testi tamamladığınız anda seviyeniz, puanınız ve detaylı analiz raporunuz hazır olur.
+              </p>
+            </div>
+
+            {/* Card 3 */}
+            <div className="p-6 sm:p-8 bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-2xl transition-all duration-300 md:col-span-2 lg:col-span-1">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center mb-4 sm:mb-6">
+                <Layout className="w-6 h-6 sm:w-7 sm:h-7" />
+              </div>
+              <h3 className="font-serif text-xl sm:text-2xl font-bold text-gray-900 mb-2 sm:mb-3">
+                Sade ve Odaklı Tasarım
+              </h3>
+              <p className="text-sm sm:text-base text-gray-500 leading-relaxed">
+                Gereksiz hiçbir şey yok. Sadece akıcı, net ve profesyonel bir sınav deneyimi yaşayın.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Sample Questions Preview */}
       {/* <HomeSampleQuestionPreview /> */}

@@ -9,7 +9,7 @@ export const Footer = () => {
           <div className="grid md:grid-cols-4 gap-8">
             <div>
               <div className="text-2xl font-bold text-red-600 mb-4">
-                TürkTest
+                TURKISHMOCK
               </div>
               <p className="text-gray-600 mb-6 leading-relaxed">
                 Türkçe dil yeterlilik seviyenizi belirlemek ve geliştirmek için

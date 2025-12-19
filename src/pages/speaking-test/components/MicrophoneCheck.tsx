@@ -213,7 +213,7 @@ export const MicrophoneCheck = ({ onSuccess }: Props) => {
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
       <div className="max-w-5xl mx-auto">
-        <h1 className="text-center mb-8 sm:mb-12 text-red-700 text-2xl sm:text-4xl font-medium gap-2">{"Türkçe Test"}</h1>
+        <h1 className="text-center mb-8 sm:mb-12 text-red-700 text-2xl sm:text-4xl font-medium gap-2">{"TURKISHMOCK"}</h1>
 
         <div className="space-y-6 sm:space-y-8">
 

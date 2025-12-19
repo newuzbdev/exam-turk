@@ -1,4 +1,4 @@
-import { Clock, Mic, Play, Square } from "lucide-react";
+import { Mic, Play, Square } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 interface Props {
@@ -11,7 +11,6 @@ export const MicrophoneCheck = ({ onSuccess }: Props) => {
   const [error, setError] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const [currentStep, setCurrentStep] = useState(1);
 
   // We'll store the current MediaRecorder and MediaStream for cleanup
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -24,7 +23,7 @@ export const MicrophoneCheck = ({ onSuccess }: Props) => {
 
   // Request mic permission on mount, but do not keep stream alive.
   useEffect(() => {
-    // Debug mobile environment
+    // Debug mobile environmentno
     console.log("🔍 Mobile Debug Info:", {
       userAgent: navigator.userAgent,
       isSecure: location.protocol === 'https:' || location.hostname === 'localhost',
@@ -202,41 +201,35 @@ export const MicrophoneCheck = ({ onSuccess }: Props) => {
   };
 
 
-  const proceedToWaitingRoom = () => {
-    setCurrentStep(3);
-    // Auto proceed to test after waiting
-    setTimeout(() => {
-      onSuccess();
-    }, 3000);
-  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
       <div className="max-w-5xl mx-auto">
-        <h1 className="text-center mb-8 sm:mb-12 text-red-700 text-2xl sm:text-4xl font-medium gap-2">{"TURKISHMOCK"}</h1>
+        <div className="flex justify-center mb-8 sm:mb-12">
+          <img 
+            src="/logo.png" 
+            alt="TURKISHMOCK" 
+            className="h-24 sm:h-32 md:h-40 lg:h-48 xl:h-56 w-auto object-contain"
+            onError={(e) => {
+              console.error("Logo failed to load");
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
+          />
+        </div>
 
         <div className="space-y-6 sm:space-y-8">
 
           <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
             <div className="flex-shrink-0 flex flex-row sm:flex-col items-center sm:items-start">
-              <div
-                className={`w-12 h-12 sm:w-16 sm:h-16 rounded-full border-2 flex items-center justify-center ${
-                  currentStep >= 1 ? "border-rose-300" : "border-gray-200"
-                }`}
-              >
-                <Mic className={`w-6 h-6 sm:w-8 sm:h-8 ${currentStep >= 1 ? "text-rose-500" : "text-gray-300"}`} />
+              <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-2 border-rose-300 flex items-center justify-center">
+                <Mic className="w-6 h-6 sm:w-8 sm:h-8 text-rose-500" />
               </div>
-              <div className="w-8 h-px sm:w-px sm:h-32 bg-gray-200 mx-4 sm:mx-8 sm:mt-4"></div>
             </div>
             <div className="flex-1">
-              <h2 className={`text-lg sm:text-xl font-semibold mb-3 ${currentStep >= 1 ? "text-slate-700" : "text-gray-400"}`}>
+              <h2 className="text-lg sm:text-xl font-semibold mb-3 text-slate-700">
                 1. Mikrofon kontrolü
               </h2>
-              <p
-                className={`mb-4 text-sm sm:text-base ${
-                  currentStep >= 2 ? "text-gray-600" : "text-gray-400"
-                }`}
-              >
+              <p className="mb-4 text-sm sm:text-base text-gray-600">
                 Sınava başlamadan önce mikrofonunuzun düzgün çalıştığından emin olun. Kaydı başlatmak için{" "}
                 <span className="inline-flex items-center mx-1">
                   <div className="w-2 h-2 sm:w-3 sm:h-3 bg-rose-500 rounded-full"></div>
@@ -248,7 +241,7 @@ export const MicrophoneCheck = ({ onSuccess }: Props) => {
                 simgesine basarak kaydı dinleyin
               </p>
 
-              {currentStep >= 1 && (
+              {(
                 <>
                   <div className="bg-gray-50 rounded-lg p-3 sm:p-4 mb-4 text-center">
                     <p className="text-gray-500 text-xs sm:text-sm mb-2">Lütfen yüksek sesle okuyun:</p>
@@ -316,60 +309,13 @@ export const MicrophoneCheck = ({ onSuccess }: Props) => {
 
                   {audioUrl && (
                     <button
-                      onClick={proceedToWaitingRoom}
+                      onClick={onSuccess}
                       className="mt-4 w-full sm:w-auto px-6 py-3 sm:py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors cursor-pointer font-medium text-sm sm:text-base"
                     >
-                      Bekleme odasına geç
+                      Sınava Başla
                     </button>
                   )}
                 </>
-              )}
-            </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
-            <div className="flex-shrink-0 flex flex-row sm:flex-col items-center sm:items-start">
-              <div
-                className={`w-12 h-12 sm:w-16 sm:h-16 rounded-full border-2 flex items-center justify-center ${
-                  currentStep >= 3 ? "border-rose-300" : "border-gray-200"
-                }`}
-              >
-                <Clock
-                  className={`w-6 h-6 sm:w-8 sm:h-8 ${
-                    currentStep >= 3
-                      ? "text-rose-500 animate-spin"
-                      : "text-gray-300"
-                  }`}
-                />
-              </div>
-            </div>
-            <div className="flex-1">
-              <h2 className={`text-lg sm:text-xl font-semibold mb-3 ${currentStep >= 3 ? "text-slate-700" : "text-gray-400"}`}>
-                2. Bekleme odası
-              </h2>
-              <p
-                className={`text-sm sm:text-base ${
-                  currentStep >= 3 ? "text-gray-600" : "text-gray-400"
-                }`}
-              >
-                Şu anda bekleme odasındasınız. Sınav görevlisi kısa süre içinde görüşmeye katılacak. Lütfen biraz bekleyin.
-              </p>
-
-              {currentStep === 3 && (
-                <div className="mt-4 flex items-center gap-2">
-                  <div className="w-2 h-2 bg-rose-500 rounded-full animate-bounce"></div>
-                  <div
-                    className="w-2 h-2 bg-rose-500 rounded-full animate-bounce"
-                    style={{ animationDelay: "0.1s" }}
-                  ></div>
-                  <div
-                    className="w-2 h-2 bg-rose-500 rounded-full animate-bounce"
-                    style={{ animationDelay: "0.2s" }}
-                  ></div>
-                  <span className="text-xs sm:text-sm text-gray-500 ml-2">
-                    Sınav görevlisine bağlanılıyor...
-                  </span>
-                </div>
               )}
             </div>
           </div>

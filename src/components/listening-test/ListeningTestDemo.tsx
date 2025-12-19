@@ -1149,43 +1149,86 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
 
   return (
     <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
-        <div className="bg-white px-2 sm:px-4 lg:px-6 py-2 sm:py-3 border-2 border-gray-300 rounded-lg mt-2 sm:mt-4">
-          {/* Responsive Header */}
-          <div className="flex items-center justify-between mb-3 relative">
-            {/* Left: TURKISHMOCK */}
-            <div className="bg-red-600 text-white px-2 sm:px-3 py-1 rounded font-bold text-xs sm:text-sm lg:text-lg flex-shrink-0 z-10">
-              TURKISHMOCK
-            </div>
-            
-            {/* Center: Dinleme - centered on all screens, but on lg it's truly centered */}
-            <div className="flex-1 flex items-center justify-center mx-2 sm:mx-4">
-              <div className="font-bold text-sm sm:text-base lg:text-2xl whitespace-nowrap">Dinleme</div>
-            </div>
-            
-            {/* Right: Volume + Timer + GÖNDER - on lg, volume is close to timer */}
-            <div className="flex items-center gap-1 sm:gap-2 lg:gap-3 flex-shrink-0 z-10">
-              {/* Audio Player - hidden on mobile, visible on desktop, close to timer on lg */}
-              {testData?.audioUrl && (
-                <div className="hidden sm:block">
-                  <AudioPlayer
-                    src={
-                      testData.audioUrl.startsWith('http://') || testData.audioUrl.startsWith('https://')
-                        ? testData.audioUrl
-                        : `https://api.turkishmock.uz/${testData.audioUrl}`
-                    }
-                    onAudioEnded={handleAudioEnded}
+        <div className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50 shadow-sm w-full">
+          {/* Match horizontal padding with description block below */}
+          <div className="px-2 sm:px-4">
+            <div className="flex justify-between items-center h-20 sm:h-24">
+              {/* Mobile Header - Single Line Layout */}
+              <div className="block lg:hidden w-full">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <img 
+                      src="/logo.png" 
+                      alt="TURKISHMOCK" 
+                      className="h-24 sm:h-28 md:h-32 lg:h-36 xl:h-52 w-auto object-contain"
+                      onError={(e) => {
+                        console.error("Logo failed to load");
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
+                  <div className="font-bold text-base">Dinleme</div>
+                  <div className="flex items-center gap-2">
+                    {testData?.audioUrl && (
+                      <div className="hidden sm:block">
+                        <AudioPlayer
+                          src={
+                            testData.audioUrl.startsWith('http://') || testData.audioUrl.startsWith('https://')
+                              ? testData.audioUrl
+                              : `https://api.turkishmock.uz/${testData.audioUrl}`
+                          }
+                          onAudioEnded={handleAudioEnded}
+                        />
+                      </div>
+                    )}
+                    <div className={`font-bold text-sm ${timerActive ? 'text-red-600' : 'text-gray-600'}`}>
+                      {timerActive ? formatTime(timeLeft) : '10:00'}
+                    </div>
+                    <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 text-xs font-bold">
+                      GÖNDER
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Desktop Header - Horizontal Layout */}
+              <div className="hidden lg:flex items-center justify-between w-full">
+                <div className="flex items-center">
+                  <img 
+                    src="/logo.png" 
+                    alt="TURKISHMOCK" 
+                    className="h-24 sm:h-28 md:h-32 lg:h-36 xl:h-52 w-auto object-contain"
+                    onError={(e) => {
+                      console.error("Logo failed to load");
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
                   />
                 </div>
-              )}
-              <div className={`font-bold text-xs sm:text-sm lg:text-lg ${timerActive ? 'text-red-600' : 'text-gray-600'} whitespace-nowrap`}>
-                {timerActive ? formatTime(timeLeft) : '10:00'}
+                <div className="font-bold text-2xl">Dinleme</div>
+                <div className="flex items-center gap-4">
+                  {testData?.audioUrl && (
+                    <AudioPlayer
+                      src={
+                        testData.audioUrl.startsWith('http://') || testData.audioUrl.startsWith('https://')
+                          ? testData.audioUrl
+                          : `https://api.turkishmock.uz/${testData.audioUrl}`
+                      }
+                      onAudioEnded={handleAudioEnded}
+                    />
+                  )}
+                  <div className={`font-bold text-lg ${timerActive ? 'text-red-600' : 'text-gray-600'}`}>
+                    {timerActive ? formatTime(timeLeft) : '10:00'}
+                  </div>
+                  <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 text-sm font-bold">
+                    GÖNDER
+                  </Button>
+                </div>
               </div>
-              <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 text-white px-2 sm:px-3 lg:px-4 py-1 text-xs sm:text-sm font-bold whitespace-nowrap">
-                GÖNDER
-              </Button>
             </div>
           </div>
+        </div>
 
+        <div className="bg-white px-2 sm:px-4 lg:px-6 py-2 sm:py-3 border-2 border-gray-300 rounded-lg mt-2 sm:mt-4">
           {/* Mobile: no volume changer per request */}
           
           {/* Description Section - Responsive */}

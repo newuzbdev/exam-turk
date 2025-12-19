@@ -677,27 +677,125 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
 
   return (
     <div className="min-h-screen bg-gray-50" style={{ WebkitOverflowScrolling: 'touch', overflowY: 'auto', height: '100vh' }}>
-      {/* Fixed Header */}
-      <div className="fixed top-0 left-0 right-0 z-[999] bg-white px-4 py-3 shadow-sm border-b border-gray-200">
-          {/* Mobile Header */}
-        <div className="lg:hidden">
-          {/* Top Row - Title and Submit */}
-          <div className="flex items-center justify-between mb-2 sm:mb-3 gap-2">
-            <h1 className="text-base sm:text-xl font-bold text-gray-900 tracking-tight flex-shrink-0">
-              YAZMA TEST
-            </h1>
-            
-            {/* Submit button */}
-            <Button
-              onClick={() => setShowSubmitModal(true)}
-              className="bg-red-600 hover:bg-red-700 text-white px-2 sm:px-3 py-1 sm:py-1.5 text-xs font-bold rounded-lg flex-shrink-0"
-            >
-              GÖNDER
-            </Button>
+      {/* Header - Same height and logic as reading navbar */}
+      <div className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50 shadow-sm w-full">
+        {/* Match horizontal padding with description block below */}
+        <div className="px-2 sm:px-4">
+          <div className="flex justify-between items-center h-20 sm:h-24">
+            {/* Mobile Header - Single Line Layout */}
+            <div className="block lg:hidden w-full">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <img 
+                    src="/logo.png" 
+                    alt="TURKISHMOCK" 
+                    className="h-24 sm:h-28 md:h-32 lg:h-36 xl:h-52 w-auto object-contain"
+                    onError={(e) => {
+                      console.error("Logo failed to load");
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                </div>
+                <div className="font-bold text-base">Yazma Testi</div>
+                <div className="flex items-center gap-2">
+                  <div className="font-bold text-sm">{formatTime(timeLeft)}</div>
+                  <Button onClick={() => setShowSubmitModal(true)} className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 text-xs font-bold">
+                    GÖNDER
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Desktop Header - Horizontal Layout */}
+            <div className="hidden lg:flex items-center justify-between w-full">
+              <div className="flex items-center">
+                <img 
+                  src="/logo.png" 
+                  alt="TURKISHMOCK" 
+                  className="h-24 sm:h-28 md:h-32 lg:h-36 xl:h-52 w-auto object-contain"
+                  onError={(e) => {
+                    console.error("Logo failed to load");
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              </div>
+              <div className="font-bold text-2xl">Yazma Testi</div>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center space-x-2 text-gray-600">
+                  <Clock className="h-5 w-5" />
+                  <span className="font-bold text-lg">
+                    {formatTime(timeLeft)}
+                  </span>
+                </div>
+                <div
+                  className={`text-lg font-semibold ${
+                    isOverLimit ? "text-red-600" : "text-gray-700"
+                  }`}
+                >
+                  {wordCount}/{wordLimit}
+                </div>
+                <Button onClick={() => setShowSubmitModal(true)} className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 text-sm font-bold">
+                  GÖNDER
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Section indicators - Below header, all 3 tabs on one line */}
+      <div className="bg-white border-b border-gray-200 px-2 sm:px-4 md:px-6 py-2 sm:py-3">
+        <div className="flex items-center justify-center gap-0">
+          {/* 1.1 */}
+          <div
+            className={`flex-shrink-0 w-[60px] sm:w-[70px] md:w-[80px] h-9 sm:h-10 rounded-none first:rounded-l-md last:rounded-r-md flex items-center justify-center font-semibold text-sm sm:text-base transition-all ${
+              currentSectionIndex === 0 && currentSubPartIndex === 0
+                ? "bg-red-500 text-white shadow-sm"
+                : currentSectionIndex === 0 && currentSubPartIndex > 0
+                ? "bg-gray-100 text-gray-600"
+                : currentSectionIndex > 0
+                ? "bg-gray-100 text-gray-600"
+                : "bg-gray-200 text-gray-500"
+            }`}
+          >
+            1.1
           </div>
           
-          {/* Second Row - Word Count with Part Info */}
-          <div className="flex items-center justify-center mb-2 sm:mb-3">
+          {/* 1.2 */}
+          <div
+            className={`flex-shrink-0 w-[60px] sm:w-[70px] md:w-[80px] h-9 sm:h-10 rounded-none first:rounded-l-md last:rounded-r-md flex items-center justify-center font-semibold text-sm sm:text-base transition-all ${
+              currentSectionIndex === 0 && currentSubPartIndex === 1
+                ? "bg-red-500 text-white shadow-sm"
+                : currentSectionIndex === 0 && currentSubPartIndex < 1
+                ? "bg-gray-200 text-gray-500"
+                : currentSectionIndex > 0
+                ? "bg-gray-100 text-gray-600"
+                : "bg-gray-100 text-gray-600"
+            }`}
+          >
+            1.2
+          </div>
+          
+          {/* 2 */}
+          <div
+            className={`flex-shrink-0 w-[60px] sm:w-[70px] md:w-[80px] h-9 sm:h-10 rounded-none first:rounded-l-md last:rounded-r-md flex items-center justify-center font-semibold text-sm sm:text-base transition-all ${
+              currentSectionIndex === 1
+                ? "bg-red-500 text-white shadow-sm"
+                : currentSectionIndex > 1
+                ? "bg-gray-100 text-gray-600"
+                : "bg-gray-200 text-gray-500"
+            }`}
+          >
+            2
+          </div>
+        </div>
+      </div>
+
+      {/* Word Count and Task Tabs - Below section indicators */}
+      <div className="px-2 sm:px-4 pt-2">
+        {/* Mobile: Word Count with Part Info */}
+        <div className="lg:hidden mb-2 sm:mb-3">
+          <div className="flex items-center justify-center">
             <div className={`text-xs sm:text-sm font-semibold px-2 sm:px-3 py-1 rounded ${isOverLimit ? "text-red-600 bg-red-50" : "text-gray-700 bg-gray-100"}`}>
               {wordCount}/{wordLimit} kelime
               {hasSubParts ? (
@@ -707,54 +805,24 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
               )}
             </div>
           </div>
-          
-          {/* Mobile Task Tabs - Smaller height */}
+        </div>
+        
+        {/* Mobile Task Tabs */}
+        <div className="lg:hidden mb-2">
           <div className="flex bg-gray-100 rounded-lg p-0.5 gap-1">
             {sections.map((_, idx) => (
               <button
                 key={idx}
                 onClick={() => setCurrentSectionIndex(idx)}
-                className={`flex-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md font-medium text-xs sm:text-sm transition-all ${idx === currentSectionIndex
+                className={`flex-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md font-medium text-xs sm:text-sm transition-all ${
+                  idx === currentSectionIndex
                     ? "bg-red-500 text-white shadow-sm"
                     : "text-gray-600 hover:text-red-600 hover:bg-red-50"
-                  }`}
+                }`}
               >
                 Görev {idx + 1}
               </button>
             ))}
-          </div>
-        </div>
-        {/* Desktop Header */}
-        <div className="hidden lg:block">
-          <div className="mx-12 flex items-center justify-between">
-            <div className="flex items-center space-x-10">
-              <div className="bg-red-600 text-white px-3 py-1 rounded font-bold text-lg">
-                TURKISHMOCK
-              </div>
-            </div>
-            <div>
-                <div className="flex items-center space-x-2 text-gray-600">
-                <Clock className="h-6 w-6" />
-                <span className="font-semibold text-lg">
-                  {formatTime(timeLeft)} 
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center space-x-6">
-            
-              <div
-                className={`text-lg font-semibold ${isOverLimit ? "text-red-600" : "text-gray-700"
-                  }`}
-              >
-                {wordCount}/{wordLimit}
-              </div>
-              <Button
-                onClick={() => setShowSubmitModal(true)}
-                className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 text-lg font-bold"
-              >
-                GÖNDER
-              </Button>
-            </div>
           </div>
         </div>
       </div>
@@ -864,7 +932,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
             {/* Writing Area - Mobile Only - Always Visible */}
             <div className="bg-white rounded-xl shadow-lg p-3 sm:p-4 mt-0 mb-20 relative z-10 border-2 border-red-200">
               {showTabs && (
-                  <div className="mb-3 sticky top-0 bg-white z-20 pb-2">
+                  <div className="mb-3 sticky top-0 bg-white z-20 pb-2 w-full overflow-hidden">
                     <Tabs
                       value={String(currentSubPartIndex)}
                       onValueChange={(value) =>
@@ -873,17 +941,19 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                       className="w-full"
                     >
                       <TabsList
-                        className="flex w-full bg-gray-100 rounded-lg overflow-hidden p-0"
+                        className="!flex !flex-nowrap w-full bg-gray-100 rounded-lg overflow-hidden p-0"
                         style={{
                           boxShadow: "none",
-                        }}
+                          flexWrap: "nowrap",
+                          whiteSpace: "nowrap",
+                        } as React.CSSProperties}
                       >
                         {tabItems.map((_, idx) => (
                           <TabsTrigger
                             key={idx}
                             value={String(idx)}
                             className={`
-                            flex-1 px-0 py-2 text-base font-medium border-none rounded-none
+                            !flex-1 !flex-shrink-0 px-0 py-2 text-base font-medium border-none rounded-none
                             transition-all
                             relative
                             ${idx === 0 ? "rounded-l-lg" : ""}
@@ -903,9 +973,12 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                                   ? "#fff"
                                   : undefined,
                               boxShadow: "none",
-                              minWidth: 0,
+                              minWidth: "0",
+                              flexShrink: 0,
+                              flexGrow: 1,
                               position: "relative",
                               zIndex: currentSubPartIndex === idx ? 10 : 1,
+                              whiteSpace: "nowrap",
                             }}
                           >
                             {hasSubParts ? (
@@ -1016,22 +1089,26 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
               <ResizablePanel defaultSize={55} className="min-w-0">
                 <div className="bg-white rounded-xl shadow-md p-6 flex-1 min-w-0 h-[calc(100vh-140px)] overflow-y-auto flex flex-col">
                   {showTabs && (
-                    <div className="mb-4">
+                    <div className="mb-4 w-full overflow-hidden">
                       <Tabs
                         value={String(currentSubPartIndex)}
                         onValueChange={(value) => setCurrentSubPartIndex(parseInt(value))}
                         className="w-full"
                       >
                         <TabsList
-                          className="flex w-full bg-gray-100 rounded-lg overflow-hidden p-0"
-                          style={{ boxShadow: "none" }}
+                          className="!flex !flex-nowrap w-full bg-gray-100 rounded-lg overflow-hidden p-0"
+                          style={{ 
+                            boxShadow: "none",
+                            flexWrap: "nowrap",
+                            whiteSpace: "nowrap",
+                          } as React.CSSProperties}
                         >
                           {tabItems.map((_, idx) => (
                             <TabsTrigger
                               key={idx}
                               value={String(idx)}
                               className={`
-                                flex-1 px-0 py-3 text-lg font-medium border-none rounded-none
+                                flex-1 flex-shrink-0 px-0 py-3 text-lg font-medium border-none rounded-none
                                 transition-all
                                 relative
                                 ${idx === 0 ? "rounded-l-lg" : ""}
@@ -1042,9 +1119,12 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                                 background: currentSubPartIndex === idx ? "#ef4444" : "none",
                                 color: currentSubPartIndex === idx ? "#fff" : undefined,
                                 boxShadow: "none",
-                                minWidth: 0,
+                                minWidth: "0",
+                                flexShrink: 0,
+                                flexGrow: 1,
                                 position: "relative",
                                 zIndex: currentSubPartIndex === idx ? 10 : 1,
+                                whiteSpace: "nowrap",
                               }}
                             >
                               {hasSubParts ? (
@@ -1079,7 +1159,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
             </ResizablePanelGroup>
             {/* Bottom sticky task switcher - desktop */}
             <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur rounded-full shadow-md px-2 py-1 z-[900]">
-              <div className="flex">
+              <div className="flex gap-1">
                 {sections.map((_, idx) => (
                   <button
                     key={idx}
@@ -1094,6 +1174,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                 ))}
               </div>
             </div>
+
 
             {/* Subpart navigation arrows - desktop */}
             {(hasSubParts || hasQuestions) && (hasSubParts ? subParts.length : questions.length) > 1 && (
@@ -1153,6 +1234,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
         cancelText="İptal"
         isLoading={submitting}
       />
+
 
       {/* Mobile Timer at Bottom */}
       <div className="lg:hidden fixed bottom-4 right-4 z-[900] pointer-events-none">

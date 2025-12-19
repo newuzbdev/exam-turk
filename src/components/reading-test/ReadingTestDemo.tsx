@@ -418,15 +418,26 @@ export default function ReadingPage({ testId }: { testId: string }) {
   return (
     <ReadingNotesProvider>
       <div className="min-h-screen bg-gray-50">
-        {/* Header - Responsive like listening test */}
-        <div className="bg-white px-3 sm:px-6 py-2 sm:py-3 border-b-2 border-gray-200 sticky top-0 z-50">
-          {/* Mobile Header - Single Line Layout */}
-          <div className="block lg:hidden">
-            <div className="flex items-center justify-between">
-              <div className="bg-red-600 text-white px-2 py-1 rounded font-bold text-sm">
-                TURKISHMOCK
-              </div>
-              <div className="font-bold text-base">Reading</div>
+        {/* Header - Same height and logic as main navbar */}
+        <div className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50 shadow-sm w-full">
+          {/* Match horizontal padding with description block below */}
+          <div className="px-2 sm:px-4">
+            <div className="flex justify-between items-center h-20 sm:h-24">
+              {/* Mobile Header - Single Line Layout */}
+              <div className="block lg:hidden w-full">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <img 
+                      src="/logo.png" 
+                      alt="TURKISHMOCK" 
+                      className="h-24 sm:h-28 md:h-32 lg:h-36 xl:h-52 w-auto object-contain"
+                      onError={(e) => {
+                        console.error("Logo failed to load");
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
+              <div className="font-bold text-base">Okuma</div>
               <div className="flex items-center gap-2">
                 <NotesPanel currentPartNumber={currentPartNumber} />
                 <div className="font-bold text-sm">{formatTime(timeLeft)}</div>
@@ -434,21 +445,31 @@ export default function ReadingPage({ testId }: { testId: string }) {
                   GÖNDER
                 </Button>
               </div>
-            </div>
-          </div>
+                </div>
+              </div>
 
-          {/* Desktop Header - Horizontal Layout */}
-          <div className="hidden lg:flex items-center justify-between">
-            <div className="bg-red-600 text-white px-3 py-1 rounded font-bold text-lg">
-              TURKISHMOCK
-            </div>
-            <div className="font-bold text-2xl">Reading</div>
-            <div className="flex items-center gap-4">
-              <NotesPanel currentPartNumber={currentPartNumber} />
-              <div className="font-bold text-lg">{formatTime(timeLeft)}</div>
-              <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 text-sm font-bold">
-                GÖNDER
-              </Button>
+              {/* Desktop Header - Horizontal Layout */}
+              <div className="hidden lg:flex items-center justify-between w-full">
+                <div className="flex items-center">
+                  <img 
+                    src="/logo.png" 
+                    alt="TURKISHMOCK" 
+                    className="h-24 sm:h-28 md:h-32 lg:h-36 xl:h-52 w-auto object-contain"
+                    onError={(e) => {
+                      console.error("Logo failed to load");
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                </div>
+                <div className="font-bold text-2xl">Okuma</div>
+                <div className="flex items-center gap-4">
+                  <NotesPanel currentPartNumber={currentPartNumber} />
+                  <div className="font-bold text-lg">{formatTime(timeLeft)}</div>
+                  <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 text-sm font-bold">
+                    GÖNDER
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

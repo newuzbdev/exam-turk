@@ -6,9 +6,10 @@ interface ReadingPart5Props {
   testData: any;
   answers: Record<string, string>;
   onAnswerChange: (questionId: string, value: string) => void;
+  partNumber?: number;
 }
 
-export default function ReadingPart5({ testData, answers, onAnswerChange }: ReadingPart5Props) {
+export default function ReadingPart5({ testData, answers, onAnswerChange, partNumber }: ReadingPart5Props) {
   const part5 = (testData.parts || []).find((p: any) => (p.number || 0) === 5) || (testData.parts || [])[4];
   const section5 = part5?.sections && part5.sections[0];
   const content = section5?.content || "";
@@ -134,7 +135,7 @@ export default function ReadingPart5({ testData, answers, onAnswerChange }: Read
                       {para.letter}
                     </span>
                     <div className="text-sm leading-relaxed flex-1">
-                      <HighlightableText text={para.text} />
+                      <HighlightableText text={para.text} partNumber={partNumber} />
                     </div>
                   </div>
                 ))}
@@ -231,7 +232,7 @@ export default function ReadingPart5({ testData, answers, onAnswerChange }: Read
                         {para.letter}
                       </span>
                       <div className="text-lg md:text-xl leading-relaxed flex-1">
-                        <HighlightableText text={para.text} />
+                        <HighlightableText text={para.text} partNumber={partNumber} />
                       </div>
                     </div>
                   ))}

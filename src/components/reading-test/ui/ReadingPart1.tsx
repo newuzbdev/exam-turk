@@ -6,9 +6,10 @@ interface ReadingPart1Props {
   testData: any;
   answers: Record<string, string>;
   onAnswerChange: (questionId: string, value: string) => void;
+  partNumber?: number;
 }
 
-export default function ReadingPart1({ testData, answers, onAnswerChange }: ReadingPart1Props) {
+export default function ReadingPart1({ testData, answers, onAnswerChange, partNumber }: ReadingPart1Props) {
   const part1 = (testData.parts || []).find((p: any) => (p.number || 0) === 1) || (testData.parts || [])[0];
   const section1 = part1?.sections && part1.sections[0];
   const content = section1?.content || "";
@@ -34,7 +35,7 @@ export default function ReadingPart1({ testData, answers, onAnswerChange }: Read
           {/* Passage Section */}
           <div className="bg-[#fffef5] p-4">
             <div className="space-y-4 leading-relaxed">
-              <HighlightableText text={content || ""} />
+              <HighlightableText text={content || ""} partNumber={partNumber} />
             </div>
           </div>
           
@@ -74,7 +75,7 @@ export default function ReadingPart1({ testData, answers, onAnswerChange }: Read
           <ResizablePanel defaultSize={60} minSize={30} className="bg-[#fffef5]">
             <div className="h-full p-6 overflow-visible pb-32">
               <div className="space-y-4 leading-relaxed">
-                <HighlightableText text={content || ""} />
+                <HighlightableText text={content || ""} partNumber={partNumber} />
               </div>
             </div>
           </ResizablePanel>

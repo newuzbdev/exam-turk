@@ -5,9 +5,10 @@ interface ReadingPart4Props {
   testData: any;
   answers: Record<string, string>;
   onAnswerChange: (questionId: string, value: string) => void;
+  partNumber?: number;
 }
 
-export default function ReadingPart4({ testData, answers, onAnswerChange }: ReadingPart4Props) {
+export default function ReadingPart4({ testData, answers, onAnswerChange, partNumber }: ReadingPart4Props) {
   const part4 = (testData.parts || []).find((p: any) => (p.number || 0) === 4) || (testData.parts || [])[3];
   const section4 = part4?.sections && part4.sections[0];
   const content = section4?.content || "";
@@ -32,7 +33,7 @@ export default function ReadingPart4({ testData, answers, onAnswerChange }: Read
           <div className="bg-[#fffef5] p-4">
             <div className="space-y-4 leading-relaxed">
               <div className="text-sm font-serif text-gray-800 leading-relaxed">
-                <HighlightableText text={content || ""} />
+                <HighlightableText text={content || ""} partNumber={partNumber} />
               </div>
             </div>
           </div>
@@ -103,7 +104,7 @@ export default function ReadingPart4({ testData, answers, onAnswerChange }: Read
             <div className="h-full p-8 overflow-y-auto pb-32">
               <div className="space-y-6 leading-relaxed">
                 <div className="text-lg font-serif text-gray-800 leading-relaxed">
-                  <HighlightableText text={content || ""} />
+                  <HighlightableText text={content || ""} partNumber={partNumber} />
                 </div>
               </div>
             </div>

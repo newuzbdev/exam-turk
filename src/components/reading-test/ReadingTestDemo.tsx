@@ -4,11 +4,13 @@ import { overallTestFlowStore } from "@/services/overallTest.service";
 import { Button } from "../ui/button";
 import { ConfirmationModal } from "../ui/confirmation-modal";
 import { readingTestService, type ReadingTestItem } from "@/services/readingTest.service";
+import { ReadingNotesProvider } from "@/contexts/ReadingNotesContext";
 import ReadingPart1 from "./ui/ReadingPart1";
 import ReadingPart2 from "./ui/ReadingPart2";
 import ReadingPart3 from "./ui/ReadingPart3";
 import ReadingPart4 from "./ui/ReadingPart4";
 import ReadingPart5 from "./ui/ReadingPart5";
+import NotesPanel from "./NotesPanel";
 
 export default function ReadingPage({ testId }: { testId: string }) {
   const navigate = useNavigate();
@@ -414,39 +416,42 @@ export default function ReadingPage({ testId }: { testId: string }) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header - Responsive like listening test */}
-      <div className="bg-white px-3 sm:px-6 py-2 sm:py-3 border-b-2 border-gray-200 sticky top-0 z-50">
-        {/* Mobile Header - Single Line Layout */}
-        <div className="block lg:hidden">
-          <div className="flex items-center justify-between">
-            <div className="bg-red-600 text-white px-2 py-1 rounded font-bold text-sm">
+    <ReadingNotesProvider>
+      <div className="min-h-screen bg-gray-50">
+        {/* Header - Responsive like listening test */}
+        <div className="bg-white px-3 sm:px-6 py-2 sm:py-3 border-b-2 border-gray-200 sticky top-0 z-50">
+          {/* Mobile Header - Single Line Layout */}
+          <div className="block lg:hidden">
+            <div className="flex items-center justify-between">
+              <div className="bg-red-600 text-white px-2 py-1 rounded font-bold text-sm">
+                TURKISHMOCK
+              </div>
+              <div className="font-bold text-base">Reading</div>
+              <div className="flex items-center gap-2">
+                <NotesPanel currentPartNumber={currentPartNumber} />
+                <div className="font-bold text-sm">{formatTime(timeLeft)}</div>
+                <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 text-xs font-bold">
+                  GÖNDER
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop Header - Horizontal Layout */}
+          <div className="hidden lg:flex items-center justify-between">
+            <div className="bg-red-600 text-white px-3 py-1 rounded font-bold text-lg">
               TURKISHMOCK
             </div>
-            <div className="font-bold text-base">Reading</div>
-            <div className="flex items-center gap-2">
-              <div className="font-bold text-sm">{formatTime(timeLeft)}</div>
-              <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 text-xs font-bold">
+            <div className="font-bold text-2xl">Reading</div>
+            <div className="flex items-center gap-4">
+              <NotesPanel currentPartNumber={currentPartNumber} />
+              <div className="font-bold text-lg">{formatTime(timeLeft)}</div>
+              <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 text-sm font-bold">
                 GÖNDER
               </Button>
             </div>
           </div>
         </div>
-
-        {/* Desktop Header - Horizontal Layout */}
-        <div className="hidden lg:flex items-center justify-between">
-          <div className="bg-red-600 text-white px-3 py-1 rounded font-bold text-lg">
-            TURKISHMOCK
-          </div>
-          <div className="font-bold text-2xl">Reading</div>
-          <div className="flex items-center gap-4">
-            <div className="font-bold text-lg">{formatTime(timeLeft)}</div>
-            <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 text-sm font-bold">
-              GÖNDER
-            </Button>
-          </div>
-        </div>
-      </div>
 
       {/* Description Section - Responsive */}
       <div className="mx-2 sm:mx-4 mt-2">
@@ -471,19 +476,26 @@ export default function ReadingPage({ testId }: { testId: string }) {
         <ReadingPart1 
           testData={testData} 
           answers={answers} 
-          onAnswerChange={handleAnswerChange} 
+          onAnswerChange={handleAnswerChange}
+          partNumber={currentPartNumber}
         />
       )}
 
       {!isLoading && !error && testData && currentPartNumber === 3 && (
-        <ReadingPart3 testData={testData} answers={answers} onAnswerChange={handleAnswerChange} />
+        <ReadingPart3 
+          testData={testData} 
+          answers={answers} 
+          onAnswerChange={handleAnswerChange}
+          partNumber={currentPartNumber}
+        />
       )}
 
       {!isLoading && !error && testData && currentPartNumber === 4 && (
         <ReadingPart4 
           testData={testData} 
           answers={answers} 
-          onAnswerChange={handleAnswerChange} 
+          onAnswerChange={handleAnswerChange}
+          partNumber={currentPartNumber}
         />
       )}
 
@@ -491,7 +503,8 @@ export default function ReadingPage({ testId }: { testId: string }) {
         <ReadingPart5 
           testData={testData} 
           answers={answers} 
-          onAnswerChange={handleAnswerChange} 
+          onAnswerChange={handleAnswerChange}
+          partNumber={currentPartNumber}
         />
       )}
 
@@ -499,7 +512,8 @@ export default function ReadingPage({ testId }: { testId: string }) {
         <ReadingPart2 
           testData={testData} 
           answers={answers} 
-          onAnswerChange={handleAnswerChange} 
+          onAnswerChange={handleAnswerChange}
+          partNumber={currentPartNumber}
         />
       )}
 
@@ -607,6 +621,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
         cancelText="İptal"
         isLoading={isSubmitting}
       />
-    </div>
+      </div>
+    </ReadingNotesProvider>
   );
 }

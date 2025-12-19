@@ -6,9 +6,10 @@ interface ReadingPart2Props {
   testData: any;
   answers: Record<string, string>;
   onAnswerChange: (questionId: string, value: string) => void;
+  partNumber?: number;
 }
 
-export default function ReadingPart2({ testData, answers, onAnswerChange }: ReadingPart2Props) {
+export default function ReadingPart2({ testData, answers, onAnswerChange, partNumber }: ReadingPart2Props) {
   const part2 = (testData.parts || []).find((p: any) => (p.number || 0) === 2) || (testData.parts || [])[1];
   const sections = part2?.sections || [];
   
@@ -45,7 +46,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange }: Read
         const textChunk = raw.slice(lastIndex, start).trim();
         if (textChunk) nodes.push(
           <div key={`t-${lastIndex}`} className="mb-2">
-            <HighlightableText text={textChunk} />
+            <HighlightableText text={textChunk} partNumber={partNumber} />
           </div>
         );
       }
@@ -77,7 +78,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange }: Read
       const tail = raw.slice(lastIndex).trim();
       if (tail) nodes.push(
         <div key={`t-tail`} className="mb-2">
-          <HighlightableText text={tail} />
+          <HighlightableText text={tail} partNumber={partNumber} />
         </div>
       );
     }

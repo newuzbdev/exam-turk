@@ -6,9 +6,10 @@ interface ReadingPart3Props {
   testData: any;
   answers: Record<string, string>;
   onAnswerChange: (questionId: string, value: string) => void;
+  partNumber?: number;
 }
 
-export default function ReadingPart3({ testData, answers, onAnswerChange }: ReadingPart3Props) {
+export default function ReadingPart3({ testData, answers, onAnswerChange, partNumber }: ReadingPart3Props) {
   const part3 = (testData.parts || []).find((p: any) => (p.number || 0) === 3) || (testData.parts || [])[2];
   const sections = part3?.sections || [];
   
@@ -76,7 +77,7 @@ export default function ReadingPart3({ testData, answers, onAnswerChange }: Read
                     </div>
                     {displayText && (
                       <div className="text-sm leading-6 text-gray-800 font-serif text-justify">
-                        <HighlightableText text={displayText} />
+                        <HighlightableText text={displayText} partNumber={partNumber} />
                       </div>
                     )}
                   </div>
@@ -128,7 +129,7 @@ export default function ReadingPart3({ testData, answers, onAnswerChange }: Read
                           {displayText && (
                             <div className="">
                               <div className="text-base leading-7 text-gray-800 font-serif text-justify">
-                                <HighlightableText text={displayText} />
+                                <HighlightableText text={displayText} partNumber={partNumber} />
                               </div>
                             </div>
                           )}

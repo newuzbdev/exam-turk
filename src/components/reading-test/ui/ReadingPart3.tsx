@@ -1,5 +1,6 @@
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import HighlightableText from "@/pages/reading-test/components/HighlightableText";
 
 interface ReadingPart3Props {
   testData: any;
@@ -74,8 +75,8 @@ export default function ReadingPart3({ testData, answers, onAnswerChange }: Read
                       </Select>
                     </div>
                     {displayText && (
-                      <div className="text-sm leading-6 text-gray-800 font-serif text-justify whitespace-pre-line">
-                        {displayText}
+                      <div className="text-sm leading-6 text-gray-800 font-serif text-justify">
+                        <HighlightableText text={displayText} />
                       </div>
                     )}
                   </div>
@@ -126,7 +127,9 @@ export default function ReadingPart3({ testData, answers, onAnswerChange }: Read
                           </div>
                           {displayText && (
                             <div className="">
-                              <p className="text-base leading-7 text-gray-800 font-serif text-justify whitespace-pre-line">{displayText}</p>
+                              <div className="text-base leading-7 text-gray-800 font-serif text-justify">
+                                <HighlightableText text={displayText} />
+                              </div>
                             </div>
                           )}
                         </div>

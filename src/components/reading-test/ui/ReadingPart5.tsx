@@ -1,5 +1,6 @@
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import HighlightableText from "@/pages/reading-test/components/HighlightableText";
 
 interface ReadingPart5Props {
   testData: any;
@@ -132,7 +133,9 @@ export default function ReadingPart5({ testData, answers, onAnswerChange }: Read
                     <span className="font-bold text-lg bg-gray-200 w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0">
                       {para.letter}
                     </span>
-                    <p className="text-sm leading-relaxed">{para.text}</p>
+                    <div className="text-sm leading-relaxed flex-1">
+                      <HighlightableText text={para.text} />
+                    </div>
                   </div>
                 ))}
               </div>
@@ -227,7 +230,9 @@ export default function ReadingPart5({ testData, answers, onAnswerChange }: Read
                       <span className="font-bold text-xl bg-gray-200 w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0">
                         {para.letter}
                       </span>
-                      <p className="text-lg md:text-xl leading-relaxed">{para.text}</p>
+                      <div className="text-lg md:text-xl leading-relaxed flex-1">
+                        <HighlightableText text={para.text} />
+                      </div>
                     </div>
                   ))}
                 </div>

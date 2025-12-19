@@ -159,13 +159,13 @@ export default function HighlightableText({ text }: { text: any }) {
             transform: "translate(-50%, -100%)",
           }}
         >
-          <span>{isHighlighted ? "Olib tashlansinmi?" : "Belgilansinmi?"}</span>
+          <span>{isHighlighted ? "Kaldırılsın mı?" : "Vurgulansın mı?"}</span>
           <Button
             size="sm"
             className="bg-yellow-400 text-black hover:bg-yellow-500"
             onClick={handleHighlight}
           >
-            {isHighlighted ? "Olib tashla" : "Belgilash"}
+            {isHighlighted ? "Kaldır" : "Vurgula"}
           </Button>
         </div>
       )}

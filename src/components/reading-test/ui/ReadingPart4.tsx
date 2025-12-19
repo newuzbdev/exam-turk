@@ -1,4 +1,5 @@
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import HighlightableText from "@/pages/reading-test/components/HighlightableText";
 
 interface ReadingPart4Props {
   testData: any;
@@ -30,7 +31,9 @@ export default function ReadingPart4({ testData, answers, onAnswerChange }: Read
           {/* Passage Section - Fixed */}
           <div className="bg-[#fffef5] p-4">
             <div className="space-y-4 leading-relaxed">
-              <p className="whitespace-pre-line text-sm font-serif text-gray-800 leading-relaxed">{content}</p>
+              <div className="text-sm font-serif text-gray-800 leading-relaxed">
+                <HighlightableText text={content || ""} />
+              </div>
             </div>
           </div>
           
@@ -99,7 +102,9 @@ export default function ReadingPart4({ testData, answers, onAnswerChange }: Read
           <ResizablePanel defaultSize={60} minSize={50} maxSize={70} className="bg-[#fffef5]">
             <div className="h-full p-8 overflow-y-auto pb-32">
               <div className="space-y-6 leading-relaxed">
-                <p className="whitespace-pre-line text-lg font-serif text-gray-800 leading-relaxed">{content}</p>
+                <div className="text-lg font-serif text-gray-800 leading-relaxed">
+                  <HighlightableText text={content || ""} />
+                </div>
               </div>
             </div>
           </ResizablePanel>

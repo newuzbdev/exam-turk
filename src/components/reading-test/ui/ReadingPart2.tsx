@@ -1,5 +1,6 @@
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import HighlightableText from "@/pages/reading-test/components/HighlightableText";
 
 interface ReadingPart2Props {
   testData: any;
@@ -42,7 +43,11 @@ export default function ReadingPart2({ testData, answers, onAnswerChange }: Read
       const start = match.index;
       if (start > lastIndex) {
         const textChunk = raw.slice(lastIndex, start).trim();
-        if (textChunk) nodes.push(<p key={`t-${lastIndex}`} className="mb-2">{textChunk}</p>);
+        if (textChunk) nodes.push(
+          <div key={`t-${lastIndex}`} className="mb-2">
+            <HighlightableText text={textChunk} />
+          </div>
+        );
       }
       const urlFromMd = match[1];
       const urlFromHttp = match[2];
@@ -70,7 +75,11 @@ export default function ReadingPart2({ testData, answers, onAnswerChange }: Read
     }
     if (lastIndex < raw.length) {
       const tail = raw.slice(lastIndex).trim();
-      if (tail) nodes.push(<p key={`t-tail`} className="mb-2">{tail}</p>);
+      if (tail) nodes.push(
+        <div key={`t-tail`} className="mb-2">
+          <HighlightableText text={tail} />
+        </div>
+      );
     }
     return nodes.length ? <div className="text-[13px] leading-6 text-gray-800 font-serif text-justify">{nodes}</div> : null;
   };

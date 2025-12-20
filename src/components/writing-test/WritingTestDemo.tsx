@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import { Clock } from "lucide-react";
 // import { toast } from "sonner";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -339,7 +339,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   ];
   
   return (
-  <div className="mt-3 sm:mt-4 p-2 sm:p-3 bg-gray-50 rounded-lg border">
+  <div className="hidden lg:block mt-3 sm:mt-4 p-2 sm:p-3 bg-gray-50 rounded-lg border">
   <div className="text-xs sm:text-sm text-gray-700 mb-2 sm:mb-3">
   <span className="font-semibold">Türkçe Karakterler:</span> <span className="hidden sm:inline">Klavye kısayolları: c=→ç, g=→ğ, s=→ş, o=→ö, u=→ü, i=→ı, I=→İ</span><span className="sm:hidden">Kısayollar: c=, g=, s=, o=, u=, i=, I=</span>
   </div>
@@ -396,16 +396,6 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   // const wordsRemaining = Math.max(0, wordLimit - wordCount);
   const isOverLimit = wordCount > wordLimit;
 
-  // Desktop bottom navigation arrows helpers
-  const totalItems = (hasSubParts ? subParts.length : questions.length) || 0;
-  const goPrev = () => {
-    if (totalItems <= 1) return;
-    setCurrentSubPartIndex((prev) => (prev > 0 ? prev - 1 : prev));
-  };
-  const goNext = () => {
-    if (totalItems <= 1) return;
-    setCurrentSubPartIndex((prev) => (prev < totalItems - 1 ? prev + 1 : prev));
-  };
 
   const handleSubmit = async () => {
     if (!testId) return;
@@ -743,55 +733,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
         </div>
       </div>
 
-      {/* Section indicators - Below header, all 3 tabs on one line */}
-      <div className="bg-white border-b border-gray-200 px-2 sm:px-4 md:px-6 py-2 sm:py-3">
-        <div className="flex items-center justify-center gap-0">
-          {/* 1.1 */}
-          <div
-            className={`flex-shrink-0 w-[60px] sm:w-[70px] md:w-[80px] h-9 sm:h-10 rounded-none first:rounded-l-md last:rounded-r-md flex items-center justify-center font-semibold text-sm sm:text-base transition-all ${
-              currentSectionIndex === 0 && currentSubPartIndex === 0
-                ? "bg-red-500 text-white shadow-sm"
-                : currentSectionIndex === 0 && currentSubPartIndex > 0
-                ? "bg-gray-100 text-gray-600"
-                : currentSectionIndex > 0
-                ? "bg-gray-100 text-gray-600"
-                : "bg-gray-200 text-gray-500"
-            }`}
-          >
-            1.1
-          </div>
-          
-          {/* 1.2 */}
-          <div
-            className={`flex-shrink-0 w-[60px] sm:w-[70px] md:w-[80px] h-9 sm:h-10 rounded-none first:rounded-l-md last:rounded-r-md flex items-center justify-center font-semibold text-sm sm:text-base transition-all ${
-              currentSectionIndex === 0 && currentSubPartIndex === 1
-                ? "bg-red-500 text-white shadow-sm"
-                : currentSectionIndex === 0 && currentSubPartIndex < 1
-                ? "bg-gray-200 text-gray-500"
-                : currentSectionIndex > 0
-                ? "bg-gray-100 text-gray-600"
-                : "bg-gray-100 text-gray-600"
-            }`}
-          >
-            1.2
-          </div>
-          
-          {/* 2 */}
-          <div
-            className={`flex-shrink-0 w-[60px] sm:w-[70px] md:w-[80px] h-9 sm:h-10 rounded-none first:rounded-l-md last:rounded-r-md flex items-center justify-center font-semibold text-sm sm:text-base transition-all ${
-              currentSectionIndex === 1
-                ? "bg-red-500 text-white shadow-sm"
-                : currentSectionIndex > 1
-                ? "bg-gray-100 text-gray-600"
-                : "bg-gray-200 text-gray-500"
-            }`}
-          >
-            2
-          </div>
-        </div>
-      </div>
-
-      {/* Word Count and Task Tabs - Below section indicators */}
+      {/* Word Count and Task Tabs - Below header */}
       <div className="px-2 sm:px-4 pt-2">
         {/* Mobile: Word Count with Part Info */}
         <div className="lg:hidden mb-2 sm:mb-3">
@@ -827,16 +769,16 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
         </div>
       </div>
 
-      {/* Main Content - Scrollable */}
-      <div className="flex-1 p-3 sm:p-4 pt-24 sm:pt-28 lg:pt-20 lg:p-8 pb-32 sm:pb-36">
+      {/* Main Content - Scrollable - Closer to header */}
+      <div className="flex-1 p-3 sm:p-4 pt-4 sm:pt-6 lg:pt-6 lg:p-8 pb-32 sm:pb-36">
         <div className="max-w-8xl mx-auto">
           {/* Mobile Layout - Questions on top */}
           <div className="lg:hidden space-y-3 sm:space-y-4">
             {/* Questions Panel - Mobile Only - Scrollable */}
             <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 max-h-[45vh] overflow-y-auto border border-gray-200" style={{ WebkitOverflowScrolling: 'touch' }}>
               <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
-                {selectedSection?.title ||
-                  `YAZMA GÖREVİ ${currentSectionIndex + 1}`}
+                {selectedSection?.title?.replace(/Task\s*(\d+)/i, (_, num) => `Görev ${num}`) ||
+                  `Görev ${currentSectionIndex + 1}`}
               </h2>
               {selectedSection?.description && (
                 <div className="space-y-3 text-gray-700">
@@ -906,98 +848,9 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                 </div>
               )}
             </div>
-            {/* Questions Display - Mobile Only - Scrollable */}
-            {questions.length > 0 && (
-              <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 mb-4 max-h-[40vh] overflow-y-auto border border-gray-200" style={{ WebkitOverflowScrolling: 'touch' }}>
-                <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3">
-                  {selectedSection?.title || `YAZMA GÖREVİ ${currentSectionIndex + 1}`}
-                </h2>
-                <div className="space-y-3">
-                      {questions.map((question, idx) => (
-                    <div key={question.id} className="p-3 rounded-lg bg-gray-50 border border-gray-200">
-                      <h3 className="font-medium text-gray-900 mb-2 text-base">Soru {idx + 1}</h3>
-                      {question.text && <p className="text-gray-700 text-base">{question.text}</p>}
-                      {"question" in question && (question as any).question && (
-                        <p className="text-gray-700 text-base">{(question as any).question}</p>
-                      )}
-                      {"description" in question && (question as any).description && (
-                        <p className="text-gray-600 text-sm mt-1">{(question as any).description}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Writing Area - Mobile Only - Always Visible */}
             <div className="bg-white rounded-xl shadow-lg p-3 sm:p-4 mt-0 mb-20 relative z-10 border-2 border-red-200">
-              {showTabs && (
-                  <div className="mb-3 sticky top-0 bg-white z-20 pb-2 w-full overflow-hidden">
-                    <Tabs
-                      value={String(currentSubPartIndex)}
-                      onValueChange={(value) =>
-                        setCurrentSubPartIndex(parseInt(value))
-                      }
-                      className="w-full"
-                    >
-                      <TabsList
-                        className="!flex !flex-nowrap w-full bg-gray-100 rounded-lg overflow-hidden p-0"
-                        style={{
-                          boxShadow: "none",
-                          flexWrap: "nowrap",
-                          whiteSpace: "nowrap",
-                        } as React.CSSProperties}
-                      >
-                        {tabItems.map((_, idx) => (
-                          <TabsTrigger
-                            key={idx}
-                            value={String(idx)}
-                            className={`
-                            !flex-1 !flex-shrink-0 px-0 py-2 text-base font-medium border-none rounded-none
-                            transition-all
-                            relative
-                            ${idx === 0 ? "rounded-l-lg" : ""}
-                            ${idx === (tabItems.length - 1) ? "rounded-r-lg" : ""}
-                            ${currentSubPartIndex === idx
-                                ? "bg-red-500 text-white z-10"
-                                : "text-gray-700"
-                              }
-                          `}
-                            style={{
-                              background:
-                                currentSubPartIndex === idx
-                                  ? "#ef4444"
-                                  : "none",
-                              color:
-                                currentSubPartIndex === idx
-                                  ? "#fff"
-                                  : undefined,
-                              boxShadow: "none",
-                              minWidth: "0",
-                              flexShrink: 0,
-                              flexGrow: 1,
-                              position: "relative",
-                              zIndex: currentSubPartIndex === idx ? 10 : 1,
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            {hasSubParts ? (
-                              <span>
-                                <span className="">
-                                  {currentSectionIndex + 1}
-                                </span>
-                                <span className="mx-0.5 text-black">.</span>
-                                <span className="">{idx + 1}</span>
-                              </span>
-                            ) : (
-                              <span>Soru {idx + 1}</span>
-                            )}
-                          </TabsTrigger>
-                        ))}
-                      </TabsList>
-                    </Tabs>
-                  </div>
-                )}
               <div className="mb-2">
                 <label className="text-sm font-semibold text-gray-700 block mb-1">
                   Cevabınızı yazın:
@@ -1030,7 +883,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
               <ResizablePanel defaultSize={45} minSize={25} maxSize={60} className="min-w-0 text:red-500">
                 <div className="bg-white rounded-xl shadow-md p-6 flex flex-col justify-start h-[calc(100vh-140px)] overflow-y-auto">
                   <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-                    {selectedSection?.title || `YAZMA GÖREVİ ${currentSectionIndex + 1}`}
+                    {selectedSection?.title?.replace(/Task\s*(\d+)/i, (_, num) => `Görev ${num}`) || `Görev ${currentSectionIndex + 1}`}
                   </h2>
                   {/* Questions Display - Always show */}
                   {questions.length > 0 && (
@@ -1088,60 +941,6 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
               <ResizableHandle withHandle className="mx-3" />
               <ResizablePanel defaultSize={55} className="min-w-0">
                 <div className="bg-white rounded-xl shadow-md p-6 flex-1 min-w-0 h-[calc(100vh-140px)] overflow-y-auto flex flex-col">
-                  {showTabs && (
-                    <div className="mb-4 w-full overflow-hidden">
-                      <Tabs
-                        value={String(currentSubPartIndex)}
-                        onValueChange={(value) => setCurrentSubPartIndex(parseInt(value))}
-                        className="w-full"
-                      >
-                        <TabsList
-                          className="!flex !flex-nowrap w-full bg-gray-100 rounded-lg overflow-hidden p-0"
-                          style={{ 
-                            boxShadow: "none",
-                            flexWrap: "nowrap",
-                            whiteSpace: "nowrap",
-                          } as React.CSSProperties}
-                        >
-                          {tabItems.map((_, idx) => (
-                            <TabsTrigger
-                              key={idx}
-                              value={String(idx)}
-                              className={`
-                                flex-1 flex-shrink-0 px-0 py-3 text-lg font-medium border-none rounded-none
-                                transition-all
-                                relative
-                                ${idx === 0 ? "rounded-l-lg" : ""}
-                                ${idx === (tabItems.length - 1) ? "rounded-r-lg" : ""}
-                                ${currentSubPartIndex === idx ? "bg-red-500 text-white z-10" : "text-gray-700"}
-                              `}
-                              style={{
-                                background: currentSubPartIndex === idx ? "#ef4444" : "none",
-                                color: currentSubPartIndex === idx ? "#fff" : undefined,
-                                boxShadow: "none",
-                                minWidth: "0",
-                                flexShrink: 0,
-                                flexGrow: 1,
-                                position: "relative",
-                                zIndex: currentSubPartIndex === idx ? 10 : 1,
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              {hasSubParts ? (
-                                <span>
-                                  <span className="">{currentSectionIndex + 1}</span>
-                                  <span className="mx-0.5 text-gray-200">.</span>
-                                  <span className="">{idx + 1}</span>
-                                </span>
-                              ) : (
-                                <span>Soru {idx + 1}</span>
-                              )}
-                            </TabsTrigger>
-                          ))}
-                        </TabsList>
-                      </Tabs>
-                    </div>
-                  )}
                   <textarea
                     ref={textareaRef}
                     onKeyDown={handleShortcutKeyDown}
@@ -1157,44 +956,8 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                 </div>
               </ResizablePanel>
             </ResizablePanelGroup>
-            {/* Bottom sticky task switcher - desktop */}
-            <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur rounded-full shadow-md px-2 py-1 z-[900]">
-              <div className="flex gap-1">
-                {sections.map((_, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setCurrentSectionIndex(idx)}
-                    className={`px-10 py-3 rounded-full font-medium text-lg transition-all ${idx === currentSectionIndex
-                        ? "bg-red-500 text-white shadow-sm"
-                        : "text-gray-700 hover:text-red-600 hover:bg-red-50"
-                      }`}
-                  >
-                    Görev {idx + 1}
-                  </button>
-                ))}
-              </div>
-            </div>
 
 
-            {/* Subpart navigation arrows - desktop */}
-            {(hasSubParts || hasQuestions) && (hasSubParts ? subParts.length : questions.length) > 1 && (
-              <div className="fixed bottom-4 right-4 z-[900] flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={goPrev}
-                  className="h-10 w-10 rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 flex items-center justify-center shadow-sm"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={goNext}
-                  className="h-10 w-10 rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 flex items-center justify-center shadow-sm"
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </button>
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -1236,13 +999,53 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
       />
 
 
-      {/* Mobile Timer at Bottom */}
-      <div className="lg:hidden fixed bottom-4 right-4 z-[900] pointer-events-none">
-        <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg px-3 py-2 border border-gray-200 pointer-events-auto">
-          <Clock className="h-4 w-4 text-gray-600" />
-          <span className="text-lg font-bold text-gray-800 font-mono">
-            {formatTime(timeLeft)}
-          </span>
+      {/* Unified Navigation Tabs - Fixed at bottom - Visible on all devices */}
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-white rounded-lg shadow-xl border-2 border-gray-300 px-1 py-1 z-[9999]">
+        <div className="flex items-stretch gap-0">
+          {/* 1.1 */}
+          <button
+            onClick={() => {
+              setCurrentSectionIndex(0);
+              setCurrentSubPartIndex(0);
+            }}
+            className={`flex-shrink-0 min-w-[60px] sm:min-w-[70px] md:min-w-[80px] h-10 sm:h-11 px-4 sm:px-5 rounded-l-lg rounded-r-none flex items-center justify-center font-bold text-sm sm:text-base transition-all ${
+              currentSectionIndex === 0 && currentSubPartIndex === 0
+                ? "bg-red-500 text-white shadow-md"
+                : "bg-white text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            1.1
+          </button>
+          
+          {/* 1.2 */}
+          <button
+            onClick={() => {
+              setCurrentSectionIndex(0);
+              setCurrentSubPartIndex(1);
+            }}
+            className={`flex-shrink-0 min-w-[60px] sm:min-w-[70px] md:min-w-[80px] h-10 sm:h-11 px-4 sm:px-5 rounded-none flex items-center justify-center font-bold text-sm sm:text-base transition-all border-l border-r border-gray-300 ${
+              currentSectionIndex === 0 && currentSubPartIndex === 1
+                ? "bg-red-500 text-white border-red-500 shadow-md"
+                : "bg-white text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            1.2
+          </button>
+          
+          {/* 2 */}
+          <button
+            onClick={() => {
+              setCurrentSectionIndex(1);
+              setCurrentSubPartIndex(0);
+            }}
+            className={`flex-shrink-0 min-w-[60px] sm:min-w-[70px] md:min-w-[80px] h-10 sm:h-11 px-4 sm:px-5 rounded-r-lg rounded-l-none flex items-center justify-center font-bold text-sm sm:text-base transition-all ${
+              currentSectionIndex === 1
+                ? "bg-red-500 text-white shadow-md"
+                : "bg-white text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            2
+          </button>
         </div>
       </div>
     </div>

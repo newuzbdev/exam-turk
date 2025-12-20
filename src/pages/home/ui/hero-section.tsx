@@ -63,7 +63,7 @@ const HeroSection = () => {
               <div className="flex items-center">
                 <Users className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-red-500" />
                 <span className="text-lg sm:text-xl">
-                  15,000+ Aktif Kullanıcı
+                  1.500+ Aktif Kullanıcı
                 </span>
               </div>
               <div className="flex items-center">

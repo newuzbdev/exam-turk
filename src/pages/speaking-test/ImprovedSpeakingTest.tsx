@@ -510,8 +510,8 @@ export default function ImprovedSpeakingTest() {
         }
       }
       
-      // Play TTS audio if available (for ALL sections - PART1, PART2, PART3)
-      if (questionToUse?.textToSpeechUrl) {
+      // Play TTS audio only for PART1 (skip TTS for PART2 and PART3)
+      if (currentSection.type === "PART1" && questionToUse?.textToSpeechUrl) {
         console.log(`🔊 Playing TTS for ${currentSection.type}, question: ${questionToUse.id}`)
         const fullUrl = questionToUse.textToSpeechUrl.startsWith('./')
           ? `${baseURL}${questionToUse.textToSpeechUrl.substring(1)}`
@@ -541,8 +541,9 @@ export default function ImprovedSpeakingTest() {
           startPreparationAfterTTS()
         })
       } else {
-        // No TTS available, start preparation immediately
-        console.log(`⏭️ No TTS available for ${currentSection.type}, starting preparation immediately`)
+        // For PART2 and PART3, skip TTS and start preparation immediately
+        // For PART1 without TTS, also start preparation immediately
+        console.log(`⏭️ Skipping TTS for ${currentSection.type}, starting preparation immediately`)
         startPreparationAfterTTS()
       }
     }
@@ -770,7 +771,7 @@ export default function ImprovedSpeakingTest() {
           setIsProcessingSpeechToText(false)
         }
         
-        // For PART1, automatically advance to next question after recording
+        // Automatically advance to next question after recording completes
         if (currentSection?.type === "PART1") {
           console.log(`🎯 PART1: Recording finished for question ${currentQuestionIndex + 1}, auto-advancing in 800ms...`)
           setTimeout(() => {
@@ -1565,48 +1566,69 @@ export default function ImprovedSpeakingTest() {
               />
             </div>
 
-            {/* Progress indicators on right - horizontal segments with equal width */}
+            {/* Progress indicators on right - circular tabs with connectors */}
             <div className="flex items-center flex-nowrap gap-0 flex-shrink min-w-0">
               {/* Section 1.1 */}
-              <div className={`flex-shrink-0 w-[60px] sm:w-[70px] md:w-[80px] h-10 sm:h-11 rounded-none first:rounded-l-md last:rounded-r-md flex items-center justify-center font-semibold text-sm sm:text-base transition-all ${
-                currentSectionIndex === 0 && currentSubPartIndex === 0
-                  ? "bg-red-500 text-white shadow-sm"
-                  : currentSectionIndex > 0 || (currentSectionIndex === 0 && currentSubPartIndex > 0)
-                  ? "bg-gray-100 text-gray-600 border-r border-gray-300"
-                  : "bg-gray-200 text-gray-500 border-r border-gray-300"
-              }`}>
-                1.1
+              <div className="flex items-center">
+                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-semibold text-sm sm:text-base transition-all shadow-md ${
+                  currentSectionIndex === 0 && currentSubPartIndex === 0
+                    ? "bg-red-500 text-white"
+                    : "bg-gray-200 text-gray-600"
+                }`}>
+                  1.1
+                </div>
+                <div className={`w-6 sm:w-8 h-0.5 ${
+                  (currentSectionIndex > 0 || (currentSectionIndex === 0 && currentSubPartIndex > 0))
+                    ? "bg-red-500"
+                    : "bg-gray-300"
+                }`}></div>
               </div>
               
               {/* Section 1.2 */}
-              <div className={`flex-shrink-0 w-[60px] sm:w-[70px] md:w-[80px] h-10 sm:h-11 rounded-none first:rounded-l-md last:rounded-r-md flex items-center justify-center font-semibold text-sm sm:text-base transition-all ${
-                currentSectionIndex === 0 && currentSubPartIndex === 1
-                  ? "bg-red-500 text-white shadow-sm"
-                  : currentSectionIndex > 0
-                  ? "bg-gray-100 text-gray-600 border-r border-gray-300"
-                  : "bg-gray-200 text-gray-500 border-r border-gray-300"
-              }`}>
-                1.2
+              <div className="flex items-center">
+                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-semibold text-sm sm:text-base transition-all shadow-md ${
+                  currentSectionIndex === 0 && currentSubPartIndex === 1
+                    ? "bg-red-500 text-white"
+                    : (currentSectionIndex > 0 || (currentSectionIndex === 0 && currentSubPartIndex > 1))
+                    ? "bg-gray-100 text-gray-600"
+                    : "bg-gray-200 text-gray-600"
+                }`}>
+                  1.2
+                </div>
+                <div className={`w-6 sm:w-8 h-0.5 ${
+                  currentSectionIndex > 0
+                    ? "bg-red-500"
+                    : "bg-gray-300"
+                }`}></div>
               </div>
               
               {/* Section 2 */}
-              <div className={`flex-shrink-0 w-[60px] sm:w-[70px] md:w-[80px] h-10 sm:h-11 rounded-none first:rounded-l-md last:rounded-r-md flex items-center justify-center font-semibold text-sm sm:text-base transition-all ${
-                currentSectionIndex === 1
-                  ? "bg-red-500 text-white shadow-sm"
-                  : currentSectionIndex > 1
-                  ? "bg-gray-100 text-gray-600 border-r border-gray-300"
-                  : "bg-gray-200 text-gray-500 border-r border-gray-300"
-              }`}>
-                2
+              <div className="flex items-center">
+                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-semibold text-sm sm:text-base transition-all shadow-md ${
+                  currentSectionIndex === 1
+                    ? "bg-red-500 text-white"
+                    : currentSectionIndex > 1
+                    ? "bg-gray-100 text-gray-600"
+                    : "bg-gray-200 text-gray-600"
+                }`}>
+                  2
+                </div>
+                <div className={`w-6 sm:w-8 h-0.5 ${
+                  currentSectionIndex > 1
+                    ? "bg-red-500"
+                    : "bg-gray-300"
+                }`}></div>
               </div>
               
               {/* Section 3 */}
-              <div className={`flex-shrink-0 w-[60px] sm:w-[70px] md:w-[80px] h-10 sm:h-11 rounded-none first:rounded-l-md last:rounded-r-md flex items-center justify-center font-semibold text-sm sm:text-base transition-all ${
-                currentSectionIndex === 2
-                  ? "bg-red-500 text-white shadow-sm"
-                  : "bg-gray-200 text-gray-500"
-              }`}>
-                3
+              <div className="flex items-center">
+                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-semibold text-sm sm:text-base transition-all shadow-md ${
+                  currentSectionIndex === 2
+                    ? "bg-red-500 text-white"
+                    : "bg-gray-200 text-gray-600"
+                }`}>
+                  3
+                </div>
               </div>
             </div>
           </div>
@@ -1802,22 +1824,6 @@ export default function ImprovedSpeakingTest() {
           )}
         </AnimatePresence>
 
-        {/* Timer display for PART3 when recording */}
-        {currentSection?.type === "PART3" && isRecording && !isPlayingInstructions && !isPlayingTTS && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-3 sm:mb-4 md:mb-6 w-full max-w-sm mx-auto px-2"
-          >
-            <div className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 shadow-lg border-2 border-red-200">
-              <p className="text-xs sm:text-sm md:text-base font-medium text-gray-700 mb-1 sm:mb-2 text-center">Cevap Süresi</p>
-              <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-red-600 font-mono text-center">
-                {formatTime(timeLeft)}
-              </p>
-              <p className="text-[10px] sm:text-xs md:text-sm text-gray-500 mt-1 sm:mt-2 text-center">2 dakika cevap süresi</p>
-            </div>
-          </motion.div>
-        )}
 
         {/* Hide microphone button until TTS finishes and preparation time completes */}
         {!isPlayingInstructions && !isPlayingTTS && !isPrepRunning ? (
@@ -1828,28 +1834,20 @@ export default function ImprovedSpeakingTest() {
                 <span className="absolute inset-0 w-28 h-28 sm:w-36 sm:h-36 md:w-48 md:h-48 -left-4 -top-4 sm:-left-6 sm:-top-6 md:-left-8 md:-top-8 rounded-full bg-red-500 opacity-20 animate-ping" style={{ animationDuration: '3s' }}></span>
               </>
             )}
-            <motion.button
-              onClick={() => {
-                if (isProcessingSpeechToText) return
-                if (isRecording) stopRecording()
-                else startRecording()
-              }}
-              disabled={isProcessingSpeechToText}
+            <motion.div
               className={`w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-32 lg:h-32 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 ${
                 isRecording
-                  ? "bg-red-600 hover:bg-red-700"
+                  ? "bg-red-600"
                   : isProcessingSpeechToText
                   ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-gradient-to-br from-red-400 to-red-600 hover:from-red-500 hover:to-red-700"
+                  : "bg-gradient-to-br from-red-400 to-red-600"
               }`}
-              whileHover={{ scale: isProcessingSpeechToText ? 1 : 1.05 }}
-              whileTap={{ scale: isProcessingSpeechToText ? 1 : 0.95 }}
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.4, type: "spring", stiffness: 200 }}
             >
               <Mic className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 text-white" />
-            </motion.button>
+            </motion.div>
           </div>
         ) : (
           /* Show loading state when TTS is playing or preparation is running */
@@ -1968,33 +1966,6 @@ export default function ImprovedSpeakingTest() {
         </div>
       </main>
 
-      {/* Section navigation buttons at bottom center */}
-      {testData?.sections && testData.sections.length > 1 && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur rounded-full shadow-md px-2 py-1 z-[900]">
-          <div className="flex gap-1">
-            {testData.sections.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => {
-                  if (idx !== currentSectionIndex) {
-                    setCurrentSectionIndex(idx)
-                    setCurrentSubPartIndex(0)
-                    setCurrentQuestionIndex(0)
-                    setShowSectionDescription(true)
-                  }
-                }}
-                className={`flex-1 min-w-[120px] px-6 py-3 rounded-full font-medium text-lg transition-all ${
-                  idx === currentSectionIndex
-                    ? "bg-red-500 text-white shadow-sm"
-                    : "text-gray-700 hover:text-red-600 hover:bg-red-50"
-                }`}
-              >
-                Bölüm {idx + 1}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Timer always at bottom for all sections */}
       <motion.div

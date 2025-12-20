@@ -749,24 +749,6 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
           </div>
         </div>
         
-        {/* Mobile Task Tabs */}
-        <div className="lg:hidden mb-2">
-          <div className="flex bg-gray-100 rounded-lg p-0.5 gap-1">
-            {sections.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => setCurrentSectionIndex(idx)}
-                className={`flex-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md font-medium text-xs sm:text-sm transition-all ${
-                  idx === currentSectionIndex
-                    ? "bg-red-500 text-white shadow-sm"
-                    : "text-gray-600 hover:text-red-600 hover:bg-red-50"
-                }`}
-              >
-                Görev {idx + 1}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
 
       {/* Main Content - Scrollable - Closer to header */}
@@ -776,13 +758,11 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
           <div className="lg:hidden space-y-3 sm:space-y-4">
             {/* Questions Panel - Mobile Only - Scrollable */}
             <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 max-h-[45vh] overflow-y-auto border border-gray-200" style={{ WebkitOverflowScrolling: 'touch' }}>
-              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
-                {selectedSection?.title?.replace(/Task\s*(\d+)/i, (_, num) => `Görev ${num}`) ||
-                  `Görev ${currentSectionIndex + 1}`}
-              </h2>
-              {selectedSection?.description && (
+              {(selectedSection?.description || hasQuestions || (hasSubParts && selectedSubPart)) && (
                 <div className="space-y-3 text-gray-700">
-                  <p className="text-base">{selectedSection.description}</p>
+                  {selectedSection?.description && (
+                    <p className="text-base">{selectedSection.description}</p>
+                  )}
                   {hasSubParts && selectedSubPart && (
                     <div className="p-3 rounded-lg bg-gray-50">
                       <h3 className="font-medium text-gray-900 mb-2 text-base">
@@ -882,9 +862,6 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
             <ResizablePanelGroup direction="horizontal" className="w-full">
               <ResizablePanel defaultSize={45} minSize={25} maxSize={60} className="min-w-0 text:red-500">
                 <div className="bg-white rounded-xl shadow-md p-6 flex flex-col justify-start h-[calc(100vh-140px)] overflow-y-auto">
-                  <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-                    {selectedSection?.title?.replace(/Task\s*(\d+)/i, (_, num) => `Görev ${num}`) || `Görev ${currentSectionIndex + 1}`}
-                  </h2>
                   {/* Questions Display - Always show */}
                   {questions.length > 0 && (
                     <div className="space-y-4 mt-4">
@@ -1000,15 +977,15 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
 
 
       {/* Unified Navigation Tabs - Fixed at bottom - Visible on all devices */}
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-white rounded-lg shadow-xl border-2 border-gray-300 px-1 py-1 z-[9999]">
-        <div className="flex items-stretch gap-0">
+      <div className="fixed bottom-0 left-0 right-0 sm:bottom-4 sm:left-1/2 sm:-translate-x-1/2 sm:right-auto bg-white border-t-2 sm:border-t-0 sm:border-2 border-gray-300 shadow-2xl px-2 sm:px-1 py-2 sm:py-1 z-[9999] sm:rounded-lg">
+        <div className="flex items-stretch gap-0 max-w-md sm:max-w-none mx-auto sm:mx-0">
           {/* 1.1 */}
           <button
             onClick={() => {
               setCurrentSectionIndex(0);
               setCurrentSubPartIndex(0);
             }}
-            className={`flex-shrink-0 min-w-[60px] sm:min-w-[70px] md:min-w-[80px] h-10 sm:h-11 px-4 sm:px-5 rounded-l-lg rounded-r-none flex items-center justify-center font-bold text-sm sm:text-base transition-all ${
+            className={`flex-1 sm:flex-shrink-0 sm:min-w-[80px] md:min-w-[90px] h-14 sm:h-11 px-2 sm:px-5 rounded-l-lg sm:rounded-l-lg rounded-r-none flex items-center justify-center font-bold text-lg sm:text-base transition-all ${
               currentSectionIndex === 0 && currentSubPartIndex === 0
                 ? "bg-red-500 text-white shadow-md"
                 : "bg-white text-gray-700 hover:bg-gray-100"
@@ -1023,7 +1000,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
               setCurrentSectionIndex(0);
               setCurrentSubPartIndex(1);
             }}
-            className={`flex-shrink-0 min-w-[60px] sm:min-w-[70px] md:min-w-[80px] h-10 sm:h-11 px-4 sm:px-5 rounded-none flex items-center justify-center font-bold text-sm sm:text-base transition-all border-l border-r border-gray-300 ${
+            className={`flex-1 sm:flex-shrink-0 sm:min-w-[80px] md:min-w-[90px] h-14 sm:h-11 px-2 sm:px-5 rounded-none flex items-center justify-center font-bold text-lg sm:text-base transition-all border-l border-r border-gray-300 ${
               currentSectionIndex === 0 && currentSubPartIndex === 1
                 ? "bg-red-500 text-white border-red-500 shadow-md"
                 : "bg-white text-gray-700 hover:bg-gray-100"
@@ -1038,7 +1015,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
               setCurrentSectionIndex(1);
               setCurrentSubPartIndex(0);
             }}
-            className={`flex-shrink-0 min-w-[60px] sm:min-w-[70px] md:min-w-[80px] h-10 sm:h-11 px-4 sm:px-5 rounded-r-lg rounded-l-none flex items-center justify-center font-bold text-sm sm:text-base transition-all ${
+            className={`flex-1 sm:flex-shrink-0 sm:min-w-[80px] md:min-w-[90px] h-14 sm:h-11 px-2 sm:px-5 rounded-r-lg sm:rounded-r-lg rounded-l-none flex items-center justify-center font-bold text-lg sm:text-base transition-all ${
               currentSectionIndex === 1
                 ? "bg-red-500 text-white shadow-md"
                 : "bg-white text-gray-700 hover:bg-gray-100"

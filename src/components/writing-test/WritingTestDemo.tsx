@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Clock } from "lucide-react";
 // import { toast } from "sonner";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import writingTestService, {
   type WritingTestItem,
@@ -214,8 +213,6 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
     : undefined;
   
   // Determine what items to show in tabs
-  const tabItems = hasSubParts ? subParts : questions;
-  const showTabs = tabItems.length > 1;
   
 
   // Always default to 0 for subpart index if not set

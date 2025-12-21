@@ -39,6 +39,9 @@ interface TestSonuç {
   submittedAt?: string;
   sections?: any[];
   parts?: any[];
+  part1?: any;
+  part2?: any;
+  part3?: any;
 }
 
 interface OverallResponse {
@@ -743,8 +746,43 @@ export default function OverallResults() {
       answersLength: speaking?.answers?.length || 0,
       hasParts: !!speaking?.parts,
       partsLength: speaking?.parts?.length || 0,
+      hasPart1: !!speaking?.part1,
+      hasPart2: !!speaking?.part2,
+      hasPart3: !!speaking?.part3,
+      part1Sections: speaking?.part1?.sections?.length || 0,
+      aiFeedbackType: typeof aiFeedback,
       speaking: speaking
     });
+    
+    // Helper function to extract feedback sections from string format
+    const extractFeedbackSection = (feedbackText: string | undefined, sectionName: string): string => {
+      if (!feedbackText || typeof feedbackText !== 'string') {
+        return `Geri bildirim mevcut değil`;
+      }
+      
+      // Try to extract specific section from the feedback string
+      const sectionPatterns: Record<string, RegExp> = {
+        'part1': /\[BÖLÜM 1 ANALİZİ\]([\s\S]*?)(?=\[BÖLÜM 2|\[BÖLÜM 3|AI GERİ BİLDİRİMİ|$)/i,
+        'part2': /\[BÖLÜM 2 ANALİZİ\]([\s\S]*?)(?=\[BÖLÜM 3|AI GERİ BİLDİRİMİ|$)/i,
+        'part3': /\[BÖLÜM 3 ANALİZİ\]([\s\S]*?)(?=AI GERİ BİLDİRİMİ|$)/i,
+        'general': /AI GERİ BİLDİRİMİ \(EĞİTMEN NOTU\):([\s\S]*?)(?=$)/i
+      };
+      
+      const pattern = sectionPatterns[sectionName];
+      if (pattern) {
+        const match = feedbackText.match(pattern);
+        if (match && match[1]) {
+          return match[1].trim();
+        }
+      }
+      
+      // If no specific section found, return the full feedback for general or fallback
+      if (sectionName === 'general' || sectionName === 'taskAchievement') {
+        return feedbackText;
+      }
+      
+      return `Geri bildirim mevcut değil`;
+    };
 
     // Extract scores from AI feedback or use defaults
     const extractScoreFromFeedback = (feedbackText: string) => {
@@ -768,46 +806,92 @@ export default function OverallResults() {
         return speaking.answers;
       }
       
-      // If not, try to extract from parts structure
+      const extractedAnswers: Array<{ questionId: string; questionText: string; userAnswer: string }> = [];
+      
+      // Helper function to extract from a part structure
+      const extractFromPart = (part: any) => {
+        if (!part) return;
+        
+        // Handle parts with sections that have subParts (like Part 1)
+        if (part.sections && Array.isArray(part.sections)) {
+          part.sections.forEach((section: any) => {
+            if (section.subParts && Array.isArray(section.subParts)) {
+              section.subParts.forEach((subPart: any) => {
+                if (subPart.questions && Array.isArray(subPart.questions)) {
+                  subPart.questions.forEach((q: any) => {
+                    if (q.userAnswer && typeof q.userAnswer === 'string' && q.userAnswer.trim() !== '') {
+                      extractedAnswers.push({
+                        questionId: q.questionId || q.id || '',
+                        questionText: q.questionText || q.question || `Soru ${extractedAnswers.length + 1}`,
+                        userAnswer: q.userAnswer
+                      });
+                    }
+                  });
+                }
+              });
+            }
+            // Handle sections with direct questions (no subParts)
+            else if (section.questions && Array.isArray(section.questions)) {
+              section.questions.forEach((q: any) => {
+                if (q.userAnswer && typeof q.userAnswer === 'string' && q.userAnswer.trim() !== '') {
+                  extractedAnswers.push({
+                    questionId: q.questionId || q.id || '',
+                    questionText: q.questionText || q.question || `Soru ${extractedAnswers.length + 1}`,
+                    userAnswer: q.userAnswer
+                  });
+                }
+              });
+            }
+          });
+        }
+        // Handle parts with direct subParts (no sections wrapper)
+        else if (part.subParts && Array.isArray(part.subParts)) {
+          part.subParts.forEach((subPart: any) => {
+            if (subPart.questions && Array.isArray(subPart.questions)) {
+              subPart.questions.forEach((q: any) => {
+                if (q.userAnswer && typeof q.userAnswer === 'string' && q.userAnswer.trim() !== '') {
+                  extractedAnswers.push({
+                    questionId: q.questionId || q.id || '',
+                    questionText: q.questionText || q.question || `Soru ${extractedAnswers.length + 1}`,
+                    userAnswer: q.userAnswer
+                  });
+                }
+              });
+            }
+          });
+        }
+        // Handle parts with direct questions (no subParts, no sections)
+        else if (part.questions && Array.isArray(part.questions)) {
+          part.questions.forEach((q: any) => {
+            if (q.userAnswer && typeof q.userAnswer === 'string' && q.userAnswer.trim() !== '') {
+              extractedAnswers.push({
+                questionId: q.questionId || q.id || '',
+                questionText: q.questionText || q.question || `Soru ${extractedAnswers.length + 1}`,
+                userAnswer: q.userAnswer
+              });
+            }
+          });
+        }
+      };
+      
+      // Try to extract from part1, part2, part3 structure (new format)
+      if (speaking?.part1 || speaking?.part2 || speaking?.part3) {
+        console.log("Extracting answers from part1/part2/part3 structure");
+        extractFromPart(speaking.part1);
+        extractFromPart(speaking.part2);
+        extractFromPart(speaking.part3);
+        console.log("Extracted answers from part1/part2/part3:", extractedAnswers);
+        if (extractedAnswers.length > 0) return extractedAnswers;
+      }
+      
+      // If not, try to extract from parts array structure (old format)
       if (speaking?.parts && Array.isArray(speaking.parts)) {
-        console.log("Extracting answers from parts structure:", speaking.parts);
-        const extractedAnswers: Array<{ questionId: string; questionText: string; userAnswer: string }> = [];
-        
+        console.log("Extracting answers from parts array structure:", speaking.parts);
         speaking.parts.forEach((part: any) => {
-          // Handle parts with subParts (like Part 1)
-          if (part.subParts && Array.isArray(part.subParts)) {
-            part.subParts.forEach((subPart: any) => {
-              if (subPart.questions && Array.isArray(subPart.questions)) {
-                subPart.questions.forEach((q: any) => {
-                  // Check if userAnswer exists and is not empty
-                  if (q.userAnswer && typeof q.userAnswer === 'string' && q.userAnswer.trim() !== '') {
-                    extractedAnswers.push({
-                      questionId: q.questionId || q.id || '',
-                      questionText: q.questionText || q.question || `Soru ${extractedAnswers.length + 1}`,
-                      userAnswer: q.userAnswer
-                    });
-                  }
-                });
-              }
-            });
-          }
-          // Handle parts without subParts (like Part 2 and 3)
-          else if (part.questions && Array.isArray(part.questions)) {
-            part.questions.forEach((q: any) => {
-              // Check if userAnswer exists and is not empty
-              if (q.userAnswer && typeof q.userAnswer === 'string' && q.userAnswer.trim() !== '') {
-                extractedAnswers.push({
-                  questionId: q.questionId || q.id || '',
-                  questionText: q.questionText || q.question || `Soru ${extractedAnswers.length + 1}`,
-                  userAnswer: q.userAnswer
-                });
-              }
-            });
-          }
+          extractFromPart(part);
         });
-        
-        console.log("Extracted answers:", extractedAnswers);
-        return extractedAnswers;
+        console.log("Extracted answers from parts array:", extractedAnswers);
+        if (extractedAnswers.length > 0) return extractedAnswers;
       }
       
       console.log("No answers found in speaking data");
@@ -855,24 +939,34 @@ export default function OverallResults() {
         
         // Map part index to feedback key
         // Code organizes into: part1_1 (index 0), part1_2 (index 1), part2 (index 2), part3 (index 3)
-        // User feedback has: part1, part2, part3, part4
-        // Map: part1_1 -> part1, part1_2 -> part2, part2 -> part3, part3 -> part4
+        // Feedback string has: [BÖLÜM 1 ANALİZİ], [BÖLÜM 2 ANALİZİ], [BÖLÜM 3 ANALİZİ]
+        // Map: part1_1 (index 0) -> part1, part1_2 (index 1) -> part1 (both use BÖLÜM 1), 
+        //      part2 (index 2) -> part2, part3 (index 3) -> part3
         let feedbackKey: string;
-        if (activeSpeakingPart === 0) {
+        if (activeSpeakingPart === 0 || activeSpeakingPart === 1) {
+          // Both Part 1.1 and Part 1.2 use BÖLÜM 1 feedback
           feedbackKey = 'part1';
-        } else if (activeSpeakingPart === 1) {
-          feedbackKey = 'part2';
         } else if (activeSpeakingPart === 2) {
-          feedbackKey = 'part3';
+          feedbackKey = 'part2';
         } else if (activeSpeakingPart === 3) {
-          feedbackKey = 'part4';
+          feedbackKey = 'part3';
         } else {
           feedbackKey = `part${activeSpeakingPart + 1}`;
         }
         
-        const partFeedback = (aiFeedback as any)?.[feedbackKey] || 
-                           aiFeedback?.taskAchievement || 
-                           `${partLabel.main} geri bildirimi burada gösterilecek`;
+        // Get feedback for the specific part
+        let partFeedback: string;
+        
+        // Handle both string and object formats for aiFeedback
+        if (typeof aiFeedback === 'string') {
+          partFeedback = extractFeedbackSection(aiFeedback, feedbackKey);
+        } else if (aiFeedback && typeof aiFeedback === 'object') {
+          partFeedback = (aiFeedback as any)?.[feedbackKey] || 
+                        aiFeedback?.taskAchievement || 
+                        `${partLabel.main} geri bildirimi burada gösterilecek`;
+        } else {
+          partFeedback = `${partLabel.main} geri bildirimi burada gösterilecek`;
+        }
         
         return {
           question: currentAnswer?.questionText || `${partLabel.main} Sorusu ${currentQuestionIndex + 1}`,
@@ -883,10 +977,20 @@ export default function OverallResults() {
         };
       }
       
+      // Get default feedback
+      let defaultFeedback: string;
+      if (typeof aiFeedback === 'string') {
+        defaultFeedback = extractFeedbackSection(aiFeedback, 'general');
+      } else if (aiFeedback && typeof aiFeedback === 'object') {
+        defaultFeedback = (aiFeedback as any)?.part1 || aiFeedback?.taskAchievement || "Geri bildirim mevcut değil";
+      } else {
+        defaultFeedback = "Geri bildirim mevcut değil";
+      }
+      
       return {
         question: "Soru metni burada gösterilecek",
         answer: "Cevap verilmedi",
-        comment: (aiFeedback as any)?.part1 || aiFeedback?.taskAchievement || "Geri bildirim mevcut değil"
+        comment: defaultFeedback
       };
     };
 
@@ -915,53 +1019,84 @@ export default function OverallResults() {
           {/* Scoring Categories Grid */}
           {aiFeedback && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              {(aiFeedback as any).part1 && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-gray-900">Bölüm 1</h3>
-                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                  </div>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    {(aiFeedback as any).part1}
-                  </p>
-                </div>
-              )}
-              {(aiFeedback as any).part2 && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-gray-900">Bölüm 2</h3>
-                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  </div>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    {(aiFeedback as any).part2}
-                  </p>
-                </div>
-              )}
-              {(aiFeedback as any).part3 && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-gray-900">Bölüm 3</h3>
-                    <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                  </div>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    {(aiFeedback as any).part3}
-                  </p>
-                </div>
-              )}
-              {(aiFeedback as any).part4 && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-gray-900">Bölüm 4</h3>
-                    <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-                  </div>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    {(aiFeedback as any).part4}
-                  </p>
-                </div>
-              )}
-              {/* Fallback to IELTS-style feedback if part1-4 not available */}
-              {!(aiFeedback as any).part1 && !(aiFeedback as any).part2 && 
-               !(aiFeedback as any).part3 && !(aiFeedback as any).part4 && (
+              {(() => {
+                // Helper to get feedback text for a part
+                const getPartFeedback = (partKey: string) => {
+                  if (typeof aiFeedback === 'string') {
+                    return extractFeedbackSection(aiFeedback, partKey);
+                  } else if (aiFeedback && typeof aiFeedback === 'object') {
+                    return (aiFeedback as any)?.[partKey] || '';
+                  }
+                  return '';
+                };
+                
+                const part1Feedback = getPartFeedback('part1');
+                const part2Feedback = getPartFeedback('part2');
+                const part3Feedback = getPartFeedback('part3');
+                const part4Feedback = getPartFeedback('part4');
+                const generalFeedback = getPartFeedback('general');
+                const hasPartFeedback = part1Feedback || part2Feedback || part3Feedback || part4Feedback;
+                
+                return (
+                  <>
+                    {part1Feedback && (
+                      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="font-semibold text-gray-900">Bölüm 1</h3>
+                          <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                        </div>
+                        <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
+                          {part1Feedback}
+                        </p>
+                      </div>
+                    )}
+                    {part2Feedback && (
+                      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="font-semibold text-gray-900">Bölüm 2</h3>
+                          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                        </div>
+                        <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
+                          {part2Feedback}
+                        </p>
+                      </div>
+                    )}
+                    {part3Feedback && (
+                      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="font-semibold text-gray-900">Bölüm 3</h3>
+                          <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                        </div>
+                        <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
+                          {part3Feedback}
+                        </p>
+                      </div>
+                    )}
+                    {part4Feedback && (
+                      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="font-semibold text-gray-900">Bölüm 4</h3>
+                          <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                        </div>
+                        <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
+                          {part4Feedback}
+                        </p>
+                      </div>
+                    )}
+                    {/* Show general feedback if available */}
+                    {generalFeedback && generalFeedback.trim() !== 'Geri bildirim mevcut değil' && (
+                      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 md:col-span-2 lg:col-span-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="font-semibold text-gray-900">AI Geri Bildirimi (Eğitmen Notu)</h3>
+                          <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                        </div>
+                        <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
+                          {generalFeedback}
+                        </p>
+                      </div>
+                    )}
+                    {/* Fallback to IELTS-style feedback if part1-4 not available */}
+                    {!hasPartFeedback && (
                 <>
                   <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                     <div className="flex items-center justify-between mb-3">
@@ -1000,7 +1135,10 @@ export default function OverallResults() {
                     </p>
                   </div>
                 </>
-              )}
+                    )}
+                  </>
+                );
+              })()}
             </div>
           )}
 

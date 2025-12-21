@@ -227,7 +227,7 @@ export const MicrophoneCheck = ({ onSuccess }: Props) => {
             </div>
             <div className="flex-1">
               <h2 className="text-lg sm:text-xl font-semibold mb-3 text-slate-700">
-                1. Mikrofon kontrolü
+                Mikrofon kontrolü
               </h2>
               <p className="mb-4 text-sm sm:text-base text-gray-600">
                 Sınava başlamadan önce mikrofonunuzun düzgün çalıştığından emin olun. Kaydı başlatmak için{" "}

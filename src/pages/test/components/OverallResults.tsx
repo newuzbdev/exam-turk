@@ -754,6 +754,16 @@ export default function OverallResults() {
       speaking: speaking
     });
     
+    // Helper function to remove bullet symbols from text
+    const removeBullets = (text: string): string => {
+      if (!text) return text;
+      // Remove bullet symbols (•, , etc.) and clean up whitespace
+      return text
+        .replace(/[•\u2022\u25E6\uF0B7]/g, '') // Remove various bullet symbols
+        .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+        .trim();
+    };
+    
     // Helper function to extract feedback sections from string format
     const extractFeedbackSection = (feedbackText: string | undefined, sectionName: string): string => {
       if (!feedbackText || typeof feedbackText !== 'string') {
@@ -772,13 +782,13 @@ export default function OverallResults() {
       if (pattern) {
         const match = feedbackText.match(pattern);
         if (match && match[1]) {
-          return match[1].trim();
+          return removeBullets(match[1].trim());
         }
       }
       
       // If no specific section found, return the full feedback for general or fallback
       if (sectionName === 'general' || sectionName === 'taskAchievement') {
-        return feedbackText;
+        return removeBullets(feedbackText);
       }
       
       return `Geri bildirim mevcut değil`;
@@ -959,11 +969,13 @@ export default function OverallResults() {
         
         // Handle both string and object formats for aiFeedback
         if (typeof aiFeedback === 'string') {
-          partFeedback = extractFeedbackSection(aiFeedback, feedbackKey);
+          const extracted = extractFeedbackSection(aiFeedback, feedbackKey);
+          partFeedback = extracted;
         } else if (aiFeedback && typeof aiFeedback === 'object') {
-          partFeedback = (aiFeedback as any)?.[feedbackKey] || 
+          const rawFeedback = (aiFeedback as any)?.[feedbackKey] || 
                         aiFeedback?.taskAchievement || 
                         `${partLabel.main} geri bildirimi burada gösterilecek`;
+          partFeedback = typeof rawFeedback === 'string' ? removeBullets(rawFeedback) : rawFeedback;
         } else {
           partFeedback = `${partLabel.main} geri bildirimi burada gösterilecek`;
         }
@@ -982,7 +994,8 @@ export default function OverallResults() {
       if (typeof aiFeedback === 'string') {
         defaultFeedback = extractFeedbackSection(aiFeedback, 'general');
       } else if (aiFeedback && typeof aiFeedback === 'object') {
-        defaultFeedback = (aiFeedback as any)?.part1 || aiFeedback?.taskAchievement || "Geri bildirim mevcut değil";
+        const rawFeedback = (aiFeedback as any)?.part1 || aiFeedback?.taskAchievement || "Geri bildirim mevcut değil";
+        defaultFeedback = typeof rawFeedback === 'string' ? removeBullets(rawFeedback) : rawFeedback;
       } else {
         defaultFeedback = "Geri bildirim mevcut değil";
       }
@@ -1025,7 +1038,8 @@ export default function OverallResults() {
                   if (typeof aiFeedback === 'string') {
                     return extractFeedbackSection(aiFeedback, partKey);
                   } else if (aiFeedback && typeof aiFeedback === 'object') {
-                    return (aiFeedback as any)?.[partKey] || '';
+                    const rawFeedback = (aiFeedback as any)?.[partKey] || '';
+                    return typeof rawFeedback === 'string' ? removeBullets(rawFeedback) : rawFeedback;
                   }
                   return '';
                 };
@@ -1033,22 +1047,34 @@ export default function OverallResults() {
                 const part1Feedback = getPartFeedback('part1');
                 const part2Feedback = getPartFeedback('part2');
                 const part3Feedback = getPartFeedback('part3');
-                const part4Feedback = getPartFeedback('part4');
                 const generalFeedback = getPartFeedback('general');
-                const hasPartFeedback = part1Feedback || part2Feedback || part3Feedback || part4Feedback;
+                const hasPartFeedback = part1Feedback || part2Feedback || part3Feedback;
                 
                 return (
                   <>
                     {part1Feedback && (
-                      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <div className="flex items-center justify-between mb-3">
-                          <h3 className="font-semibold text-gray-900">Bölüm 1</h3>
-                          <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                      <>
+                        {/* Bölüm 1.1 */}
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="font-semibold text-gray-900">Bölüm 1.1</h3>
+                            <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                          </div>
+                          <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
+                            {part1Feedback}
+                          </p>
                         </div>
-                        <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
-                          {part1Feedback}
-                        </p>
-                      </div>
+                        {/* Bölüm 1.2 */}
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="font-semibold text-gray-900">Bölüm 1.2</h3>
+                            <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                          </div>
+                          <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
+                            {part1Feedback}
+                          </p>
+                        </div>
+                      </>
                     )}
                     {part2Feedback && (
                       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -1072,17 +1098,6 @@ export default function OverallResults() {
                         </p>
                       </div>
                     )}
-                    {part4Feedback && (
-                      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <div className="flex items-center justify-between mb-3">
-                          <h3 className="font-semibold text-gray-900">Bölüm 4</h3>
-                          <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-                        </div>
-                        <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
-                          {part4Feedback}
-                        </p>
-                      </div>
-                    )}
                     {/* Show general feedback if available */}
                     {generalFeedback && generalFeedback.trim() !== 'Geri bildirim mevcut değil' && (
                       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 md:col-span-2 lg:col-span-4">
@@ -1091,11 +1106,11 @@ export default function OverallResults() {
                           <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
                         </div>
                         <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
-                          {generalFeedback}
+                          {removeBullets(generalFeedback)}
                         </p>
                       </div>
                     )}
-                    {/* Fallback to IELTS-style feedback if part1-4 not available */}
+                    {/* Fallback to IELTS-style feedback if part1-3 not available */}
                     {!hasPartFeedback && (
                 <>
                   <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">

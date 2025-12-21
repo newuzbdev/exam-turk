@@ -116,7 +116,7 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
             setTimeout(() => {
               setIsVerifying(false);
               onSuccess?.(transactionId, purchaseData);
-              toast.success(`${amountValue} birim başarıyla satın alındı!`);
+              toast.success(`${amountValue} kredi başarıyla satın alındı!`);
             }, 1000);
           } catch (error) {
             console.error('Product purchase failed:', error);
@@ -166,7 +166,7 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
         <div className="relative overflow-hidden p-5 md:border-r border-gray-100">
           {/* Decorative gradient removed to reduce color noise */}
           {/* Decorative icon removed per request */}
-          <h3 className="text-2xl font-extrabold tracking-tight text-black">Birim Satın Al</h3>
+          <h3 className="text-2xl font-extrabold tracking-tight text-black">Kredi Satın Al</h3>
           <p className="mt-1 text-black text-sm">
             Hedefinize uygun miktarı seçin ve hemen başlayın
           </p>
@@ -188,7 +188,7 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
                 </button>
               </div>
             </div>
-            <div className="mt-2 text-xs text-black/70">Yaklaşık: <span className="font-semibold text-black">~ {approxUnits}U</span></div>
+            <div className="mt-2 text-xs text-black/70">Yaklaşık: <span className="font-semibold text-black">~ {approxUnits} Kredi</span></div>
           </div>
         </div>
 
@@ -208,7 +208,7 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
               }`}
             >
               <div className="flex items-center gap-2 font-semibold text-sm text-black">
-                <Coins className="w-4 h-4 text-slate-600" /> {p}U
+                <Coins className="w-4 h-4 text-slate-600" /> {p} Kredi
               </div>
               <div className="text-[11px] text-black mt-1">{paymeService.formatBalance(p * unitPrice)}</div>
             </button>

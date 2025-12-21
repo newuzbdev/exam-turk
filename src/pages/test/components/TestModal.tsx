@@ -176,7 +176,7 @@ const TestModal = ({
     // Preflight coin check: redirect to pricing if not enough coins
     const userCoins = user?.coin ?? 0;
     if (userCoins < totalCost) {
-      toast.error("Yetersiz birim. Başlamak için lütfen daha fazla satın alın.");
+      toast.error("Yetersiz kredi. Başlamak için lütfen daha fazla satın alın.");
       navigate(`/price?neededCoins=${totalCost - userCoins}`);
       return;
     }

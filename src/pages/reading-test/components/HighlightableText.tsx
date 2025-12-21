@@ -522,7 +522,7 @@ export default function HighlightableText({ text, partNumber }: HighlightableTex
 
   return (
     <div ref={containerRef} className="relative">
-      <p className="leading-relaxed text-gray-700 whitespace-pre-line">
+      <p className="text-base lg:text-lg leading-relaxed text-gray-700 whitespace-pre-line">
         {renderText()}
       </p>
 

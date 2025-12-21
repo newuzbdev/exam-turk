@@ -148,15 +148,15 @@ export default function Price() {
                 </div>
                 <div className="flex items-baseline gap-2 mb-1">
                   <span className="text-3xl font-bold text-gray-900">
-                    {currentCoins}U
+                    {currentCoins} Kredi
                   </span>
                   <span className="text-sm text-gray-500">
                     (Türkçe deneme sınavları için kullanılabilir)
                   </span>
                 </div>
                 <p className="text-sm text-gray-500 max-w-xl">
-                  Dinleme, Okuma, Yazma ve Konuşma testleri için yalnızca U
-                  birimi harcarsınız. Yeterli bakiyeniz yoksa aşağıdan hızlıca
+                  Dinleme, Okuma, Yazma ve Konuşma testleri için yalnızca kredi
+                  harcarsınız. Yeterli bakiyeniz yoksa aşağıdan hızlıca
                   yükleyebilirsiniz.
                 </p>
               </div>
@@ -187,7 +187,7 @@ export default function Price() {
           </h1>
           <p className="text-lg text-gray-600 max-w-3xl mx-auto mb-3">
             Abonelik yok, taahhüt yok. Yalnızca çözdüğünüz deneme sınavları
-            için U birimi harcarsınız.
+            için kredi harcarsınız.
           </p>
           <p className="text-sm text-gray-500 max-w-3xl mx-auto">
             Her beceri için ayrı ayrı ödeme yapabilir veya tam sınav paketi
@@ -203,11 +203,11 @@ export default function Price() {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="text-center">
               <div className="text-base font-medium text-gray-600">Dinleme</div>
-              <div className="text-lg font-bold text-red-600">{(coinByType["LISTENING"] ?? 3)}U</div>
+              <div className="text-lg font-bold text-red-600">{(coinByType["LISTENING"] ?? 3)} Kredi</div>
             </div>
             <div className="text-center">
               <div className="text-base font-medium text-gray-600">Okuma</div>
-              <div className="text-lg font-bold text-red-600">{(coinByType["READING"] ?? 3)}U</div>
+              <div className="text-lg font-bold text-red-600">{(coinByType["READING"] ?? 3)} Kredi</div>
             </div>
             <div className="text-center">
               <div className="text-base font-medium text-gray-600">Yazma</div>
@@ -215,7 +215,7 @@ export default function Price() {
             </div>
             <div className="text-center">
               <div className="text-base font-medium text-gray-600">Konuşma</div>
-              <div className="text-lg font-bold text-red-600">{(coinByType["SPEAKING"] ?? 5)}U</div>
+              <div className="text-lg font-bold text-red-600">{(coinByType["SPEAKING"] ?? 5)} Kredi</div>
             </div>
             <div className="text-center">
               <div className="text-base font-medium text-gray-600">
@@ -226,7 +226,7 @@ export default function Price() {
                 + (coinByType["READING"] ?? 3)
                 + (coinByType["WRITING"] ?? 5)
                 + (coinByType["SPEAKING"] ?? 5))
-              }U</div>
+              } Kredi</div>
             </div>
           </div>
         </div>
@@ -243,7 +243,7 @@ export default function Price() {
                 className="bg-blue-600 hover:bg-blue-700 text-white"
                 onClick={() => {
                   const fallback = pricingPlans.find(p => p.id === 'quick') || pricingPlans[0];
-                  setSelectedPlan({ ...fallback, name: 'Birim Satın Al' } as any);
+                  setSelectedPlan({ ...fallback, name: 'Kredi Satın Al' } as any);
                   setInitialUnits(undefined);
                   setIsCheckoutOpen(true);
                 }}
@@ -316,7 +316,7 @@ export default function Price() {
               </div>
               <p className="text-sm text-gray-600 mt-2">
                     {plan.isFree 
-                      ? 'İlk kayıt olduğunuzda bonus birimler kazanın'
+                      ? 'İlk kayıt olduğunuzda bonus krediler kazanın'
                       : 'Payme ile güvenli ödeme'
                     }
               </p>

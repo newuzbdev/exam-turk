@@ -44,7 +44,7 @@ export const PaymeCheckoutModal: React.FC<PaymeCheckoutModalProps> = ({
           <div className="flex items-center justify-between px-4 pt-4">
             <div>
               <DialogTitle className="text-lg font-bold text-black">
-                {isSuccess ? 'İşlem Başarılı!' : 'Birim Satın Al'}
+                {isSuccess ? 'İşlem Başarılı!' : 'Kredi Satın Al'}
               </DialogTitle>
               <DialogDescription className="mt-1 text-black">
                 {isSuccess 
@@ -69,7 +69,7 @@ export const PaymeCheckoutModal: React.FC<PaymeCheckoutModalProps> = ({
                   Tebrikler!
                 </h3>
                 <p className="text-gray-600">
-                  Birimleriniz hesabınıza başarıyla eklendi
+                  Kredileriniz hesabınıza başarıyla eklendi
                 </p>
                 {transactionId && (
                   <Badge variant="outline" className="text-xs">

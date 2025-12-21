@@ -134,7 +134,7 @@ export default function ReadingPart5({ testData, answers, onAnswerChange, partNu
                     <span className="font-bold text-lg bg-gray-200 w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0">
                       {para.letter}
                     </span>
-                    <div className="text-sm leading-relaxed flex-1">
+                    <div className="text-base lg:text-lg leading-relaxed flex-1">
                       <HighlightableText text={para.text} partNumber={partNumber} />
                     </div>
                   </div>

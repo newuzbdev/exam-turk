@@ -37,6 +37,8 @@ interface TestSonuç {
     userAnswer: string;
   }>;
   submittedAt?: string;
+  sections?: any[];
+  parts?: any[];
 }
 
 interface OverallResponse {
@@ -331,25 +333,143 @@ export default function OverallResults() {
 
     const { writing } = data;
     const aiFeedback = writing.aiFeedback;
+    
+    // Debug: Log the writing data structure
+    console.log("Writing data structure:", {
+      hasAnswers: !!writing?.answers,
+      answersLength: writing?.answers?.length || 0,
+      hasSections: !!writing?.sections,
+      sectionsLength: writing?.sections?.length || 0,
+      aiFeedbackType: typeof aiFeedback,
+      aiFeedback: aiFeedback,
+      writing: writing
+    });
+    
+    // Helper function to extract feedback sections from string
+    const extractFeedbackSection = (feedbackText: string | undefined, sectionName: string): string => {
+      if (!feedbackText || typeof feedbackText !== 'string') {
+        return `Geri bildirim mevcut değil`;
+      }
+      
+      // Try to extract specific section from the feedback string
+      const sectionPatterns: Record<string, RegExp> = {
+        'part1_1': /\[GÖREV 1\.1 DEĞERLENDİRMESİ\]([\s\S]*?)(?=\[GÖREV 1\.2|\[BÖLÜM 2|AI GERİ BİLDİRİMİ|$)/i,
+        'part1_2': /\[GÖREV 1\.2 DEĞERLENDİRMESİ\]([\s\S]*?)(?=\[BÖLÜM 2|AI GERİ BİLDİRİMİ|$)/i,
+        'part2': /\[BÖLÜM 2 DEĞERLENDİRMESİ\]([\s\S]*?)(?=AI GERİ BİLDİRİMİ|$)/i,
+        'general': /AI GERİ BİLDİRİMİ \(EĞİTMEN NOTU\):([\s\S]*?)(?=$)/i
+      };
+      
+      const pattern = sectionPatterns[sectionName];
+      if (pattern) {
+        const match = feedbackText.match(pattern);
+        if (match && match[1]) {
+          return match[1].trim();
+        }
+      }
+      
+      // If no specific section found, return the full feedback for general or fallback
+      if (sectionName === 'general' || sectionName === 'taskAchievement') {
+        return feedbackText;
+      }
+      
+      return `Geri bildirim mevcut değil`;
+    };
 
     // Extract scores from AI feedback or use defaults
-    const extractScoreFromFeedback = (feedbackText: string) => {
-      const match = feedbackText?.match(/(\d+)/);
-      return match ? parseInt(match[1]) : 0;
+    const extractScoreFromFeedback = (feedbackText: string | undefined) => {
+      if (!feedbackText) return 0;
+      if (typeof feedbackText === 'string') {
+        const match = feedbackText.match(/(\d+)/);
+        return match ? parseInt(match[1]) : 0;
+      }
+      return 0;
+    };
+    
+    // Helper to extract specific feedback text from string format
+    const getFeedbackText = (key: string): string => {
+      if (typeof aiFeedback === 'string') {
+        // Try to extract from the string format
+        const patterns: Record<string, RegExp> = {
+          'coherenceAndCohesion': /Tutarlılık[:\s]*([^\n•]*)/i,
+          'grammaticalRangeAndAccuracy': /Dil Bilgisi[:\s]*([^\n•]*)/i,
+          'lexicalResource': /Kelime Kaynağı[:\s]*([^\n•]*)/i,
+          'taskAchievement': /Görev Başarısı[:\s]*([^\n•]*)/i,
+        };
+        const pattern = patterns[key];
+        if (pattern) {
+          const match = aiFeedback.match(pattern);
+          if (match && match[1]) {
+            return match[1].trim();
+          }
+        }
+        // If not found, return general feedback
+        return aiFeedback;
+      } else if (aiFeedback && typeof aiFeedback === 'object') {
+        return aiFeedback[key] || '';
+      }
+      return '';
     };
 
     const scores = {
       overall: writing?.score || 0,
       part1: 0,
       part2: 0,
-      coherence: extractScoreFromFeedback(aiFeedback?.coherenceAndCohesion) || 0,
-      grammar: extractScoreFromFeedback(aiFeedback?.grammaticalRangeAndAccuracy) || 0,
-      lexical: extractScoreFromFeedback(aiFeedback?.lexicalResource) || 0,
-      achievement: extractScoreFromFeedback(aiFeedback?.taskAchievement) || 0,
+      coherence: extractScoreFromFeedback(getFeedbackText('coherenceAndCohesion')) || 0,
+      grammar: extractScoreFromFeedback(getFeedbackText('grammaticalRangeAndAccuracy')) || 0,
+      lexical: extractScoreFromFeedback(getFeedbackText('lexicalResource')) || 0,
+      achievement: extractScoreFromFeedback(getFeedbackText('taskAchievement')) || 0,
     };
 
-    // Get answers array
-    const answers = writing?.answers || [];
+    // Extract answers from either answers array or sections structure
+    const extractWritingAnswers = () => {
+      // First try to use the answers array if it exists and has content
+      if (writing?.answers && Array.isArray(writing.answers) && writing.answers.length > 0) {
+        console.log("Using answers array from writing data:", writing.answers);
+        return writing.answers;
+      }
+      
+      // If not, try to extract from sections structure
+      if (writing?.sections && Array.isArray(writing.sections)) {
+        console.log("Extracting answers from sections structure:", writing.sections);
+        const extractedAnswers: Array<{ questionId: string; questionText: string; userAnswer: string }> = [];
+        
+        writing.sections.forEach((section: any) => {
+          // Handle sections with subParts (like Task 1 with 1.1 and 1.2)
+          if (section.subParts && Array.isArray(section.subParts) && section.subParts.length > 0) {
+            section.subParts.forEach((subPart: any) => {
+              if (subPart.answers && Array.isArray(subPart.answers)) {
+                subPart.answers.forEach((q: any) => {
+                  // Include answer even if empty, but we'll filter later if needed
+                  extractedAnswers.push({
+                    questionId: q.questionId || q.id || '',
+                    questionText: q.questionText || q.question || `${section.description} ${subPart.description}`,
+                    userAnswer: q.userAnswer || ''
+                  });
+                });
+              }
+            });
+          }
+          // Handle sections without subParts (like Task 2)
+          else if (section.answers && Array.isArray(section.answers)) {
+            section.answers.forEach((q: any) => {
+              extractedAnswers.push({
+                questionId: q.questionId || q.id || '',
+                questionText: q.questionText || q.question || section.description,
+                userAnswer: q.userAnswer || ''
+              });
+            });
+          }
+        });
+        
+        console.log("Extracted writing answers:", extractedAnswers);
+        return extractedAnswers;
+      }
+      
+      console.log("No answers found in writing data");
+      return [];
+    };
+    
+    const answers = extractWritingAnswers();
     
     console.log("OverallResults - Writing data:", writing);
     console.log("OverallResults - All answers:", answers);
@@ -372,9 +492,18 @@ export default function OverallResults() {
         
         // Get feedback for the specific part
         const feedbackKey = activeTask1Part === "part1" ? "part1_1" : "part1_2";
-        const feedback = aiFeedback?.[feedbackKey] || 
-                        aiFeedback?.taskAchievement || 
-                        `Görev 1 ${activeTask1Part === "part1" ? "Bölüm 1" : "Bölüm 2"} geri bildirimi burada gösterilecek`;
+        let feedback: string;
+        
+        // Handle both string and object formats for aiFeedback
+        if (typeof aiFeedback === 'string') {
+          feedback = extractFeedbackSection(aiFeedback, feedbackKey);
+        } else if (aiFeedback && typeof aiFeedback === 'object') {
+          feedback = aiFeedback[feedbackKey] || 
+                    aiFeedback?.taskAchievement || 
+                    `Görev 1 ${activeTask1Part === "part1" ? "Bölüm 1" : "Bölüm 2"} geri bildirimi burada gösterilecek`;
+        } else {
+          feedback = `Görev 1 ${activeTask1Part === "part1" ? "Bölüm 1" : "Bölüm 2"} geri bildirimi burada gösterilecek`;
+        }
         
         return {
           question: (currentAnswer as any)?.questionText || `Görev 1 ${activeTask1Part === "part1" ? "Bölüm 1" : "Bölüm 2"} Sorusu`,
@@ -392,9 +521,18 @@ export default function OverallResults() {
         console.log("OverallResults - Task 2 answer with content:", task2AnswerWithContent, "userAnswer:", userAnswer);
         
         // Get feedback for Task 2
-        const feedback = aiFeedback?.part2 || 
-                        aiFeedback?.taskAchievement || 
-                        "Görev 2 geri bildirimi burada gösterilecek";
+        let feedback: string;
+        
+        // Handle both string and object formats for aiFeedback
+        if (typeof aiFeedback === 'string') {
+          feedback = extractFeedbackSection(aiFeedback, 'part2');
+        } else if (aiFeedback && typeof aiFeedback === 'object') {
+          feedback = aiFeedback?.part2 || 
+                    aiFeedback?.taskAchievement || 
+                    "Görev 2 geri bildirimi burada gösterilecek";
+        } else {
+          feedback = "Görev 2 geri bildirimi burada gösterilecek";
+        }
         
         return {
           question: (task2AnswerWithContent as any)?.questionText || "Görev 2 Sorusu",
@@ -438,8 +576,10 @@ export default function OverallResults() {
                 <h3 className="font-semibold text-gray-900">Tutarlılık ve Bağlılık</h3>
                 <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
               </div>
-              <p className="text-sm text-gray-600 leading-relaxed">
-                {aiFeedback?.coherenceAndCohesion || "Geri bildirim mevcut değil"}
+              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
+                {typeof aiFeedback === 'string' 
+                  ? (getFeedbackText('coherenceAndCohesion') || extractFeedbackSection(aiFeedback, 'general') || "Geri bildirim mevcut değil")
+                  : (aiFeedback?.coherenceAndCohesion || "Geri bildirim mevcut değil")}
               </p>
             </div>
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -447,8 +587,10 @@ export default function OverallResults() {
                 <h3 className="font-semibold text-gray-900">Dil Bilgisi</h3>
                 <div className="w-3 h-3 bg-green-500 rounded-full"></div>
               </div>
-              <p className="text-sm text-gray-600 leading-relaxed">
-                {aiFeedback?.grammaticalRangeAndAccuracy || "Geri bildirim mevcut değil"}
+              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
+                {typeof aiFeedback === 'string' 
+                  ? (getFeedbackText('grammaticalRangeAndAccuracy') || extractFeedbackSection(aiFeedback, 'general') || "Geri bildirim mevcut değil")
+                  : (aiFeedback?.grammaticalRangeAndAccuracy || "Geri bildirim mevcut değil")}
               </p>
             </div>
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -456,8 +598,10 @@ export default function OverallResults() {
                 <h3 className="font-semibold text-gray-900">Kelime Kaynağı</h3>
                 <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
               </div>
-              <p className="text-sm text-gray-600 leading-relaxed">
-                {aiFeedback?.lexicalResource || "Geri bildirim mevcut değil"}
+              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
+                {typeof aiFeedback === 'string' 
+                  ? (getFeedbackText('lexicalResource') || extractFeedbackSection(aiFeedback, 'general') || "Geri bildirim mevcut değil")
+                  : (aiFeedback?.lexicalResource || "Geri bildirim mevcut değil")}
               </p>
             </div>
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -465,8 +609,10 @@ export default function OverallResults() {
                 <h3 className="font-semibold text-gray-900">Görev Başarısı</h3>
                 <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
               </div>
-              <p className="text-sm text-gray-600 leading-relaxed">
-                {aiFeedback?.taskAchievement || "Geri bildirim mevcut değil"}
+              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
+                {typeof aiFeedback === 'string' 
+                  ? (getFeedbackText('taskAchievement') || extractFeedbackSection(aiFeedback, 'general') || "Geri bildirim mevcut değil")
+                  : (aiFeedback?.taskAchievement || "Geri bildirim mevcut değil")}
               </p>
             </div>
           </div>
@@ -590,6 +736,15 @@ export default function OverallResults() {
 
     const { speaking } = data;
     const aiFeedback = speaking.aiFeedback;
+    
+    // Debug: Log the speaking data structure
+    console.log("Speaking data structure:", {
+      hasAnswers: !!speaking?.answers,
+      answersLength: speaking?.answers?.length || 0,
+      hasParts: !!speaking?.parts,
+      partsLength: speaking?.parts?.length || 0,
+      speaking: speaking
+    });
 
     // Extract scores from AI feedback or use defaults
     const extractScoreFromFeedback = (feedbackText: string) => {
@@ -605,8 +760,61 @@ export default function OverallResults() {
       achievement: extractScoreFromFeedback(aiFeedback?.taskAchievement) || 0,
     };
 
-    // Get answers array
-    const answers = speaking?.answers || [];
+    // Extract answers from either answers array or parts structure
+    const extractAnswers = () => {
+      // First try to use the answers array if it exists
+      if (speaking?.answers && Array.isArray(speaking.answers) && speaking.answers.length > 0) {
+        console.log("Using answers array from speaking data:", speaking.answers);
+        return speaking.answers;
+      }
+      
+      // If not, try to extract from parts structure
+      if (speaking?.parts && Array.isArray(speaking.parts)) {
+        console.log("Extracting answers from parts structure:", speaking.parts);
+        const extractedAnswers: Array<{ questionId: string; questionText: string; userAnswer: string }> = [];
+        
+        speaking.parts.forEach((part: any) => {
+          // Handle parts with subParts (like Part 1)
+          if (part.subParts && Array.isArray(part.subParts)) {
+            part.subParts.forEach((subPart: any) => {
+              if (subPart.questions && Array.isArray(subPart.questions)) {
+                subPart.questions.forEach((q: any) => {
+                  // Check if userAnswer exists and is not empty
+                  if (q.userAnswer && typeof q.userAnswer === 'string' && q.userAnswer.trim() !== '') {
+                    extractedAnswers.push({
+                      questionId: q.questionId || q.id || '',
+                      questionText: q.questionText || q.question || `Soru ${extractedAnswers.length + 1}`,
+                      userAnswer: q.userAnswer
+                    });
+                  }
+                });
+              }
+            });
+          }
+          // Handle parts without subParts (like Part 2 and 3)
+          else if (part.questions && Array.isArray(part.questions)) {
+            part.questions.forEach((q: any) => {
+              // Check if userAnswer exists and is not empty
+              if (q.userAnswer && typeof q.userAnswer === 'string' && q.userAnswer.trim() !== '') {
+                extractedAnswers.push({
+                  questionId: q.questionId || q.id || '',
+                  questionText: q.questionText || q.question || `Soru ${extractedAnswers.length + 1}`,
+                  userAnswer: q.userAnswer
+                });
+              }
+            });
+          }
+        });
+        
+        console.log("Extracted answers:", extractedAnswers);
+        return extractedAnswers;
+      }
+      
+      console.log("No answers found in speaking data");
+      return [];
+    };
+    
+    const answers = extractAnswers();
     
     // Organize answers by parts: Part 1.1, Part 1.2, Part 2, Part 3
     const organizeAnswersByParts = () => {

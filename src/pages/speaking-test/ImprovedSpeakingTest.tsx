@@ -571,8 +571,8 @@ export default function ImprovedSpeakingTest() {
     prepStartedKeyRef.current = key
     
     if (currentSection.type === "PART1") {
-      // Section 1.2 (subPartIndex === 1) gets 7 seconds, others get 5 seconds
-      const prepTime = currentSubPartIndex === 1 ? 7 : 5
+      // Section 1.2 (subPartIndex === 1) gets 5 seconds, others get 5 seconds
+      const prepTime = currentSubPartIndex === 1 ? 5 : 5
       console.log(`⏱️ PART1 preparation time: ${prepTime} seconds (subPart: ${currentSubPartIndex})`)
       beginPreparation(prepTime, () => {
         startRecording(30, true)

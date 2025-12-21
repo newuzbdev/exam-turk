@@ -22,15 +22,7 @@ const HomeTestimonials = () => {
           <div className="grid lg:grid-cols-3 gap-8">
             <Card className="border-red-100 hover:border-red-200 hover:shadow-xl transition-all duration-300 group">
               <CardContent className="pt-8">
-                <div className="flex mb-6">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className="h-5 w-5 text-yellow-400 fill-current"
-                    />
-                  ))}
-                </div>
-                <blockquote className="text-gray-700 mb-6 leading-relaxed">
+                <blockquote className="text-base lg:text-lg text-gray-700 mb-6 leading-relaxed">
                   "TURKISHMOCK sayesinde Türkçe seviyemi doğru şekilde belirledim.
                   Test sonuçları çok detaylı ve profesyonel. Kesinlikle tavsiye
                   ederim."
@@ -48,15 +40,7 @@ const HomeTestimonials = () => {
 
             <Card className="border-red-100 hover:border-red-200 hover:shadow-xl transition-all duration-300 group">
               <CardContent className="pt-8">
-                <div className="flex mb-6">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className="h-5 w-5 text-yellow-400 fill-current"
-                    />
-                  ))}
-                </div>
-                <blockquote className="text-gray-700 mb-6 leading-relaxed">
+                <blockquote className="text-base lg:text-lg text-gray-700 mb-6 leading-relaxed">
                   "Konuşma testi özellikle çok başarılı. Telaffuzumu geliştirmek
                   için aldığım geri bildirimler çok faydalı oldu."
                 </blockquote>
@@ -71,15 +55,7 @@ const HomeTestimonials = () => {
 
             <Card className="border-red-100 hover:border-red-200 hover:shadow-xl transition-all duration-300 group">
               <CardContent className="pt-8">
-                <div className="flex mb-6">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className="h-5 w-5 text-yellow-400 fill-current"
-                    />
-                  ))}
-                </div>
-                <blockquote className="text-gray-700 mb-6 leading-relaxed">
+                <blockquote className="text-base lg:text-lg text-gray-700 mb-6 leading-relaxed">
                   "Kullanıcı dostu arayüz ve kapsamlı test içeriği. Türkçe
                   öğrenmek isteyenlere kesinlikle tavsiye ederim."
                 </blockquote>

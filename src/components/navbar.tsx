@@ -297,7 +297,7 @@ const Navbar = () => {
                             onClick={() => setIsCoinModalOpen(true)}
                             className="w-full bg-red-600 hover:bg-red-700 text-white"
                           >
-                            Birim Satın Al
+                            Kredi Satın Al
                           </Button>
                           <div className="rounded-lg ring-1 ring-gray-200 bg-white">
                             <div className="px-2 py-2">
@@ -447,7 +447,7 @@ const Navbar = () => {
       <PaymeCheckoutModal
         isOpen={isCoinModalOpen}
         onClose={() => setIsCoinModalOpen(false)}
-        planName="Birim Satın Al"
+        planName="Kredi Satın Al"
         planId="quick"
       />
       {/* Auth Modal */}

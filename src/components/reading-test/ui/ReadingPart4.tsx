@@ -32,7 +32,7 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
           {/* Passage Section - Fixed */}
           <div className="bg-[#fffef5] p-4">
             <div className="space-y-4 leading-relaxed">
-              <div className="text-sm font-serif text-gray-800 leading-relaxed">
+              <div className="text-base lg:text-lg font-serif text-gray-800 leading-relaxed">
                 <HighlightableText text={content || ""} partNumber={partNumber} />
               </div>
             </div>

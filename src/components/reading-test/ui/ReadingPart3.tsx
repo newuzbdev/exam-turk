@@ -76,7 +76,7 @@ export default function ReadingPart3({ testData, answers, onAnswerChange, partNu
                       </Select>
                     </div>
                     {displayText && (
-                      <div className="text-sm leading-6 text-gray-800 font-serif text-justify">
+                      <div className="text-base lg:text-lg leading-6 text-gray-800 font-serif text-justify">
                         <HighlightableText text={displayText} partNumber={partNumber} />
                       </div>
                     )}

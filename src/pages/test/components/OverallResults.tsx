@@ -337,6 +337,24 @@ export default function OverallResults() {
     const { writing } = data;
     const aiFeedback = writing.aiFeedback;
     
+    // Local helper to remove bullet / box symbols from text for writing feedback
+    const cleanBullets = (text: string): string => {
+      if (!text) return text;
+      // Split by lines and remove bullets from each line
+      return text
+        .split('\n')
+        .map(line => {
+          // Remove any bullet-like character at the start of the line (including the specific  character)
+          return line
+            .replace(/^[\s\u2000-\u206F\u2E00-\u2E7F\u3000-\u303F\uFE00-\uFE0F\uFE30-\uFE4F\uFE50-\uFE6F\uFF00-\uFFEF\uF000-\uF8FF•●■▪□▢\u2022\u25CF\u25E6\u25A0\u25A1\u25A2\u25AA\u25AB\u2610\uF0B7\u2023\u25CB\u25CC\u25CD\u25CE\u25CF\u25D0\u25D1\u25D2\u25D3\u25D4\u25D5\u25D6\u25D7\u25D8\u25D9\u25DA\u25DB\u25DC\u25DD\u25DE\u25DF\u25E6\u25E7\u25E8\u25E9\u25EA\u25EB\u25EC\u25ED\u25EE\u25EF]+/g, "") // Remove any bullet/box/special chars at start
+            .trim();
+        })
+        .filter(line => line.length > 0) // Remove empty lines
+        .join('\n')
+        .replace(/\s+/g, " ") // Normalize multiple spaces to single space
+        .trim();
+    };
+    
     // Debug: Log the writing data structure
     console.log("Writing data structure:", {
       hasAnswers: !!writing?.answers,
@@ -412,6 +430,86 @@ export default function OverallResults() {
       }
       return '';
     };
+
+    // Parse AI feedback string to extract sections (similar to WritingTestResults)
+    const parseAIFeedback = () => {
+      if (!aiFeedback) return null;
+
+      // If feedback is an object, return it as is
+      if (typeof aiFeedback === 'object' && aiFeedback !== null) {
+        return aiFeedback;
+      }
+
+      // If feedback is a string, parse it
+      if (typeof aiFeedback === 'string') {
+        const parsed: any = {};
+
+        // Extract GÖREV 1.1 section
+        const task1_1Match = aiFeedback.match(/\[GÖREV 1\.1 DEĞERLENDİRMESİ\]([\s\S]*?)(?=\[GÖREV 1\.2|\[BÖLÜM 2|AI GERİ BİLDİRİMİ|$)/i);
+        if (task1_1Match) {
+          parsed.part1_1 = cleanBullets(task1_1Match[1].trim());
+        }
+
+        // Extract GÖREV 1.2 section
+        const task1_2Match = aiFeedback.match(/\[GÖREV 1\.2 DEĞERLENDİRMESİ\]([\s\S]*?)(?=\[BÖLÜM 2|AI GERİ BİLDİRİMİ|$)/i);
+        if (task1_2Match) {
+          parsed.part1_2 = cleanBullets(task1_2Match[1].trim());
+        }
+
+        // Extract BÖLÜM 2 section
+        const part2Match = aiFeedback.match(/\[BÖLÜM 2 DEĞERLENDİRMESİ\]([\s\S]*?)(?=AI GERİ BİLDİRİMİ|$)/i);
+        if (part2Match) {
+          parsed.part2 = cleanBullets(part2Match[1].trim());
+        }
+
+        // Extract AI GERİ BİLDİRİMİ (EĞİTMEN NOTU) section
+        const generalMatch = aiFeedback.match(/AI GERİ BİLDİRİMİ \(EĞİTMEN NOTU\):([\s\S]*?)(?=$)/i);
+        if (generalMatch) {
+          parsed.general = cleanBullets(generalMatch[1].trim());
+        }
+
+        // Extract individual criteria from each section
+        const extractCriteria = (text: string) => {
+          const criteria: any = {};
+          
+          // Extract Tutarlılık
+          const coherenceMatch = text.match(/Tutarlılık[:\s]*([^\n•]*)/i);
+          if (coherenceMatch) {
+            criteria.coherenceAndCohesion = coherenceMatch[1].trim();
+          }
+          
+          // Extract Dil Bilgisi
+          const grammarMatch = text.match(/Dil Bilgisi[:\s]*([^\n•]*)/i);
+          if (grammarMatch) {
+            criteria.grammaticalRangeAndAccuracy = grammarMatch[1].trim();
+          }
+          
+          // Extract Kelime Kaynağı
+          const lexicalMatch = text.match(/Kelime Kaynağı[:\s]*([^\n•]*)/i);
+          if (lexicalMatch) {
+            criteria.lexicalResource = lexicalMatch[1].trim();
+          }
+          
+          // Extract Görev Başarısı
+          const taskMatch = text.match(/Görev Başarısı[:\s]*([^\n•]*)/i);
+          if (taskMatch) {
+            criteria.taskAchievement = taskMatch[1].trim();
+          }
+          
+          return criteria;
+        };
+
+        // Extract criteria from the full feedback text
+        const allCriteria = extractCriteria(aiFeedback);
+        Object.assign(parsed, allCriteria);
+
+        return parsed;
+      }
+
+      return null;
+    };
+
+    const parsedFeedback = parseAIFeedback();
 
     const scores = {
       overall: writing?.score || 0,
@@ -497,8 +595,10 @@ export default function OverallResults() {
         const feedbackKey = activeTask1Part === "part1" ? "part1_1" : "part1_2";
         let feedback: string;
         
-        // Handle both string and object formats for aiFeedback
-        if (typeof aiFeedback === 'string') {
+        // Use parsed feedback if available, otherwise fall back to original logic
+        if (parsedFeedback?.[feedbackKey]) {
+          feedback = parsedFeedback[feedbackKey];
+        } else if (typeof aiFeedback === 'string') {
           feedback = extractFeedbackSection(aiFeedback, feedbackKey);
         } else if (aiFeedback && typeof aiFeedback === 'object') {
           feedback = aiFeedback[feedbackKey] || 
@@ -526,8 +626,10 @@ export default function OverallResults() {
         // Get feedback for Task 2
         let feedback: string;
         
-        // Handle both string and object formats for aiFeedback
-        if (typeof aiFeedback === 'string') {
+        // Use parsed feedback if available, otherwise fall back to original logic
+        if (parsedFeedback?.part2) {
+          feedback = parsedFeedback.part2;
+        } else if (typeof aiFeedback === 'string') {
           feedback = extractFeedbackSection(aiFeedback, 'part2');
         } else if (aiFeedback && typeof aiFeedback === 'object') {
           feedback = aiFeedback?.part2 || 
@@ -572,53 +674,116 @@ export default function OverallResults() {
             </div>
           </div>
 
-          {/* Scoring Categories Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-gray-900">Tutarlılık ve Bağlılık</h3>
-                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+          {/* AI Feedback Grid - Similar to Speaking Test */}
+          {parsedFeedback && (() => {
+            const feedback = parsedFeedback;
+            const hasPartFeedback = feedback.part1_1 || feedback.part1_2 || feedback.part2;
+            const hasIELTSFeedback = feedback.coherenceAndCohesion || feedback.grammaticalRangeAndAccuracy || 
+                                     feedback.lexicalResource || feedback.taskAchievement;
+            const hasGeneralFeedback = feedback.general;
+            
+            if (!hasPartFeedback && !hasIELTSFeedback && !hasGeneralFeedback) {
+              return null;
+            }
+            
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                {feedback.part1_1 && (
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-semibold text-gray-900">Görev 1.1</h3>
+                      <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                    </div>
+                    <p className="text-sm text-gray-600 leading-relaxed">
+                      {cleanBullets(feedback.part1_1)}
+                    </p>
+                  </div>
+                )}
+                {feedback.part1_2 && (
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-semibold text-gray-900">Görev 1.2</h3>
+                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    </div>
+                    <p className="text-sm text-gray-600 leading-relaxed">
+                      {cleanBullets(feedback.part1_2)}
+                    </p>
+                  </div>
+                )}
+                {feedback.part2 && (
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-semibold text-gray-900">Bölüm 2</h3>
+                      <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                    </div>
+                    <p className="text-sm text-gray-600 leading-relaxed">
+                      {cleanBullets(feedback.part2)}
+                    </p>
+                  </div>
+                )}
+                {feedback.general && (
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-semibold text-gray-900">Eğitmen Notu</h3>
+                      <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                    </div>
+                    <p className="text-sm text-gray-600 leading-relaxed">
+                      {cleanBullets(feedback.general)}
+                    </p>
+                  </div>
+                )}
+                {/* Fallback to IELTS-style feedback if part feedback not available */}
+                {!hasPartFeedback && hasIELTSFeedback && (
+                  <>
+                    {feedback.coherenceAndCohesion && (
+                      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="font-semibold text-gray-900">Tutarlılık ve Bağlılık</h3>
+                          <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                        </div>
+                        <p className="text-sm text-gray-600 leading-relaxed">
+                          {feedback.coherenceAndCohesion}
+                        </p>
+                      </div>
+                    )}
+                    {feedback.grammaticalRangeAndAccuracy && (
+                      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="font-semibold text-gray-900">Dil Bilgisi</h3>
+                          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                        </div>
+                        <p className="text-sm text-gray-600 leading-relaxed">
+                          {feedback.grammaticalRangeAndAccuracy}
+                        </p>
+                      </div>
+                    )}
+                    {feedback.lexicalResource && (
+                      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="font-semibold text-gray-900">Kelime Kaynağı</h3>
+                          <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                        </div>
+                        <p className="text-sm text-gray-600 leading-relaxed">
+                          {feedback.lexicalResource}
+                        </p>
+                      </div>
+                    )}
+                    {feedback.taskAchievement && (
+                      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="font-semibold text-gray-900">Görev Başarısı</h3>
+                          <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                        </div>
+                        <p className="text-sm text-gray-600 leading-relaxed">
+                          {feedback.taskAchievement}
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
-              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
-                {typeof aiFeedback === 'string' 
-                  ? (getFeedbackText('coherenceAndCohesion') || extractFeedbackSection(aiFeedback, 'general') || "Geri bildirim mevcut değil")
-                  : (aiFeedback?.coherenceAndCohesion || "Geri bildirim mevcut değil")}
-              </p>
-            </div>
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-gray-900">Dil Bilgisi</h3>
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-              </div>
-              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
-                {typeof aiFeedback === 'string' 
-                  ? (getFeedbackText('grammaticalRangeAndAccuracy') || extractFeedbackSection(aiFeedback, 'general') || "Geri bildirim mevcut değil")
-                  : (aiFeedback?.grammaticalRangeAndAccuracy || "Geri bildirim mevcut değil")}
-              </p>
-            </div>
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-gray-900">Kelime Kaynağı</h3>
-                <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-              </div>
-              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
-                {typeof aiFeedback === 'string' 
-                  ? (getFeedbackText('lexicalResource') || extractFeedbackSection(aiFeedback, 'general') || "Geri bildirim mevcut değil")
-                  : (aiFeedback?.lexicalResource || "Geri bildirim mevcut değil")}
-              </p>
-            </div>
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-gray-900">Görev Başarısı</h3>
-                <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-              </div>
-              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
-                {typeof aiFeedback === 'string' 
-                  ? (getFeedbackText('taskAchievement') || extractFeedbackSection(aiFeedback, 'general') || "Geri bildirim mevcut değil")
-                  : (aiFeedback?.taskAchievement || "Geri bildirim mevcut değil")}
-              </p>
-            </div>
-          </div>
+            );
+          })()}
 
           {/* Task Navigation - Redesigned */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">

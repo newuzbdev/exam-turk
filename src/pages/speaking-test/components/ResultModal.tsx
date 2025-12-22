@@ -33,6 +33,19 @@ export default function ResultModal({ isOpen, onClose, result }: ResultModalProp
         return "Yaxshilanishi kerak"
     }
 
+    // Remove bullet characters (•, ●, , etc.) from AI feedback text
+    const cleanAIFeedback = (text?: string | null) => {
+        if (!text) return ""
+        // Remove all bullet/box characters from anywhere in the text
+        return text
+            .replace(/[\u2022\u25CF\u25E6\u25A0\u25A1\u25A2\u25AA\u25AB\u2610\uF0B7\u2023\u25CB\u25CC\u25CD\u25CE\u25CF\u25D0\u25D1\u25D2\u25D3\u25D4\u25D5\u25D6\u25D7\u25D8\u25D9\u25DA\u25DB\u25DC\u25DD\u25DE\u25DF\u25E6\u25E7\u25E8\u25E9\u25EA\u25EB\u25EC\u25ED\u25EE\u25EF]/g, "") // Remove all bullet/box Unicode chars
+            .replace(/[•●■▪□▢]/g, "") // Remove common bullet chars
+            .replace(/[]/g, "") // Remove the specific character the user mentioned
+            .replace(/^\s*[•●■▪□▢]\s*/gm, "") // Remove any bullet at line start (multiline)
+            .replace(/\s+/g, " ") // Normalize multiple spaces to single space
+            .trim()
+    }
+
     return (
         <AnimatePresence mode="wait">
             {isOpen && (
@@ -132,7 +145,9 @@ export default function ResultModal({ isOpen, onClose, result }: ResultModalProp
                                     </motion.div>
 
                                     <motion.p className="text-gray-700 leading-relaxed whitespace-pre-line" >
-                                        {result.aiFeedback?.trim() ? result.aiFeedback : "Yanıtlar eksik veya hiç yok. Sorulara hazırlık ve pratik yapmalısınız."}
+                                        {result.aiFeedback?.trim()
+                                            ? cleanAIFeedback(result.aiFeedback)
+                                            : "Yanıtlar eksik veya hiç yok. Sorulara hazırlık ve pratik yapmalısınız."}
                                     </motion.p>
                                 </div>
                             </motion.div>

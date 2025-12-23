@@ -211,8 +211,61 @@ export default function WritingTestResults() {
     achievement: extractScoreFromFeedback(parsedFeedback?.taskAchievement || writingData?.aiFeedback?.taskAchievement) || 0,
   };
 
-  // Get answers array
-  const answers = writingData?.answers || [];
+  // Extract answers array (supports both legacy answers[] and new sections/subParts structure)
+  const extractWritingAnswers = () => {
+    // 1) If top-level answers array exists and has at least one non-empty answer, use it
+    if (Array.isArray(writingData?.answers)) {
+      const hasNonEmpty = writingData.answers.some(
+        (a: any) => a && typeof a.userAnswer === "string" && a.userAnswer.trim() !== ""
+      );
+      if (hasNonEmpty) {
+        return writingData.answers;
+      }
+    }
+
+    // 2) Otherwise, build answers from sections/subParts structure
+    const extracted: any[] = [];
+    const sections = Array.isArray(writingData?.sections) ? writingData.sections : [];
+
+    sections.forEach((section: any, sectionIndex: number) => {
+      // First push subPart answers (so Task 1.1 and 1.2 come first)
+      if (Array.isArray(section.subParts)) {
+        section.subParts.forEach((subPart: any, subPartIndex: number) => {
+          const subPartAnswers = Array.isArray(subPart.answers) ? subPart.answers : [];
+          subPartAnswers.forEach((ans: any) => {
+            extracted.push({
+              ...ans,
+              // Provide a reasonable questionText for UI
+              questionText:
+                ans.questionText ||
+                ans.question ||
+                subPart.description ||
+                section.description ||
+                `Görev 1.${subPartIndex + 1}`,
+            });
+          });
+        });
+      }
+
+      // Then push section-level answers (e.g. Task 2 main essay)
+      if (Array.isArray(section.answers)) {
+        section.answers.forEach((ans: any, answerIndex: number) => {
+          extracted.push({
+            ...ans,
+            questionText:
+              ans.questionText ||
+              ans.question ||
+              section.description ||
+              `Görev ${sectionIndex + 1} ${answerIndex + 1}`,
+          });
+        });
+      }
+    });
+
+    return extracted;
+  };
+
+  const answers = extractWritingAnswers();
   
   console.log("Writing results - All answers:", answers);
   console.log("Writing results - Writing data:", writingData);
@@ -312,9 +365,10 @@ export default function WritingTestResults() {
           const hasPartFeedback = feedback.part1_1 || feedback.part1_2 || feedback.part2;
           const hasIELTSFeedback = feedback.coherenceAndCohesion || feedback.grammaticalRangeAndAccuracy || 
                                    feedback.lexicalResource || feedback.taskAchievement;
-          const hasGeneralFeedback = feedback.general;
           
-          if (!hasPartFeedback && !hasIELTSFeedback && !hasGeneralFeedback) {
+          // Eğer sadece genel eğitmen notu varsa, üst grid'i göstermeyelim;
+          // bu not zaten aşağıda "Eğitmen Notu" kartında gösterilecek.
+          if (!hasPartFeedback && !hasIELTSFeedback) {
             return null;
           }
           
@@ -350,17 +404,6 @@ export default function WritingTestResults() {
                   </div>
                   <p className="text-sm text-gray-600 leading-relaxed">
                     {removeBullets(feedback.part2)}
-                  </p>
-                </div>
-              )}
-              {feedback.general && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-gray-900">Eğitmen Notu</h3>
-                    <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-                  </div>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    {removeBullets(feedback.general)}
                   </p>
                 </div>
               )}
@@ -513,7 +556,7 @@ export default function WritingTestResults() {
               <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
                 <span className="text-purple-600 font-semibold text-sm">💬</span>
               </div>
-                <h2 className="text-lg font-semibold text-gray-900">AI Geri Bildirimi</h2>
+                <h2 className="text-lg font-semibold text-gray-900">Eğitmen Notu</h2>
             </div>
             <div className="bg-gray-50 rounded-lg p-4">
               <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">

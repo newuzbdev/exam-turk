@@ -680,9 +680,10 @@ export default function OverallResults() {
             const hasPartFeedback = feedback.part1_1 || feedback.part1_2 || feedback.part2;
             const hasIELTSFeedback = feedback.coherenceAndCohesion || feedback.grammaticalRangeAndAccuracy || 
                                      feedback.lexicalResource || feedback.taskAchievement;
-            const hasGeneralFeedback = feedback.general;
             
-            if (!hasPartFeedback && !hasIELTSFeedback && !hasGeneralFeedback) {
+            // Eğer sadece genel eğitmen notu varsa, üst grid'i göstermeyelim;
+            // bu not zaten aşağıda "Eğitmen Notu" kartında gösterilecek.
+            if (!hasPartFeedback && !hasIELTSFeedback) {
               return null;
             }
             
@@ -881,7 +882,7 @@ export default function OverallResults() {
                 <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
                   <span className="text-purple-600 font-semibold text-sm">💬</span>
                 </div>
-                <h2 className="text-lg font-semibold text-gray-900">AI Geri Bildirimi</h2>
+                <h2 className="text-lg font-semibold text-gray-900">Eğitmen Notu</h2>
               </div>
               <div className="bg-gray-50 rounded-lg p-4">
                 <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{currentData.comment}</p>
@@ -1264,17 +1265,8 @@ export default function OverallResults() {
                       </div>
                     )}
                     {/* Show general feedback if available */}
-                    {generalFeedback && generalFeedback.trim() !== 'Geri bildirim mevcut değil' && (
-                      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 md:col-span-2 lg:col-span-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <h3 className="font-semibold text-gray-900">AI Geri Bildirimi (Eğitmen Notu)</h3>
-                          <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                        </div>
-                        <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
-                          {removeBullets(generalFeedback)}
-                        </p>
-                      </div>
-                    )}
+                    {/* Genel eğitmen notunu üst gridde göstermiyoruz; 
+                        bu not aşağıda "Eğitmen Notu" kartında yer alıyor. */}
                     {/* Fallback to IELTS-style feedback if part1-3 not available */}
                     {!hasPartFeedback && (
                 <>
@@ -1413,7 +1405,7 @@ export default function OverallResults() {
                 <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
                   <span className="text-purple-600 font-semibold text-sm">💬</span>
                 </div>
-                <h2 className="text-lg font-semibold text-gray-900">AI Geri Bildirimi</h2>
+                <h2 className="text-lg font-semibold text-gray-900">Eğitmen Notu</h2>
               </div>
               <div className="bg-gray-50 rounded-lg p-4">
                 <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{currentData.comment}</p>

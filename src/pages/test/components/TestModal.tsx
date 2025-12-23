@@ -192,6 +192,25 @@ const TestModal = ({
     const writingId = selectedSkills.includes('writing') && writingTests?.[0]?.id ? writingTests[0].id : undefined;
     const speakingId = selectedSkills.includes('speaking') && speakingTests?.[0]?.id ? speakingTests[0].id : undefined;
 
+    // Yeni bir genel test oturumu başlatırken, daha önceki denemelerden kalan
+    // yerel cevapları temizleyelim ki kullanıcı tertemiz bir testle başlasın.
+    try {
+      if (readingId) {
+        sessionStorage.removeItem(`reading_answers_${readingId}`);
+      }
+      if (listeningId) {
+        sessionStorage.removeItem(`listening_answers_${listeningId}`);
+      }
+      if (writingId) {
+        sessionStorage.removeItem(`writing_answers_${writingId}`);
+      }
+      if (speakingId) {
+        sessionStorage.removeItem(`speaking_answers_${speakingId}`);
+      }
+    } catch {
+      // storage erişim hatalarını sessizce yoksay
+    }
+
     // Close confirmation modal
     setShowConfirmationModal(false);
 

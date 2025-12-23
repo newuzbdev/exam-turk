@@ -9,6 +9,16 @@ export default function WritingTest() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Standalone yazma testine yeniden girildiğinde eski cevaplar dolu gelmesin.
+    // Genel (overall) test akışı aktif DEĞİLSE, bu test için saklanan cevapları temizliyoruz.
+    if (testId && !overallTestFlowStore.hasActive()) {
+      try {
+        sessionStorage.removeItem(`writing_answers_${testId}`);
+      } catch {}
+    }
+  }, [testId]);
+
+  useEffect(() => {
     if (typeof document !== "undefined") {
       document.body.classList.add("exam-mode");
       // Double-check exam mode is active if in overall test flow

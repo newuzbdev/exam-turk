@@ -439,7 +439,7 @@ export default function SpeakingTestResults() {
               <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
                 <span className="text-purple-600 font-semibold text-sm">💬</span>
               </div>
-              <h2 className="text-lg font-semibold text-gray-900">AI Geri Bildirimi</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Eğitmen Notu</h2>
             </div>
             <div className="bg-gray-50 rounded-lg p-4">
               <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{currentData.comment}</p>

@@ -1213,7 +1213,6 @@ export default function OverallResults() {
                 const part1Feedback = getPartFeedback('part1');
                 const part2Feedback = getPartFeedback('part2');
                 const part3Feedback = getPartFeedback('part3');
-                const generalFeedback = getPartFeedback('general');
                 const hasPartFeedback = part1Feedback || part2Feedback || part3Feedback;
                 
                 return (

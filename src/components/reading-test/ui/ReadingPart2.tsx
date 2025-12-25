@@ -24,7 +24,11 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
 
   // Flatten questions and show all available questions for this part
   const allQuestions = sections.flatMap((s: any) => s.questions || []);
-  const numbered = allQuestions;
+  const numbered = allQuestions.sort((a: any, b: any) => {
+    const aNum = typeof a.number === 'number' ? a.number : 0;
+    const bNum = typeof b.number === 'number' ? b.number : 0;
+    return aNum - bNum;
+  });
 
   const makeImageSrc = (u: string) => {
     let src = u.trim();
@@ -95,12 +99,12 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
             <h4 className="text-base font-bold text-gray-800 mb-3">Sorular</h4>
             <div className="space-y-4">
               {numbered.map((q: any, idx: number) => {
-                const qNum = 7 + idx;
+                const qNum = q.number || (7 + idx);
                 const hasImage = typeof q.imageUrl === 'string' && q.imageUrl.length > 0;
 
                 return (
                   <div key={q.id} className="bg-white rounded-lg p-3 border border-gray-200">
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2 mb-2">
                       <div className="text-sm font-bold text-gray-800">S{qNum}</div>
                       <Select
                         value={answers[q.id] || ""}
@@ -166,7 +170,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
             <div className="h-full p-6 overflow-y-auto pb-24">
               <div className="space-y-6">
                 {numbered.map((q: any, idx: number) => {
-                  const qNum = 7 + idx;
+                  const qNum = q.number || (7 + idx);
                   const hasImage = typeof q.imageUrl === 'string' && q.imageUrl.length > 0;
 
                   return (
@@ -174,7 +178,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                       <div className="flex items-start gap-4">
                         {hasImage ? (
                           <div className="w-full">
-                            <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3 mb-4">
                               <div className="text-xl font-bold text-gray-800">S{qNum}</div>
                               <Select
                                 value={answers[q.id] || ""}
@@ -214,16 +218,9 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                             )}
                           </div>
                         ) : (
-                          <>
-                            <div className="flex-1">
-                              {q.text && (
-                                <h3 className="font-semibold mb-2 leading-snug italic text-gray-900">
-                                  {q.text}
-                                </h3>
-                              )}
-                              {renderContent(q.content || "", qNum)}
-                            </div>
-                            <div className="shrink-0 pt-1">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className="text-xl font-bold text-gray-800">S{qNum}</div>
                               <Select
                                 value={answers[q.id] || ""}
                                 onValueChange={(value) => onAnswerChange(q.id, value)}
@@ -242,7 +239,13 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                                 </SelectContent>
                               </Select>
                             </div>
-                          </>
+                            {q.text && (
+                              <h3 className="font-semibold mb-2 leading-snug italic text-gray-900">
+                                {q.text}
+                              </h3>
+                            )}
+                            {renderContent(q.content || "", qNum)}
+                          </div>
                         )}
                       </div>
                     </div>

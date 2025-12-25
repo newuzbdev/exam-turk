@@ -49,13 +49,13 @@ export default function ReadingPart3({ testData, answers, onAnswerChange, partNu
             <h4 className="text-base font-bold text-gray-800 mb-3">Paragraflar</h4>
             <div className="space-y-4">
               {paragraphQuestions.map((q: any, idx: number) => {
-                const displayNum = 15 + idx; // 15..20 (sequential)
+                const displayNum = q.number || (15 + idx); // Use actual question number from API
                 const displayText = q.text || q.content || "";
                 const romans = ["I", "II", "III", "IV", "V", "VI"];
                 const label = `S${displayNum}. ${romans[idx]}. paragraf`;
                 return (
                   <div key={q.id} className="rounded-lg p-3">
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2 mb-2">
                       <div className="text-sm font-bold text-gray-800">{label}</div>
                       <Select
                         value={answers[q.id] || ""}
@@ -96,7 +96,7 @@ export default function ReadingPart3({ testData, answers, onAnswerChange, partNu
             <div className="h-full p-6 overflow-y-auto pb-24 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
               <div className="space-y-6">
                 {paragraphQuestions.map((q: any, idx: number) => {
-                  const displayNum = 15 + idx; // 15..20 (sequential)
+                  const displayNum = q.number || (15 + idx); // Use actual question number from API
                   const displayText = q.text || q.content || "";
                   const romans = ["I", "II", "III", "IV", "V", "VI"];
                   const label = `S${displayNum}. ${romans[idx]}. paragraf`;
@@ -104,27 +104,25 @@ export default function ReadingPart3({ testData, answers, onAnswerChange, partNu
                     <div key={q.id} className="rounded-xl p-4">
                       <div className="flex items-start gap-4">
                         <div className="flex-1">
-                          <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-3 mb-3">
                             <div className="text-xl font-bold text-gray-800">{label}</div>
-                            <div>
-                              <Select
-                                value={answers[q.id] || ""}
-                                onValueChange={(value) => onAnswerChange(q.id, value)}
-                              >
-                                <SelectTrigger className="w-28 bg-white border border-gray-300 rounded-md px-3 py-2 h-10 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
-                                  <SelectValue placeholder="Seçiniz">
-                                    {answers[q.id] ? answers[q.id] : "Seçiniz"}
-                                  </SelectValue>
-                                </SelectTrigger>
-                                <SelectContent className="bg-white max-h-64 overflow-y-auto z-50">
-                                  {optionList.map((opt) => (
-                                    <SelectItem key={opt.letter} value={opt.letter} className="cursor-pointer py-1">
-                                      {opt.letter}) {opt.text}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
+                            <Select
+                              value={answers[q.id] || ""}
+                              onValueChange={(value) => onAnswerChange(q.id, value)}
+                            >
+                              <SelectTrigger className="w-28 bg-white border border-gray-300 rounded-md px-3 py-2 h-10 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
+                                <SelectValue placeholder="Seçiniz">
+                                  {answers[q.id] ? answers[q.id] : "Seçiniz"}
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent className="bg-white max-h-64 overflow-y-auto z-50">
+                                {optionList.map((opt) => (
+                                  <SelectItem key={opt.letter} value={opt.letter} className="cursor-pointer py-1">
+                                    {opt.letter}) {opt.text}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
                           {displayText && (
                             <div className="">

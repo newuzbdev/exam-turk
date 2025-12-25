@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Download } from "lucide-react";
 import { overallTestService } from "@/services/overallTest.service";
+import { ConfettiSideCannons } from "@/components/ui/confetti-side-cannons";
 
 interface Question {
   questionId: string;
@@ -1427,7 +1428,9 @@ export default function OverallResults() {
   if (availableTests.length === 1) {
     const testType = availableTests[0];
     return (
-      <div className="min-h-screen bg-gray-50 py-10">
+      <>
+        {!loading && data && <ConfettiSideCannons key={`confetti-overall-${params.overallId || 'single'}`} />}
+        <div className="min-h-screen bg-gray-50 py-10">
         <div className="max-w-7xl mx-auto px-4">
           <div className="mb-8 mx-4">
             <h1 className="text-3xl font-bold text-foreground mb-2">
@@ -1464,12 +1467,15 @@ export default function OverallResults() {
           </div>
         </div>
       </div>
+      </>
     );
   }
 
   // If multiple test types are available, show tabs
   return (
-    <div className="min-h-screen bg-gray-50 py-10">
+    <>
+      {!loading && data && <ConfettiSideCannons key={`confetti-overall-${params.overallId || 'multiple'}`} />}
+      <div className="min-h-screen bg-gray-50 py-10">
       <div className="max-w-7xl mx-auto px-4">
         <div className="mb-8 flex items-center justify-between">
           <div></div>
@@ -1555,6 +1561,7 @@ export default function OverallResults() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 

@@ -689,7 +689,7 @@ export default function OverallResults() {
             }
             
             return (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                 {feedback.part1_1 && (
                   <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                     <div className="flex items-center justify-between mb-3">
@@ -723,17 +723,7 @@ export default function OverallResults() {
                     </p>
                   </div>
                 )}
-                {feedback.general && (
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-semibold text-gray-900">Eğitmen Notu</h3>
-                      <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-                    </div>
-                    <p className="text-sm text-gray-600 leading-relaxed">
-                      {cleanBullets(feedback.general)}
-                    </p>
-                  </div>
-                )}
+                {/* Eğitmen Notu is shown in the bottom section, not in the grid */}
                 {/* Fallback to IELTS-style feedback if part feedback not available */}
                 {!hasPartFeedback && hasIELTSFeedback && (
                   <>
@@ -874,19 +864,6 @@ export default function OverallResults() {
               </div>
               <div className="bg-gray-50 rounded-lg p-4">
                 <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{currentData.answer}</p>
-              </div>
-            </div>
-
-            {/* Comment Section */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <span className="text-purple-600 font-semibold text-sm">💬</span>
-                </div>
-                <h2 className="text-lg font-semibold text-gray-900">Eğitmen Notu</h2>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{currentData.comment}</p>
               </div>
             </div>
           </div>
@@ -1396,19 +1373,6 @@ export default function OverallResults() {
               </div>
               <div className="bg-gray-50 rounded-lg p-4">
                 <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{currentData.answer}</p>
-              </div>
-            </div>
-
-            {/* Comment Section */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <span className="text-purple-600 font-semibold text-sm">💬</span>
-                </div>
-                <h2 className="text-lg font-semibold text-gray-900">Eğitmen Notu</h2>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{currentData.comment}</p>
               </div>
             </div>
           </div>

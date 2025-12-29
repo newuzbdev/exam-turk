@@ -327,7 +327,7 @@ export default function WritingTestResults() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-8">
         {/* Header Section */}
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-6">
@@ -359,7 +359,7 @@ export default function WritingTestResults() {
           </div>
         </div>
 
-        {/* AI Feedback Grid - Similar to Speaking Test */}
+        {/* AI Feedback Grid - Same logic as Speaking Test */}
         {parsedFeedback && (() => {
           const feedback = parsedFeedback;
           const hasPartFeedback = feedback.part1_1 || feedback.part1_2 || feedback.part2;
@@ -373,7 +373,7 @@ export default function WritingTestResults() {
           }
           
           return (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
               {feedback.part1_1 && (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                   <div className="flex items-center justify-between mb-3">
@@ -550,20 +550,22 @@ export default function WritingTestResults() {
             </div>
           </div>
 
-          {/* Comment Section */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                <span className="text-purple-600 font-semibold text-sm">💬</span>
-              </div>
+          {/* Eğitmen Notu Section - Shows general feedback like speaking results */}
+          {parsedFeedback?.general && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <span className="text-purple-600 font-semibold text-sm">💬</span>
+                </div>
                 <h2 className="text-lg font-semibold text-gray-900">Eğitmen Notu</h2>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                  {removeBullets(parsedFeedback.general)}
+                </p>
+              </div>
             </div>
-            <div className="bg-gray-50 rounded-lg p-4">
-              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                {removeBullets(currentData.comment)}
-              </p>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Action Buttons */}

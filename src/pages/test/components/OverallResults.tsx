@@ -785,8 +785,8 @@ export default function OverallResults() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
             <h3 className="text-lg font-semibold text-gray-900 mb-6">Yazma Görevleri</h3>
             
-          {/* All Tasks in One Row - Wider */}
-          <div className="grid grid-cols-3 gap-4">
+          {/* All Tasks - Mobile friendly layout */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             {/* Task 1.1 */}
             <Button
               onClick={() => {
@@ -794,7 +794,7 @@ export default function OverallResults() {
                 setActiveTask1Part("part1");
               }}
               variant="outline"
-              className={`h-16 rounded-lg font-medium transition-all ${
+              className={`h-14 sm:h-16 w-full rounded-lg font-medium transition-all ${
                 activeTask === "task1" && activeTask1Part === "part1"
                   ? "bg-red-600 text-white hover:bg-red-700 shadow-md border-red-600"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-300 hover:border-gray-400"
@@ -813,7 +813,7 @@ export default function OverallResults() {
                 setActiveTask1Part("part2");
               }}
               variant="outline"
-              className={`h-16 rounded-lg font-medium transition-all ${
+              className={`h-14 sm:h-16 w-full rounded-lg font-medium transition-all ${
                 activeTask === "task1" && activeTask1Part === "part2"
                   ? "bg-red-600 text-white hover:bg-red-700 shadow-md border-red-600"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-300 hover:border-gray-400"
@@ -829,7 +829,7 @@ export default function OverallResults() {
             <Button
               onClick={() => setActiveTask("task2")}
               variant="outline"
-              className={`h-16 rounded-lg font-medium transition-all ${
+              className={`h-14 sm:h-16 w-full rounded-lg font-medium transition-all ${
                 activeTask === "task2"
                   ? "bg-red-600 text-white hover:bg-red-700 shadow-md border-red-600"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-300 hover:border-gray-400"

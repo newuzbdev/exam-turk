@@ -341,8 +341,12 @@ export default function OverallResults() {
     // Local helper to remove bullet / box symbols from text for writing feedback
     const cleanBullets = (text: string): string => {
       if (!text) return text;
-      // Split by lines and remove bullets from each line
-      return text
+
+      // Remove common bullet-like characters ANYWHERE in the text first (ensures the specific "" never shows)
+      const stripAnywhere = text.replace(/[•●▪■□▢◦‣∙⋅·\u2022\u25CF\u2219\u2023\u25E6\u00B7\uF0B7]/g, "");
+
+      // Split by lines and also remove bullets from the start of each line
+      return stripAnywhere
         .split('\n')
         .map(line => {
           // Remove any bullet-like character at the start of the line (including the specific  character)
@@ -866,6 +870,26 @@ export default function OverallResults() {
                 <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{currentData.answer}</p>
               </div>
             </div>
+
+            {/* Eğitmen Notu Section - Shows general feedback */}
+            {(() => {
+              const generalFeedback = extractFeedbackSection(aiFeedback, 'general');
+              if (!generalFeedback) return null;
+
+              return (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                      <span className="text-purple-600 font-semibold text-sm">💬</span>
+                    </div>
+                    <h2 className="text-lg font-semibold text-gray-900">Eğitmen Notu</h2>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{cleanBullets(generalFeedback)}</p>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>

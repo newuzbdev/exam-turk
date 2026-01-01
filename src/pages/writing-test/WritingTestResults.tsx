@@ -105,8 +105,13 @@ export default function WritingTestResults() {
   // Helper to remove bullet characters when rendering (•, , etc.)
   const removeBullets = (text: string | undefined | null) => {
     if (!text) return text || "";
-    // Split by lines and remove bullets from each line
-    return text
+
+    // First, remove common bullet-like characters that may appear ANYWHERE in the text
+    // This ensures symbols like the specific "" do not render even if not at line start.
+    const stripAnywhere = text.replace(/[•●▪■□▢◦‣∙⋅·\u2022\u25CF\u2219\u2023\u25E6\u00B7\uF0B7]/g, "");
+
+    // Then, split by lines and remove bullets that might still be at the beginning of lines
+    return stripAnywhere
       .split('\n')
       .map(line => {
         // Remove any bullet-like character at the start of the line (including the specific  character)

@@ -984,6 +984,9 @@ export default function OverallResults() {
       achievement: extractScoreFromFeedback(aiFeedback?.taskAchievement) || 0,
     };
 
+    // Use level from overall data
+    const level = data?.level;
+
     // Extract answers from either answers array or parts structure
     const extractAnswers = () => {
       // First try to use the answers array if it exists
@@ -1089,18 +1092,18 @@ export default function OverallResults() {
     // Organize answers by parts: Part 1.1, Part 1.2, Part 2, Part 3
     const organizeAnswersByParts = () => {
       if (answers.length === 0) return [[], [], [], []];
-      
+
       const totalQuestions = answers.length;
-      const part1TotalCount = Math.ceil(totalQuestions * 0.4); // ~40% for Part 1 total
-      const part1_1Count = Math.ceil(part1TotalCount / 2); // Split Part 1 into 1.1 and 1.2
+      const part1TotalCount = Math.max(Math.ceil(totalQuestions * 0.4), 3); // Ensure at least 3 for Part 1.1
+      const part1_1Count = 3; // Fixed 3 questions for Part 1.1
       const part2Count = Math.ceil(totalQuestions * 0.3); // ~30% for Part 2
       // Rest goes to Part 3
-      
+
       const part1_1 = answers.slice(0, part1_1Count);
       const part1_2 = answers.slice(part1_1Count, part1TotalCount);
       const part2 = answers.slice(part1TotalCount, part1TotalCount + part2Count);
       const part3 = answers.slice(part1TotalCount + part2Count);
-      
+
       return [part1_1, part1_2, part2, part3].filter(part => part.length > 0);
     };
 
@@ -1198,7 +1201,10 @@ export default function OverallResults() {
                   <p className="text-gray-600">Konuşma testi performansınız</p>
                 </div>
                 <div className="text-right">
-                  <div className="text-4xl font-bold text-red-600">{scores.overall}</div>
+                  <div className="flex items-center gap-2">
+                    <div className="text-4xl font-bold text-red-600">{scores.overall}</div>
+                    {level && <span className="text-lg font-semibold text-gray-700"> / {level}</span>}
+                  </div>
                   <div className="text-sm text-gray-500">Bant Puanı</div>
                 </div>
               </div>

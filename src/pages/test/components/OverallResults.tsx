@@ -1094,13 +1094,17 @@ export default function OverallResults() {
       if (answers.length === 0) return [[], [], [], []];
 
       const totalQuestions = answers.length;
-      const part1TotalCount = Math.max(Math.ceil(totalQuestions * 0.4), 3); // Ensure at least 3 for Part 1.1
       const part1_1Count = 3; // Fixed 3 questions for Part 1.1
-      const part2Count = Math.ceil(totalQuestions * 0.3); // ~30% for Part 2
+      const part1_2Count = 3; // Fixed 3 questions for Part 1.2
+      const part1TotalCount = part1_1Count + part1_2Count; // 6 for Part 1
+      const part2Count = Math.ceil(Math.max(0, totalQuestions - part1TotalCount) * 0.6); // Remaining for Part 2
       // Rest goes to Part 3
 
       const part1_1 = answers.slice(0, part1_1Count);
-      const part1_2 = answers.slice(part1_1Count, part1TotalCount);
+      const part1_2 = Array(part1_2Count).fill({}).map((_, i) => {
+        const index = part1_1Count + i;
+        return answers[index] || { questionText: `Soru ${i + 1}`, userAnswer: "Cevap verilmedi", questionId: `dummy-${i}` };
+      });
       const part2 = answers.slice(part1TotalCount, part1TotalCount + part2Count);
       const part3 = answers.slice(part1TotalCount + part2Count);
 

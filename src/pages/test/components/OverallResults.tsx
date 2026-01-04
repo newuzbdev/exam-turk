@@ -1358,7 +1358,6 @@ export default function OverallResults() {
                     >
                       <div className="text-center">
                         <div className="font-semibold">{partLabel.main}</div>
-                        <div className="text-xs opacity-75">{partLabel.sub}</div>
                       </div>
                     </Button>
                   );

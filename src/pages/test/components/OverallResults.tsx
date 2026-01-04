@@ -948,10 +948,10 @@ export default function OverallResults() {
       
       // Try to extract specific section from the feedback string
       const sectionPatterns: Record<string, RegExp> = {
-        'part1': /\[BÖLÜM 1 ANALİZİ\]([\s\S]*?)(?=\[BÖLÜM 2|\[BÖLÜM 3|AI GERİ BİLDİRİMİ|$)/i,
-        'part2': /\[BÖLÜM 2 ANALİZİ\]([\s\S]*?)(?=\[BÖLÜM 3|AI GERİ BİLDİRİMİ|$)/i,
-        'part3': /\[BÖLÜM 3 ANALİZİ\]([\s\S]*?)(?=AI GERİ BİLDİRİMİ|$)/i,
-        'general': /AI GERİ BİLDİRİMİ \(EĞİTMEN NOTU\):([\s\S]*?)(?=$)/i
+        'part1': /\[BÖLÜM 1 ANALİZİ\]([\s\S]*?)(?=\[BÖLÜM 2|\[BÖLÜM 3|AI GERİ BİLDİRİMİ|GENEL DEĞERLENDİRME|$)/i,
+        'part2': /\[BÖLÜM 2 ANALİZİ\]([\s\S]*?)(?=\[BÖLÜM 3|AI GERİ BİLDİRİMİ|GENEL DEĞERLENDİRME|$)/i,
+        'part3': /\[BÖLÜM 3 ANALİZİ\]([\s\S]*?)(?=AI GERİ BİLDİRİMİ|GENEL DEĞERLENDİRME|$)/i,
+        'general': /GENEL DEĞERLENDİRME:([\s\S]*?)(?=$)/i
       };
       
       const pattern = sectionPatterns[sectionName];
@@ -1413,6 +1413,26 @@ export default function OverallResults() {
                 <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{currentData.answer}</p>
               </div>
             </div>
+
+            {/* Eğitmen Notu Section - Shows general feedback */}
+            {(() => {
+              const generalFeedback = extractFeedbackSection(aiFeedback, 'general');
+              if (!generalFeedback) return null;
+
+              return (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                      <span className="text-purple-600 font-semibold text-sm">💬</span>
+                    </div>
+                    <h2 className="text-lg font-semibold text-gray-900">Eğitmen Notu</h2>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{removeBullets(generalFeedback)}</p>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>

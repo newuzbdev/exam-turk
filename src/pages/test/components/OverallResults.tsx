@@ -56,6 +56,7 @@ interface OverallResponse {
     id: string;
     name: string;
   };
+  level?: string;
   listening?: TestSonuç;
   reading?: TestSonuç;
   writing?: TestSonuç;
@@ -526,6 +527,10 @@ export default function OverallResults() {
       achievement: extractScoreFromFeedback(getFeedbackText('taskAchievement')) || 0,
     };
 
+    // Use level from overall data
+    const level = data?.level;
+    console.log('Using level from data:', level);
+
     // Extract answers from either answers array or sections structure
     const extractWritingAnswers = () => {
       // First try to use the answers array if it exists and has content
@@ -672,7 +677,10 @@ export default function OverallResults() {
                   <p className="text-gray-600">Yazma testi performansınız</p>
                 </div>
                 <div className="text-right">
-                  <div className="text-4xl font-bold text-red-600">{scores.overall}</div>
+                  <div className="flex items-center gap-2">
+                    <div className="text-4xl font-bold text-red-600">{scores.overall}</div>
+                    {level && <span className="text-lg font-semibold text-gray-700"> / {level}</span>}
+                  </div>
                   <div className="text-sm text-gray-500">75 üzerinden</div>
                 </div>
               </div>

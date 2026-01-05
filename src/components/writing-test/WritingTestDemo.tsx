@@ -683,7 +683,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                     }}
                   />
                 </div>
-                <div className="font-bold text-base">Yazma Testi</div>
+                <div className="font-bold text-base">YAZMA</div>
                 <div className="flex items-center gap-2">
                   <div className="font-bold text-sm">{formatTime(timeLeft)}</div>
                   <Button onClick={() => setShowSubmitModal(true)} className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 text-xs font-bold">
@@ -706,7 +706,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                   }}
                 />
               </div>
-              <div className="font-bold text-2xl">Yazma Testi</div>
+              <div className="font-bold text-2xl">YAZMA</div>
               <div className="flex items-center gap-4">
                 <div className="flex items-center space-x-2 text-gray-600">
                   <Clock className="h-5 w-5" />

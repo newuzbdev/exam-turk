@@ -463,7 +463,7 @@ export default function OverallResults() {
         }
 
         // Extract BÖLÜM 2 section
-        const part2Match = aiFeedback.match(/\[BÖLÜM 2 DEĞERLENDİRMESİ\]([\s\S]*?)(?=AI GERİ BİLDİRİMİ|$)/i);
+        const part2Match = aiFeedback.match(/\[BÖLÜM 2 DEĞERLENDİRMESİ\]([\s\S]*?)(?=AI GERİ BİLDİRİMİ|GENEL DEĞERLENDİRME|$)/i);
         if (part2Match) {
           parsed.part2 = cleanBullets(part2Match[1].trim());
         }
@@ -951,7 +951,7 @@ export default function OverallResults() {
         'part1': /\[BÖLÜM 1 ANALİZİ\]([\s\S]*?)(?=\[BÖLÜM 2|\[BÖLÜM 3|AI GERİ BİLDİRİMİ|GENEL DEĞERLENDİRME|$)/i,
         'part2': /\[BÖLÜM 2 ANALİZİ\]([\s\S]*?)(?=\[BÖLÜM 3|AI GERİ BİLDİRİMİ|GENEL DEĞERLENDİRME|$)/i,
         'part3': /\[BÖLÜM 3 ANALİZİ\]([\s\S]*?)(?=AI GERİ BİLDİRİMİ|GENEL DEĞERLENDİRME|$)/i,
-        'general': /GENEL DEĞERLENDİRME:([\s\S]*?)(?=$)/i
+        'general': /Bölüm 2.*Bölüm 2([\s\S]*)$/i
       };
       
       const pattern = sectionPatterns[sectionName];

@@ -36,6 +36,12 @@ interface TestSonuç {
     questionText: string;
     questionId: string;
     userAnswer: string;
+    section?: {
+      id: string;
+      title: string;
+      description: string;
+      order: number;
+    };
   }>;
   submittedAt?: string;
   sections?: any[];
@@ -600,28 +606,32 @@ export default function OverallResults() {
         const currentAnswer = task1Answers[answerIndex];
         const userAnswer = currentAnswer?.userAnswer;
         console.log("OverallResults - Task 1 answer:", currentAnswer, "userAnswer:", userAnswer);
-        
+
         // Get feedback for the specific part
         const feedbackKey = activeTask1Part === "part1" ? "part1_1" : "part1_2";
         let feedback: string;
-        
+
         // Use parsed feedback if available, otherwise fall back to original logic
         if (parsedFeedback?.[feedbackKey]) {
           feedback = parsedFeedback[feedbackKey];
         } else if (typeof aiFeedback === 'string') {
           feedback = extractFeedbackSection(aiFeedback, feedbackKey);
         } else if (aiFeedback && typeof aiFeedback === 'object') {
-          feedback = aiFeedback[feedbackKey] || 
-                    aiFeedback?.taskAchievement || 
+          feedback = aiFeedback[feedbackKey] ||
+                    aiFeedback?.taskAchievement ||
                     `Görev 1 ${activeTask1Part === "part1" ? "Bölüm 1" : "Bölüm 2"} geri bildirimi burada gösterilecek`;
         } else {
           feedback = `Görev 1 ${activeTask1Part === "part1" ? "Bölüm 1" : "Bölüm 2"} geri bildirimi burada gösterilecek`;
         }
-        
+
+        // Get description for 1.1 and 1.2
+        const description = (currentAnswer as any)?.section?.description;
+
         return {
           question: (currentAnswer as any)?.questionText || `Görev 1 ${activeTask1Part === "part1" ? "Bölüm 1" : "Bölüm 2"} Sorusu`,
           answer: (userAnswer && typeof userAnswer === 'string' && userAnswer.trim() !== "") ? userAnswer : "Cevap verilmedi",
-          comment: feedback
+          comment: feedback,
+          description: description
         };
       } else {
         // Find the Task 2 answer that has a non-empty userAnswer
@@ -652,7 +662,8 @@ export default function OverallResults() {
         return {
           question: (task2AnswerWithContent as any)?.questionText || "Görev 2 Sorusu",
           answer: (userAnswer && typeof userAnswer === 'string' && userAnswer.trim() !== "") ? userAnswer : "Cevap verilmedi",
-          comment: feedback
+          comment: feedback,
+          description: null
         };
       }
     };
@@ -861,8 +872,17 @@ export default function OverallResults() {
                 </div>
                 <h2 className="text-lg font-semibold text-gray-900">Soru</h2>
               </div>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-gray-700 leading-relaxed">{currentData.question}</p>
+              <div className="space-y-4">
+                {/* Render description above question text for 1.1 and 1.2 */}
+                {currentData.description && (
+                  <div className="bg-gray-50 p-4 rounded-lg border-l-4 border-blue-500">
+                    <h4 className="font-medium text-gray-800 mb-2">Görev Açıklaması:</h4>
+                    <p className="text-gray-700 whitespace-pre-line">{currentData.description}</p>
+                  </div>
+                )}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <p className="text-gray-700 leading-relaxed">{currentData.question}</p>
+                </div>
               </div>
             </div>
 

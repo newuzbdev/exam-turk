@@ -28,6 +28,17 @@ interface WritingResult {
   updatedAt?: string;
   userId: string;
   writingTestId: string;
+  answers?: Array<{
+    questionId: string;
+    questionText: string;
+    section: {
+      id: string;
+      title: string;
+      description: string;
+      order: number;
+    };
+    userAnswer: string;
+  }>;
 }
 
 interface SpeakingResult {
@@ -288,6 +299,39 @@ export default function UnifiedTestResults() {
           <h2 className="text-3xl font-bold text-black mb-2">Yazma Testi Tamamlandı!</h2>
           <p className="text-gray-600 text-lg mb-6">IELTS Yazma Değerlendirmesi Sonuçlarınız</p>
         </div>
+
+        {writingData.answers && writingData.answers.length > 0 && (
+          <div className="space-y-6">
+            <h3 className="text-xl font-semibold text-foreground">Cevaplarınız</h3>
+            {writingData.answers.map((answer, index) => (
+              <Card key={answer.questionId} className="p-6">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-muted-foreground">Soru {index + 1}</span>
+                  </div>
+
+                  {/* Render description above question text for sections 1.1 and 1.2 */}
+                  {(answer.section.order === 1 || answer.section.title.includes("1.1") || answer.section.title.includes("1.2")) && answer.section.description && (
+                    <div className="bg-gray-50 p-4 rounded-lg border-l-4 border-blue-500">
+                      <h4 className="font-medium text-gray-800 mb-2">Görev Açıklaması:</h4>
+                      <p className="text-gray-700 whitespace-pre-line">{answer.section.description}</p>
+                    </div>
+                  )}
+
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h4 className="font-medium text-blue-800 mb-2">Soru Metni:</h4>
+                    <p className="text-blue-700 whitespace-pre-line">{answer.questionText}</p>
+                  </div>
+
+                  <div className="bg-green-50 p-4 rounded-lg">
+                    <h4 className="font-medium text-green-800 mb-2">Cevabınız:</h4>
+                    <p className="text-green-700 whitespace-pre-line">{answer.userAnswer || "Cevap verilmedi"}</p>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
 
         {writingData.aiFeedback && (
           <div className="grid md:grid-cols-2 gap-6">

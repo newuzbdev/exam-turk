@@ -899,7 +899,7 @@ export default function OverallResults() {
               </div>
             </div>
 
-            {/* Eğitmen Notu Section - Shows general feedback */}
+            {/* GENEL DEĞERLENDİRME Section - Shows general feedback */}
             {(() => {
               const generalFeedback = extractFeedbackSection(aiFeedback, 'general');
               if (!generalFeedback) return null;
@@ -910,7 +910,7 @@ export default function OverallResults() {
                     <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
                       <span className="text-purple-600 font-semibold text-sm">💬</span>
                     </div>
-                    <h2 className="text-lg font-semibold text-gray-900">Eğitmen Notu</h2>
+                    <h2 className="text-lg font-semibold text-gray-900">GENEL DEĞERLENDİRME</h2>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-4">
                     <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{cleanBullets(generalFeedback)}</p>
@@ -971,7 +971,7 @@ export default function OverallResults() {
         'part1': /\[BÖLÜM 1 ANALİZİ\]([\s\S]*?)(?=\[BÖLÜM 2|\[BÖLÜM 3|AI GERİ BİLDİRİMİ|GENEL DEĞERLENDİRME|$)/i,
         'part2': /\[BÖLÜM 2 ANALİZİ\]([\s\S]*?)(?=\[BÖLÜM 3|AI GERİ BİLDİRİMİ|GENEL DEĞERLENDİRME|$)/i,
         'part3': /\[BÖLÜM 3 ANALİZİ\]([\s\S]*?)(?=AI GERİ BİLDİRİMİ|GENEL DEĞERLENDİRME|$)/i,
-        'general': /Bölüm 2.*Bölüm 2([\s\S]*)$/i
+        'general': /GENEL DEĞERLENDİRME:([\s\S]*?)(?=$)/i
       };
       
       const pattern = sectionPatterns[sectionName];
@@ -1411,19 +1411,6 @@ export default function OverallResults() {
 
           {/* Content Sections */}
           <div className="space-y-6">
-            {/* Question Section */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <span className="text-blue-600 font-semibold text-sm">Q</span>
-                </div>
-                <h2 className="text-lg font-semibold text-gray-900">Soru</h2>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-gray-700 leading-relaxed">{currentData.question}</p>
-              </div>
-            </div>
-
             {/* Answer Section */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <div className="flex items-center gap-3 mb-4">
@@ -1437,7 +1424,7 @@ export default function OverallResults() {
               </div>
             </div>
 
-            {/* Eğitmen Notu Section - Shows general feedback */}
+            {/* GENEL DEĞERLENDİRME Section - Shows general feedback */}
             {(() => {
               const generalFeedback = extractFeedbackSection(aiFeedback, 'general');
               if (!generalFeedback) return null;
@@ -1448,7 +1435,7 @@ export default function OverallResults() {
                     <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
                       <span className="text-purple-600 font-semibold text-sm">💬</span>
                     </div>
-                    <h2 className="text-lg font-semibold text-gray-900">Eğitmen Notu</h2>
+                    <h2 className="text-lg font-semibold text-gray-900">GENEL DEĞERLENDİRME</h2>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-4">
                     <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{removeBullets(generalFeedback)}</p>

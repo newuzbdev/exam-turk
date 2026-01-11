@@ -174,6 +174,36 @@ export const speakingSubmissionService = {
   },
 
   /**
+   * Format assessment feedback for display
+   * @param assessment - The assessment data
+   * @returns Formatted feedback string
+   */
+  formatAssessmentFeedback: (assessment: any): string => {
+    const formattedFeedback = `
+GENEL SONUÇ:
+ Genel CEFR Puanı: ${assessment.cefr_puan ?? 0}/75
+ Belirlenen Seviye: ${assessment.seviye ?? 'Belirlenmedi'}
+
+[BÖLÜM 1.1 ANALİZİ]
+${assessment.bolumler?.bolum_1_1?.degerlendirme ?? 'Değerlendirme yapılamadı.'}
+
+[BÖLÜM 1.2 ANALİZİ]
+${assessment.bolumler?.bolum_1_2?.degerlendirme ?? 'Değerlendirme yapılamadı.'}
+
+[BÖLÜM 2 ANALİZİ]
+${assessment.bolumler?.bolum_2?.degerlendirme ?? 'Değerlendirme yapılamadı.'}
+
+[BÖLÜM 3 ANALİZİ]
+${assessment.bolumler?.bolum_3?.degerlendirme ?? 'Değerlendirme yapılamadı.'}
+
+GENEL DEĞERLENDİRME:
+${assessment.genel_degerlendirme ?? 'Genel değerlendirme yapılamadı.'}
+`.trim();
+
+    return formattedFeedback;
+  },
+
+  /**
    * Validate submission data before sending
    * @param submissionData - The submission data to validate
    * @returns boolean indicating if the data is valid

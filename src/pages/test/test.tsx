@@ -130,46 +130,56 @@ const TestPage = () => {
   if (loading) {
     return (
       <div className="flex flex-col min-h-screen bg-white text-gray-900">
-        <div className="flex-grow py-16">
+        {/* Header Section */}
+        <div className="py-16 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="mb-12 text-center">
-              <div className="h-10 bg-gray-100 rounded-full w-64 mb-4 mx-auto animate-pulse"></div>
-              <div className="h-4 bg-gray-50 rounded-full w-96 mx-auto animate-pulse"></div>
+            <div className="text-center max-w-2xl mx-auto">
+              <div className="h-10 bg-gray-100 rounded w-32 mb-3 mx-auto animate-pulse"></div>
+              <div className="h-5 bg-gray-50 rounded w-80 mx-auto animate-pulse"></div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          </div>
+        </div>
+
+        {/* Tests Grid Section */}
+        <section className="py-16 bg-gray-50 border-y border-gray-100">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="bg-white rounded-2xl border border-gray-100 p-8 h-64 animate-pulse">
-                  <div className="h-12 w-12 bg-gray-100 rounded-xl mb-6"></div>
-                  <div className="h-6 bg-gray-100 rounded w-3/4 mb-4"></div>
-                  <div className="h-4 bg-gray-50 rounded w-1/2"></div>
-                  <div className="mt-8 flex gap-2">
-                    <div className="h-8 w-16 bg-gray-50 rounded-lg"></div>
-                    <div className="h-8 w-16 bg-gray-50 rounded-lg"></div>
+                <div key={i} className="bg-white rounded-3xl border border-gray-100 p-8 h-64 animate-pulse">
+                  <div className="h-8 bg-gray-100 rounded w-3/4 mb-3"></div>
+                  <div className="h-4 bg-gray-50 rounded w-1/2 mb-8"></div>
+                  <div className="mt-auto flex gap-2">
+                    <div className="h-7 w-20 bg-gray-50 rounded-lg"></div>
+                    <div className="h-7 w-20 bg-gray-50 rounded-lg"></div>
                   </div>
                 </div>
               ))}
             </div>
           </div>
-        </div>
+        </section>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col min-h-screen bg-white text-gray-900">
-      <main className="flex-grow py-16">
+      {/* Header Section */}
+      <div className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Header */}
-          <div className="mb-16 text-center max-w-2xl mx-auto">
-            <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight mb-4">
-              Sınav Seçimi
+          <div className="text-center max-w-2xl mx-auto">
+            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
+              Testler
             </h1>
-            <p className="text-gray-500 text-lg font-medium leading-relaxed">
-              Seviyenizi belirlemek için aşağıdan uygun bir sınav paketi seçin ve hemen başlayın.
+            <p className="text-gray-600 text-base sm:text-lg">
+              Seviyenizi ölçmek için bir test paketi seçin
             </p>
           </div>
+        </div>
+      </div>
 
-          {/* Grid */}
+      {/* Tests Grid Section */}
+      <section className="py-16 bg-gray-50 border-y border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {turkishTestData?.ieltsData && turkishTestData.ieltsData.length > 0 ? (
               [...turkishTestData.ieltsData]
@@ -198,12 +208,12 @@ const TestPage = () => {
                   >
                     <div className="w-full">
                       {/* Title */}
-                      <h2 className="text-4xl font-black text-gray-900 mb-3 tracking-tighter group-hover:text-red-600 transition-colors">
+                      <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 group-hover:text-red-600 transition-colors">
                         {test.title}
                       </h2>
 
                       {/* Description or Status */}
-                      <p className="text-sm text-gray-500 font-medium mb-4 text-left w-full">
+                      <p className="text-sm text-gray-500 mb-4">
                         {hasTests ? "Mevcut testler:" : "Erişime Kapalı"}
                       </p>
                     </div>
@@ -243,7 +253,7 @@ const TestPage = () => {
             )}
           </div>
         </div>
-      </main>
+      </section>
 
       {/* Test Modal */}
       {currentTestForModal && (

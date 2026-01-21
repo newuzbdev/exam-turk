@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import axiosPrivate from "@/config/api";
 
 interface AnimatedStatProps {
   value: number;
@@ -60,6 +61,33 @@ const AnimatedStat = ({ value, suffix = "", className }: AnimatedStatProps) => {
 };
 
 const StatsSection = () => {
+  const [activeUsers, setActiveUsers] = useState<number | null>(null);
+  const [completedTests, setCompletedTests] = useState<number | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const { data } = await axiosPrivate.get("/api/admin/stats");
+        // Expecting: { activeUsers: number, completedTests: number }
+        if (!mounted) return;
+        setActiveUsers(Number(data?.activeUsers ?? 0));
+        setCompletedTests(Number(data?.completedTests ?? 0));
+      } catch (e) {
+        // Fallback to previous static-like defaults if API fails
+        if (!mounted) return;
+        setActiveUsers(1500);
+        setCompletedTests(5000);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   return (
     <div>
       <section className="py-20 bg-white border-t border-gray-100">
@@ -67,25 +95,19 @@ const StatsSection = () => {
           <div className="grid md:grid-cols-2 gap-8 text-center">
             <div className="group">
               <AnimatedStat
-                value={1500}
-                suffix="+"
+                value={activeUsers ?? 0}
+                suffix={"+"}
                 className="text-4xl font-bold bg-gradient-to-r from-red-600 to-red-500 bg-clip-text text-transparent mb-2 group-hover:scale-110 transition-transform duration-200"
               />
-              <div className="text-gray-600">
-                Aktif Kullanıcı
-           
-              </div>
+              <div className="text-gray-600">Aktif Kullanıcı</div>
             </div>
             <div className="group">
               <AnimatedStat
-                value={5000}
-                suffix="+"
+                value={completedTests ?? 0}
+                suffix={"+"}
                 className="text-4xl font-bold bg-gradient-to-r from-red-600 to-red-500 bg-clip-text text-transparent mb-2 group-hover:scale-110 transition-transform duration-200"
               />
-              <div className="text-gray-600">
-                Tamamlanan Test
-              
-              </div>
+              <div className="text-gray-600">Tamamlanan Test</div>
             </div>
           </div>
         </div>

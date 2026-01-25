@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Wallet, Plus, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Wallet,  Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { paymeService } from '@/services/payme.service';
 import { toast } from '@/utils/toast';
 

@@ -361,7 +361,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   <span className="block">K&#305;sayollar: c=&#231;, g=&#287;, s=&#351;, o=&#246;, u=&#252;, i=&#305;, I=&#304;</span>
   </div>
   <div className="grid grid-cols-7 gap-1 sm:gap-2 max-w-md">
-  {turkishChars.map(({ char, lower, shortcut }) => (
+  {turkishChars.map(({ char, lower,  }) => (
   <div key={char} className="flex flex-col gap-1">
   <button
   type="button"
@@ -842,7 +842,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                   )}
                   {hasQuestions && !hasSubParts && (
                       <div className="space-y-3">
-                          {questions.map((question, idx) => (
+                          {questions.map((question, _idx) => (
                         <div
                           key={question.id}
                           className="p-4 rounded-lg bg-gray-50 border border-gray-200"
@@ -932,7 +932,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                   {/* Questions Display - Always show */}
                   {questions.length > 0 && !hasSubParts && (
                     <div className="space-y-4 mt-4">
-                      {questions.map((question, idx) => (
+                      {questions.map((question, _idx) => (
                         <div key={question.id} className="p-4 rounded-lg bg-gray-50 border border-gray-200">
                           {question.text && (
                             <p className="text-[#333333] text-lg whitespace-pre-line text-left">

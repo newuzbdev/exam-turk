@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Calendar, Trophy, Medal } from "lucide-react";
+import { Calendar, Trophy, } from "lucide-react";
 import { overallTestService } from "@/services/overallTest.service";
 import { Badge } from "@/components/ui/badge";
 

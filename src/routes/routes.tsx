@@ -22,7 +22,6 @@ import UnifiedTestResults from "@/pages/test/UnifiedTestResults";
 import TestUnifiedResults from "@/pages/test/TestUnifiedResults";
 import OverallResults from "@/pages/test/components/OverallResults";
 import HowItWorksPage from "@/pages/how-it-works/HowItWorksPage";
-import About from "@/pages/about/About";
 import { createBrowserRouter } from "react-router";
 
 export const router = createBrowserRouter([

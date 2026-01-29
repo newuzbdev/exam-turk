@@ -1,0 +1,27 @@
+name: Deploy to CapRover
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: caprover-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy to CapRover
+        uses: caprover/deploy-from-github@v1
+        with:
+          server: ${{ secrets.CAPROVER_SERVER }}
+          app: ${{ secrets.CAPROVER_APP }}
+          token: ${{ secrets.CAPROVER_TOKEN }}
+          branch: main
+          # Optional: set if your CapRover is behind a custom domain
+          # caproverRootDomain: ${{ secrets.CAPROVER_ROOT_DOMAIN }}

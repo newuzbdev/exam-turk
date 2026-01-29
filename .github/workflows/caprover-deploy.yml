@@ -1,27 +1,44 @@
-name: Deploy to CapRover
+name: Build & Push Docker Image (and Deploy)
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
 
 concurrency:
-  group: caprover-${{ github.ref }}
+  group: caprover-deploy
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  build_push_deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Deploy to CapRover
-        uses: caprover/deploy-from-github@v1
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push (linux/amd64)
+        run: |
+          docker buildx build --platform linux/amd64 -t otanazarov/turk-tili-user:latest --push .
+
+      - uses: a7ul/tar-action@v1.1.0
+        with:
+          command: c
+          cwd: "./"
+          files: |
+            ./
+          outPath: deploy.tar
+
+      - name: Deploy to CapRover (ImageName)
+        uses: caprover/deploy-from-github@v1.0.1
         with:
           server: ${{ secrets.CAPROVER_SERVER }}
           app: ${{ secrets.CAPROVER_APP }}
           token: ${{ secrets.CAPROVER_TOKEN }}
-          branch: main
-          # Optional: set if your CapRover is behind a custom domain
-          # caproverRootDomain: ${{ secrets.CAPROVER_ROOT_DOMAIN }}

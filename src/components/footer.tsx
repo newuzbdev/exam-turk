@@ -162,14 +162,14 @@ export const Footer = () => {
                 .
               </p>
               <p>
-                <a
+                {/* <a
                   href="https://t.me/new_uzb_dev"
                   className="hover:text-red-600 transition-colors"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
                   Development by Ochilov Jahongirmirzo
-                </a>
+                </a> */}
                 .
               </p>
             </div>

@@ -2,7 +2,7 @@ name: Build & Push Docker Image (and Deploy)
 
 on:
   push:
-    branches: [main]
+    branches: [main,master]
 
 concurrency:
   group: caprover-deploy

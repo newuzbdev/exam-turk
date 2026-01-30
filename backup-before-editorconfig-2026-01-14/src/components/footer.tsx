@@ -119,12 +119,12 @@ export const Footer = () => {
             <p>
               &copy; {new Date().getFullYear()} TürkTest. Tüm hakları saklıdır.
             </p>
-            <a
+            {/* <a
               href="https://t.me/new_uzb_dev"
               className="text-sm text-gray-500 hover:text-red-600 transition-colors"
             >
               Created and designed by Ochilov Jaxongirmirzo
-            </a>
+            </a> */}
           </div>
         </div>
       </footer>

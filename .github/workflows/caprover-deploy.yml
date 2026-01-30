@@ -24,17 +24,15 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push (linux/amd64)
-        run: |
-          docker buildx build --platform linux/amd64 -t otanazarov/turk-tili-user:latest --push .
-
-      - uses: a7ul/tar-action@v1.1.0
+      - name: Build and push (linux/amd64) with cache
+        uses: docker/build-push-action@v6
         with:
-          command: c
-          cwd: "./"
-          files: |
-            ./
-          outPath: deploy.tar
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: otanazarov/turk-tili-user:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Deploy to CapRover (ImageName)
         uses: caprover/deploy-from-github@v1.0.1
@@ -42,3 +40,4 @@ jobs:
           server: ${{ secrets.CAPROVER_SERVER }}
           app: ${{ secrets.CAPROVER_APP }}
           token: ${{ secrets.CAPROVER_TOKEN }}
+          imageName: otanazarov/turk-tili-user:latest

@@ -35,9 +35,9 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Deploy to CapRover (ImageName)
-        uses: caprover/deploy-from-github@v1.0.1
+        uses: caprover/deploy-from-github@v1.1.2
         with:
           server: ${{ secrets.CAPROVER_SERVER }}
           app: ${{ secrets.CAPROVER_APP }}
           token: ${{ secrets.CAPROVER_TOKEN }}
-          imageName: otanazarov/turk-tili-user:latest
+          image: otanazarov/turk-tili-user:latest

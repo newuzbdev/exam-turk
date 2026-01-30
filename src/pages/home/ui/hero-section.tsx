@@ -37,7 +37,7 @@ const HeroSection = () => {
     <div className="antialiased">
 
       {/* Hero Üst Kısım (Beyaz Arka Plan) */}
-      <section className="pt-8 sm:pt-16 pb-12 bg-white">
+      <section className="pt-8 sm:pt-16 pb-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full text-center">
 
           <div className="mb-10 space-y-6">
@@ -85,7 +85,7 @@ const HeroSection = () => {
       </section>
 
       {/* Kartlar Bölümü (Gri Arka Plan) */}
-      <section className="bg-gray-50 py-16 border-t border-gray-100">
+      <section className="pb-18 border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {features.map((item, index) => (

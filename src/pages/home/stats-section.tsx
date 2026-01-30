@@ -63,7 +63,7 @@ const AnimatedStat = ({ value, suffix = "", className }: AnimatedStatProps) => {
 const StatsSection = () => {
   const [activeUsers, setActiveUsers] = useState<number | null>(null);
   const [completedTests, setCompletedTests] = useState<number | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [_loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     let mounted = true;

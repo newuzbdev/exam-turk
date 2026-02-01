@@ -217,6 +217,7 @@ const Navbar = () => {
             ) : (
               <nav className="flex items-center gap-3">
                 <button
+                  type="button"
                   onClick={() => {
                     setAuthModalMode("login");
                     setIsAuthModalOpen(true);
@@ -226,6 +227,7 @@ const Navbar = () => {
                   Giriş Yap
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     setAuthModalMode("register");
                     setIsAuthModalOpen(true);
@@ -324,6 +326,7 @@ const Navbar = () => {
                     ) : (
                       <div className="flex space-x-2 px-3 py-2">
                         <Button
+                          type="button"
                           variant="ghost"
                           className="flex-1 text-gray-700 hover:text-red-600 hover:bg-gray-50 transition-all duration-300"
                           onClick={() => {
@@ -334,6 +337,7 @@ const Navbar = () => {
                           Giriş Yap
                         </Button>
                         <Button
+                          type="button"
                           className="flex-1 bg-red-600 hover:bg-red-700 text-white shadow-sm hover:shadow-md transition-all duration-300"
                           onClick={() => {
                             setAuthModalMode("register");
@@ -453,8 +457,9 @@ const Navbar = () => {
         planName="Kredi Satın Al"
         planId="quick"
       />
-      {/* Auth Modal */}
+      {/* Auth Modal - key forces remount with correct mode when opening */}
       <AuthModal
+        key={isAuthModalOpen ? `auth-${authModalMode}` : "auth-closed"}
         open={isAuthModalOpen}
         onOpenChange={setIsAuthModalOpen}
         initialMode={authModalMode}

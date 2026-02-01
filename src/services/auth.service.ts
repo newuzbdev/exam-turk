@@ -38,6 +38,8 @@ export interface AuthResult {
   success: boolean;
   shouldNavigate?: boolean;
   shouldRedirectToLogin?: boolean;
+  shouldShowRegister?: boolean;
+  phoneNumber?: string;
   message?: string;
 }
 
@@ -114,25 +116,24 @@ export const authService = {
 
   // Helper function to store tokens securely
   storeTokens: (accessToken: string, refreshToken?: string): void => {
-    // Store tokens in sessionStorage instead of localStorage for better security
-    // They will be cleared when browser/tab is closed
     SecureStorage.setSessionItem("accessToken", accessToken);
     if (refreshToken) {
       SecureStorage.setSessionItem("refreshToken", refreshToken);
     }
-
-    // Notify app that auth tokens changed so contexts can refresh
     try {
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("auth:tokens"));
       }
     } catch {}
+  },
 
-    // Alternative: Use encrypted storage (still not as secure as httpOnly cookies)
-    // SecureStorage.setEncryptedItem("accessToken", accessToken);
-    // if (refreshToken) {
-    //   SecureStorage.setEncryptedItem("refreshToken", refreshToken);
-    // }
+  // Store tokens without dispatching auth:tokens (used during signup OTP so we don't
+  // trigger auth context and redirect; register request will use this token).
+  storeTokensSilent: (accessToken: string, refreshToken?: string): void => {
+    SecureStorage.setSessionItem("accessToken", accessToken);
+    if (refreshToken) {
+      SecureStorage.setSessionItem("refreshToken", refreshToken);
+    }
   },
 
   // Helper function to get stored tokens
@@ -365,52 +366,123 @@ export const authService = {
         );
         toast.success("Giriş başarılı");
         navigate("/", { replace: true });
-
-        return { success: true, shouldNavigate: true };
-      } else if (response.data.message || response.status === 200) {
-        toast.success("Giriş başarılı");
-        navigate("/", { replace: true });
-
         return { success: true, shouldNavigate: true };
       }
+
+      // OTP valid but no token = new user; show register form in modal instead of navigating home
+      if (response.status === 200 || response.data?.message) {
+        const msg = String(response.data?.message || "").toLowerCase();
+        const isNewUser =
+          !response.data?.accessToken &&
+          (msg.includes("kayıt") ||
+            msg.includes("register") ||
+            msg.includes("mevcut değil") ||
+            msg.includes("bulunamadı") ||
+            msg.includes("doğrulandı") ||
+            msg.includes("verified"));
+        if (isNewUser || !response.data?.accessToken) {
+          toast.success("OTP doğrulandı - Kayıt formunu doldurun");
+          return {
+            success: true,
+            shouldShowRegister: true,
+            phoneNumber: phoneWithPrefix,
+          };
+        }
+      }
+
+      toast.error("OTP doğrulanamadı");
       return { success: false };
     } catch (error: any) {
+      const msg = String(error.response?.data?.message || "").toLowerCase();
+      if (
+        error.response?.status === 404 ||
+        msg.includes("bulunamadı") ||
+        msg.includes("mevcut değil") ||
+        msg.includes("kayıt")
+      ) {
+        toast.success("OTP doğrulandı - Kayıt formunu doldurun");
+        const phoneWithPrefix = authService.formatPhoneNumber(phone);
+        return {
+          success: true,
+          shouldShowRegister: true,
+          phoneNumber: phoneWithPrefix,
+        };
+      }
       toast.error(error.response?.data?.message || "OTP doğrulanamadı");
       return { success: false };
     }
   },
 
   // Verify OTP for signup - complete flow
+  // Uses fetch with redirect: 'manual' so backend 302 does not cause full-page redirect to home.
   verifyOtpForSignup: async (
     phone: string,
     code: string,
     navigate: (path: string, options?: any) => void
   ): Promise<AuthResult & { phoneNumber?: string }> => {
+    const phoneWithPrefix = authService.formatPhoneNumber(phone);
+    const baseURL = import.meta.env.VITE_API_URL || "https://api.turkishmock.uz";
+    const url = `${baseURL}${authEndPoint.otpVerify}`;
+    const token = SecureStorage.getSessionItem("accessToken");
+
     try {
-      const phoneWithPrefix = authService.formatPhoneNumber(phone);
-      const response = await axiosPrivate.post(authEndPoint.otpVerify, {
-        phoneNumber: phoneWithPrefix,
-        code: code,
-        isSignUp: true,
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          phoneNumber: phoneWithPrefix,
+          code,
+          isSignUp: true,
+        }),
+        redirect: "manual",
       });
 
-      // Check if the response contains an access token (user already exists)
-      if (response.data.accessToken) {
-        authService.storeTokens(
-          response.data.accessToken,
-          response.data.refreshToken
-        );
-        toast.success("Giriş başarılı! Kullanıcı zaten mevcut.");
-        navigate("/", { replace: true });
-
-        return { success: true, shouldNavigate: true };
+      // Backend returned redirect (e.g. 302 to /) — do not follow; show register form.
+      if (res.type === "opaqueredirect" || res.redirected || res.status === 301 || res.status === 302) {
+        toast.success("OTP doğrulandı - Kayıt formunu doldurun");
+        return { success: true, phoneNumber: phoneWithPrefix };
       }
 
-      // Check if user exists but needs login
-      if (
-        response.data.userExists ||
-        response.data.message?.includes("kullanıcı mevcut")
-      ) {
+      let data: any = {};
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        try {
+          data = await res.json();
+        } catch {
+          data = {};
+        }
+      }
+
+      const message: string = String(data?.message || "");
+      const statusOk = res.status >= 200 && res.status < 300;
+      const dataSuccess = data?.success === true;
+      const messageIndicatesSuccess = /verified|doğruland|tasdiqlandi/i.test(message) || message.includes("tasdiqlandi");
+      const hasAccessToken = !!data?.accessToken;
+
+      const needsRegistration =
+        data?.requiresRegistration === true ||
+        data?.needsRegistration === true ||
+        data?.completeProfile === true ||
+        data?.isNewUser === true ||
+        data?.registered === false;
+      const successNoToken = (statusOk || dataSuccess || messageIndicatesSuccess) && !hasAccessToken;
+      const hasTokenButNewUser = hasAccessToken && needsRegistration;
+
+      if (needsRegistration || successNoToken || hasTokenButNewUser) {
+        toast.success("OTP doğrulandı - Kayıt formunu doldurun");
+        return { success: true, phoneNumber: phoneWithPrefix };
+      }
+
+      if (hasAccessToken) {
+        authService.storeTokensSilent(data.accessToken, data.refreshToken);
+        toast.success("OTP doğrulandı - Kayıt formunu doldurun");
+        return { success: true, phoneNumber: phoneWithPrefix };
+      }
+
+      if (data.userExists || (typeof data.message === "string" && data.message.includes("kullanıcı mevcut"))) {
         toast.info(
           "Bu telefon numarası kayıtlı. Giriş sayfasına yönlendiriliyorsunuz."
         );
@@ -418,20 +490,10 @@ export const authService = {
         return { success: true, shouldRedirectToLogin: true };
       }
 
-      // OTP verified but user doesn't exist, proceed to registration
-      const message: string = String(response?.data?.message || "");
-      const statusOk = response.status === 200;
-      const messageIndicatesSuccess = /verified|doğruland/i.test(message) || message.includes("tasdiqlandi");
-
-      if (statusOk || messageIndicatesSuccess) {
-        toast.success("OTP doğrulandı - Kayıt formunu doldurun");
-        return { success: true, phoneNumber: phoneWithPrefix };
-      }
-
       toast.error("OTP doğrulanamadı");
       return { success: false };
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "OTP doğrulanamadı");
+      toast.error(error?.message || error?.response?.data?.message || "OTP doğrulanamadı");
       return { success: false };
     }
   },

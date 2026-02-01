@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router";
 import { authService } from "@/services/auth.service";
@@ -47,6 +48,18 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
   // Timer states
   const [timer, setTimer] = useState(0);
   const [canResend, setCanResend] = useState(false);
+
+  // Sync authMode with initialMode when modal opens or parent changes mode (e.g. "Kayıt Ol" vs "Giriş Yap")
+  useEffect(() => {
+    if (open) {
+      setAuthMode(initialMode);
+      if (initialMode === "register") {
+        setRegisterStep("options");
+      } else {
+        setLoginStep("login");
+      }
+    }
+  }, [open, initialMode]);
 
   // Phone number formatting function
   const formatPhoneNumber = (value: string) => {
@@ -146,9 +159,23 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
   const handleLoginOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    await authService.verifyOtpForLogin(loginPhone, loginOtp.toString(), navigate);
+    const result = await authService.verifyOtpForLogin(
+      loginPhone,
+      loginOtp.toString(),
+      navigate
+    );
     setLoading(false);
-    if (open) {
+    if (result?.shouldShowRegister && result?.phoneNumber) {
+      setRegisterPhone(loginPhone);
+      setRegisterData((prev) => ({
+        ...prev,
+        phoneNumber: result.phoneNumber!,
+      }));
+      setAuthMode("register");
+      setRegisterStep("register");
+      return;
+    }
+    if (result?.success && result?.shouldNavigate) {
       onOpenChange(false);
     }
   };
@@ -196,15 +223,11 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
       navigate
     );
 
-    if (
-      result.success &&
-      result.phoneNumber &&
-      !result.shouldNavigate &&
-      !result.shouldRedirectToLogin
-    ) {
+    if (result.success && !result.shouldNavigate && !result.shouldRedirectToLogin) {
+      const phoneNumber = result.phoneNumber || authService.formatPhoneNumber(registerPhone);
       setRegisterData({
         ...registerData,
-        phoneNumber: result.phoneNumber,
+        phoneNumber,
       });
       setRegisterStep("register");
     }
@@ -231,9 +254,9 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
 
   if (!open) return null;
 
-  return (
+  const modalContent = (
     <div 
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200 min-h-screen"
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200 min-h-screen"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           onOpenChange(false);
@@ -657,6 +680,24 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
                   />
                 </div>
 
+                {registerMethod === "phone" && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Kullanıcı Adı
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={registerData.userName || ""}
+                      onChange={(e) =>
+                        setRegisterData({ ...registerData, userName: e.target.value })
+                      }
+                      className="w-full bg-white border border-[#E5E5E5] text-gray-900 rounded-lg p-3 outline-none focus:border-black transition-colors placeholder-gray-400"
+                      placeholder="Kullanıcı adınız"
+                    />
+                  </div>
+                )}
+
                 {registerMethod === "email" && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -758,6 +799,8 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
 export default AuthModal;

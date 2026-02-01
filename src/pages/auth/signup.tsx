@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -18,6 +18,8 @@ const SignUp = () => {
     "options"
   );
   const [phone, setPhone] = useState("");
+  const verifiedPhoneRef = useRef(""); // Store verified phone number (synchronous)
+  const phoneRef = useRef(""); // Always track latest phone state for closure safety
   const [registrationData, setRegistrationData] = useState({
     name: "",
     password: "",
@@ -33,6 +35,11 @@ const SignUp = () => {
 
   // Phone number formatting function
   const formatPhoneNumber = (value: string) => {
+    // Handle the default case when input is "+998 " or similar default
+    if (value === "+998 " || value === "+998") {
+      return value;
+    }
+    
     // Remove all non-digits except the + at the beginning
     let input = value;
     if (input.startsWith("+")) {
@@ -44,14 +51,17 @@ const SignUp = () => {
     // Handle different input scenarios
     let digits = input.replace(/\D/g, "");
 
-    // If no digits, return +998
+    // If no digits, return the original value (for default case)
     if (digits.length === 0) {
-      return "+998 ";
+      return value;
     }
 
     // If starts with 998, keep it
     if (digits.startsWith("998")) {
-      digits = digits;
+      // Keep original if already properly formatted with +
+      if (input.startsWith("+")) {
+        return input;
+      }
     } else if (digits.startsWith("8") && digits.length > 1) {
       digits = "99" + digits;
     } else {
@@ -96,6 +106,41 @@ const SignUp = () => {
     return () => clearInterval(interval);
   }, [timer]);
 
+  // Always update phoneRef when phone state changes (for closure safety)
+  useEffect(() => {
+    phoneRef.current = phone;
+  }, [phone]);
+
+  // Ensure phone number is set in registrationData when entering register step
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    console.log("useEffect [step] triggered, step:", step, "phone:", phone, "phoneRef.current:", phoneRef.current, "registrationData.phoneNumber:", registrationData.phoneNumber);
+    if (step === "register") {
+      // Use phoneRef.current for closure safety
+      const currentPhone = phone || phoneRef.current;
+      // Also check sessionStorage for persisted phone number
+      const storedPhone = sessionStorage.getItem('signupPhone');
+      const phoneToUse = currentPhone || storedPhone || "";
+      
+      if (!phoneToUse) {
+        console.log("useEffect: no phone number found!");
+        return;
+      }
+      
+      const phoneWithPrefix = authService.formatPhoneNumber(phoneToUse);
+      console.log("useEffect: setting phoneNumber to", phoneWithPrefix);
+      // Always update to ensure the phone number is set (use functional update)
+      setRegistrationData(prev => ({
+        ...prev,
+        phoneNumber: phoneWithPrefix
+      }));
+      // Also update the phone state to ensure consistency
+      if (!phone || phone !== phoneWithPrefix) {
+        setPhone(phoneWithPrefix);
+      }
+    }
+  }, [step]);
+
   const startTimer = () => {
     setTimer(60);
     setCanResend(false);
@@ -107,6 +152,12 @@ const SignUp = () => {
 
     const result = await authService.sendOtpRequest(phone);
     if (result.success) {
+      // Store the formatted phone number for registration
+      const phoneWithPrefix = authService.formatPhoneNumber(phone);
+      verifiedPhoneRef.current = phoneWithPrefix;
+      phoneRef.current = phoneWithPrefix;
+      // Persist to sessionStorage for safety
+      sessionStorage.setItem('signupPhone', phoneWithPrefix);
       setStep("otp");
       startTimer();
     }
@@ -118,11 +169,16 @@ const SignUp = () => {
     e.preventDefault();
     setLoading(true);
 
+    console.log("handleVerifyOtp - phone state:", phone);
+    
     const result = await authService.verifyOtpForSignup(
       phone,
       otp.toString(),
       navigate
     );
+
+    console.log("handleVerifyOtp - OTP result:", result);
+    console.log("handleVerifyOtp - result.phoneNumber:", result.phoneNumber);
 
     if (
       result.success &&
@@ -131,11 +187,26 @@ const SignUp = () => {
       !result.shouldRedirectToLogin
     ) {
       // OTP verified, proceed to registration
+      // Use result.phoneNumber if available, otherwise format phone state
+      const phoneWithPrefix = result.phoneNumber || authService.formatPhoneNumber(phone);
+      console.log("handleVerifyOtp - phoneWithPrefix:", phoneWithPrefix);
+      verifiedPhoneRef.current = phoneWithPrefix;
+      phoneRef.current = phoneWithPrefix;
+      // Also persist to sessionStorage
+      sessionStorage.setItem('signupPhone', phoneWithPrefix);
       setRegistrationData({
         ...registrationData,
-        phoneNumber: result.phoneNumber,
+        phoneNumber: phoneWithPrefix,
       });
+      console.log("handleVerifyOtp - registrationData.phoneNumber set to:", phoneWithPrefix);
       setStep("register");
+    } else {
+      console.log("handleVerifyOtp - OTP verification failed or conditions not met:", {
+        success: result.success,
+        hasPhoneNumber: !!result.phoneNumber,
+        shouldNavigate: result.shouldNavigate,
+        shouldRedirectToLogin: result.shouldRedirectToLogin
+      });
     }
 
     setLoading(false);
@@ -145,14 +216,51 @@ const SignUp = () => {
     e.preventDefault();
     setLoading(true);
 
+    // Debug logging
+    console.log("=== Registration Debug ===");
+    console.log("Registration - phone state:", phone);
+    console.log("Registration - phoneRef.current:", phoneRef.current);
+    console.log("Registration - verifiedPhoneRef.current:", verifiedPhoneRef.current);
+    console.log("Registration - registrationData.phoneNumber:", registrationData.phoneNumber);
+    const sessionStoragePhone = sessionStorage.getItem('signupPhone');
+    console.log("Registration - sessionStorage signupPhone:", sessionStoragePhone);
+
+    // PRIMARY SOURCE: Get phone number directly from sessionStorage (set during OTP send)
+    // This is the most reliable source as it persists across any component state changes
+    let phoneForRegistration = sessionStoragePhone || "";
+    console.log("Registration - phoneForRegistration from sessionStorage:", phoneForRegistration);
+
+    // Fallback to other sources if sessionStorage is empty
+    if (!phoneForRegistration) {
+      console.log("Registration - sessionStorage is empty, checking other sources...");
+      phoneForRegistration = registrationData.phoneNumber || verifiedPhoneRef.current;
+      console.log("Registration - phoneForRegistration from fallback:", phoneForRegistration);
+    }
+    
+    // Last resort: use the current phone state and format it
+    if (!phoneForRegistration && (phone || phoneRef.current)) {
+      console.log("Registration - using phone state as last resort...");
+      phoneForRegistration = authService.formatPhoneNumber(phone || phoneRef.current);
+      console.log("Registration - phoneForRegistration from phone state:", phoneForRegistration);
+    }
+    
+    // Final fallback to empty string if nothing works
+    if (!phoneForRegistration) {
+      console.log("Registration - WARNING: phoneForRegistration is still empty!");
+      phoneForRegistration = "";
+    }
+
+    console.log("Registration - FINAL phoneForRegistration:", phoneForRegistration);
+
     const registrationPayload = {
       name: registrationData.name,
       password: registrationData.password,
-      phoneNumber: registrationData.phoneNumber,
+      phoneNumber: phoneForRegistration,
       userName: registrationData.userName,
       avatarUrl: registrationData.avatarUrl || "",
     };
 
+    console.log("Registration - FINAL payload:", registrationPayload);
     await authService.registerUser(registrationPayload, navigate);
     // After successful signup, redirect back if requested
     const state = location.state as { redirectTo?: string } | null;
@@ -291,7 +399,7 @@ const SignUp = () => {
                 <Input
                   type="tel"
                   placeholder="+998 91 570 66 42"
-                  value={phone || "+998 "}
+                  value={phone || ""}
                   onChange={(e) => setPhone(formatPhoneNumber(e.target.value))}
                   className="h-11 border-gray-200 focus:border-red-500 focus:ring-1 focus:ring-red-500"
                   required
@@ -384,7 +492,15 @@ const SignUp = () => {
               <Button
                 type="button"
                 variant="ghost"
-                onClick={() => setStep("otp")}
+                onClick={() => {
+                  setStep("otp");
+                  // Restore the phone number from registration data when going back
+                  // Use the local formatPhoneNumber to get the + prefix
+                  if (registrationData.phoneNumber) {
+                    const formattedPhone = formatPhoneNumber(registrationData.phoneNumber);
+                    setPhone(formattedPhone);
+                  }
+                }}
                 className="mb-4 p-0 h-auto text-gray-600 hover:text-red-600"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />

@@ -237,13 +237,19 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    
+    // Get the phone number from registerData (set during OTP verification)
+    const phoneNumber = registerData.phoneNumber || authService.formatPhoneNumber(registerPhone);
+    
     const registrationPayload = {
       name: registerData.name,
       password: registerData.password,
-      phoneNumber: registerMethod === "phone" ? registerData.phoneNumber : "",
+      phoneNumber: phoneNumber,
       userName: registerMethod === "email" ? registerData.email : registerData.userName || "",
       avatarUrl: "",
     };
+
+    console.log("DEBUG handleRegister - registrationPayload:", registrationPayload);
 
     await authService.registerUser(registrationPayload, navigate);
     setLoading(false);

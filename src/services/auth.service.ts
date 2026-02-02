@@ -6,6 +6,9 @@ import { SecureStorage } from "@/utils/secureStorage";
 export interface LoginCredentials {
   name: string;
   password: string;
+  phoneNumber?: string;
+  userName?: string;
+  avatarUrl?: string;
 }
 
 export interface RegisterData {

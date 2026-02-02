@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,8 +13,9 @@ import { authService } from "@/services/auth.service";
 
 const Login = () => {
   const navigate = useNavigate();
-  const [step, setStep] = useState<"phone" | "otp" | "login">("login");
+  const [step, setStep] = useState<"phone" | "otp" | "login">("phone");
   const [phone, setPhone] = useState("");
+  const phoneRef = useRef(""); // Store verified phone number
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [timer, setTimer] = useState(0);
@@ -22,6 +23,9 @@ const Login = () => {
   const [loginData, setLoginData] = useState({
     name: "",
     password: "",
+    userName: "",
+    phoneNumber: "",
+    avatarUrl: "",
   });
   const [showPassword, setShowPassword] = useState(false);
 
@@ -90,6 +94,19 @@ const Login = () => {
     return () => clearInterval(interval);
   }, [timer]);
 
+  // Sync phone number to loginData when step changes to "login"
+  useEffect(() => {
+    if (step === "login") {
+      const storedPhone = sessionStorage.getItem('signupPhone') || phoneRef.current;
+      if (storedPhone) {
+        setLoginData(prev => ({
+          ...prev,
+          phoneNumber: storedPhone
+        }));
+      }
+    }
+  }, [step]);
+
   const startTimer = () => {
     setTimer(60);
     setCanResend(false);
@@ -101,6 +118,9 @@ const Login = () => {
 
     const result = await authService.sendOtpRequest(phone);
     if (result.success) {
+      const formattedPhone = authService.formatPhoneNumber(phone);
+      phoneRef.current = formattedPhone;
+      sessionStorage.setItem('signupPhone', formattedPhone);
       setStep("otp");
       startTimer();
     }
@@ -112,7 +132,16 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
 
-    await authService.verifyOtpForLogin(phone, otp.toString(), navigate);
+    const result = await authService.verifyOtpForLogin(phone, otp.toString(), navigate);
+    
+    if (result.success && result.shouldShowRegister) {
+      // Store phone in sessionStorage for registration
+      const formattedPhone = authService.formatPhoneNumber(phone);
+      phoneRef.current = formattedPhone;
+      sessionStorage.setItem('signupPhone', formattedPhone);
+      setStep("login");
+    }
+    
     setLoading(false);
   };
 
@@ -120,10 +149,20 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
 
-    await authService.loginWithCredentials(
+    // Get phone from loginData (set by useEffect when step changes to "login")
+    const phoneForRegistration = loginData.phoneNumber || sessionStorage.getItem('signupPhone') || phoneRef.current;
+    console.log("DEBUG handleLogin - phoneForRegistration:", phoneForRegistration);
+    console.log("DEBUG handleLogin - loginData.phoneNumber:", loginData.phoneNumber);
+    console.log("DEBUG handleLogin - sessionStorage:", sessionStorage.getItem('signupPhone'));
+    console.log("DEBUG handleLogin - phoneRef.current:", phoneRef.current);
+    
+    await authService.registerUser(
       {
         name: loginData.name,
         password: loginData.password,
+        phoneNumber: phoneForRegistration.replace(/[\s+]/g, ""),
+        userName: loginData.userName,
+        avatarUrl: loginData.avatarUrl,
       },
       navigate
     );
@@ -290,6 +329,19 @@ const Login = () => {
                   value={loginData.name}
                   onChange={(e) =>
                     setLoginData({ ...loginData, name: e.target.value })
+                  }
+                  className="h-11 border-gray-200 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <Input
+                  type="email"
+                  placeholder="E-posta adresiniz"
+                  value={loginData.userName}
+                  onChange={(e) =>
+                    setLoginData({ ...loginData, userName: e.target.value })
                   }
                   className="h-11 border-gray-200 focus:border-red-500 focus:ring-1 focus:ring-red-500"
                   required

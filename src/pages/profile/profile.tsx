@@ -3,14 +3,6 @@ import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 import { Settings, Eye, Calendar, Trophy, TrendingUp, Target } from "lucide-react";
 import { authService } from "@/services/auth.service";
 import { Input } from "@/components/ui/input";
@@ -433,37 +425,95 @@ export default function ProfilePage() {
 
                     {/* Pagination */}
                     {totalPages > 1 && (
-                      <div className="mt-6 flex items-center justify-between">
-                        <p className="text-sm text-gray-600">
-                          Toplam {total} sonuç, Sayfa {currentPage} / {totalPages}
+                      <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4">
+                        <p className="text-sm text-gray-500">
+                          Toplam <span className="font-medium text-gray-700">{total}</span> sonuç | Sayfa <span className="font-medium text-gray-700">{currentPage}</span> / <span className="font-medium text-gray-700">{totalPages}</span>
                         </p>
-                        <Pagination>
-                          <PaginationContent>
-                            <PaginationItem>
-                              <PaginationPrevious
-                                onClick={() => fetchResults(currentPage - 1)}
-                                className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                              />
-                            </PaginationItem>
-                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                              <PaginationItem key={page}>
-                                <PaginationLink
-                                  onClick={() => fetchResults(page)}
-                                  isActive={currentPage === page}
-                                  className={currentPage === page ? "border border-gray-300" : "cursor-pointer"}
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => fetchResults(currentPage - 1)}
+                            disabled={currentPage === 1}
+                            className="h-8 px-3 border-gray-300"
+                          >
+                            <span className="sr-only">Önceki</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M15 18l-6-6 6-6"/>
+                            </svg>
+                          </Button>
+                          
+                          {/* Page numbers with ellipsis for large page counts */}
+                          {totalPages <= 7 ? (
+                            Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                              <Button
+                                key={page}
+                                variant={currentPage === page ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => fetchResults(page)}
+                                className={`h-8 w-8 p-0 ${currentPage === page ? "bg-red-600 hover:bg-red-700" : "border-gray-300"}`}
+                              >
+                                {page}
+                              </Button>
+                            ))
+                          ) : (
+                            <>
+                              {/* First page */}
+                              <Button
+                                variant={currentPage === 1 ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => fetchResults(1)}
+                                className={`h-8 w-8 p-0 ${currentPage === 1 ? "bg-red-600 hover:bg-red-700" : "border-gray-300"}`}
+                              >
+                                1
+                              </Button>
+                              
+                              {/* Left ellipsis */}
+                              {currentPage > 3 && (
+                                <span className="px-2 text-gray-400">...</span>
+                              )}
+                              
+                              {/* Middle pages */}
+                              {currentPage > 2 && currentPage < totalPages - 1 && (
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 bg-red-600 hover:bg-red-700"
                                 >
-                                  {page}
-                                </PaginationLink>
-                              </PaginationItem>
-                            ))}
-                            <PaginationItem>
-                              <PaginationNext
-                                onClick={() => fetchResults(currentPage + 1)}
-                                className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                              />
-                            </PaginationItem>
-                          </PaginationContent>
-                        </Pagination>
+                                  {currentPage}
+                                </Button>
+                              )}
+                              
+                              {/* Right ellipsis */}
+                              {currentPage < totalPages - 2 && (
+                                <span className="px-2 text-gray-400">...</span>
+                              )}
+                              
+                              {/* Last page */}
+                              <Button
+                                variant={currentPage === totalPages ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => fetchResults(totalPages)}
+                                className={`h-8 w-8 p-0 ${currentPage === totalPages ? "bg-red-600 hover:bg-red-700" : "border-gray-300"}`}
+                              >
+                                {totalPages}
+                              </Button>
+                            </>
+                          )}
+                          
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => fetchResults(currentPage + 1)}
+                            disabled={currentPage === totalPages}
+                            className="h-8 px-3 border-gray-300"
+                          >
+                            <span className="sr-only">Sonraki</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M9 18l6-6-6-6"/>
+                            </svg>
+                          </Button>
+                        </div>
                       </div>
                     )}
                   </div>

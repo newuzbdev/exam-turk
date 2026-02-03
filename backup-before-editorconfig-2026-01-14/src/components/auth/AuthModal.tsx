@@ -273,16 +273,6 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     E-posta veya Kullanıcı Adı
                   </label>
-                  <input
-                    type="text"
-                    required
-                    value={loginData.name}
-                    onChange={(e) =>
-                      setLoginData({ ...loginData, name: e.target.value })
-                    }
-                    placeholder="E-posta, kullanıcı adı veya telefon"
-                    className="w-full bg-white border border-[#E5E5E5] text-gray-900 rounded-lg p-3 outline-none focus:border-black transition-colors placeholder-gray-400"
-                  />
                 </div>
 
                 <div>

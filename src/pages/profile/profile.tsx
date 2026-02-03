@@ -3,6 +3,14 @@ import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { Settings, Eye, Calendar, Trophy, TrendingUp, Target } from "lucide-react";
 import { authService } from "@/services/auth.service";
 import { Input } from "@/components/ui/input";
@@ -63,6 +71,10 @@ export default function ProfilePage() {
   });
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const LIMIT = 10;
 
   const getAvatarUrl = () => {
     if (!user) return null;
@@ -93,10 +105,6 @@ export default function ProfilePage() {
             avatarUrl: userData.avatarUrl || userData.avatar || "",
           });
         }
-
-        // Fetch test results
-        const response = await axiosPrivate.get(`/api/overal-test-result/get-users?page=1&limit=100`);
-        setResults(response.data.data || []);
       } catch (error) {
         console.error("Error fetching profile data:", error);
       } finally {
@@ -106,6 +114,23 @@ export default function ProfilePage() {
 
     fetchData();
   }, []);
+
+  const fetchResults = async (page: number) => {
+    try {
+      const response = await axiosPrivate.get(`/api/overal-test-result/get-users?page=${page}&limit=${LIMIT}`);
+      setResults(response.data.data || []);
+      setTotal(response.data.total || 0);
+      setTotalPages(Math.ceil((response.data.total || 0) / LIMIT));
+      setCurrentPage(page);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (error) {
+      console.error("Error fetching results:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchResults(currentPage);
+  }, [currentPage]);
 
   // Calculate statistics
   const completedTests = results
@@ -405,6 +430,42 @@ export default function ProfilePage() {
                         ))}
                       </tbody>
                     </table>
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                      <div className="mt-6 flex items-center justify-between">
+                        <p className="text-sm text-gray-600">
+                          Toplam {total} sonuç, Sayfa {currentPage} / {totalPages}
+                        </p>
+                        <Pagination>
+                          <PaginationContent>
+                            <PaginationItem>
+                              <PaginationPrevious
+                                onClick={() => fetchResults(currentPage - 1)}
+                                className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                              />
+                            </PaginationItem>
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                              <PaginationItem key={page}>
+                                <PaginationLink
+                                  onClick={() => fetchResults(page)}
+                                  isActive={currentPage === page}
+                                  className={currentPage === page ? "border border-gray-300" : "cursor-pointer"}
+                                >
+                                  {page}
+                                </PaginationLink>
+                              </PaginationItem>
+                            ))}
+                            <PaginationItem>
+                              <PaginationNext
+                                onClick={() => fetchResults(currentPage + 1)}
+                                className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                              />
+                            </PaginationItem>
+                          </PaginationContent>
+                        </Pagination>
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>

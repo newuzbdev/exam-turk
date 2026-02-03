@@ -68,6 +68,48 @@ export default function ProfilePage() {
   const [total, setTotal] = useState(0);
   const LIMIT = 10;
 
+  // Helper function to get page numbers with sliding window
+  const getPageNumbers = () => {
+    const pages: (number | "ellipsis")[] = [];
+    const windowSize = 5; // Show 5 pages around current
+    
+    if (totalPages <= 7) {
+      // Show all pages if 7 or less
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Always show first page
+      pages.push(1);
+      
+      // Calculate window boundaries
+      const windowStart = Math.max(2, currentPage - windowSize + 1);
+      const windowEnd = Math.min(totalPages - 1, currentPage + windowSize - 1);
+      
+      // Add left ellipsis if there's a gap between first page and window
+      if (windowStart > 2) {
+        pages.push("ellipsis");
+      }
+      
+      // Add pages in the window (excluding first and last if already covered)
+      for (let i = windowStart; i <= windowEnd; i++) {
+        if (i !== 1 && i !== totalPages) {
+          pages.push(i);
+        }
+      }
+      
+      // Add right ellipsis if there's a gap between window and last page
+      if (windowEnd < totalPages - 1) {
+        pages.push("ellipsis");
+      }
+      
+      // Always show last page
+      pages.push(totalPages);
+    }
+    
+    return pages;
+  };
+
   const getAvatarUrl = () => {
     if (!user) return null;
     const avatar = user.avatarUrl || user.avatar;
@@ -443,9 +485,11 @@ export default function ProfilePage() {
                             </svg>
                           </Button>
                           
-                          {/* Page numbers with ellipsis for large page counts */}
-                          {totalPages <= 7 ? (
-                            Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                          {/* Page numbers with sliding window */}
+                          {getPageNumbers().map((page, index) => (
+                            page === "ellipsis" ? (
+                              <span key={`ellipsis-${index}`} className="px-2 text-gray-400">...</span>
+                            ) : (
                               <Button
                                 key={page}
                                 variant={currentPage === page ? "default" : "outline"}
@@ -455,51 +499,8 @@ export default function ProfilePage() {
                               >
                                 {page}
                               </Button>
-                            ))
-                          ) : (
-                            <>
-                              {/* First page */}
-                              <Button
-                                variant={currentPage === 1 ? "default" : "outline"}
-                                size="sm"
-                                onClick={() => fetchResults(1)}
-                                className={`h-8 w-8 p-0 ${currentPage === 1 ? "bg-red-600 hover:bg-red-700" : "border-gray-300"}`}
-                              >
-                                1
-                              </Button>
-                              
-                              {/* Left ellipsis */}
-                              {currentPage > 3 && (
-                                <span className="px-2 text-gray-400">...</span>
-                              )}
-                              
-                              {/* Middle pages */}
-                              {currentPage > 2 && currentPage < totalPages - 1 && (
-                                <Button
-                                  variant="default"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 bg-red-600 hover:bg-red-700"
-                                >
-                                  {currentPage}
-                                </Button>
-                              )}
-                              
-                              {/* Right ellipsis */}
-                              {currentPage < totalPages - 2 && (
-                                <span className="px-2 text-gray-400">...</span>
-                              )}
-                              
-                              {/* Last page */}
-                              <Button
-                                variant={currentPage === totalPages ? "default" : "outline"}
-                                size="sm"
-                                onClick={() => fetchResults(totalPages)}
-                                className={`h-8 w-8 p-0 ${currentPage === totalPages ? "bg-red-600 hover:bg-red-700" : "border-gray-300"}`}
-                              >
-                                {totalPages}
-                              </Button>
-                            </>
-                          )}
+                            )
+                          ))}
                           
                           <Button
                             variant="outline"

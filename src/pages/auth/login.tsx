@@ -337,8 +337,8 @@ const Login = () => {
 
               <div>
                 <Input
-                  type="email"
-                  placeholder="E-posta adresiniz"
+                  type="text"
+                  placeholder="Kullanıcı adı"
                   value={loginData.userName}
                   onChange={(e) =>
                     setLoginData({ ...loginData, userName: e.target.value })

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { X, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router";
+import { toast } from "sonner";
 import { authService } from "@/services/auth.service";
 import {
   InputOTP,
@@ -241,11 +242,19 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
     // Get the phone number from registerData (set during OTP verification)
     const phoneNumber = registerData.phoneNumber || authService.formatPhoneNumber(registerPhone);
     
+    // Validate userName is not empty
+    const userName = registerMethod === "email" ? registerData.email : registerData.userName;
+    if (!userName || userName.trim() === "") {
+      toast.error("Kullanıcı adı boş olamaz");
+      setLoading(false);
+      return;
+    }
+    
     const registrationPayload = {
       name: registerData.name,
       password: registerData.password,
       phoneNumber: phoneNumber,
-      userName: registerMethod === "email" ? registerData.email : registerData.userName || "",
+      userName: userName,
       avatarUrl: "",
     };
 
@@ -300,7 +309,7 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    E-posta veya Kullanıcı Adı
+                  Kullanıcı Adı
                   </label>
                   <input
                     type="text"
@@ -309,7 +318,7 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
                     onChange={(e) =>
                       setLoginData({ ...loginData, name: e.target.value })
                     }
-                    placeholder="E-posta, kullanıcı adı veya telefon"
+                    placeholder="Kullanıcı adı veya telefon"
                     className="w-full bg-white border border-[#E5E5E5] text-gray-900 rounded-lg p-3 outline-none focus:border-black transition-colors placeholder-gray-400"
                   />
                 </div>
@@ -533,7 +542,8 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
                         : "text-gray-400 hover:text-gray-600"
                     }`}
                   >
-                    E-posta ile
+                  Kullanıcı adı
+
                   </button>
                   <button
                     onClick={() => setRegisterStep("phone")}
@@ -686,6 +696,25 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
                   />
                 </div>
 
+                {registerMethod === "email" && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Kullanıcı adı
+
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={registerData.email}
+                      onChange={(e) =>
+                        setRegisterData({ ...registerData, email: e.target.value })
+                      }
+                      className="w-full bg-white border border-[#E5E5E5] text-gray-900 rounded-lg p-3 outline-none focus:border-black transition-colors placeholder-gray-400"
+                      placeholder="Kullanıcı adı adresiniz"
+                    />
+                  </div>
+                )}
+
                 {registerMethod === "phone" && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -704,23 +733,7 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
                   </div>
                 )}
 
-                {registerMethod === "email" && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      E-posta
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={registerData.email}
-                      onChange={(e) =>
-                        setRegisterData({ ...registerData, email: e.target.value })
-                      }
-                      className="w-full bg-white border border-[#E5E5E5] text-gray-900 rounded-lg p-3 outline-none focus:border-black transition-colors placeholder-gray-400"
-                      placeholder="ornek@email.com"
-                    />
-                  </div>
-                )}
+
 
                 {(registerMethod === "email" || registerStep === "register") && (
                   <div>

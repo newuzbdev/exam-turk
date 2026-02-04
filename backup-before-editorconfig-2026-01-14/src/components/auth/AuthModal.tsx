@@ -271,7 +271,7 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    E-posta veya Kullanıcı Adı
+                   Kullanıcı Adı
                   </label>
                 </div>
 
@@ -494,7 +494,7 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
                         : "text-gray-400 hover:text-gray-600"
                     }`}
                   >
-                    E-posta ile
+                    Kullanıcı adı
                   </button>
                   <button
                     onClick={() => setRegisterStep("phone")}
@@ -647,23 +647,6 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
                   />
                 </div>
 
-                {registerMethod === "email" && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      E-posta
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={registerData.email}
-                      onChange={(e) =>
-                        setRegisterData({ ...registerData, email: e.target.value })
-                      }
-                      className="w-full bg-white border border-[#E5E5E5] text-gray-900 rounded-lg p-3 outline-none focus:border-black transition-colors placeholder-gray-400"
-                      placeholder="ornek@email.com"
-                    />
-                  </div>
-                )}
 
                 {(registerMethod === "email" || registerStep === "register") && (
                   <div>

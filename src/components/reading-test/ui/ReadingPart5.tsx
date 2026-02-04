@@ -119,7 +119,10 @@ export default function ReadingPart5({ testData, answers, onAnswerChange, partNu
   const paragraphs = parseParagraphs(content);
 
   return (
-    <div className="mx-2 pb-24 h-[calc(100vh-200px)] overflow-hidden overscroll-contain pr-2 text-[#333333]" style={{ color: "#333333" }}>
+    <div
+      className="mx-2 pb-32 h-[calc(100dvh-200px)] lg:h-[calc(100vh-220px)] overflow-y-auto overscroll-contain pr-2 text-[#333333]"
+      style={{ color: "#333333" }}
+    >
    
 
       {/* Mobile Layout - Stacked */}

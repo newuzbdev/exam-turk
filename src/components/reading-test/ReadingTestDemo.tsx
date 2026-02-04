@@ -417,7 +417,10 @@ export default function ReadingPage({ testId }: { testId: string }) {
 
   return (
     <ReadingNotesProvider>
-      <div className="min-h-screen bg-gray-50 font-sans text-[#333333] pb-24 sm:pb-28" style={{ color: "#333333" }}>
+      <div
+        className="min-h-screen h-full overflow-y-auto bg-gray-50 font-sans text-[#333333] pb-36 sm:pb-40"
+        style={{ color: "#333333" }}
+      >
         {/* Header - Same height and logic as main navbar */}
         <div className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50 shadow-sm w-full">
           {/* Match horizontal padding with description block below */}
@@ -439,8 +442,10 @@ export default function ReadingPage({ testId }: { testId: string }) {
                   </div>
               <div className="font-extrabold text-base sm:text-lg tracking-wider">OKUMA</div>
               <div className="flex items-center gap-2">
-                <NotesPanel currentPartNumber={currentPartNumber} />
-                <div className="font-bold text-sm">{formatTime(timeLeft)}</div>
+                  <div className="hidden lg:block">
+                    <NotesPanel currentPartNumber={currentPartNumber} />
+                  </div>
+                  <div className="font-bold text-sm">{formatTime(timeLeft)}</div>
                 <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold min-h-[44px] touch-manipulation">
                   GÖNDER
                 </Button>

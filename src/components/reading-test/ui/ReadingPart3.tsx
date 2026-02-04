@@ -40,7 +40,10 @@ export default function ReadingPart3({ testData, answers, onAnswerChange, partNu
   const optionList = Array.from(optionMap.values()).sort((a, b) => a.letter.localeCompare(b.letter));
 
   return (
-    <div className="mx-2 h-[calc(100vh-200px)] text-[#333333]" style={{ color: "#333333" }}>
+    <div
+      className="mx-2 pb-32 h-[calc(100dvh-200px)] lg:h-[calc(100vh-220px)] overflow-y-auto overscroll-contain text-[#333333]"
+      style={{ color: "#333333" }}
+    >
       {/* Mobile Layout - Stacked */}
       <div className="block lg:hidden h-full">
         <div className="rounded-lg border border-gray-300 shadow-lg overflow-hidden h-full flex flex-col">

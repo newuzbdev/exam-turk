@@ -1,6 +1,7 @@
 ﻿import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import HighlightableText from "@/pages/reading-test/components/HighlightableText";
+import { fixMojibake } from "@/utils/text";
 
 interface ReadingPart3Props {
   testData: any;
@@ -38,38 +39,46 @@ export default function ReadingPart3({ testData, answers, onAnswerChange, partNu
   }
 
   const optionList = Array.from(optionMap.values()).sort((a, b) => a.letter.localeCompare(b.letter));
-
+  const optionSet = new Set(optionList.map((o) => o.letter));
+  const selectedVariants = new Set(
+    (paragraphQuestions || [])
+      .map((q: any) => answers[q.id])
+      .filter((v: unknown): v is string => typeof v === "string" && optionSet.has(v))
+  );
   return (
-    <div
-      className="mx-2 pb-32 h-[calc(100dvh-200px)] lg:h-[calc(100vh-220px)] overflow-y-auto overscroll-contain text-[#333333]"
-      style={{ color: "#333333" }}
-    >
+    <div className="mx-2 reading-body overflow-hidden text-slate-800">
       {/* Mobile Layout - Stacked */}
       <div className="block lg:hidden h-full">
-        <div className="rounded-lg border border-gray-300 shadow-lg overflow-hidden h-full flex flex-col">
+        <div className="rounded-lg border border-gray-200 shadow-lg overflow-hidden h-full flex flex-col">
           {/* Questions Section - More scroll space for mobile */}
-          <div className="bg-[#F4F4F4] flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent p-4 pb-40">
-            <h4 className="text-base font-bold text-[#333333] mb-3">Paragraflar</h4>
+          <div className="reading-surface-alt flex-1 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent p-4 reading-scroll">
+            <h4 className="text-sm font-semibold text-slate-700 mb-3 tracking-wide">Paragraflar</h4>
             <div className="space-y-4">
               {paragraphQuestions.map((q: any, idx: number) => {
                 const displayNum = q.number || (15 + idx); // Use actual question number from API
-                const displayText = q.text || q.content || "";
+                const displayText = fixMojibake(q.text || q.content || "");
                 const romans = ["I", "II", "III", "IV", "V", "VI"];
                 const label = `S${displayNum}. ${romans[idx]}. paragraf`;
                 return (
-                  <div key={q.id} className="rounded-lg p-3">
+                  <div
+                    key={q.id}
+                    className="p-3"
+                  >
                     <div className="flex items-center gap-2 mb-2">
-                      <div className="text-sm font-bold text-[#333333]" style={{ color: "#333333" }}>{label}</div>
+                      <div className="font-semibold text-slate-800">{label}</div>
                       <Select
                         value={answers[q.id] || ""}
-                        onValueChange={(value) => onAnswerChange(q.id, value)}
+                        onValueChange={(value) => onAnswerChange(q.id, value === "__none__" ? "" : value)}
                       >
-                        <SelectTrigger className="w-20 bg-white border border-gray-300 rounded-md px-2 py-1 h-8 text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
+                        <SelectTrigger className="w-20 bg-white border border-gray-200 rounded-md px-2 py-1 h-8 text-xs focus:ring-2 focus:ring-[#438553] focus:border-[#438553] cursor-pointer">
                           <SelectValue placeholder="Seçiniz">
                                 {answers[q.id] ? `${answers[q.id]}.` : "Seçiniz"}
                               </SelectValue>
                         </SelectTrigger>
-                        <SelectContent className="bg-white max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50">
+                        <SelectContent className="bg-white reading-select-content reading-select-content max-h-[60vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50">
+                          <SelectItem value="__none__" className="cursor-pointer text-xs py-1">
+                            {`Se\u00e7iniz`}
+                          </SelectItem>
                           {optionList.map((opt) => (
                             <SelectItem key={opt.letter} value={opt.letter} className="cursor-pointer text-xs py-1">
                               {opt.letter}. {opt.text}
@@ -79,7 +88,7 @@ export default function ReadingPart3({ testData, answers, onAnswerChange, partNu
                       </Select>
                     </div>
                     {displayText && (
-                      <div className="text-base lg:text-lg leading-6 text-[#333333] font-sans text-justify" style={{ color: "#333333" }}>
+                      <div className="reading-text font-sans text-justify">
                         <HighlightableText text={displayText} partNumber={partNumber} />
                       </div>
                     )}
@@ -93,32 +102,38 @@ export default function ReadingPart3({ testData, answers, onAnswerChange, partNu
 
       {/* Desktop Layout - Resizable */}
       <div className="hidden lg:block h-full">
-        <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border border-gray-300 shadow-lg">
+        <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border border-gray-200 shadow-lg">
           {/* Left: Paragraphs 15â€“20, select above text with green bg */}
-          <ResizablePanel defaultSize={60} minSize={30} className="bg-[#F6F5F2]">
-            <div className="h-full p-6 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent pb-24">
+          <ResizablePanel defaultSize={60} minSize={30} className="reading-surface">
+            <div className="h-full p-6 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent pb-24 reading-scroll">
               <div className="space-y-6">
                 {paragraphQuestions.map((q: any, idx: number) => {
                   const displayNum = q.number || (15 + idx); // Use actual question number from API
-                  const displayText = q.text || q.content || "";
+                  const displayText = fixMojibake(q.text || q.content || "");
                   const romans = ["I", "II", "III", "IV", "V", "VI"];
                   const label = `S${displayNum}. ${romans[idx]}. paragraf`;
                   return (
-                    <div key={q.id} className="rounded-xl p-4">
+                    <div
+                      key={q.id}
+                      className="p-3"
+                    >
                       <div className="flex items-start gap-4">
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-3">
-                            <div className="text-xl font-bold text-[#333333]" style={{ color: "#333333" }}>{label}</div>
+                            <div className="font-semibold text-slate-800">{label}</div>
                             <Select
                               value={answers[q.id] || ""}
-                              onValueChange={(value) => onAnswerChange(q.id, value)}
+                              onValueChange={(value) => onAnswerChange(q.id, value === "__none__" ? "" : value)}
                             >
-                              <SelectTrigger className="w-28 bg-white border border-gray-300 rounded-md px-3 py-2 h-10 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
+                              <SelectTrigger className="w-28 bg-white border border-gray-200 rounded-md px-3 py-2 h-10 text-sm focus:ring-2 focus:ring-[#438553] focus:border-[#438553] cursor-pointer">
                                 <SelectValue placeholder="Seçiniz">
                                 {answers[q.id] ? `${answers[q.id]}.` : "Seçiniz"}
                               </SelectValue>
                               </SelectTrigger>
-                              <SelectContent className="bg-white max-h-64 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50">
+                              <SelectContent className="bg-white reading-select-content reading-select-content max-h-[60vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50">
+                                <SelectItem value="__none__" className="cursor-pointer py-1">
+                                  {`Se\u00e7iniz`}
+                                </SelectItem>
                                 {optionList.map((opt) => (
                                   <SelectItem key={opt.letter} value={opt.letter} className="cursor-pointer py-1">
                                     {opt.letter}. {opt.text}
@@ -129,7 +144,7 @@ export default function ReadingPart3({ testData, answers, onAnswerChange, partNu
                           </div>
                           {displayText && (
                             <div className="">
-                              <div className="text-base leading-7 text-[#333333] font-sans text-justify" style={{ color: "#333333" }}>
+                              <div className="text-base leading-7 text-[#333333] font-sans text-justify px-1" style={{ color: "#333333" }}>
                                 <HighlightableText text={displayText} partNumber={partNumber} />
                               </div>
                             </div>
@@ -146,15 +161,25 @@ export default function ReadingPart3({ testData, answers, onAnswerChange, partNu
           <ResizableHandle withHandle={true} className="bg-gray-200/40 hover:bg-gray-300/60 transition-colors w-px" />
 
           {/* Right: Headings legend A..H (no question labels next to variants) */}
-          <ResizablePanel defaultSize={40} minSize={25} className="bg-[#F4F4F4]">
-            <div className="h-full p-6 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent flex flex-col">
-              <div className="space-y-3">
-                {optionList.map((opt) => (
-                  <div key={opt.letter} className="flex items-start gap-3 p-3 bg-white rounded border border-gray-200">
-                    <span className="text-base font-bold text-[#333333] min-w-[1.5rem]">{opt.letter}.</span>
-                    <span className="text-lg leading-snug text-[#333333] pt-0.5">{opt.text}</span>
-                  </div>
-                ))}
+          <ResizablePanel defaultSize={40} minSize={25} className="reading-surface-alt">
+            <div className="h-full p-6 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent flex flex-col reading-scroll">
+              <div className="reading-surface-card border border-gray-200 bg-gray-50 rounded-lg p-4">
+                <div className="text-sm font-semibold text-slate-700 mb-3">{`Se\u00e7enekler`}</div>
+                <div className="space-y-2">
+                  {optionList.map((opt) => {
+                    const isUsed = selectedVariants.has(opt.letter);
+                    return (
+                      <div key={opt.letter} className="flex items-start gap-3">
+                        <span className={`font-semibold min-w-[2rem] text-right tabular-nums mt-[3px] ${isUsed ? "text-slate-400 line-through" : "text-slate-800"}`}>
+                          {opt.letter}.
+                        </span>
+                        <span className={`reading-text leading-tight font-normal ${isUsed ? "text-slate-400 line-through" : ""}`}>
+                          {opt.text}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </ResizablePanel>
@@ -163,6 +188,8 @@ export default function ReadingPart3({ testData, answers, onAnswerChange, partNu
     </div>
   );
 }
+
+
 
 
 

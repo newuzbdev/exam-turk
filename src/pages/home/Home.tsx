@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+﻿import { Button } from "@/components/ui/button";
 import { ArrowRight, ShieldCheck, Zap, Layout, } from "lucide-react";
 import { NavLink, useSearchParams, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
@@ -8,6 +8,7 @@ import StatsSection from "@/pages/home/stats-section"; // Yeni oluşturduğun be
 import HomeLastMonthTopResults from "./ui/home-last-month-top-results";
 import HeroSection from "./ui/hero-section"; // Yeni oluşturduğun hero
 import HomeTestimonials from "./ui/home-testimonials";
+import HomeExpertOpinions from "./ui/home-expert-opinions";
 import HomePricing from "./ui/home-pricing";
 import HomeFAQ from "./ui/home-faq";
 import { BannerSection } from "@/components/banner";
@@ -86,73 +87,81 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="bg-white text-gray-900">
+    <div className="bg-white text-gray-900 font-sans">
       {/* Hero Section */}
       <HeroSection />
 
       {/* Stats Section (Bento Grid) */}
       <StatsSection />
 
+      
+
+      {/* Expert Opinions */}
+      <HomeExpertOpinions />
+
       {/* ADVANTAGES SECTION */}
-      <section className="py-24 bg-white relative overflow-hidden">
+      <section className="py-16 sm:py-20 bg-white relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
           {/* Header */}
-          <div className="text-center max-w-3xl mx-auto mb-16 animate-fade-in">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-gray-900 mb-6 tracking-tight">
+          <div className="max-w-4xl mx-auto mb-12 text-center">
+            <h2 className="text-xl sm:text-3xl font-semibold text-gray-900 mb-3 tracking-tight">
               Neden TURKISHMOCK?
             </h2>
-            <p className="text-lg text-gray-500 leading-relaxed font-normal">
-              Türkçe seviyeni doğru, hızlı ve güvenilir şekilde ölçmek için tasarlanmış yapay zekâ destekli sınav platformu.
+            <p className="text-base sm:text-lg text-gray-600 leading-relaxed max-w-3xl mx-auto">
+              Türkçe seviyeni hızlı ve güvenilir şekilde ölçen akıllı sınav platformu.
             </p>
           </div>
 
-          {/* Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-
-            {/* Card 1: Shield */}
-            <div className="p-8 bg-gray-50 rounded-2xl border border-gray-100 transition-all duration-300 hover:bg-white hover:shadow-xl hover:border-red-100 hover:-translate-y-1 group">
-              <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-6 shadow-sm group-hover:bg-red-600 transition-colors duration-300">
-                <ShieldCheck className="w-8 h-8 text-red-600 group-hover:text-white transition-colors duration-300" />
+          {/* Editorial Feature Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            <article
+              className="relative lg:col-span-2 p-7 sm:p-8 rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow duration-300 group"
+              style={{ opacity: 0, animation: "fadeInUp 0.75s ease-out forwards", animationDelay: "60ms" }}
+            >
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center border border-gray-200 bg-gray-50 mb-5 group-hover:bg-red-600 group-hover:border-red-600 transition-colors duration-300">
+                <ShieldCheck className="w-6 h-6 text-gray-700 group-hover:text-white transition-colors duration-300" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-red-600 transition-colors">
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
                 Gerçeğe En Yakın Deneyim
               </h3>
-              <p className="text-gray-500 leading-relaxed font-medium">
-                CEFR standartlarına uyumlu testler ile gerçek sınavı tam olarak simüle edin ve sürprizlerle karşılaşmayın.
+              <p className="text-sm sm:text-base text-gray-600 leading-relaxed max-w-2xl">
+                CEFR standartlarına uyumlu testler ile gerçek sınav akışını bire bir deneyimleyin ve sürprizlerle karşılaşmayın.
               </p>
-            </div>
+            </article>
 
-            {/* Card 2: Zap */}
-            <div className="p-8 bg-gray-50 rounded-2xl border border-gray-100 transition-all duration-300 hover:bg-white hover:shadow-xl hover:border-red-100 hover:-translate-y-1 group">
-              <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-6 shadow-sm group-hover:bg-red-600 transition-colors duration-300">
-                <Zap className="w-8 h-8 text-red-600 group-hover:text-white transition-colors duration-300" />
+            <article
+              className="relative p-7 rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow duration-300 group"
+              style={{ opacity: 0, animation: "fadeInUp 0.75s ease-out forwards", animationDelay: "180ms" }}
+            >
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center border border-gray-200 bg-gray-50 mb-5 group-hover:bg-red-600 group-hover:border-red-600 transition-colors duration-300">
+                <Zap className="w-6 h-6 text-gray-700 group-hover:text-white transition-colors duration-300" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-red-600 transition-colors">
-                Anında ve Güvenilir Sonuç
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
+                Anında Sonuç
               </h3>
-              <p className="text-gray-500 leading-relaxed font-medium">
-                Testi tamamladığınız anda seviyeniz, puanınız ve detaylı analiz raporunuz saniyeler içinde ekranınızda.
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Test biter bitmez seviyeniz ve detaylı analiziniz saniyeler içinde hazır.
               </p>
-            </div>
+            </article>
 
-            {/* Card 3: Layout */}
-            <div className="p-8 bg-gray-50 rounded-2xl border border-gray-100 transition-all duration-300 hover:bg-white hover:shadow-xl hover:border-red-100 hover:-translate-y-1 group">
-              <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-6 shadow-sm group-hover:bg-red-600 transition-colors duration-300">
-                <Layout className="w-8 h-8 text-red-600 group-hover:text-white transition-colors duration-300" />
+            <article
+              className="relative lg:col-span-3 p-7 rounded-2xl border border-gray-200 bg-gradient-to-r from-gray-50 to-white shadow-sm hover:shadow-md transition-shadow duration-300 group"
+              style={{ opacity: 0, animation: "fadeInUp 0.75s ease-out forwards", animationDelay: "300ms" }}
+            >
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center border border-gray-200 bg-white mb-5 group-hover:bg-red-600 group-hover:border-red-600 transition-colors duration-300">
+                <Layout className="w-6 h-6 text-gray-700 group-hover:text-white transition-colors duration-300" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-red-600 transition-colors">
-                Sade ve Odaklı Tasarım
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
+                Sade ve Odaklı Arayüz
               </h3>
-              <p className="text-gray-500 leading-relaxed font-medium">
-                Gereksiz hiçbir şey yok. Sadece akıcı, net ve profesyonel bir sınav deneyimi yaşamanız için tasarlandı.
+              <p className="text-sm sm:text-base text-gray-600 leading-relaxed max-w-4xl">
+                Gereksiz karmaşa olmadan, yalnızca sınava odaklanmanızı sağlayan akıcı ve profesyonel bir deneyim sunar.
               </p>
-            </div>
-
+            </article>
           </div>
         </div>
       </section>
-
       {/* Testimonials */}
       <HomeTestimonials />
 
@@ -169,25 +178,25 @@ export default function Home() {
       <HomePricing />
 
       {/* CTA Section (Red Background) */}
-      <section className="py-24 bg-red-600 relative overflow-hidden">
+      <section className="py-20 lg:py-24 bg-red-600 relative overflow-hidden">
         {/* Background Decor */}
-        <div className="absolute inset-0 opacity-10 pointer-events-none">
+        <div className="absolute inset-0 opacity-5 pointer-events-none">
           <div className="absolute -top-24 -right-24 w-96 h-96 bg-white rounded-full blur-3xl"></div>
           <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-white rounded-full blur-3xl"></div>
         </div>
 
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8 relative z-10">
-          <h2 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white mb-6 tracking-tight">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-5 tracking-tight">
             Türkçe Seviyenizi Öğrenmeye <br/> Hazır mısınız?
           </h2>
-          <p className="text-lg sm:text-xl text-red-100 mb-12 font-medium leading-relaxed max-w-2xl mx-auto">
+          <p className="text-base sm:text-lg text-red-100 mb-10 font-medium leading-relaxed max-w-2xl mx-auto">
             Binlerce kullanıcının güvendiği platformda Türkçe dil yeterlilik testinizi hemen başlatın.
           </p>
 
           <NavLink to="/test">
             <Button
               size="lg"
-              className="group bg-white text-red-600 hover:bg-gray-50 px-12 py-8 text-lg font-bold shadow-2xl hover:shadow-white/20 rounded-full transition-all duration-300 hover:-translate-y-1"
+              className="group bg-white text-red-600 hover:bg-gray-50 px-10 py-6 text-base sm:text-lg font-semibold shadow-md hover:shadow-lg rounded-xl transition-all duration-300"
             >
               Teste Başla
               <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
@@ -198,3 +207,9 @@ export default function Home() {
     </div>
   );
 }
+
+
+
+
+
+

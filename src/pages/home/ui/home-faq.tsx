@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { ChevronDown, HelpCircle } from "lucide-react";
 
 interface FAQItem {
@@ -42,17 +42,17 @@ const HomeFAQ = () => {
   };
 
   return (
-    <section className="py-24 bg-white font-sans border-t border-gray-100">
+    <section className="py-20 lg:py-24 bg-white font-sans">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Header */}
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-gray-200 bg-white mb-6 shadow-sm">
+        <div className="text-center mb-14">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-gray-200 bg-white mb-5">
             <HelpCircle className="w-4 h-4 text-red-600" />
-            <span className="text-sm font-bold text-gray-900 tracking-tight">Yardım Merkezi</span>
+            <span className="text-sm font-semibold text-gray-900 tracking-tight">Yardım Merkezi</span>
           </div>
 
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-black mb-4 tracking-tight">
+          <h2 className="text-xl sm:text-3xl font-semibold text-black mb-4 tracking-tight">
             Sıkça Sorulan Sorular
           </h2>
           <p className="text-gray-500 font-medium">
@@ -61,24 +61,24 @@ const HomeFAQ = () => {
         </div>
 
         {/* FAQ Items */}
-        <div className="space-y-4">
+        <div className="space-y-3.5">
           {faqData.map((item, index) => {
             const isOpen = openIndex === index;
             return (
               <div
                 key={index}
-                className={`group rounded-2xl border transition-all duration-300 overflow-hidden ${
+                className={`group rounded-2xl border transition-colors duration-300 overflow-hidden ${
                   isOpen
-                    ? "bg-white border-red-200 shadow-lg ring-1 ring-red-50"
-                    : "bg-gray-50 border-gray-100 hover:bg-white hover:border-gray-200"
+                    ? "bg-white border-red-200 shadow-sm ring-1 ring-red-50"
+                    : "bg-gray-50 border-gray-200 hover:bg-white hover:border-gray-300"
                 }`}
               >
                 <button
                   onClick={() => toggleItem(index)}
-                  className="w-full flex items-center justify-between p-6 text-left focus:outline-none"
+                  className="w-full flex items-center justify-between p-5 sm:p-6 text-left focus:outline-none"
                 >
                   <span
-                    className={`font-bold text-lg pr-8 transition-colors duration-300 ${
+                    className={`font-medium text-[15px] sm:text-base pr-8 transition-colors duration-300 ${
                       isOpen ? "text-gray-900" : "text-gray-700 group-hover:text-gray-900"
                     }`}
                   >
@@ -99,8 +99,8 @@ const HomeFAQ = () => {
                     isOpen ? "max-h-48 opacity-100" : "max-h-0 opacity-0"
                   }`}
                 >
-                  <div className="px-6 pb-6 pt-0">
-                    <p className="text-gray-600 leading-relaxed font-medium">
+                  <div className="px-5 sm:px-6 pb-5 sm:pb-6 pt-0">
+                    <p className="text-[15px] sm:text-base text-gray-600 leading-relaxed font-normal">
                       {item.answer}
                     </p>
                   </div>
@@ -116,3 +116,4 @@ const HomeFAQ = () => {
 };
 
 export default HomeFAQ;
+

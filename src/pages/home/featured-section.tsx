@@ -1,4 +1,4 @@
-import { Award, CheckCircle, TrendingUp } from "lucide-react";
+﻿import { Award, CheckCircle, TrendingUp } from "lucide-react";
 
 const FeaturedSection = () => {
   return (
@@ -64,3 +64,4 @@ const FeaturedSection = () => {
 };
 
 export default FeaturedSection;
+

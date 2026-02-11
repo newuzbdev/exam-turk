@@ -74,11 +74,6 @@ body {
   animation: scaleIn 0.5s ease-out;
 }
 
-/* Hero title serif accent */
-.hero-title-serif {
-  font-family: Georgia, "Times New Roman", serif;
-}
-
 /* Subtle dotted paper texture for hero background */
 .hero-paper-bg {
   background-color: #ececec;
@@ -116,6 +111,47 @@ button, a, .interactive {
   background: white;
   position: relative;
   overflow: hidden;
+}
+
+/* Reading test typography + surfaces */
+.reading-text {
+  font-size: calc(clamp(15px, 1.6vw, 18px) * var(--reading-font-scale, 1));
+  line-height: calc(1.7 * var(--reading-font-scale, 1));
+  color: #1f2937;
+}
+
+.reading-surface {
+  background: #fbfaf6;
+  border-color: #e5e7eb;
+}
+
+.reading-surface-alt {
+  background: #fdfdfc;
+  border-color: #e5e7eb;
+}
+
+.reading-scroll {
+  padding-bottom: max(10rem, env(safe-area-inset-bottom, 0px) + 6rem);
+}
+
+.reading-body {
+  height: calc(100dvh - 200px);
+}
+
+@media (min-width: 1024px) {
+  .reading-body {
+    height: calc(100vh - 220px);
+  }
+}
+
+.reading-strong-title {
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.reading-surface-card {
+  background: #ffffff;
+  border-color: #e5e7eb;
 }
 
 .writing-card {
@@ -210,6 +246,13 @@ body.exam-mode {
   overflow: hidden;
 }
 
+@media (max-width: 640px) {
+  html.exam-mode,
+  body.exam-mode {
+    overflow: auto;
+  }
+}
+
 /* Prevent scroll jumping in listening test */
 .listening-test-container {
   scroll-behavior: smooth;
@@ -298,4 +341,11 @@ body {
     /* Fill available space on mobile */
     height: -webkit-fill-available;
   }
+}
+
+.reading-select-content {
+  max-height: 60vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }

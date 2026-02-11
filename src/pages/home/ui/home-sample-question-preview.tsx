@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+﻿import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Headphones, BookOpen, PenTool, Mic } from "lucide-react";
 
@@ -152,6 +152,7 @@ const HomeSampleQuestionPreview = () => {
 };
 
 export default HomeSampleQuestionPreview;
+
 
 
 

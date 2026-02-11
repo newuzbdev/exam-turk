@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+﻿import { Badge } from "@/components/ui/badge";
 import { Sparkles } from "lucide-react";
 
 const HowItWorks = () => {
@@ -82,3 +82,4 @@ const HowItWorks = () => {
 };
 
 export default HowItWorks;
+

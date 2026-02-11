@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+﻿import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { NavLink, useSearchParams, useNavigate } from "react-router";
 import { useEffect, useState } from "react";
@@ -96,3 +96,4 @@ export default function CookieHome() {
     </div>
   );
 }
+

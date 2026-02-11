@@ -131,11 +131,12 @@ const TestPage = () => {
     return (
       <div className="flex flex-col min-h-screen bg-white text-gray-900">
         {/* Header Section */}
-        <div className="py-16 bg-white">
+        <div className="py-10 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center max-w-2xl mx-auto">
-              <div className="h-10 bg-gray-100 rounded w-32 mb-3 mx-auto animate-pulse"></div>
-              <div className="h-5 bg-gray-50 rounded w-80 mx-auto animate-pulse"></div>
+            <div className="text-center max-w-xl mx-auto">
+              <div className="h-5 w-28 bg-gray-100 rounded-full mb-3 mx-auto animate-pulse"></div>
+              <div className="h-8 bg-gray-100 rounded w-36 mb-2 mx-auto animate-pulse"></div>
+              <div className="h-4 bg-gray-50 rounded w-72 mx-auto animate-pulse"></div>
             </div>
           </div>
         </div>
@@ -164,13 +165,13 @@ const TestPage = () => {
   return (
     <div className="flex flex-col min-h-screen bg-white text-gray-900">
       {/* Header Section */}
-      <div className="py-16 bg-white">
+      <div className="py-10 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto">
-            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
+          <div className="text-left max-w-2xl pl-8">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1.5">
               Testler
             </h1>
-            <p className="text-gray-600 text-base sm:text-lg">
+            <p className="text-gray-600 text-[15px]">
               Seviyenizi ölçmek için bir test paketi seçin
             </p>
           </div>
@@ -214,7 +215,7 @@ const TestPage = () => {
 
                       {/* Description or Status */}
                       <p className="text-sm text-gray-500 mb-4">
-                        {hasTests ? "Mevcut testler:" : "Erişime Kapalı"}
+                        {hasTests ? "Mevcut testler:" : "Hazırlanıyor..."}
                       </p>
                     </div>
 

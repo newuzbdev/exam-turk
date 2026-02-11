@@ -14,7 +14,8 @@ import NotesPanel from "./NotesPanel";
 
 export default function ReadingPage({ testId }: { testId: string }) {
   const navigate = useNavigate();
-  const [timeLeft, setTimeLeft] = useState(60 * 60);
+  const TOTAL_TIME = 60 * 60;
+  const [timeLeft, setTimeLeft] = useState(TOTAL_TIME);
   const [testData, setTestData] = useState<ReadingTestItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -22,6 +23,8 @@ export default function ReadingPage({ testId }: { testId: string }) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showDescription, setShowDescription] = useState(true);
+  const [fontScale, setFontScale] = useState(1);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -418,8 +421,8 @@ export default function ReadingPage({ testId }: { testId: string }) {
   return (
     <ReadingNotesProvider>
       <div
-        className="min-h-screen h-full overflow-y-auto bg-gray-50 font-sans text-[#333333] pb-36 sm:pb-40"
-        style={{ color: "#333333" }}
+        className="min-h-screen h-full overflow-y-auto bg-gray-50 font-sans text-[#333333] pb-44 sm:pb-52"
+        style={{ color: "#333333", ["--reading-font-scale" as any]: fontScale }}
       >
         {/* Header - Same height and logic as main navbar */}
         <div className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50 shadow-sm w-full">
@@ -445,7 +448,36 @@ export default function ReadingPage({ testId }: { testId: string }) {
                   <div className="hidden lg:block">
                     <NotesPanel currentPartNumber={currentPartNumber} />
                   </div>
-                  <div className="font-bold text-sm">{formatTime(timeLeft)}</div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      className="h-8 w-8 rounded border border-gray-200 bg-white text-xs font-semibold text-gray-700"
+                      onClick={() => setFontScale((v) => Math.max(0.9, Math.round((v - 0.05) * 100) / 100))}
+                      aria-label="Metni küçült"
+                    >
+                      A-
+                    </button>
+                    <button
+                      type="button"
+                      className="h-8 w-8 rounded border border-gray-200 bg-white text-xs font-semibold text-gray-700"
+                      onClick={() => setFontScale((v) => Math.min(1.2, Math.round((v + 0.05) * 100) / 100))}
+                      aria-label="Metni büyült"
+                    >
+                      A+
+                    </button>
+                  </div>
+                  <div
+                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded-full border text-xs font-bold ${
+                      timeLeft <= 300
+                        ? "bg-red-50 border-red-200 text-red-700"
+                        : timeLeft <= 600
+                        ? "bg-amber-50 border-amber-200 text-amber-700"
+                        : "bg-gray-50 border-gray-200 text-slate-700"
+                    }`}
+                  >
+                    <span className="text-[10px]">⏱</span>
+                    <span className="tabular-nums">{formatTime(timeLeft)}</span>
+                  </div>
                 <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold min-h-[44px] touch-manipulation">
                   GÖNDER
                 </Button>
@@ -469,7 +501,36 @@ export default function ReadingPage({ testId }: { testId: string }) {
                 <div className="font-extrabold text-3xl tracking-wider">OKUMA</div>
                 <div className="flex items-center gap-4">
                   <NotesPanel currentPartNumber={currentPartNumber} />
-                  <div className="font-bold text-lg">{formatTime(timeLeft)}</div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      className="h-9 w-9 rounded border border-gray-200 bg-white text-xs font-semibold text-gray-700"
+                      onClick={() => setFontScale((v) => Math.max(0.9, Math.round((v - 0.05) * 100) / 100))}
+                      aria-label="Metni küçült"
+                    >
+                      A-
+                    </button>
+                    <button
+                      type="button"
+                      className="h-9 w-9 rounded border border-gray-200 bg-white text-xs font-semibold text-gray-700"
+                      onClick={() => setFontScale((v) => Math.min(1.2, Math.round((v + 0.05) * 100) / 100))}
+                      aria-label="Metni büyült"
+                    >
+                      A+
+                    </button>
+                  </div>
+                  <div
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-bold ${
+                      timeLeft <= 300
+                        ? "bg-red-50 border-red-200 text-red-700"
+                        : timeLeft <= 600
+                        ? "bg-amber-50 border-amber-200 text-amber-700"
+                        : "bg-gray-50 border-gray-200 text-slate-700"
+                    }`}
+                  >
+                    <span className="text-sm">⏱</span>
+                    <span className="tabular-nums">{formatTime(timeLeft)}</span>
+                  </div>
                   <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 text-sm font-bold">
                     GÖNDER
                   </Button>
@@ -482,12 +543,23 @@ export default function ReadingPage({ testId }: { testId: string }) {
       {/* Description Section - Responsive */}
       <div className="mx-2 sm:mx-4 mt-2">
         <div className="p-3 sm:p-5 bg-gray-100 rounded-lg border border-gray-200">
-          <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-[#333333] mb-2 sm:mb-3">
-            {currentPartNumber}. OKUMA METNİ
-          </h3>
-          <p className="text-sm sm:text-base lg:text-lg text-[#333333] leading-relaxed">
-            {getStaticHeader(currentPartNumber)}
-          </p>
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-[#333333]">
+              {currentPartNumber}. OKUMA METNİ
+            </h3>
+            <button
+              type="button"
+              onClick={() => setShowDescription((v) => !v)}
+              className="text-xs sm:text-sm font-semibold text-gray-700 border border-gray-200 rounded-md px-2 py-1 bg-white"
+            >
+              {showDescription ? "Anlatımı Gizle" : "Anlatımı Göster"}
+            </button>
+          </div>
+          {showDescription && (
+            <p className="text-sm sm:text-base lg:text-lg text-[#333333] leading-relaxed">
+              {getStaticHeader(currentPartNumber)}
+            </p>
+          )}
         </div>
       </div>
 
@@ -547,7 +619,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
       {!isLoading && !error && testData && (
         <>
           {/* Desktop Layout - Tabs */}
-          <div className="hidden lg:block fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-800 p-2 sm:p-3 z-50">
+          <div className="hidden lg:block fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-300 shadow-sm p-1.5 sm:p-2 z-50">
             <div className="max-w-7xl mx-auto">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex justify-center gap-2 flex-nowrap overflow-x-auto flex-1">
@@ -571,7 +643,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
                     return (
                       <div
                         key={partNum}
-                        className={`text-center border-2 rounded-lg p-2 min-w-fit cursor-pointer ${
+                        className={`text-center border-2 rounded-lg p-1.5 min-w-fit cursor-pointer ${
                           isActive ? "border-[#438553] bg-[#438553]/15" : "border-gray-300 bg-gray-50 hover:bg-[#F6F5F2]"
                         }`}
                         onClick={() => {
@@ -587,7 +659,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
                             return (
                               <div
                                 key={`${partNum}-${q}`}
-                                className={`w-6 h-6 rounded-full border-2 border-gray-800 flex items-center justify-center text-xs font-bold ${
+                                className={`w-5.5 h-5.5 rounded-full border-2 border-gray-800 flex items-center justify-center text-[11px] font-bold ${
                                   isAnswered ? "bg-[#438553]" : "bg-white"
                                 }`}
                               >
@@ -596,7 +668,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
                             );
                           })}
                         </div>
-                        <div className="text-xs font-bold">{partNum}. BÖLÜM</div>
+                        <div className="text-[11px] font-bold">{partNum}. BÖLÜM</div>
                       </div>
                     );
                   });
@@ -606,16 +678,18 @@ export default function ReadingPage({ testId }: { testId: string }) {
                   <Button
                     onClick={handlePrevPart}
                     disabled={currentPartNumber <= 1}
-                    className="bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-900 font-bold px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] touch-manipulation"
+                    className="bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-900 font-bold w-9 h-9 p-0 text-lg disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
+                    aria-label="Önceki"
                   >
-                    Önceki
+                    ‹
                   </Button>
                   <Button
                     onClick={handleNextPart}
                     disabled={currentPartNumber >= 5}
-                    className="bg-[#438553] hover:bg-[#356A44] active:bg-[#2d5a3a] text-white font-bold px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] touch-manipulation"
+                    className="bg-[#438553] hover:bg-[#356A44] active:bg-[#2d5a3a] text-white font-bold w-9 h-9 p-0 text-lg disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
+                    aria-label="Sonraki"
                   >
-                    Sonraki
+                    ›
                   </Button>
                 </div>
               </div>
@@ -623,14 +697,15 @@ export default function ReadingPage({ testId }: { testId: string }) {
           </div>
 
         {/* Mobile Layout - Prev/Next controls */}
-        <div className="lg:hidden fixed bottom-2 right-2 left-2 grid grid-cols-3 items-center gap-2 px-3 py-2 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+        <div className="lg:hidden fixed bottom-2 right-2 left-2 grid grid-cols-3 items-center gap-2 px-2.5 py-1.5 bg-white/95 backdrop-blur-sm rounded-lg shadow-sm border border-gray-300/80 z-50">
             <div className="justify-self-start">
               <Button
                 onClick={handlePrevPart}
                 disabled={currentPartNumber <= 1}
-                className="bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-900 font-bold px-4 py-2.5 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base min-h-[44px] touch-manipulation"
+                className="bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-900 font-bold w-10 h-9 p-0 text-lg disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
+                aria-label="Önceki"
               >
-                Önceki
+                ‹
               </Button>
             </div>
             <div className="justify-self-center text-xs sm:text-sm font-bold">
@@ -640,9 +715,10 @@ export default function ReadingPage({ testId }: { testId: string }) {
               <Button
                 onClick={handleNextPart}
                 disabled={currentPartNumber >= 5}
-                className="bg-[#438553] hover:bg-[#356A44] active:bg-[#2d5a3a] text-white font-bold px-4 py-2.5 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base min-h-[44px] touch-manipulation"
+                className="bg-[#438553] hover:bg-[#356A44] active:bg-[#2d5a3a] text-white font-bold w-10 h-9 p-0 text-lg disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
+                aria-label="Sonraki"
               >
-                Sonraki
+                ›
               </Button>
             </div>
           </div>
@@ -669,6 +745,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
     </ReadingNotesProvider>
   );
 }
+
 
 
 

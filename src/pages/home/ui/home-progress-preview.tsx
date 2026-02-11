@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import axiosPrivate from "@/config/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,12 +20,10 @@ interface PaginationData {
 
 const getCefrLevel = (score: number | null | undefined): string => {
   if (score == null) return "-";
-  if (score >= 90) return "C2";
-  if (score >= 75) return "C1";
-  if (score >= 60) return "B2";
-  if (score >= 45) return "B1";
-  if (score >= 30) return "A2";
-  return "A1";
+  if (score >= 65) return "C1";
+  if (score >= 51) return "B2";
+  if (score >= 38) return "B1";
+  return "B1 altı";
 };
 
 const HomeProgressPreview = () => {
@@ -75,7 +73,7 @@ const HomeProgressPreview = () => {
               <h3 className="text-2xl font-bold text-gray-900 mb-2">
                 Seviye: {level}{" "}
                 <span className="text-base font-normal text-gray-600">
-                  (Toplam Puan: {lastResult.overallScore}/100)
+                  (Toplam Puan: {lastResult.overallScore}/75)
                 </span>
               </h3>
               {lastResult.completedAt && (
@@ -111,8 +109,4 @@ const HomeProgressPreview = () => {
 };
 
 export default HomeProgressPreview;
-
-
-
-
 

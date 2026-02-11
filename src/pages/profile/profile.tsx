@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Settings, Eye, Calendar, Trophy, TrendingUp, Target } from "lucide-react";
+import { Settings, Calendar, Trophy, Target, ListChecks, Clock } from "lucide-react";
 import { authService } from "@/services/auth.service";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -32,12 +32,10 @@ interface TestResult {
 
 const getCefrLevel = (score: number | null | undefined): string => {
   if (score == null) return "-";
-  if (score >= 90) return "C2";
-  if (score >= 75) return "C1";
-  if (score >= 60) return "B2";
-  if (score >= 45) return "B1";
-  if (score >= 30) return "A2";
-  return "A1";
+  if (score >= 65) return "C1";
+  if (score >= 51) return "B2";
+  if (score >= 38) return "B1";
+  return "B1 altı";
 };
 
 const getSelectedTests = (test: TestResult) => {
@@ -47,6 +45,11 @@ const getSelectedTests = (test: TestResult) => {
   if (test.writingResultId) selectedTests.push("Yazma");
   if (test.speakingResultId) selectedTests.push("Konuşma");
   return selectedTests.join(", ");
+};
+
+const getScoreValue = (test: TestResult) => {
+  const score = test.overallScore as unknown as number;
+  return typeof score === "number" ? score : Number(score) || 0;
 };
 
 export default function ProfilePage() {
@@ -64,51 +67,10 @@ export default function ProfilePage() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string>("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
+  const [statsResults, setStatsResults] = useState<TestResult[]>([]);
+  const [sortBy, setSortBy] = useState<"date" | "score">("date");
+  const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
   const LIMIT = 10;
-
-  // Helper function to get page numbers with sliding window
-  const getPageNumbers = () => {
-    const pages: (number | "ellipsis")[] = [];
-    const windowSize = 5; // Show 5 pages around current
-    
-    if (totalPages <= 7) {
-      // Show all pages if 7 or less
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i);
-      }
-    } else {
-      // Always show first page
-      pages.push(1);
-      
-      // Calculate window boundaries
-      const windowStart = Math.max(2, currentPage - windowSize + 1);
-      const windowEnd = Math.min(totalPages - 1, currentPage + windowSize - 1);
-      
-      // Add left ellipsis if there's a gap between first page and window
-      if (windowStart > 2) {
-        pages.push("ellipsis");
-      }
-      
-      // Add pages in the window (excluding first and last if already covered)
-      for (let i = windowStart; i <= windowEnd; i++) {
-        if (i !== 1 && i !== totalPages) {
-          pages.push(i);
-        }
-      }
-      
-      // Add right ellipsis if there's a gap between window and last page
-      if (windowEnd < totalPages - 1) {
-        pages.push("ellipsis");
-      }
-      
-      // Always show last page
-      pages.push(totalPages);
-    }
-    
-    return pages;
-  };
 
   const getAvatarUrl = () => {
     if (!user) return null;
@@ -153,8 +115,6 @@ export default function ProfilePage() {
     try {
       const response = await axiosPrivate.get(`/api/overal-test-result/get-users?page=${page}&limit=${LIMIT}`);
       setResults(response.data.data || []);
-      setTotal(response.data.total || 0);
-      setTotalPages(Math.ceil((response.data.total || 0) / LIMIT));
       setCurrentPage(page);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
@@ -166,21 +126,63 @@ export default function ProfilePage() {
     fetchResults(currentPage);
   }, [currentPage]);
 
-  // Calculate statistics
-  const completedTests = results
-    .filter((r) => r.isCompleted)
-    .sort((a, b) => new Date(b.completedAt || b.createdAt).getTime() - new Date(a.completedAt || a.createdAt).getTime());
-  const totalTests = completedTests.length;
-  const highestScore = totalTests > 0 ? Math.max(...completedTests.map((r) => r.overallScore || 0)) : 0;
-  const latestScore = completedTests[0]?.overallScore || 0;
-  const averageScore = totalTests > 0 ? Math.round(completedTests.reduce((sum, r) => sum + (r.overallScore || 0), 0) / totalTests) : 0;
-  const latestTestDate = completedTests[0]?.completedAt
-    ? new Date(completedTests[0].completedAt).toLocaleDateString("tr-TR", {
+  useEffect(() => {
+    const fetchAllResultsForStats = async () => {
+      try {
+        const first = await axiosPrivate.get(`/api/overal-test-result/get-users?page=1&limit=50`);
+        const firstData = first?.data?.data || [];
+        const totalCount = first?.data?.total || firstData.length;
+        const limit = first?.data?.limit || 50;
+        const totalPages = Math.ceil(totalCount / limit);
+
+        let all: TestResult[] = [...firstData];
+        if (totalPages > 1) {
+          for (let page = 2; page <= totalPages; page++) {
+            const res = await axiosPrivate.get(`/api/overal-test-result/get-users?page=${page}&limit=${limit}`);
+            const pageData = res?.data?.data || [];
+            all = all.concat(pageData);
+          }
+        }
+
+        setStatsResults(all);
+      } catch (error) {
+        console.error("Error fetching stats results:", error);
+        setStatsResults([]);
+      } finally {
+      }
+    };
+
+    fetchAllResultsForStats();
+  }, []);
+
+  const getResultDate = (r: TestResult) => new Date(r.completedAt || r.createdAt || r.startedAt).getTime();
+
+  const baseResults = statsResults.length ? statsResults : results;
+  const completedTests = baseResults.filter((r) => r.isCompleted || !!r.completedAt || (r.overallScore || 0) > 0);
+  const statsSource = completedTests.length ? completedTests : baseResults;
+
+  const sortedByDate = [...statsSource].sort((a, b) => getResultDate(b) - getResultDate(a));
+  const totalTests = baseResults.length;
+  const highestScore = statsSource.length > 0 ? Math.max(...statsSource.map((r) => r.overallScore || 0)) : 0;
+  const latestScore = sortedByDate[0]?.overallScore || 0;
+  const latestTestDate = sortedByDate[0]?.completedAt
+    ? new Date(sortedByDate[0].completedAt).toLocaleDateString("tr-TR", {
         year: "numeric",
         month: "long",
         day: "numeric",
       })
-    : "Henüz test tamamlanmadı";
+    : (sortedByDate[0] ? new Date(sortedByDate[0].createdAt || sortedByDate[0].startedAt).toLocaleDateString("tr-TR", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }) : "Henüz test tamamlanmadı");
+
+  const listSource = statsResults.length ? statsResults : results;
+  const sortedResults = [...listSource].sort((a, b) => {
+    const dir = sortDir === "asc" ? 1 : -1;
+    if (sortBy === "score") return (getScoreValue(a) - getScoreValue(b)) * dir;
+    return (getResultDate(a) - getResultDate(b)) * dir;
+  });
 
   if (loading) {
     return (
@@ -224,7 +226,9 @@ export default function ProfilePage() {
                 {/* Stats Grid */}
                 <div className="space-y-4 mb-6">
                   <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
-                    <Calendar className="w-5 h-5 text-gray-600" />
+                    <div className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center">
+                      <Calendar className="w-4 h-4 text-gray-600" />
+                    </div>
                     <div>
                       <p className="text-xs text-gray-500">Katılım Tarihi</p>
                       <p className="text-sm font-semibold text-gray-900">{user?.joinDate}</p>
@@ -232,30 +236,48 @@ export default function ProfilePage() {
                   </div>
 
                   <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
-                    <Target className="w-5 h-5 text-gray-600" />
+                    <div className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center">
+                      <ListChecks className="w-4 h-4 text-gray-600" />
+                    </div>
                     <div>
                       <p className="text-xs text-gray-500">Toplam Test</p>
-                      <p className="text-sm font-semibold text-gray-900">{totalTests}</p>
+                      <p className="text-sm font-semibold text-gray-900">{totalTests > 0 ? totalTests : "-"}</p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
-                    <Trophy className="w-5 h-5 text-gray-600" />
+                    <div className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center">
+                      <Trophy className="w-4 h-4 text-gray-600" />
+                    </div>
                     <div>
                       <p className="text-xs text-gray-500">En Yüksek Puan</p>
                       <p className="text-sm font-semibold text-gray-900">
-                        {highestScore > 0 ? `${highestScore} (${getCefrLevel(highestScore)})` : "-"}
+                        {highestScore > 0 ? `${highestScore} / ${getCefrLevel(highestScore)}` : "-"}
                       </p>
                     </div>
                   </div>
 
+                </div>
+                {/* Quick Stats (Moved Left) */}
+                <div className="space-y-4 mb-6">
                   <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
-                    <TrendingUp className="w-5 h-5 text-gray-600" />
+                    <div className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center">
+                      <Target className="w-4 h-4 text-gray-600" />
+                    </div>
                     <div>
-                      <p className="text-xs text-gray-500">Ortalama Puan</p>
+                      <p className="text-xs text-gray-500">En Son Puan</p>
                       <p className="text-sm font-semibold text-gray-900">
-                        {averageScore > 0 ? `${averageScore} (${getCefrLevel(averageScore)})` : "-"}
+                        {latestScore > 0 ? `${latestScore} / ${getCefrLevel(latestScore)}` : "-"}
                       </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
+                    <div className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center">
+                      <Clock className="w-4 h-4 text-gray-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">En Son Test</p>
+                      <p className="text-sm font-semibold text-gray-900">{latestTestDate}</p>
                     </div>
                   </div>
                 </div>
@@ -361,50 +383,50 @@ export default function ProfilePage() {
 
           {/* Right Content - Statistics & Test History */}
           <div className="lg:col-span-8">
-            {/* Quick Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-              <Card className="bg-white rounded-2xl shadow-sm border border-gray-200">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600 mb-1">En Son Puan</p>
-                      <p className="text-3xl font-bold text-gray-900">
-                        {latestScore > 0 ? latestScore : "-"}
-                      </p>
-                      {latestScore > 0 && (
-                        <p className="text-sm text-gray-600 mt-1">{getCefrLevel(latestScore)}</p>
-                      )}
-                    </div>
-                    <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center">
-                      <Target className="w-6 h-6 text-red-600" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-white rounded-2xl shadow-sm border border-gray-200">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600 mb-1">En Son Test</p>
-                      <p className="text-sm font-semibold text-gray-900">{latestTestDate}</p>
-                    </div>
-                    <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center">
-                      <Calendar className="w-6 h-6 text-gray-600" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
             {/* Test History */}
             <Card className="bg-white rounded-2xl shadow-sm border border-gray-200">
               <CardContent className="p-6">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Test Geçmişi</h3>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">Test Geçmişi</h3>
+                    <p className="text-sm text-gray-500">Sonuçları tarih veya puana göre sırala</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center rounded-full border border-gray-200 bg-gray-50 p-1">
+                      {[
+                        { id: "date", label: "Tarih" },
+                        { id: "score", label: "Puan" },
+                      ].map((item) => (
+                        <Button
+                          key={item.id}
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSortBy(item.id as any)}
+                          className={`h-8 rounded-full px-3 text-xs ${
+                            sortBy === item.id
+                              ? "bg-white text-gray-900 shadow-sm border border-gray-200"
+                              : "text-gray-600 hover:text-gray-900"
+                          }`}
+                        >
+                          {item.label}
+                        </Button>
+                      ))}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
+                      className="h-8 rounded-full border border-gray-200 bg-white px-3 text-gray-700 hover:bg-gray-50"
+                    >
+                      {sortDir === "asc" ? "Artan" : "Azalan"}
+                    </Button>
+                  </div>
+                </div>
 
-                {results.length === 0 ? (
+                {sortedResults.length === 0 ? (
                   <div className="text-center py-16">
-                    <div className="text-6xl mb-4">📊</div>
+                    <div className="text-4xl mb-4">—</div>
                     <h4 className="text-lg font-semibold text-gray-800 mb-2">Henüz test sonucu yok</h4>
                     <p className="text-gray-600 mb-6">Sınavınızı tamamladığınızda sonuçlar burada görünecek.</p>
                     <Button onClick={() => navigate("/test")} className="bg-red-600 hover:bg-red-700 text-white">
@@ -412,111 +434,55 @@ export default function ProfilePage() {
                     </Button>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Tarih</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Testler</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Puan</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Seviye</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Durum</th>
-                          <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">İşlem</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {results.map((result) => (
-                          <tr key={result.id} className="hover:bg-gray-50 transition-colors">
-                            <td className="px-4 py-4 text-sm text-gray-900">
-                              {new Date(result.completedAt || result.startedAt).toLocaleDateString("tr-TR")}
-                            </td>
-                            <td className="px-4 py-4 text-sm text-gray-600">{getSelectedTests(result)}</td>
-                            <td className="px-4 py-4 text-sm font-semibold text-gray-900">
-                              {result.overallScore || 0}
-                            </td>
-                            <td className="px-4 py-4">
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                {getCefrLevel(result.overallScore)}
-                              </span>
-                            </td>
-                            <td className="px-4 py-4">
-                              <span
-                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                  result.isCompleted
-                                    ? "bg-green-100 text-green-800"
-                                    : "bg-yellow-100 text-yellow-800"
-                                }`}
-                              >
-                                {result.isCompleted ? "Tamamlandı" : "Devam Ediyor"}
-                              </span>
-                            </td>
-                            <td className="px-4 py-4 text-right">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => navigate(`/unified-results/${result.id}`)}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="max-h-[60vh] overflow-y-auto pr-1 rounded-2xl border border-gray-200 bg-white shadow-sm">
+                    <div className="hidden sm:grid grid-cols-[1.2fr_1.2fr_150px_90px] gap-4 px-5 py-3 bg-gray-50 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+                      <span>Tarih</span>
+                      <span>Testler</span>
+                      <span>Puan / Seviye</span>
+                      <span className="text-right">İşlem</span>
+                    </div>
+                    <div className="divide-y divide-gray-100">
+                      {sortedResults.map((result) => (
+                        <div
+                          key={result.id}
+                          className="group px-4 sm:px-5 py-3 transition-colors hover:bg-gray-50/70"
+                        >
+                          <div className="grid grid-cols-1 sm:grid-cols-[1.2fr_1.2fr_150px_90px] gap-3 sm:gap-4 items-center">
+                            <div>
+                              <p className="text-xs text-gray-500 sm:hidden mb-0.5">Tarih</p>
+                              <p className="text-sm font-semibold text-gray-900">
+                                {new Date(result.completedAt || result.startedAt).toLocaleDateString("tr-TR")}
+                              </p>
+                            </div>
 
-                    {/* Pagination */}
-                    {totalPages > 1 && (
-                      <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4">
-                        <p className="text-sm text-gray-500">
-                          Toplam <span className="font-medium text-gray-700">{total}</span> sonuç | Sayfa <span className="font-medium text-gray-700">{currentPage}</span> / <span className="font-medium text-gray-700">{totalPages}</span>
-                        </p>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => fetchResults(currentPage - 1)}
-                            disabled={currentPage === 1}
-                            className="h-8 px-3 border-gray-300"
-                          >
-                            <span className="sr-only">Önceki</span>
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M15 18l-6-6 6-6"/>
-                            </svg>
-                          </Button>
-                          
-                          {/* Page numbers with sliding window */}
-                          {getPageNumbers().map((page, index) => (
-                            page === "ellipsis" ? (
-                              <span key={`ellipsis-${index}`} className="px-2 text-gray-400">...</span>
-                            ) : (
+                            <div>
+                              <p className="text-xs text-gray-500 sm:hidden mb-0.5">Testler</p>
+                              <p className="text-sm text-gray-800">{getSelectedTests(result)}</p>
+                            </div>
+
+                            <div>
+                              <p className="text-xs text-gray-500 sm:hidden mb-0.5">Puan / Seviye</p>
+                              <p className="text-sm font-semibold text-gray-900">
+                                {(result.overallScore || 0) > 0
+                                  ? `${result.overallScore} / ${getCefrLevel(result.overallScore)}`
+                                  : "-"}
+                              </p>
+                            </div>
+
+                            <div className="sm:text-right">
                               <Button
-                                key={page}
-                                variant={currentPage === page ? "default" : "outline"}
+                                variant="outline"
                                 size="sm"
-                                onClick={() => fetchResults(page)}
-                                className={`h-8 w-8 p-0 ${currentPage === page ? "bg-red-600 hover:bg-red-700" : "border-gray-300"}`}
+                                onClick={() => navigate(`/overall-results/${result.id}`)}
+                                className="border-gray-300 text-gray-700"
                               >
-                                {page}
+                                Detay
                               </Button>
-                            )
-                          ))}
-                          
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => fetchResults(currentPage + 1)}
-                            disabled={currentPage === totalPages}
-                            className="h-8 px-3 border-gray-300"
-                          >
-                            <span className="sr-only">Sonraki</span>
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M9 18l6-6-6-6"/>
-                            </svg>
-                          </Button>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      ))}
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -566,3 +532,8 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+
+
+
+

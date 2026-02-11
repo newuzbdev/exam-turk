@@ -286,7 +286,7 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
           <X className="w-5 h-5" />
         </button>
 
-        <h2 className="text-3xl font-serif font-bold text-gray-900 mb-8 text-center">
+        <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">
           {authMode === "login" 
             ? loginStep === "phone" 
               ? "Telefon Numarası"

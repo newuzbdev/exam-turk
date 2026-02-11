@@ -237,8 +237,20 @@ export const overallTestService = {
       return [];
     }
   },
+  getRecentQualifiedOverallTests: async (limit = 15): Promise<any[]> => {
+    try {
+      const res = await axiosPrivate.get(
+        `/api/overal-test-result/recent?levels=B1,B2,C1&uniqueUsers=true&limit=${limit}`
+      );
+      const payload = res?.data?.data || res?.data || {};
+      if (Array.isArray(payload)) return payload;
+      if (Array.isArray(payload?.data)) return payload.data;
+      return [];
+    } catch (error: any) {
+      console.error("Error fetching recent qualified overall tests:", error);
+      return [];
+    }
+  },
 };
 
 export default overallTestService;
-
-

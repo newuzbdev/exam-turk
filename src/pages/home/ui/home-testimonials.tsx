@@ -1,4 +1,4 @@
-import { Card, CardContent } from "@/components/ui/card";
+﻿import { Card, CardContent } from "@/components/ui/card";
 import { Quote, Star } from "lucide-react";
 
 const HomeTestimonials = () => {
@@ -20,23 +20,21 @@ const HomeTestimonials = () => {
       role: "Öğrenci",
       level: "A2",
       text: "Kullanıcı dostu arayüz ve kapsamlı test içeriği. Sınava hazırlanırken en büyük yardımcım oldu.",
-    }
+    },
   ];
 
   return (
-    <section className="py-24 bg-white font-sans border-t border-gray-100">
+    <section className="py-20 lg:py-24 bg-white font-sans">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
         {/* Header - Yıldızlı Rozet Eklendi */}
-        <div className="text-center max-w-3xl mx-auto mb-16">
-
+        <div className="text-center max-w-3xl mx-auto mb-14">
           {/* Yıldız Rozeti */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-gray-200 bg-white mb-6 shadow-sm">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-gray-200 bg-white mb-5">
             <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-            <span className="text-sm font-bold text-gray-900 tracking-tight">Yorumlar</span>
+            <span className="text-sm font-semibold text-gray-900 tracking-tight">Yorumlar</span>
           </div>
 
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-black mb-4 tracking-tight">
+          <h2 className="text-xl sm:text-3xl font-semibold text-black mb-4 tracking-tight">
             Kullanıcı Deneyimleri
           </h2>
           <p className="text-gray-500 font-medium">
@@ -45,16 +43,15 @@ const HomeTestimonials = () => {
         </div>
 
         {/* Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {testimonials.map((item, index) => (
             <Card
               key={index}
-              className="relative bg-white border border-gray-200 rounded-2xl shadow-sm transition-all duration-300 hover:shadow-xl hover:border-gray-300 hover:-translate-y-1 group"
+              className="relative bg-white border border-gray-200 rounded-2xl shadow-sm transition-shadow duration-300 hover:shadow-md hover:border-gray-300 group"
             >
-              <CardContent className="p-8 flex flex-col h-full">
-
+              <CardContent className="p-7 flex flex-col h-full">
                 {/* Dekoratif Tırnak İşareti - Hover'da Kırmızı */}
-                <Quote className="mb-6 h-8 w-8 text-gray-200 transition-colors duration-300 group-hover:text-red-600" />
+                <Quote className="mb-5 h-7 w-7 text-gray-200 transition-colors duration-300 group-hover:text-red-500" />
 
                 {/* Yorum Metni */}
                 <blockquote className="text-gray-800 text-base leading-relaxed flex-grow font-medium">
@@ -80,7 +77,6 @@ const HomeTestimonials = () => {
                     {item.role}
                   </div>
                 </div>
-
               </CardContent>
             </Card>
           ))}

@@ -1,7 +1,6 @@
 ﻿import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Clock } from "lucide-react";
 // import { toast } from "sonner";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
@@ -56,6 +55,11 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   const [loading, setLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState(60 * 60); // 60 minutes in seconds
   const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [fontScale, setFontScale] = useState(0.95);
+  const [showPracticeModal, setShowPracticeModal] = useState(true);
+  const [practiceText, setPracticeText] = useState("");
+  const baseFontSizeRef = useRef<string | null>(null);
+  const [showShortcuts] = useState(true);
 
   // Hide navbar and footer during writing test
   useEffect(() => {
@@ -177,6 +181,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
 
   // Timer countdown
   useEffect(() => {
+    if (showPracticeModal) return;
     if (timeLeft > 0) {
       const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
       return () => clearTimeout(timer);
@@ -184,7 +189,37 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
       // toast.error("Time is up! Test will be submitted automatically.");
       handleSubmit();
     }
-  }, [timeLeft]);
+  }, [timeLeft, showPracticeModal]);
+
+  // Auto-save drafts (debounced)
+  useEffect(() => {
+    if (!testId) return;
+    const t = setTimeout(() => {
+      const answersData = {
+        testId,
+        answers,
+        sections,
+        timestamp: new Date().toISOString(),
+      };
+      sessionStorage.setItem(`writing_answers_${testId}`, JSON.stringify(answersData));
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [answers, sections, testId]);
+
+  // Scale fonts for the entire writing page (rem-based sizes)
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    if (baseFontSizeRef.current === null) {
+      baseFontSizeRef.current = root.style.fontSize || "";
+    }
+    root.style.fontSize = `${16 * fontScale}px`;
+    return () => {
+      if (baseFontSizeRef.current !== null) {
+        root.style.fontSize = baseFontSizeRef.current;
+      }
+    };
+  }, [fontScale]);
 
   const selectedSection = sections[currentSectionIndex];
   const subParts = selectedSection?.subParts || [];
@@ -292,15 +327,18 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
     // Replace previous char with the mapped one and do not insert '='
     e.preventDefault();
     const newValue = value.slice(0, prevIndex) + replacement + value.slice(end);
-    handleAnswerChange(newValue);
-
-    // Restore caret position right after the replaced character
+    const pos = prevIndex + 1;
+    // Update DOM value immediately to keep caret position stable
+    el.value = newValue;
+    el.setSelectionRange(pos, pos);
+    setAnswers((prev) => ({
+      ...prev,
+      [selectedQuestionId]: newValue,
+    }));
+    // Ensure caret stays after React re-render
     requestAnimationFrame(() => {
-      const ta = textareaRef.current;
-      if (ta) {
-        const pos = prevIndex + 1;
-        ta.selectionStart = ta.selectionEnd = pos;
-      }
+      el.setSelectionRange(pos, pos);
+      el.focus();
     });
   };
 
@@ -321,6 +359,50 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
         textareaRef.current.selectionStart = textareaRef.current.selectionEnd = pos;
         textareaRef.current.focus();
       }
+    });
+  };
+
+  const insertPracticeChar = (ch: string) => {
+    setPracticeText((prev) => prev + ch);
+  };
+
+  const handlePracticeShortcutKeyDown = (
+    e: React.KeyboardEvent<HTMLTextAreaElement>
+  ) => {
+    if (e.key !== "=") return;
+    const el = e.currentTarget;
+    const start = el.selectionStart ?? 0;
+    const end = el.selectionEnd ?? 0;
+    if (start !== end) return;
+    const value = el.value;
+    const prevIndex = start - 1;
+    if (prevIndex < 0) return;
+    const prevChar = value[prevIndex];
+    const map: Record<string, string> = {
+      c: "ç",
+      C: "Ç",
+      g: "ğ",
+      G: "Ğ",
+      s: "ş",
+      S: "Ş",
+      o: "ö",
+      O: "Ö",
+      u: "ü",
+      U: "Ü",
+      i: "ı",
+      I: "İ",
+    };
+    const replacement = map[prevChar];
+    if (!replacement) return;
+    e.preventDefault();
+    const newValue = value.slice(0, prevIndex) + replacement + value.slice(end);
+    const pos = prevIndex + 1;
+    el.value = newValue;
+    el.setSelectionRange(pos, pos);
+    setPracticeText(newValue);
+    requestAnimationFrame(() => {
+      el.setSelectionRange(pos, pos);
+      el.focus();
     });
   };
 
@@ -354,26 +436,28 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   ];
   
   return (
-  <div className="hidden lg:block mt-3 sm:mt-4 p-2 sm:p-3 bg-gray-50 rounded-lg border">
-  <div className="text-xs sm:text-sm text-gray-700 mb-2 sm:mb-3">
-  <span className="font-semibold">T&#252;rk&#231;e Karakterler:</span>
-  <span className="block">Harfin ard&#305;ndan <span className="font-semibold">=</span> tu&#351;una basarsan&#305;z T&#252;rk&#231;e karaktere d&#246;n&#252;&#351;&#252;r.</span>
-  <span className="block">K&#305;sayollar: c=&#231;, g=&#287;, s=&#351;, o=&#246;, u=&#252;, i=&#305;, I=&#304;</span>
-  </div>
+  <div className="hidden lg:block mt-3 sm:mt-4">
+  {showShortcuts && (
+    <div className="text-xs sm:text-sm text-gray-700 mb-2 sm:mb-3">
+      <span className="font-semibold">T&#252;rk&#231;e Karakterler:</span>
+      <span className="block">Harfin ard&#305;ndan <span className="font-semibold">=</span> tu&#351;una basarsan&#305;z T&#252;rk&#231;e karaktere d&#246;n&#252;&#351;&#252;r.</span>
+      <span className="block">K&#305;sayollar: c=&#231;, g=&#287;, s=&#351;, o=&#246;, u=&#252;, i=&#305;, I=&#304;</span>
+    </div>
+  )}
   <div className="grid grid-cols-7 gap-1 sm:gap-2 max-w-md">
-  {turkishChars.map(({ char, lower,  }) => (
+  {turkishChars.map(({ char, lower }) => (
   <div key={char} className="flex flex-col gap-1">
   <button
   type="button"
   onClick={() => insertChar(char)}
-  className="h-10 sm:h-12 w-full border border-gray-300 rounded bg-white hover:bg-blue-50 hover:border-blue-300 text-lg sm:text-xl font-semibold text-gray-800 transition-colors flex items-center justify-center"
+  className="h-9 sm:h-10 w-full border border-gray-300 rounded bg-white hover:bg-blue-50 hover:border-blue-300 text-base sm:text-lg font-semibold text-gray-800 transition-colors flex items-center justify-center"
   >
   {char}
   </button>
   <button
   type="button"
   onClick={() => insertChar(lower)}
-  className="h-8 sm:h-9 w-full border border-gray-300 rounded bg-white hover:bg-blue-50 hover:border-blue-300 text-sm sm:text-base font-medium text-gray-800 transition-colors flex items-center justify-center"
+  className="h-7 sm:h-8 w-full border border-gray-300 rounded bg-white hover:bg-blue-50 hover:border-blue-300 text-xs sm:text-sm font-medium text-gray-800 transition-colors flex items-center justify-center"
   >
   {lower}
   </button>
@@ -385,6 +469,50 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   </div>
   </div>
   );
+  };
+
+  const renderPracticeKeyboard = () => {
+    const turkishChars = [
+      { char: "\u00C7", lower: "\u00E7", shortcut: "C=" },
+      { char: "\u011E", lower: "\u011F", shortcut: "G=" },
+      { char: "\u015E", lower: "\u015F", shortcut: "S=" },
+      { char: "\u00D6", lower: "\u00F6", shortcut: "O=" },
+      { char: "\u00DC", lower: "\u00FC", shortcut: "U=" },
+      { char: "I", lower: "\u0131", shortcut: "i=" },
+      { char: "\u0130", lower: "i", shortcut: "I=" },
+    ];
+    return (
+      <div className="mt-3">
+        <div className="text-xs sm:text-sm text-gray-700 mb-2">
+          <span className="font-semibold">Türkçe Karakterler:</span>
+          <span className="block">
+            Harfin ardından <span className="font-semibold">=</span> tuşuna
+            basarsanız Türkçe karaktere dönüşür.
+          </span>
+          <span className="block">Kısayollar: c=ç, g=ğ, s=ş, o=ö, u=ü, i=ı, I=İ</span>
+        </div>
+        <div className="grid grid-cols-7 gap-1 sm:gap-2 max-w-md">
+          {turkishChars.map(({ char, lower }) => (
+            <div key={char} className="flex flex-col gap-1">
+              <button
+                type="button"
+                onClick={() => insertPracticeChar(char)}
+                className="h-9 sm:h-10 w-full border border-gray-300 rounded bg-white hover:bg-blue-50 hover:border-blue-300 text-base sm:text-lg font-semibold text-gray-800 transition-colors flex items-center justify-center"
+              >
+                {char}
+              </button>
+              <button
+                type="button"
+                onClick={() => insertPracticeChar(lower)}
+                className="h-7 sm:h-8 w-full border border-gray-300 rounded bg-white hover:bg-blue-50 hover:border-blue-300 text-xs sm:text-sm font-medium text-gray-800 transition-colors flex items-center justify-center"
+              >
+                {lower}
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   };
   // Shortcut legend removed (unused)
 
@@ -400,6 +528,46 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
       if (currentSubPartIndex === 1) return 150; // 1.2
     }
     return 200; // Default fallback
+  };
+
+  const renderWithBoldFirstParagraph = (
+    text: string,
+    baseClass: string
+  ) => {
+    if (!text) return null;
+    const paragraphs = text.split(/\n\s*\n/);
+    const first = paragraphs[0] ?? "";
+    const rest = paragraphs.slice(1);
+    const paragraphClass = `${baseClass} whitespace-pre-line text-left`;
+    return (
+      <div className="space-y-3">
+        {first && (
+          <p className={`${paragraphClass} font-semibold`}>
+            {first}
+          </p>
+        )}
+        {rest.map((p, idx) => (
+          <p key={`${idx}-${p.slice(0, 12)}`} className={paragraphClass}>
+            {p}
+          </p>
+        ))}
+      </div>
+    );
+  };
+
+  const renderPlainParagraphs = (text: string, baseClass: string) => {
+    if (!text) return null;
+    const paragraphs = text.split(/\n\s*\n/);
+    const paragraphClass = `${baseClass} whitespace-pre-line text-left`;
+    return (
+      <div className="space-y-3">
+        {paragraphs.map((p, idx) => (
+          <p key={`${idx}-${p.slice(0, 12)}`} className={paragraphClass}>
+            {p}
+          </p>
+        ))}
+      </div>
+    );
   };
 
   const currentAnswer = answers[selectedQuestionId] || "";
@@ -680,7 +848,15 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
 
 
   return (
-    <div className="min-h-screen bg-white" style={{ WebkitOverflowScrolling: 'touch', overflowY: 'auto', height: '100vh' }}>
+    <div
+      className="min-h-screen bg-white"
+      style={{
+        WebkitOverflowScrolling: 'touch',
+        overflowY: 'auto',
+        height: '100vh',
+        ["--writing-font-scale" as any]: fontScale,
+      }}
+    >
       {/* Header - Same height and logic as reading navbar */}
       <div className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50 shadow-sm w-full">
         {/* Match horizontal padding with description block below */}
@@ -702,7 +878,36 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                 </div>
                 <div className="font-bold text-base">YAZMA</div>
                 <div className="flex items-center gap-2">
-                  <div className="font-bold text-sm">{formatTime(timeLeft)}</div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      className="h-8 w-8 rounded border border-gray-200 bg-white text-xs font-semibold text-gray-700"
+                      onClick={() => setFontScale((v) => Math.max(0.9, Math.round((v - 0.05) * 100) / 100))}
+                      aria-label="Metni küçült"
+                    >
+                      A-
+                    </button>
+                    <button
+                      type="button"
+                      className="h-8 w-8 rounded border border-gray-200 bg-white text-xs font-semibold text-gray-700"
+                      onClick={() => setFontScale((v) => Math.min(1.2, Math.round((v + 0.05) * 100) / 100))}
+                      aria-label="Metni büyült"
+                    >
+                      A+
+                    </button>
+                  </div>
+                  <div
+                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded-full border text-xs font-bold ${
+                      timeLeft <= 300
+                        ? "bg-red-50 border-red-200 text-red-700"
+                        : timeLeft <= 600
+                        ? "bg-amber-50 border-amber-200 text-amber-700"
+                        : "bg-gray-50 border-gray-200 text-slate-700"
+                    }`}
+                  >
+                    <span className="text-[10px]">⏱</span>
+                    <span className="tabular-nums">{formatTime(timeLeft)}</span>
+                  </div>
                   <Button onClick={() => setShowSubmitModal(true)} className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold min-h-[44px] touch-manipulation">
                     GÖNDER
                   </Button>
@@ -725,18 +930,35 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
               </div>
               <div className="font-bold text-2xl">YAZMA</div>
               <div className="flex items-center gap-4">
-                <div className="flex items-center space-x-2 text-gray-600">
-                  <Clock className="h-5 w-5" />
-                  <span className="font-bold text-lg">
-                    {formatTime(timeLeft)}
-                  </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    className="h-9 w-9 rounded border border-gray-200 bg-white text-xs font-semibold text-gray-700"
+                    onClick={() => setFontScale((v) => Math.max(0.9, Math.round((v - 0.05) * 100) / 100))}
+                    aria-label="Metni küçült"
+                  >
+                    A-
+                  </button>
+                  <button
+                    type="button"
+                    className="h-9 w-9 rounded border border-gray-200 bg-white text-xs font-semibold text-gray-700"
+                    onClick={() => setFontScale((v) => Math.min(1.2, Math.round((v + 0.05) * 100) / 100))}
+                    aria-label="Metni büyült"
+                  >
+                    A+
+                  </button>
                 </div>
                 <div
-                  className={`text-lg font-semibold ${
-                    isOverLimit ? "text-red-600" : "text-gray-700"
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-bold ${
+                    timeLeft <= 300
+                      ? "bg-red-50 border-red-200 text-red-700"
+                      : timeLeft <= 600
+                      ? "bg-amber-50 border-amber-200 text-amber-700"
+                      : "bg-gray-50 border-gray-200 text-slate-700"
                   }`}
                 >
-                  {wordCount}/{wordLimit}
+                  <span className="text-sm">⏱</span>
+                  <span className="tabular-nums">{formatTime(timeLeft)}</span>
                 </div>
                 <Button onClick={() => setShowSubmitModal(true)} className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-4 py-2 text-sm font-bold min-h-[44px] touch-manipulation">
                   GÖNDER
@@ -747,23 +969,8 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
         </div>
       </div>
 
-      {/* Word Count and Task Tabs - Below header */}
-      <div className="px-2 sm:px-4 pt-2">
-        {/* Mobile: Word Count with Part Info */}
-        <div className="lg:hidden mb-2 sm:mb-3">
-          <div className="flex items-center justify-center">
-            <div className={`text-xs sm:text-sm font-semibold px-2 sm:px-3 py-1 rounded ${isOverLimit ? "text-red-600 bg-red-50" : "text-gray-700 bg-gray-100"}`}>
-              {wordCount}/{wordLimit} kelime
-              {hasSubParts ? (
-                currentSubPartIndex === 0 ? " (Bölüm 1.1)" : " (Bölüm 1.2)"
-              ) : (
-                " (Bölüm 2)"
-              )}
-            </div>
-          </div>
-        </div>
-        
-      </div>
+      {/* Task Tabs - Below header */}
+      <div className="px-2 sm:px-4 pt-2"></div>
 
       {/* Main Content - Scrollable - Closer to header */}
       <div className="flex-1 p-3 sm:p-4 pt-4 sm:pt-6 lg:pt-6 lg:p-8 pb-32 sm:pb-36">
@@ -797,29 +1004,36 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
               </div>
             )}
             {/* Questions Panel - Mobile Only - Scrollable */}
-            <div className="bg-transparent p-0 max-h-[45vh] overflow-y-auto text-[#333333]" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <div className="bg-transparent p-0 max-h-[45vh] overflow-y-auto text-[#333333]" style={{ WebkitOverflowScrolling: 'touch', fontSize: `calc(1rem * var(--writing-font-scale, 1))` }}>
               {(selectedSection?.description || hasQuestions || (hasSubParts && selectedSubPart)) && (
                 <div className="space-y-3 text-gray-700">
                   {selectedSection?.description && (
-                    <div className="p-4 rounded-lg bg-gray-50 border border-gray-200">
-                      <p className="text-base whitespace-pre-line text-left">{selectedSection.description}</p>
+                    <div className="p-0 rounded-none bg-transparent border-0">
+                      {renderWithBoldFirstParagraph(
+                        selectedSection.description,
+                        "text-base text-gray-700"
+                      )}
                     </div>
                   )}
                   {hasSubParts && selectedSubPart && (
-                    <div className="p-4 rounded-lg bg-gray-50 border border-gray-200">
+                    <div className="p-4 rounded-lg bg-[#FEFEFC] border border-gray-200">
                       <h3 className="font-medium text-gray-900 mb-2 text-base">
                         {selectedSubPart.label ||
                           `Bölüm ${currentSubPartIndex + 1}`}
                       </h3>
                       {selectedSubPart.question && (
-                        <p className="text-gray-600 text-base whitespace-pre-line text-left">
-                          {selectedSubPart.question}
-                        </p>
+                        renderPlainParagraphs(
+                          selectedSubPart.question,
+                          "text-base text-gray-600"
+                        )
                       )}
                       {selectedSubPart.description && (
-                        <p className="text-gray-600 text-xs mt-1 whitespace-pre-line text-left">
-                          {selectedSubPart.description}
-                        </p>
+                        <div className="mt-1">
+                          {renderPlainParagraphs(
+                            selectedSubPart.description,
+                            "text-xs text-gray-600"
+                          )}
+                        </div>
                       )}
                       {!selectedSubPart.question &&
                         !selectedSubPart.description &&
@@ -831,9 +1045,10 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                                 key={question.id}
                                 className="p-0"
                               >
-                                <p className="text-gray-800 font-normal text-base whitespace-pre-line text-left">
-                                  {question.text}
-                                </p>
+                                {renderPlainParagraphs(
+                                  question.text,
+                                  "text-base text-gray-800"
+                                )}
                               </div>
                             ))}
                           </div>
@@ -845,22 +1060,27 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                           {questions.map((question, _idx) => (
                         <div
                           key={question.id}
-                          className="p-4 rounded-lg bg-gray-50 border border-gray-200"
+                          className="p-4 rounded-lg bg-[#FEFEFC] border border-gray-200"
                         >
                           {question.text && (
-                            <p className="text-gray-700 text-base whitespace-pre-line text-left">
-                              {question.text}
-                            </p>
+                            renderPlainParagraphs(
+                              question.text,
+                              "text-base text-gray-700"
+                            )
                           )}
                           {"question" in question && (question as any).question && (
-                            <p className="text-gray-700 text-base whitespace-pre-line text-left">
-                              {(question as any).question}
-                            </p>
+                            renderPlainParagraphs(
+                              (question as any).question,
+                              "text-base text-gray-700"
+                            )
                           )}
                           {"description" in question && (question as any).description && (
-                            <p className="text-gray-600 text-xs mt-1 whitespace-pre-line text-left">
-                              {(question as any).description}
-                            </p>
+                            <div className="mt-1">
+                              {renderPlainParagraphs(
+                                (question as any).description,
+                                "text-xs text-gray-600"
+                              )}
+                            </div>
                           )}
                         </div>
                       ))}
@@ -871,11 +1091,13 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
             </div>
 
             {/* Writing Area - Mobile Only - Always Visible */}
-            <div className="bg-[#F4F4F4] rounded-xl shadow-lg p-3 sm:p-4 mt-0 mb-20 relative z-10 border-2 border-red-200">
+            <div className="bg-[#F7F7F5] rounded-xl shadow-sm p-3 sm:p-4 mt-0 mb-20 relative z-10 border border-gray-200">
               <div className="mb-2">
                 <label className="text-sm font-semibold text-gray-700 block mb-1">
                   Cevabınızı yazın:
                 </label>
+              </div>
+              <div className="flex flex-wrap gap-2 mb-3 text-xs">
               </div>
               <textarea
                 ref={textareaRef}
@@ -883,7 +1105,8 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                 value={currentAnswer}
                 onChange={(e) => handleAnswerChange(e.target.value)}
                 placeholder="Yazınızı buraya yazın.."
-                className="w-full h-80 sm:h-96 p-3 sm:p-4 border-2 border-gray-300 rounded-lg resize-y focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-gray-900 placeholder:text-gray-400 text-sm sm:text-base overflow-y-auto"
+                disabled={showPracticeModal}
+                className="w-full h-80 sm:h-96 p-3 sm:p-4 border border-gray-300 rounded-lg resize-y focus:outline-none focus:ring-2 focus:ring-[#438553] focus:border-[#438553] text-gray-900 placeholder:text-gray-400 text-sm sm:text-base overflow-y-auto bg-[#FEFEFC] disabled:opacity-60 disabled:cursor-not-allowed"
                 dir="ltr"
                 lang="tr"
                 style={{ 
@@ -891,18 +1114,57 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                   touchAction: 'manipulation',
                   minHeight: '320px',
                   maxHeight: '900px',
-                  WebkitOverflowScrolling: 'touch'
+                  WebkitOverflowScrolling: 'touch',
+                  fontSize: `calc(1rem * var(--writing-font-scale, 1))`,
+                  lineHeight: `calc(1.6 * var(--writing-font-scale, 1))`,
                 }}
               />
+              <div className="mt-2 flex items-center justify-between">
+                <div className="text-[10px] sm:text-xs text-gray-500 font-semibold">
+                  {hasSubParts ? (currentSubPartIndex === 0 ? "Bölüm 1.1" : "Bölüm 1.2") : "Bölüm 2"}
+                </div>
+                <div className={`text-xs sm:text-sm font-semibold ${isOverLimit ? "text-red-600" : "text-gray-600"}`}>
+                  {wordCount}/{wordLimit} kelime
+                </div>
+              </div>
               {renderKeyboard()}
             </div>
           </div>
+          {/* Mobile Bottom Section Navigation */}
+          {sectionNavItems.length > 1 && (
+            <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 px-3 py-2">
+              <div className="flex gap-2 overflow-x-auto scrollbar-thin">
+                {sectionNavItems.map((item) => {
+                  const isActive =
+                    item.sectionIndex === currentSectionIndex &&
+                    item.subPartIndex === currentSubPartIndex;
+                  return (
+                    <button
+                      key={`mobile-bottom-${item.sectionIndex}-${item.subPartIndex}`}
+                      type="button"
+                      onClick={() => {
+                        setCurrentSectionIndex(item.sectionIndex);
+                        setCurrentSubPartIndex(item.subPartIndex);
+                      }}
+                      className={`px-4 py-2 min-w-[64px] rounded-full text-sm font-semibold transition-colors border ${
+                        isActive
+                          ? "bg-red-500 text-white border-red-500"
+                          : "bg-white text-[#333333] border-gray-300 hover:bg-gray-100"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Desktop Layout - Questions left, textarea right, with shadcn resizable */}
           <div className="hidden lg:block">
             <ResizablePanelGroup direction="horizontal" className="w-full">
-              <ResizablePanel defaultSize={45} minSize={25} maxSize={60} className="min-w-0 text-red-500">
-                <div className="bg-[#F6F5F2] rounded-xl shadow-md p-6 flex flex-col justify-start h-[calc(100vh-140px)] overflow-y-auto border border-gray-200 text-[#333333]">
+              <ResizablePanel defaultSize={45} minSize={25} maxSize={60} className="min-w-0">
+                <div className="bg-[#F7F7F5] rounded-xl shadow-sm p-6 flex flex-col justify-start h-[calc(100vh-140px)] overflow-y-auto border border-gray-200 text-[#333333]" style={{ fontSize: `calc(1rem * var(--writing-font-scale, 1))` }}>
                   {sectionNavItems.length > 1 && (
                     <div className="flex flex-wrap gap-2 pb-3 border-b border-gray-200">
                       {sectionNavItems.map((item) => {
@@ -933,21 +1195,26 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                   {questions.length > 0 && !hasSubParts && (
                     <div className="space-y-4 mt-4">
                       {questions.map((question, _idx) => (
-                        <div key={question.id} className="p-4 rounded-lg bg-gray-50 border border-gray-200">
+                        <div key={question.id} className="p-4 rounded-lg bg-[#FEFEFC] border border-gray-200">
                           {question.text && (
-                            <p className="text-[#333333] text-lg whitespace-pre-line text-left">
-                              {question.text}
-                            </p>
+                            renderPlainParagraphs(
+                              question.text,
+                              "text-lg text-[#333333]"
+                            )
                           )}
                           {"question" in question && (question as any).question && (
-                            <p className="text-[#333333] text-lg whitespace-pre-line text-left">
-                              {(question as any).question}
-                            </p>
+                            renderPlainParagraphs(
+                              (question as any).question,
+                              "text-lg text-[#333333]"
+                            )
                           )}
                           {"description" in question && (question as any).description && (
-                            <p className="text-gray-600 text-base mt-2 whitespace-pre-line text-left">
-                              {(question as any).description}
-                            </p>
+                            <div className="mt-2">
+                              {renderPlainParagraphs(
+                                (question as any).description,
+                                "text-base text-gray-600"
+                              )}
+                            </div>
                           )}
                         </div>
                       ))}
@@ -956,25 +1223,30 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
 
                   {selectedSection?.description && (
                     <div className="space-y-4 text-[#333333] mt-4">
-                      <div className="p-4 rounded-lg bg-gray-50 border border-gray-200">
-                        <p className="font-normal text-lg whitespace-pre-line text-left">
-                          {selectedSection.description}
-                        </p>
+                      <div className="p-0 rounded-none bg-transparent border-0">
+                        {renderWithBoldFirstParagraph(
+                          selectedSection.description,
+                          "text-lg text-[#333333]"
+                        )}
                       </div>
                       {hasSubParts && selectedSubPart && (
-                        <div className="p-4 rounded-lg bg-gray-50 border border-gray-200">
+                        <div className="p-4 rounded-lg bg-[#FEFEFC] border border-gray-200">
                           <h3 className="font-medium text-gray-900 mb-2 text-lg">
                             {selectedSubPart.label || `Bölüm ${currentSubPartIndex + 1}`}
                           </h3>
                           {selectedSubPart.question && (
-                            <p className="text-gray-600 text-lg whitespace-pre-line text-left">
-                              {selectedSubPart.question}
-                            </p>
+                            renderPlainParagraphs(
+                              selectedSubPart.question,
+                              "text-lg text-gray-600"
+                            )
                           )}
                           {selectedSubPart.description && (
-                            <p className="text-gray-600 text-base mt-2 whitespace-pre-line text-left">
-                              {selectedSubPart.description}
-                            </p>
+                            <div className="mt-2">
+                              {renderPlainParagraphs(
+                                selectedSubPart.description,
+                                "text-base text-gray-600"
+                              )}
+                            </div>
                           )}
                           {!selectedSubPart.question &&
                             !selectedSubPart.description &&
@@ -983,9 +1255,10 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                               <div className="mt-3 space-y-2">
                                 {selectedSubPart.questions.map((question: any) => (
                                   <div key={question.id} className="p-0">
-                                    <p className="text-[#333333] font-normal text-lg whitespace-pre-line text-left">
-                                      {question.text}
-                                    </p>
+                                    {renderPlainParagraphs(
+                                      question.text,
+                                      "text-lg text-[#333333]"
+                                    )}
                                   </div>
                                 ))}
                               </div>
@@ -998,17 +1271,32 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
               </ResizablePanel>
               <ResizableHandle className="bg-gray-200 w-px" />
               <ResizablePanel defaultSize={55} className="min-w-0">
-                <div className="bg-[#F4F4F4] rounded-xl shadow-md p-6 flex-1 min-w-0 h-[calc(100vh-140px)] overflow-y-auto flex flex-col border border-gray-200 text-[#333333]">
+                <div className="bg-[#F7F7F5] rounded-xl shadow-sm p-6 flex-1 min-w-0 h-[calc(100vh-140px)] overflow-y-auto flex flex-col border border-gray-200 text-[#333333]">
+                  <div className="flex flex-wrap gap-2 mb-3 text-xs">
+                  </div>
                   <textarea
                     ref={textareaRef}
                     onKeyDown={handleShortcutKeyDown}
                     value={currentAnswer}
                     onChange={(e) => handleAnswerChange(e.target.value)}
                     placeholder="Yazınızı buraya yazın.."
-                    className="w-full min-h-[300px] h-auto flex-1 p-6 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-gray-900 placeholder:text-gray-400 text-lg"
+                    disabled={showPracticeModal}
+                    className="w-full min-h-[300px] h-auto flex-1 p-6 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#438553] focus:border-[#438553] text-gray-900 placeholder:text-gray-400 text-lg bg-[#FEFEFC] disabled:opacity-60 disabled:cursor-not-allowed"
                     dir="ltr"
                     lang="tr"
+                    style={{
+                      fontSize: `calc(1.125rem * var(--writing-font-scale, 1))`,
+                      lineHeight: `calc(1.65 * var(--writing-font-scale, 1))`,
+                    }}
                   />
+                  <div className="mt-2 flex items-center justify-between">
+                    <div className="text-xs text-gray-500 font-semibold">
+                      {hasSubParts ? (currentSubPartIndex === 0 ? "Bölüm 1.1" : "Bölüm 1.2") : "Bölüm 2"}
+                    </div>
+                    <div className={`text-sm font-semibold ${isOverLimit ? "text-red-600" : "text-gray-600"}`}>
+                      {wordCount}/{wordLimit} kelime
+                    </div>
+                  </div>
                   {renderKeyboard()}
 
                 </div>
@@ -1056,6 +1344,40 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
         isLoading={submitting}
       />
 
+      {/* Practice Modal - Before Start */}
+      {showPracticeModal && (
+        <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-3xl shadow-xl border border-gray-200">
+            <div className="px-5 py-4 border-b border-gray-200">
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900">
+                Pratik Alanı
+              </h3>
+              <p className="text-sm text-gray-600 mt-1">
+                Yazmaya başlamadan önce Türkçe karakterleri deneyebilirsiniz.
+                Süre şu anda durduruldu.
+              </p>
+            </div>
+            <div className="p-5 space-y-4">
+              <textarea
+                value={practiceText}
+                onChange={(e) => setPracticeText(e.target.value)}
+                onKeyDown={handlePracticeShortcutKeyDown}
+                placeholder="Buraya yazarak pratik yapabilirsiniz..."
+                className="w-full min-h-[180px] p-4 border border-gray-300 rounded-lg resize-y focus:outline-none focus:ring-2 focus:ring-[#438553] focus:border-[#438553] text-gray-900 placeholder:text-gray-400"
+              />
+              {renderPracticeKeyboard()}
+            </div>
+            <div className="px-5 py-4 border-t border-gray-200 flex items-center justify-end gap-2">
+              <Button
+                onClick={() => setShowPracticeModal(false)}
+                className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-4 py-2 text-sm font-bold"
+              >
+                Hazırım, Başla
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

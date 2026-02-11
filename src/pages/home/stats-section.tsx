@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import axiosPrivate from "@/config/api";
 
 interface AnimatedStatProps {
@@ -90,24 +90,24 @@ const StatsSection = () => {
 
   return (
     <div>
-      <section className="py-20 bg-white border-t border-gray-100">
+      <section className="py-14 sm:py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-2 gap-8 text-center">
-            <div className="group">
+            <div>
               <AnimatedStat
                 value={activeUsers ?? 0}
                 suffix={"+"}
-                className="text-4xl font-bold bg-gradient-to-r from-red-600 to-red-500 bg-clip-text text-transparent mb-2 group-hover:scale-110 transition-transform duration-200"
+                className="text-4xl font-bold text-red-600 mb-2"
               />
-              <div className="text-gray-600">Aktif Kullanıcı</div>
+              <div className="text-gray-600 text-sm sm:text-base">Aktif Kullanıcı</div>
             </div>
-            <div className="group">
+            <div>
               <AnimatedStat
                 value={completedTests ?? 0}
                 suffix={"+"}
-                className="text-4xl font-bold bg-gradient-to-r from-red-600 to-red-500 bg-clip-text text-transparent mb-2 group-hover:scale-110 transition-transform duration-200"
+                className="text-4xl font-bold text-red-600 mb-2"
               />
-              <div className="text-gray-600">Tamamlanan Test</div>
+              <div className="text-gray-600 text-sm sm:text-base">Tamamlanan Test</div>
             </div>
           </div>
         </div>
@@ -117,3 +117,5 @@ const StatsSection = () => {
 };
 
 export default StatsSection;
+
+

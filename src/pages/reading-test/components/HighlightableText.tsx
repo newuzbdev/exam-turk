@@ -16,9 +16,18 @@ interface Highlight {
 interface HighlightableTextProps {
   text: string;
   partNumber?: number;
+  as?: "p" | "span";
+  className?: string;
+  wrapperAs?: "div" | "span";
 }
 
-export default function HighlightableText({ text, partNumber }: HighlightableTextProps) {
+export default function HighlightableText({
+  text,
+  partNumber,
+  as = "p",
+  className,
+  wrapperAs = "div",
+}: HighlightableTextProps) {
   const { notes, addNote, updateNote, deleteNote } = useReadingNotes();
   const [highlights, setHighlights] = useState<Highlight[]>([]);
   const [tooltip, setTooltip] = useState<{
@@ -43,6 +52,7 @@ export default function HighlightableText({ text, partNumber }: HighlightableTex
   } | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
 
   // Sync highlights with notes that have highlightedText - automatically highlight noted text
   useEffect(() => {
@@ -143,16 +153,27 @@ export default function HighlightableText({ text, partNumber }: HighlightableTex
       });
     };
 
+    const handleTouchEnd = () => {
+      // Reuse same logic for mobile long-press selection
+      handleMouseUp();
+    };
+
     document.addEventListener("mouseup", handleMouseUp);
-    return () => document.removeEventListener("mouseup", handleMouseUp);
+    document.addEventListener("touchend", handleTouchEnd, { passive: true });
+    return () => {
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.removeEventListener("touchend", handleTouchEnd);
+    };
   }, []);
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
+  const handleClickOutside = (event: MouseEvent) => {
+      if (!containerRef.current) return;
+      const target = event.target as Node;
+      const inTooltip = tooltipRef.current && tooltipRef.current.contains(target);
+      const inMark = (target as HTMLElement)?.closest?.("mark");
+      // Clear when clicking anywhere that's not tooltip or a highlight
+      if (!inTooltip && !inMark) {
         setTooltip(null);
         window.getSelection()?.removeAllRanges();
       }
@@ -520,14 +541,25 @@ export default function HighlightableText({ text, partNumber }: HighlightableTex
     ? highlights.some((h) => h.start === tooltip.start && h.end === tooltip.end)
     : false;
 
+  const Component = as === "span" ? "span" : "p";
+  const Wrapper = wrapperAs === "span" ? "span" : "div";
+
+  const handleContainerClick = (e: React.MouseEvent) => {
+    if (e.target === containerRef.current) {
+      setTooltip(null);
+      window.getSelection()?.removeAllRanges();
+    }
+  };
+
   return (
-    <div ref={containerRef} className="relative">
-      <p className="text-base lg:text-lg leading-relaxed text-[#333333] font-sans whitespace-pre-line">
+    <Wrapper ref={containerRef as any} className="relative" onMouseDown={handleContainerClick}>
+      <Component className={`reading-text font-sans whitespace-pre-line ${className || ""}`}>
         {renderText()}
-      </p>
+      </Component>
 
       {tooltip && (
         <div
+          ref={tooltipRef}
           className="absolute bg-black text-white text-xs px-3 py-2 rounded shadow-lg flex items-center gap-2 z-50"
           style={{
             top: tooltip.y + window.scrollY,
@@ -535,13 +567,13 @@ export default function HighlightableText({ text, partNumber }: HighlightableTex
             transform: "translate(-50%, -100%)",
           }}
         >
-          <span>{isHighlighted ? "KaldÄ±rÄ±lsÄ±n mÄ±?" : "VurgulansÄ±n mÄ±?"}</span>
+          <span>{isHighlighted ? `Kald\u0131r\u0131ls\u0131n m\u0131?` : `Vurgulans\u0131n m\u0131?`}</span>
           <Button
             size="sm"
             className="bg-yellow-400 text-black hover:bg-yellow-500"
             onClick={handleHighlight}
           >
-            {isHighlighted ? "KaldÄ±r" : "Vurgula"}
+            {isHighlighted ? `Kald\u0131r` : `Vurgula`}
           </Button>
           {isHighlighted && (
             <Button
@@ -592,12 +624,12 @@ export default function HighlightableText({ text, partNumber }: HighlightableTex
       <Dialog open={!!noteDialog} onOpenChange={(open) => !open && setNoteDialog(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Not Ekle/DÃ¼zenle</DialogTitle>
+          <DialogTitle>{`Not Ekle/D\u00fczenle`}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <Textarea
               id="highlight-note-textarea"
-              placeholder="Notunuzu buraya yazÄ±n..."
+              placeholder={`Notunuzu buraya yaz\u0131n...`}
               defaultValue={noteDialog?.note || ""}
               className="min-h-[100px]"
               autoFocus
@@ -620,7 +652,7 @@ export default function HighlightableText({ text, partNumber }: HighlightableTex
               variant="outline"
               className="border-gray-300 text-gray-700 hover:bg-gray-50"
             >
-              Ä°ptal
+              {`\u0130ptal`}
             </Button>
             <Button 
               size="sm" 
@@ -632,7 +664,6 @@ export default function HighlightableText({ text, partNumber }: HighlightableTex
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </Wrapper>
   );
 }
-

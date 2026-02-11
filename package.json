@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "check": "npm run build",
+    "check:full": "npm run lint && npm run build",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { toast } from "@/utils/toast";
 import { Send, AlertCircle } from "lucide-react";
 
@@ -45,35 +45,34 @@ const HomePricing = () => {
   };
 
   return (
-    <section id="contact" className="py-20 bg-white border-t border-gray-100">
+    <section id="contact" className="py-16 sm:py-20 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Telegram / Hızlı Destek Barı */}
         <div className="max-w-4xl mx-auto">
-          <div className="relative overflow-hidden rounded-2xl bg-white border-2 border-red-500 p-8 sm:p-10 shadow-xl transition-transform hover:scale-[1.005] duration-300">
+          <div className="relative overflow-hidden rounded-2xl bg-white border border-gray-200 p-7 sm:p-8 shadow-sm">
 
             {/* Arka plan dekoru (Hafif Kırmızı Blur) */}
-            <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-red-100 opacity-50 rounded-full blur-2xl pointer-events-none"></div>
-            <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-24 h-24 bg-red-100 opacity-50 rounded-full blur-2xl pointer-events-none"></div>
+            <div className="absolute top-0 right-0 -mt-6 -mr-6 w-24 h-24 bg-red-50 opacity-70 rounded-full blur-2xl pointer-events-none"></div>
 
-            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
 
               {/* Sol Taraf: Metin */}
               <div className="text-center md:text-left text-gray-900 md:w-1/2">
-                <div className="flex items-center justify-center md:justify-start gap-3 mb-3">
+                <div className="flex items-center justify-center md:justify-start gap-3 mb-2.5">
                   <div className="p-2.5 bg-red-100 rounded-xl">
                     <AlertCircle className="w-6 h-6 text-red-600" />
                   </div>
-                  <h4 className="font-bold text-xl tracking-tight">Yardıma mı ihtiyacınız var?</h4>
+                  <h4 className="font-semibold text-lg sm:text-xl tracking-tight">Yardıma mı ihtiyacınız var?</h4>
                 </div>
-                <p className="text-gray-600 text-sm leading-relaxed font-medium pl-1">
-                  Ödeme, paketler veya teknik konularla ilgili sorularınızı direkt buradan yazabilirsiniz. Yöneticilerimiz anında yanıtlayacaktır.
+                <p className="text-gray-600 text-sm leading-relaxed pl-1">
+                  Ödeme, kredi satın alma ve teknik konularla ilgili sorularınızı buradan iletebilirsiniz. Test sırasında bir sorun yaşadıysanız detayları yazın; uygun durumlarda test hakkınız yeniden tanımlanabilir. Yöneticilerimiz en kısa sürede yanıt verir.
                 </p>
               </div>
 
               {/* Sağ Taraf: Input */}
               <div className="w-full md:w-1/2">
-                <div className="flex items-center bg-gray-50 border border-gray-200 rounded-full p-1.5 pl-5 focus-within:border-red-500 focus-within:ring-4 focus-within:ring-red-500/20 transition-all duration-300">
+                <div className="flex items-center bg-gray-50 border border-gray-200 rounded-full p-1.5 pl-5 focus-within:border-red-500 focus-within:ring-2 focus-within:ring-red-500/20 transition-all duration-300">
                   <input
                     type="text"
                     placeholder="Sorunuzu buraya yazın..."
@@ -85,7 +84,7 @@ const HomePricing = () => {
                   <button
                     onClick={handleSendFromPricing}
                     disabled={isSending || !pricingMessage.trim()}
-                    className="flex-shrink-0 w-11 h-11 bg-red-600 rounded-full flex items-center justify-center text-white transition-all hover:bg-red-700 disabled:opacity-70 disabled:cursor-not-allowed hover:scale-105 active:scale-95 shadow-md"
+                    className="flex-shrink-0 w-11 h-11 bg-red-600 rounded-full flex items-center justify-center text-white transition-colors hover:bg-red-700 disabled:opacity-70 disabled:cursor-not-allowed shadow-sm"
                   >
                     {isSending ? (
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -105,3 +104,5 @@ const HomePricing = () => {
 };
 
 export default HomePricing;
+
+

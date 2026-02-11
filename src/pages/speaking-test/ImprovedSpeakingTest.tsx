@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+﻿import { useEffect, useRef, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { overallTestFlowStore, overallTestTokenStore } from "@/services/overallTest.service"
 import { motion, AnimatePresence } from "framer-motion"
@@ -53,8 +53,8 @@ interface Recording {
 const RECORD_SECONDS_PER_QUESTION = 30
 const sectionAudios: Record<number, string> = {
   1: "/1.1.mp3",
-  2: "/2..mp3",
-  3: "/3..mp3",
+  2: "/2.mp3",
+  3: "/3.mp3",
 }
 
 // Static section descriptions
@@ -131,9 +131,16 @@ export default function ImprovedSpeakingTest() {
   // preparation timer (seconds)
   const [prepSeconds, setPrepSeconds] = useState<number>(0)
   const [isPrepRunning, setIsPrepRunning] = useState(false)
+  const [introCountdown, setIntroCountdown] = useState<number | null>(null)
+  const [showSkipConfirm, setShowSkipConfirm] = useState(false)
+  const INTRO_COUNTDOWN_SECONDS = 10
+  const introCountdownRef = useRef<NodeJS.Timeout | null>(null)
   
   // instruction state
   const [completedInstructions] = useState<Set<string>>(new Set())
+
+  const INSTRUCTION_VOLUME = 0.6
+  const START_SOUND_VOLUME = 0.6
 
 
 
@@ -156,6 +163,9 @@ export default function ImprovedSpeakingTest() {
   const autoAdvanceRef = useRef<string | null>(null)
   const autoStartKeyRef = useRef<string | null>(null)
   const prepStartedKeyRef = useRef<string | null>(null)
+  const skipToNextSectionRef = useRef<boolean>(false)
+  const skipToNextQuestionRef = useRef<boolean>(false)
+  const skipStoreEmptyRef = useRef<boolean>(false)
   // Guard to ensure section instruction audio plays only once per section
   const instructionPlayStartedRef = useRef<boolean>(false)
   const lastInstructionSectionRef = useRef<string | null>(null)
@@ -198,10 +208,12 @@ export default function ImprovedSpeakingTest() {
     startSoundRef.current = new Audio(
       "/start.wav",
     )
+    startSoundRef.current.volume = START_SOUND_VOLUME
     // Use bell sound for when user stops speaking
     endSoundRef.current = new Audio(
       "/bell-98033.mp3"
     )
+    endSoundRef.current.volume = 0.5
     questionSoundRef.current = new Audio(
       "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAACAgICAf39/f39/f39/f39/f39/gICAf39/f39/f39/f39/f39/gICAf39/f39/f4CAgICAgH9/f39/f39/gICAf39/f39/f39/f39/f4CAgICAf39/f39/f39/"
     )
@@ -231,6 +243,8 @@ export default function ImprovedSpeakingTest() {
         el.currentTime = 0
         console.log(`Playing ${type} sound`)
         el.play().catch((error) => {
+          // This happens when play() is interrupted by a pause() during rapid state transitions.
+          if (error?.name === "AbortError") return
           console.error(`Error playing ${type} sound:`, error)
         })
       } else {
@@ -353,7 +367,7 @@ export default function ImprovedSpeakingTest() {
 
   // Auto-advance guard: avoid showing empty question frames in PART1 transitions
   useEffect(() => {
-    if (currentSection?.type === "PART1" && !currentQuestion) {
+    if (currentSection?.type === "PART1" && !currentQuestion && !showSectionDescription) {
       const key = `${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
       if (autoAdvanceRef.current !== key) {
         autoAdvanceRef.current = key
@@ -365,11 +379,11 @@ export default function ImprovedSpeakingTest() {
     } else {
       autoAdvanceRef.current = null
     }
-  }, [currentSection?.type, currentQuestion, currentSectionIndex, currentSubPartIndex, currentQuestionIndex])
+  }, [currentSection?.type, currentQuestion, currentSectionIndex, currentSubPartIndex, currentQuestionIndex, showSectionDescription])
 
   // Play instruction audio in background when section description is shown
   useEffect(() => {
-    if (showSectionDescription && currentSection && micChecked && !isPlayingInstructions) {
+    if (showSectionDescription && currentSection && micChecked && !isPlayingInstructions && introCountdown === null) {
       // Get instruction for current section/subpart
       const instruction = shouldShowInstruction(currentSectionIndex, currentSubPartIndex)
       
@@ -390,6 +404,7 @@ export default function ImprovedSpeakingTest() {
         // Play instruction audio directly
         console.log("Loading audio from path:", instruction.audioPath)
         const audio = new Audio(instruction.audioPath)
+        audio.volume = INSTRUCTION_VOLUME
         audioRef.current = audio
         setIsPlayingInstructions(true)
         instructionPlayStartedRef.current = true
@@ -417,19 +432,7 @@ export default function ImprovedSpeakingTest() {
           console.log("Audio ended:", instruction.audioPath)
           setIsPlayingInstructions(false)
           instructionPlayStartedRef.current = false
-          // Start the section after audio ends
-          setShowSectionDescription(false)
-          resetPerQuestionState()
-          playSound("question")
-          // Start first question based on section type
-          // Don't start preparation here - let TTS play first, then preparation will start after TTS ends
-          // For sections without TTS, preparation will start in the TTS effect's onerror handler
-          if (currentSection.type === "PART1" || currentSection.type === "PART2" || currentSection.type === "PART3") {
-            // TTS will handle starting preparation after it finishes
-            // If no TTS, the TTS effect will handle it
-          } else {
-            startRecording(undefined, true)
-          }
+          startIntroCountdown()
         }
         
         audio.play().catch((error) => {
@@ -455,6 +458,7 @@ export default function ImprovedSpeakingTest() {
             } catch {}
           }
           const audio = new Audio(src)
+          audio.volume = INSTRUCTION_VOLUME
           audioRef.current = audio
           setIsPlayingInstructions(true)
           instructionPlayStartedRef.current = true
@@ -462,19 +466,7 @@ export default function ImprovedSpeakingTest() {
           audio.onended = () => {
             setIsPlayingInstructions(false)
             instructionPlayStartedRef.current = false
-            // Start the section after audio ends
-            setShowSectionDescription(false)
-            resetPerQuestionState()
-            playSound("question")
-            // Start first question based on section type
-            // Don't start preparation here - let TTS play first, then preparation will start after TTS ends
-            // For sections without TTS, preparation will start in the TTS effect's onerror handler
-            if (currentSection.type === "PART1" || currentSection.type === "PART2" || currentSection.type === "PART3") {
-              // TTS will handle starting preparation after it finishes
-              // If no TTS, the TTS effect will handle it
-            } else {
-              startRecording(undefined, true)
-            }
+            startIntroCountdown()
           }
           audio.onerror = () => {
             setIsPlayingInstructions(false)
@@ -485,12 +477,20 @@ export default function ImprovedSpeakingTest() {
         }
       }
     }
-  }, [showSectionDescription, currentSection, micChecked, isPlayingInstructions, currentSectionIndex, currentSubPartIndex])
+  }, [showSectionDescription, currentSection, micChecked, isPlayingInstructions, currentSectionIndex, currentSubPartIndex, introCountdown])
 
   // Play TTS audio when a new question becomes active (outside instructions)
   // After TTS ends, start preparation timer
   useEffect(() => {
-    if (!showSectionDescription && currentSection && !isPlayingInstructions && !isRecording && !isPrepRunning && !isPlayingTTS) {
+    if (
+      !showSectionDescription &&
+      currentSection &&
+      !isPlayingInstructions &&
+      !isRecording &&
+      !isPrepRunning &&
+      !isPlayingTTS &&
+      introCountdown === null
+    ) {
       const key = `${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
       
       // If preparation already started for this question, skip
@@ -547,7 +547,7 @@ export default function ImprovedSpeakingTest() {
         startPreparationAfterTTS()
       }
     }
-  }, [currentSectionIndex, currentSubPartIndex, currentQuestionIndex, showSectionDescription, isPlayingInstructions, currentQuestion, isRecording, isPrepRunning, isPlayingTTS, currentSection])
+  }, [currentSectionIndex, currentSubPartIndex, currentQuestionIndex, showSectionDescription, isPlayingInstructions, currentQuestion, isRecording, isPrepRunning, isPlayingTTS, currentSection, introCountdown])
 
   // Helper function to start preparation after TTS (or immediately if no TTS)
   const startPreparationAfterTTS = () => {
@@ -641,9 +641,52 @@ export default function ImprovedSpeakingTest() {
   const addExamBodyClass = () => {
     try {
       document.body.classList.add("exam-mode")
-      // optionally lock scrolling
-      document.documentElement.style.overflow = "hidden"
+      // Allow scrolling on speaking test pages (mobile should scroll when content overflows)
+      const isMobile = window.matchMedia("(max-width: 640px)").matches
+      document.documentElement.style.overflow = isMobile ? "auto" : "hidden"
+      document.body.style.overflowY = isMobile ? "auto" : "hidden"
     } catch { }
+  }
+
+  const proceedAfterInstruction = () => {
+    setShowSectionDescription(false)
+    resetPerQuestionState()
+    playSound("question")
+    if (currentSection?.type === "PART1" || currentSection?.type === "PART2" || currentSection?.type === "PART3") {
+      // TTS will handle starting preparation after it finishes
+      // If no TTS, the TTS effect will handle it
+    } else {
+      startRecording(undefined, true)
+    }
+  }
+
+  const skipInstructionAndProceed = () => {
+    stopAllAudio()
+    setIsPlayingInstructions(false)
+    proceedAfterInstruction()
+  }
+
+  const startIntroCountdown = () => {
+    // Prevent double-start
+    if (introCountdownRef.current) {
+      clearInterval(introCountdownRef.current)
+      introCountdownRef.current = null
+    }
+    setIntroCountdown(INTRO_COUNTDOWN_SECONDS)
+    introCountdownRef.current = setInterval(() => {
+      setIntroCountdown((prev) => {
+        if (prev === null) return prev
+        if (prev <= 1) {
+          if (introCountdownRef.current) {
+            clearInterval(introCountdownRef.current)
+            introCountdownRef.current = null
+          }
+          proceedAfterInstruction()
+          return null
+        }
+        return prev - 1
+      })
+    }, 1000)
   }
   const removeExamBodyClass = () => {
     try {
@@ -652,9 +695,13 @@ export default function ImprovedSpeakingTest() {
       if (!hasActiveOverallTest) {
         document.body.classList.remove("exam-mode")
         document.documentElement.style.overflow = ""
+        document.body.style.overflowY = ""
       } else {
         // Ensure exam-mode stays active for next test
         document.body.classList.add("exam-mode")
+        const isMobile = window.matchMedia("(max-width: 640px)").matches
+        document.documentElement.style.overflow = isMobile ? "auto" : "hidden"
+        document.body.style.overflowY = isMobile ? "auto" : "hidden"
       }
     } catch { }
   }
@@ -696,6 +743,24 @@ export default function ImprovedSpeakingTest() {
     }
   }
 
+  const getCurrentAnswerKey = () => {
+    let key = currentQuestion?.id
+    if (!key && currentSection && currentSection.questions && currentSection.questions.length > 0 && currentSection.questions[currentQuestionIndex]) {
+      key = currentSection.questions[currentQuestionIndex].id
+    }
+    if (!key && currentSection?.subParts?.[currentSubPartIndex]?.questions && currentSection?.subParts?.[currentSubPartIndex]?.questions
+      ?.length > 0) {
+      const sortedQuestions = [...currentSection?.subParts?.[currentSubPartIndex]?.questions || []].sort((a, b) => a.order - b.order)
+      if (sortedQuestions[currentQuestionIndex]) {
+        key = sortedQuestions[currentQuestionIndex].id
+      }
+    }
+    if (!key) {
+      key = currentSection?.id || `${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
+    }
+    return key
+  }
+
   // recording controls
   const startRecording = async (durationSeconds?: number, allowOverride: boolean = false) => {
     try {
@@ -731,61 +796,65 @@ export default function ImprovedSpeakingTest() {
         const blob = new Blob(chunksRef.current, { type: supported ? "audio/webm;codecs=opus" : "audio/webm" })
         chunksRef.current = []
         const duration = await getBlobDuration(blob)
-        // Use question id when available, with better fallback logic
-        let key = currentQuestion?.id
-        if (!key && currentSection && currentSection.questions && currentSection.questions.length > 0 && currentSection.questions[currentQuestionIndex]) {
-          key = currentSection.questions[currentQuestionIndex].id
-        }
-        if (!key && currentSection?.subParts?.[currentSubPartIndex]?.questions && currentSection?.subParts?.[currentSubPartIndex]?.questions
-          ?.length > 0) {
-          const sortedQuestions = [...currentSection?.subParts?.[currentSubPartIndex]?.questions || []].sort((a, b) => a.order - b.order)
-          if (sortedQuestions[currentQuestionIndex]) {
-            key = sortedQuestions[currentQuestionIndex].id
-          }
-        }
-        if (!key) {
-          key = currentSection?.id || `${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
-        }
+        const key = getCurrentAnswerKey()
         console.log(`🎤 Recording saved with key: ${key} for question:`, currentQuestion?.id || "unknown")
         const rec: Recording = { blob, duration, questionId: key }
         setRecordings((prev) => new Map(prev).set(key, rec))
 
-        // Transcribe immediately and store text answer
-        setIsProcessingSpeechToText(true)
-        try {
-          const stt = await speechToTextService.convertAudioToText(blob)
-          let text = ""
-          if (stt.success && stt.text) {
-            text = stt.text.trim()
+        if (skipStoreEmptyRef.current) {
+          skipStoreEmptyRef.current = false
+          setAnswers(prev => new Map(prev).set(key, { text: "", duration }))
+        } else {
+          // Transcribe immediately and store text answer
+          setIsProcessingSpeechToText(true)
+          try {
+            const stt = await speechToTextService.convertAudioToText(blob)
+            let text = ""
+            if (stt.success && stt.text) {
+              text = stt.text.trim()
+            }
+            // Only use placeholder if text is actually empty
+            if (!text) {
+              text = "[Ses metne dönüştürülemedi]"
+            }
+            console.log(`💾 Saving answer for question ${key}:`, text.substring(0, 50))
+            setAnswers(prev => new Map(prev).set(key, { text, duration }))
+          } catch (error) {
+            console.error("Error converting speech to text:", error)
+            setAnswers(prev => new Map(prev).set(key, { text: "[Ses metne dönüştürülemedi]", duration }))
+          } finally {
+            setIsProcessingSpeechToText(false)
           }
-          // Only use placeholder if text is actually empty
-          if (!text) {
-            text = "[Ses metne dönüştürülemedi]"
-          }
-          console.log(`💾 Saving answer for question ${key}:`, text.substring(0, 50))
-          setAnswers(prev => new Map(prev).set(key, { text, duration }))
-        } catch (error) {
-          console.error("Error converting speech to text:", error)
-          setAnswers(prev => new Map(prev).set(key, { text: "[Ses metne dönüştürülemedi]", duration }))
-        } finally {
-          setIsProcessingSpeechToText(false)
         }
         
-        // Automatically advance to next question after recording completes
-        if (currentSection?.type === "PART1") {
-          console.log(`🎯 PART1: Recording finished for question ${currentQuestionIndex + 1}, auto-advancing in 800ms...`)
+        // If user requested to skip to next section, do it after saving
+        if (skipToNextSectionRef.current) {
+          skipToNextSectionRef.current = false
           setTimeout(() => {
-            console.log(`🚀 Calling nextQuestion(true) for auto-advance`)
+            advanceToNextSection()
+          }, 300)
+        } else if (skipToNextQuestionRef.current) {
+          skipToNextQuestionRef.current = false
+          setTimeout(() => {
             nextQuestion(true)
-          }, 800) // Slightly longer delay to ensure bell sound finishes
+          }, 300)
         } else {
-          // For other parts, use shorter delay
-          console.log(`🎯 Other part: Recording finished, auto-advancing in 600ms...`)
-          console.log(`🎯 Current section type: ${currentSection?.type}`)
-          setTimeout(() => {
-            console.log(`🚀 About to call nextQuestion(true) for section ${currentSection?.type}`)
-            nextQuestion(true)
-          }, 600)
+          // Automatically advance to next question after recording completes
+          if (currentSection?.type === "PART1") {
+            console.log(`🎯 PART1: Recording finished for question ${currentQuestionIndex + 1}, auto-advancing in 800ms...`)
+            setTimeout(() => {
+              console.log(`🚀 Calling nextQuestion(true) for auto-advance`)
+              nextQuestion(true)
+            }, 800) // Slightly longer delay to ensure bell sound finishes
+          } else {
+            // For other parts, use shorter delay
+            console.log(`🎯 Other part: Recording finished, auto-advancing in 600ms...`)
+            console.log(`🎯 Current section type: ${currentSection?.type}`)
+            setTimeout(() => {
+              console.log(`🚀 About to call nextQuestion(true) for section ${currentSection?.type}`)
+              nextQuestion(true)
+            }, 600)
+          }
         }
         cleanupMedia()
       }
@@ -838,6 +907,64 @@ export default function ImprovedSpeakingTest() {
     setIsPlayingTTS(false)
     // Clear preparation key to allow next question to start preparation after TTS
     prepStartedKeyRef.current = null
+  }
+
+  const advanceToNextSection = () => {
+    if (!testData || !currentSection) return
+    if (currentSectionIndex < (testData.sections?.length ?? 0) - 1) {
+      console.log(`➡️ Skipping to next section ${currentSectionIndex + 2}`)
+      setCurrentSectionIndex((i) => i + 1)
+      setCurrentSubPartIndex(0)
+      setCurrentQuestionIndex(0)
+      setShowSectionDescription(true)
+      resetPerQuestionState()
+      prepStartedKeyRef.current = null
+      autoStartKeyRef.current = null
+    } else {
+      setIsTestComplete(true)
+    }
+  }
+
+  const skipSectionWithConfirm = () => {
+    setShowSkipConfirm(true)
+  }
+
+  const confirmSkipSection = () => {
+    setShowSkipConfirm(false)
+    stopAllAudio()
+    setIsPlayingInstructions(false)
+    if (introCountdownRef.current) {
+      clearInterval(introCountdownRef.current)
+      introCountdownRef.current = null
+    }
+    setIntroCountdown(null)
+    if (prepIntervalRef.current) {
+      window.clearInterval(prepIntervalRef.current)
+      prepIntervalRef.current = null
+    }
+    setIsPrepRunning(false)
+
+    if (isRecording) {
+      stopRecording()
+      return
+    }
+
+    if (currentSection?.type === "PART1" && currentSubPartIndex === 0) {
+      setCurrentSubPartIndex(1)
+      setCurrentQuestionIndex(0)
+      setShowSectionDescription(true)
+      resetPerQuestionState()
+      prepStartedKeyRef.current = null
+      autoStartKeyRef.current = null
+      return
+    }
+
+    skipToNextSectionRef.current = true
+    advanceToNextSection()
+  }
+
+  const cancelSkipSection = () => {
+    setShowSkipConfirm(false)
   }
 
   const nextQuestion = (force: boolean = false) => {
@@ -1061,6 +1188,47 @@ export default function ImprovedSpeakingTest() {
     setIsSubmitting(true)
 
     try {
+      const isMeaningfulText = (value: unknown) => {
+        if (typeof value !== "string") return false
+        const trimmed = value.trim()
+        return (
+          trimmed.length > 0 &&
+          trimmed !== "[Cevap bulunamadı]" &&
+          trimmed !== "[Ses metne dönüştürülemedi]"
+        )
+      }
+
+      const ensureTranscriptsReady = async () => {
+        const transcriptByQid: Record<string, string> = {}
+
+        // Start from any already transcribed answers
+        for (const [qid, v] of Array.from(answers.entries())) {
+          if (isMeaningfulText(v?.text)) transcriptByQid[qid] = String(v.text).trim()
+        }
+
+        // Fill gaps using in-memory recordings (Blob). This is critical because sessionStorage cannot persist blobs.
+        for (const [qid, rec] of Array.from(_recordings.entries())) {
+          if (transcriptByQid[qid]) continue
+          try {
+            const stt = await speechToTextService.convertAudioToText(rec.blob)
+            if (isMeaningfulText(stt.text)) {
+              transcriptByQid[qid] = String(stt.text).trim()
+              setAnswers((prev) => new Map(prev).set(qid, { text: transcriptByQid[qid], duration: rec.duration }))
+            }
+          } catch (e) {
+            console.error("ensureTranscriptsReady speech-to-text failed:", e)
+          }
+        }
+
+        return transcriptByQid
+      }
+
+      const transcriptByQid = await ensureTranscriptsReady()
+      if (Object.keys(transcriptByQid).length === 0) {
+        // Allow empty submission; backend will score as 0 and return a result page.
+        toast.message("Konuşma testi boş gönderildi (0 puan).")
+      }
+
       const answersEntries = Array.from(answers.entries())
       console.log("📝 Submitting test with answers:", answersEntries.map(([qid, v]) => ({ qid, text: v.text?.substring(0, 50) })))
 
@@ -1074,16 +1242,13 @@ export default function ImprovedSpeakingTest() {
       )
 
       // Keep a simple questionId -> transcript map for direct submission
-      const answerTextRecord = answersEntries.reduce<Record<string, string>>((acc, [qid, v]) => {
-        const cleaned = v?.text?.trim()
-        // Only use placeholder if text is truly empty or just whitespace
-        acc[qid] = cleaned || "[Cevap bulunamadı]"
-        return acc
-      }, {})
+      // Persist transcripts (not placeholders) for reliable submit-all flow.
+      const answerTextRecord = transcriptByQid
 
       const answersData = {
         testId: testData.id,
         answers: answersObj,
+        transcripts: answerTextRecord,
         sections: testData.sections,
         timestamp: new Date().toISOString()
       }
@@ -1157,7 +1322,6 @@ export default function ImprovedSpeakingTest() {
       const { readingSubmissionService } = await import("@/services/readingTest.service");
       const { listeningSubmissionService } = await import("@/services/listeningTest.service");
       const { writingSubmissionService } = await import("@/services/writingSubmission.service");
-      const axiosPrivate = (await import("@/config/api")).default;
       
       // Submit reading test - look for reading answers from any test
       const readingAnswersKeys = Object.keys(sessionStorage).filter(key => key.startsWith('reading_answers_'));
@@ -1208,160 +1372,141 @@ export default function ImprovedSpeakingTest() {
         if (writingAnswers) {
           const writingData = JSON.parse(writingAnswers);
           console.log("Submitting writing test:", writingData.testId, "with answers:", writingData.answers);
+          const overallToken = overallTestTokenStore.getByTestId(writingData.testId);
+          if (!overallToken) {
+            console.warn("Skipping writing submit-all; overall token not found for testId:", writingData.testId);
+            continue;
+          }
+
+          const getWritingAnswer = (questionId: string, sectionIndex: number, fallbackId?: string) => {
+            const direct = writingData.answers?.[questionId];
+            if (typeof direct === "string") return direct;
+            const keys = [
+              `${sectionIndex}-${questionId}`,
+              `${sectionIndex}-${fallbackId ?? ""}`,
+              fallbackId ?? "",
+            ].filter(Boolean);
+            for (const k of keys) {
+              const v = writingData.answers?.[k];
+              if (typeof v === "string") return v;
+            }
+            return "";
+          };
+
           const payload = {
             writingTestId: writingData.testId,
-            sections: writingData.sections.map((section: any, sectionIndex: number) => {
-              const sectionData = {
+            sessionToken: overallToken,
+            sections: (writingData.sections || []).map((section: any, sectionIndex: number) => {
+              const sectionData: any = {
                 description: section.title || section.description || `Section ${section.order || 1}`,
-                answers: [] as any[],
-                subParts: [] as any[],
               };
-              if (section.subParts && section.subParts.length > 0) {
-                sectionData.subParts = section.subParts.map((subPart: any, subPartIndex: number) => {
-                  const questionId = subPart.questions?.[0]?.id || subPart.id;
-                  const userAnswer = writingData.answers[`${sectionIndex}-${subPartIndex}-${subPart.id}`] || "";
+
+              if (Array.isArray(section.subParts) && section.subParts.length > 0) {
+                sectionData.subParts = section.subParts.map((subPart: any) => {
+                  const questions = Array.isArray(subPart.questions) ? subPart.questions : [];
+                  const answersArr = questions
+                    .map((q: any) => {
+                      const qid = q?.id || q?.questionId;
+                      if (!qid) return null;
+                      return { questionId: qid, userAnswer: getWritingAnswer(qid, sectionIndex, subPart?.id) };
+                    })
+                    .filter(Boolean);
                   return {
-                    description: subPart.label || subPart.description,
-                    answers: [{ questionId, userAnswer }],
+                    description: subPart.label || subPart.description || "",
+                    answers: answersArr,
                   };
                 });
               }
-              if (section.questions && section.questions.length > 0) {
-                let questionAnswer = "";
-                const possibleKeys = [
-                  `${sectionIndex}-0-${section.questions[0].id}`,
-                  `${sectionIndex}-${section.questions[0].id}`,
-                  `${sectionIndex}-${section.id}`,
-                  section.questions[0].id,
-                  section.id,
-                ];
-                for (const key of possibleKeys) {
-                  if (writingData.answers[key]) {
-                    questionAnswer = writingData.answers[key];
-                    break;
-                  }
-                }
-                sectionData.answers = [{ questionId: section.questions[0].id, userAnswer: questionAnswer }];
+
+              if (Array.isArray(section.questions) && section.questions.length > 0) {
+                sectionData.answers = section.questions
+                  .map((q: any) => {
+                    const qid = q?.id || q?.questionId;
+                    if (!qid) return null;
+                    return { questionId: qid, userAnswer: getWritingAnswer(qid, sectionIndex, section?.id) };
+                  })
+                  .filter(Boolean);
               }
+
               return sectionData;
             }),
           };
-          await writingSubmissionService.create(payload);
+
+          await writingSubmissionService.create(payload as any);
         }
       }
       
       // Submit speaking test - look for speaking answers from any test
-      const speakingAnswersKeys = Object.keys(sessionStorage).filter(key => key.startsWith('speaking_answers_'));
+      const speakingAnswersKeys = Object.keys(sessionStorage).filter(key => key.startsWith("speaking_answers_"));
       for (const key of speakingAnswersKeys) {
         const speakingAnswers = sessionStorage.getItem(key);
-        if (speakingAnswers) {
-          const speakingData = JSON.parse(speakingAnswers);
-          console.log("Submitting speaking test:", speakingData.testId);
-          console.log("Available answers:", speakingData.answers);
-          console.log("Sections:", speakingData.sections);
-          
-          const answerMap = new Map<string, { text: string; duration: number }>();
-          if (speakingData.answers) {
-            for (const [qid, val] of Object.entries(speakingData.answers)) {
-              const v: any = val;
-              const answerText = v?.text?.trim();
-              // Only use the answer if it's not empty and not the placeholder
-              if (answerText && answerText !== "[Cevap bulunamadı]" && answerText !== "[Ses metne dönüştürülemedi]") {
-                answerMap.set(qid, { text: answerText, duration: Number(v?.duration) || 0 });
-              } else if (answerText) {
-                // Keep the placeholder if that's what was saved
-                answerMap.set(qid, { text: answerText, duration: Number(v?.duration) || 0 });
-              }
-            }
-          } else if (speakingData.recordings) {
-            // Handle recordings if answers are not available
-            for (const [qid, rec] of Object.entries(speakingData.recordings)) {
-              const recording: any = rec;
-              try {
-                const fd = new FormData();
-                fd.append("audio", recording.blob, "recording.webm");
-                const res = await axiosPrivate.post("/api/speaking-submission/speech-to-text", fd, {
-                  headers: { "Content-Type": "multipart/form-data" },
-                  timeout: 30000,
-                });
-                const rawText = res.data?.text ?? res.data?.transcript;
-                const text = rawText?.trim() || "[Ses metne dönüştürülemedi]";
-                answerMap.set(qid, { text, duration: recording.duration || 0 });
-              } catch (e) {
-                answerMap.set(qid, { text: "[Ses metne dönüştürülemedi]", duration: recording.duration || 0 });
-              }
+        if (!speakingAnswers) continue;
+
+        const speakingData = JSON.parse(speakingAnswers);
+        const answerTextRecord: Record<string, string> = {};
+        const isMeaningfulText = (value: unknown) => {
+          if (typeof value !== "string") return false;
+          const trimmed = value.trim();
+          return (
+            trimmed.length > 0 &&
+            trimmed !== "[Cevap bulunamadı]" &&
+            trimmed !== "[Ses metne dönüştürülemedi]"
+          );
+        };
+
+        // Prefer persisted transcript map if present.
+        if (speakingData.transcripts && typeof speakingData.transcripts === "object") {
+          for (const [qid, t] of Object.entries(speakingData.transcripts)) {
+            if (isMeaningfulText(t)) answerTextRecord[qid] = String(t).trim();
+          }
+        }
+
+        if (speakingData.answers && typeof speakingData.answers === "object") {
+          for (const [qid, val] of Object.entries(speakingData.answers)) {
+            const maybeObj: any = val;
+            const text = typeof val === "string" ? val : maybeObj?.text;
+            if (isMeaningfulText(text)) {
+              answerTextRecord[qid] = String(text).trim();
             }
           }
-          
-          console.log("Answer map after processing:", Array.from(answerMap.entries()));
-          
-          const parts = speakingData.sections.map((s: any) => {
-            const p: any = { description: s.description, image: "" };
-            if (s.subParts?.length) {
-              const subParts = s.subParts.map((sp: any) => {
-                const questions = sp.questions.map((q: any) => {
-                  // Try multiple ID formats to find the answer
-                  let a = answerMap.get(q.id);
-                  if (!a && q.questionId) {
-                    a = answerMap.get(q.questionId);
-                  }
-                  // If still not found, try to find by matching any key that contains the question ID
-                  if (!a) {
-                    for (const [key, value] of answerMap.entries()) {
-                      if (key.includes(q.id) || q.id.includes(key)) {
-                        a = value;
-                        break;
-                      }
-                    }
-                  }
-                  console.log(`Question ${q.id}: Found answer:`, a ? a.text : "NOT FOUND");
-                  return {
-                    questionId: q.id,
-                    userAnswer: a?.text ?? "[Cevap bulunamadı]",
-                    duration: a?.duration ?? 0,
-                  };
-                });
-                const duration = questions.reduce((acc: number, q: any) => acc + (q.duration || 0), 0);
-                return { image: sp.images?.[0] || "", duration, questions };
-              });
-              const duration = subParts.reduce((acc: number, sp: any) => acc + (sp.duration || 0), 0);
-              p.subParts = subParts;
-              p.duration = duration;
-            } else {
-              const questions = s.questions.map((q: any) => {
-                // Try multiple ID formats to find the answer
-                let a = answerMap.get(q.id);
-                if (!a && q.questionId) {
-                  a = answerMap.get(q.questionId);
-                }
-                // If still not found, try to find by matching any key that contains the question ID
-                if (!a) {
-                  for (const [key, value] of answerMap.entries()) {
-                    if (key.includes(q.id) || q.id.includes(key)) {
-                      a = value;
-                      break;
-                    }
-                  }
-                }
-                console.log(`Question ${q.id}: Found answer:`, a ? a.text : "NOT FOUND");
-                return {
-                  questionId: q.id,
-                  userAnswer: a?.text ?? "[Cevap bulunamadı]",
-                  duration: a?.duration ?? 0,
-                };
-              });
-              const duration = questions.reduce((acc: number, q: any) => acc + (q.duration || 0), 0);
-              p.questions = questions;
-              p.duration = duration;
-              if (s.type === "PART3") p.type = "DISADVANTAGE";
+        }
+
+        // If transcripts are missing (or placeholders), retry STT from in-memory recordings for the current test.
+        if (
+          Object.keys(answerTextRecord).length === 0 &&
+          testData?.id &&
+          speakingData.testId === testData.id &&
+          _recordings.size > 0
+        ) {
+          for (const [qid, rec] of _recordings.entries()) {
+            try {
+              const stt = await speechToTextService.convertAudioToText(rec.blob);
+              const rawText = stt.text ?? "";
+              if (isMeaningfulText(rawText)) {
+                answerTextRecord[qid] = String(rawText).trim();
+              }
+            } catch (e) {
+              console.error("Speech-to-text retry failed for submit-all:", e);
             }
-            return p;
-          });
-          
-          await speakingSubmissionService.submitSpeakingTest({
-            speakingTestId: speakingData.testId,
-            parts,
-          });
+          }
+        }
+
+        const formattedSubmission = speakingSubmissionService.formatSubmissionData(
+          speakingData,
+          answerTextRecord
+        );
+        const overallToken = overallTestTokenStore.getByTestId(speakingData.testId);
+        if (overallToken) {
+          formattedSubmission.sessionToken = overallToken;
+        }
+
+        if (!speakingSubmissionService.validateSubmissionData(formattedSubmission)) {
+          throw new Error("Konuşma testi için geçerli cevap bulunamadı.");
+        }
+
+        const submissionResult = await speakingSubmissionService.submitSpeakingTest(formattedSubmission);
+        if (!submissionResult.success) {
+          throw new Error(submissionResult.error || "Konuşma testi gönderilemedi.");
         }
       }
       
@@ -1381,8 +1526,8 @@ export default function ImprovedSpeakingTest() {
       navigate(`/overall-results/${overallId}`);
     } catch (error) {
       console.error("Error submitting all tests:", error);
-      // toast.error("Error submitting tests, but continuing to results...");
-      navigate(`/overall-results/${overallId}`);
+      toast.error("Testler gönderilirken hata oluştu. Lütfen tekrar deneyin.");
+      return;
     }
   }
 
@@ -1492,7 +1637,7 @@ export default function ImprovedSpeakingTest() {
   if (showSectionDescription && currentSection) {
     return (
       <motion.div
-        className="min-h-screen "
+        className="min-h-screen overflow-hidden"
         initial="initial"
         animate="animate"
       >
@@ -1500,6 +1645,58 @@ export default function ImprovedSpeakingTest() {
       <MicrophoneCheck onSuccess={() => setMicChecked(true)} />
     ) : (
       <>
+        {introCountdown !== null ? (
+          <div className="fixed inset-0 z-[9998] bg-white flex flex-col items-center justify-center text-center px-4">
+            <div className="relative w-32 h-32 sm:w-40 sm:h-40">
+              {(() => {
+                const radius = 60;
+                const circumference = 2 * Math.PI * radius;
+                const progress =
+                  introCountdown === null
+                    ? 0
+                    : (introCountdown / INTRO_COUNTDOWN_SECONDS);
+                const offset = circumference * (1 - progress);
+                return (
+                  <svg className="w-full h-full" viewBox="0 0 140 140">
+                    <circle
+                      cx="70"
+                      cy="70"
+                      r={radius}
+                      stroke="#fee2e2"
+                      strokeWidth="10"
+                      fill="none"
+                    />
+                    <circle
+                      cx="70"
+                      cy="70"
+                      r={radius}
+                      stroke="#ef4444"
+                      strokeWidth="10"
+                      fill="none"
+                      strokeLinecap="round"
+                      strokeDasharray={`${circumference}`}
+                      strokeDashoffset={`${offset}`}
+                      transform="rotate(-90 70 70)"
+                    />
+                  </svg>
+                );
+              })()}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-5xl sm:text-6xl font-bold text-red-600">
+                  {introCountdown}
+                </div>
+              </div>
+            </div>
+            <div className="mt-6 text-base sm:text-lg text-gray-600">
+              {"... saniye sonra ba\u015Flayacak."}
+            </div>
+            <div className="text-base sm:text-lg font-semibold text-gray-800">
+              {"Haz\u0131rlan\u0131n!"}
+            </div>
+            {/* Intro countdown: no skip button */}
+          </div>
+        ) : (
+          <>
         {!isExamMode && !isPlayingInstructions && (
           <motion.header
             className="sticky top-0 z-10 bg-white/80  border-b border-gray-100 shadow-sm"
@@ -1524,6 +1721,16 @@ export default function ImprovedSpeakingTest() {
             })()}
             isPlaying={isPlayingInstructions}
           />
+          <div className="mt-6 flex justify-center">
+            <button
+              onClick={skipInstructionAndProceed}
+              className="px-6 py-3 text-sm sm:text-base bg-white border-2 border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 font-bold transition-all duration-200"
+            >
+              Geç
+            </button>
+          </div>
+          </>
+        )}
       </>
     )}
       </motion.div>
@@ -1542,7 +1749,7 @@ export default function ImprovedSpeakingTest() {
 
   return (
     <motion.div
-      className="min-h-screen relative overflow-hidden"
+      className="min-h-screen relative overflow-hidden flex flex-col"
       initial="initial"
       animate="animate"
     >
@@ -1552,13 +1759,13 @@ export default function ImprovedSpeakingTest() {
       <div className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50 shadow-sm w-full">
         {/* Match horizontal padding with description block below */}
         <div className="px-2 sm:px-4">
-          <div className="flex justify-between items-center h-20 sm:h-24 gap-2">
+          <div className="relative flex flex-wrap justify-between items-center min-h-[4.5rem] sm:min-h-[6rem] gap-2">
             {/* Logo on left */}
             <div className="flex items-center flex-shrink-0">
               <img 
-                src="/logo.png" 
+                src="/logo11.svg" 
                 alt="TURKISHMOCK" 
-                className="h-24 sm:h-28 md:h-32 lg:h-36 xl:h-52 w-auto object-contain"
+                className="h-9 sm:h-10 md:h-12 w-auto object-contain"
                 onError={(e) => {
                   console.error("Logo failed to load");
                   (e.target as HTMLImageElement).style.display = 'none';
@@ -1567,17 +1774,17 @@ export default function ImprovedSpeakingTest() {
             </div>
 
             {/* Progress indicators on right - circular tabs with connectors */}
-            <div className="flex items-center flex-nowrap gap-0 flex-shrink min-w-0">
+            <div className="hidden sm:flex absolute left-1/2 -translate-x-1/2 items-center flex-wrap justify-center gap-1 sm:gap-2 min-w-0">
               {/* Section 1.1 */}
               <div className="flex items-center">
-                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-semibold text-sm sm:text-base transition-all shadow-md ${
+                <div className={`w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center font-semibold text-xs sm:text-sm md:text-base transition-all shadow-md ${
                   currentSectionIndex === 0 && currentSubPartIndex === 0
                     ? "bg-red-500 text-white"
                     : "bg-gray-200 text-gray-600"
                 }`}>
                   1.1
                 </div>
-                <div className={`w-6 sm:w-8 h-0.5 ${
+                <div className={`w-4 sm:w-6 md:w-8 h-0.5 ${
                   (currentSectionIndex > 0 || (currentSectionIndex === 0 && currentSubPartIndex > 0))
                     ? "bg-red-500"
                     : "bg-gray-300"
@@ -1586,7 +1793,7 @@ export default function ImprovedSpeakingTest() {
               
               {/* Section 1.2 */}
               <div className="flex items-center">
-                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-semibold text-sm sm:text-base transition-all shadow-md ${
+                <div className={`w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center font-semibold text-xs sm:text-sm md:text-base transition-all shadow-md ${
                   currentSectionIndex === 0 && currentSubPartIndex === 1
                     ? "bg-red-500 text-white"
                     : (currentSectionIndex > 0 || (currentSectionIndex === 0 && currentSubPartIndex > 1))
@@ -1595,7 +1802,7 @@ export default function ImprovedSpeakingTest() {
                 }`}>
                   1.2
                 </div>
-                <div className={`w-6 sm:w-8 h-0.5 ${
+                <div className={`w-4 sm:w-6 md:w-8 h-0.5 ${
                   currentSectionIndex > 0
                     ? "bg-red-500"
                     : "bg-gray-300"
@@ -1604,7 +1811,7 @@ export default function ImprovedSpeakingTest() {
               
               {/* Section 2 */}
               <div className="flex items-center">
-                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-semibold text-sm sm:text-base transition-all shadow-md ${
+                <div className={`w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center font-semibold text-xs sm:text-sm md:text-base transition-all shadow-md ${
                   currentSectionIndex === 1
                     ? "bg-red-500 text-white"
                     : currentSectionIndex > 1
@@ -1613,7 +1820,7 @@ export default function ImprovedSpeakingTest() {
                 }`}>
                   2
                 </div>
-                <div className={`w-6 sm:w-8 h-0.5 ${
+                <div className={`w-4 sm:w-6 md:w-8 h-0.5 ${
                   currentSectionIndex > 1
                     ? "bg-red-500"
                     : "bg-gray-300"
@@ -1622,7 +1829,7 @@ export default function ImprovedSpeakingTest() {
               
               {/* Section 3 */}
               <div className="flex items-center">
-                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-semibold text-sm sm:text-base transition-all shadow-md ${
+                <div className={`w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center font-semibold text-xs sm:text-sm md:text-base transition-all shadow-md ${
                   currentSectionIndex === 2
                     ? "bg-red-500 text-white"
                     : "bg-gray-200 text-gray-600"
@@ -1631,9 +1838,61 @@ export default function ImprovedSpeakingTest() {
                 </div>
               </div>
             </div>
+
+            {/* Mobile: show only current section */}
+            <div className="flex sm:hidden items-center justify-center flex-1">
+              <div className="px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 text-xs font-semibold">
+                {currentSectionIndex === 0
+                  ? (currentSubPartIndex === 0 ? "Bölüm 1.1" : "Bölüm 1.2")
+                  : currentSectionIndex === 1
+                  ? "Bölüm 2"
+                  : "Bölüm 3"}
+              </div>
+            </div>
+
+            <div className="flex items-center flex-shrink-0">
+              <button
+                onClick={skipSectionWithConfirm}
+                className="px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold transition-all duration-200"
+              >
+                Bölümü Geç
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      {showSkipConfirm && (
+        <div className="fixed inset-0 z-[10000] bg-black/50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white rounded-xl shadow-xl border border-gray-200 p-5 sm:p-6">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900">Bölümü Geç</h3>
+            <p className="mt-2 text-sm sm:text-base text-gray-600">
+              Bu bölümü geçmek istediğinize emin misiniz?
+            </p>
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                onClick={cancelSkipSection}
+                className="px-4 py-2 text-sm bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold"
+              >
+                Vazgeç
+              </button>
+              <button
+                onClick={confirmSkipSection}
+                className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold"
+              >
+                Geç
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {introCountdown !== null && (
+        <div className="fixed inset-0 z-[9998] bg-white flex items-center justify-center">
+          <div className="text-5xl sm:text-6xl font-bold text-gray-900">
+            {introCountdown}
+          </div>
+        </div>
+      )}
       {!isExamMode && (
         <motion.header
           className="sticky top-0 z-10 bg-white/80 backdrop-blur-xl border-b border-red-100 shadow-sm"
@@ -1692,7 +1951,7 @@ export default function ImprovedSpeakingTest() {
         </motion.header>
       )}
          {/* question rendering part */}
-     <main className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] px-2 sm:px-4 md:px-8 pb-4 sm:pb-6 md:pb-8">
+     <main className="flex flex-1 flex-col items-center justify-start sm:justify-center min-h-0 w-full px-2 sm:px-4 md:px-8 pt-4 sm:pt-6 md:pt-8 pb-28 sm:pb-20 safe-area-bottom overflow-y-auto overscroll-contain max-h-[calc(100dvh-5rem)] sm:max-h-none">
        <AnimatePresence mode="wait">
          <motion.div
            key={`${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`}
@@ -1711,7 +1970,7 @@ export default function ImprovedSpeakingTest() {
          </motion.div>
        </AnimatePresence>
 
-        {!isPlayingInstructions && currentSection?.subParts?.[currentSubPartIndex]?.images?.length ? (
+        {!isPlayingInstructions && currentSection?.type !== "PART2" && currentSection?.subParts?.[currentSubPartIndex]?.images?.length ? (
           <motion.div 
             className="mb-4 sm:mb-6 md:mb-8 w-full px-2 sm:px-4" 
             initial={{ opacity: 0, scale: 0.95 }} 
@@ -1773,15 +2032,47 @@ export default function ImprovedSpeakingTest() {
               className="mb-8 sm:mb-12 md:mb-16 lg:mb-20 px-2 sm:px-4"
             >
           {currentSection?.type === "PART2" ? (
-            <div className="max-w-3xl mx-auto bg-white p-3 sm:p-4 md:p-6 rounded-lg sm:rounded-xl">
-              <ul className="list-disc list-inside space-y-2 sm:space-y-3 text-black">
-                {(currentSection?.subParts?.[currentSubPartIndex]?.questions || currentSection?.questions || []).map((q) => (
-                  <li key={q.id} className="text-base sm:text-lg md:text-xl leading-relaxed break-words">
-                    {q.questionText}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            (() => {
+              const imgs = currentSection?.subParts?.[currentSubPartIndex]?.images || []
+              const questions = (currentSection?.subParts?.[currentSubPartIndex]?.questions || currentSection?.questions || [])
+              if (imgs.length > 0) {
+                return (
+                  <div className="w-full max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-[5fr_7fr] gap-5 sm:gap-7 md:gap-10 items-center">
+                    <div className="bg-white rounded-lg sm:rounded-xl border border-gray-200 shadow-sm p-2 sm:p-3 flex items-center justify-center md:justify-start">
+                      <img
+                        src={imgs[0]}
+                        alt="Soru görseli"
+                        className="w-full h-full object-contain max-h-[380px] md:max-h-[420px]"
+                        onError={(e) => {
+                          const el = e.target as HTMLImageElement
+                          el.src = "https://placehold.co/800x600?text=Gorsel+Yuklenemedi"
+                        }}
+                      />
+                    </div>
+                    <div className="px-2 sm:px-0 self-center">
+                      <ul className="list-disc list-inside space-y-2 sm:space-y-3 text-black">
+                        {questions.map((q) => (
+                          <li key={q.id} className="text-base sm:text-lg md:text-xl leading-relaxed break-words">
+                            {q.questionText}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )
+              }
+              return (
+                <div className="max-w-3xl mx-auto bg-white p-3 sm:p-4 md:p-6 rounded-lg sm:rounded-xl">
+                  <ul className="list-disc list-inside space-y-2 sm:space-y-3 text-black">
+                    {questions.map((q) => (
+                      <li key={q.id} className="text-base sm:text-lg md:text-xl leading-relaxed break-words">
+                        {q.questionText}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )
+            })()
           ) : currentSection?.type === "PART3" ? (
             <div className="w-full max-w-5xl mx-auto bg-white p-0 rounded-lg sm:rounded-xl overflow-hidden border border-gray-300 shadow-sm mb-4 sm:mb-6">
               {(() => {
@@ -1866,9 +2157,11 @@ export default function ImprovedSpeakingTest() {
                 {isPlayingTTS ? "Soru okunuyor..." : "Hazırlık süresi..."}
               </p>
               {isPrepRunning && (
-                <p className="text-2xl sm:text-3xl font-bold text-red-600 mt-2">
-                  {formatTime(prepSeconds)}
-                </p>
+                <>
+                  <p className="text-2xl sm:text-3xl font-bold text-red-600 mt-2">
+                    {formatTime(prepSeconds)}
+                  </p>
+                </>
               )}
             </motion.div>
           )
@@ -1916,7 +2209,7 @@ export default function ImprovedSpeakingTest() {
           </motion.div>
         )} */}
 
-        <div className="flex items-center gap-4 mt-8">
+        <div className="flex flex-wrap items-center gap-4 mt-8">
           {!isExamMode && (
             <motion.button
               initial="initial"
@@ -1993,3 +2286,6 @@ export default function ImprovedSpeakingTest() {
     </motion.div>
   )
 }
+
+
+

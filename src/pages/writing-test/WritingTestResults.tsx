@@ -94,6 +94,20 @@ export default function WritingTestResults() {
 
   // Extract data from the result structure
   const writingData = result.writing || result;
+  const rawAiFeedback =
+    writingData?.aiFeedback ??
+    writingData?.ai_feedback ??
+    writingData?.feedback ??
+    writingData?.assessment ??
+    null;
+  const aiFeedback =
+    rawAiFeedback && typeof rawAiFeedback === "object"
+      ? rawAiFeedback?.aiFeedback ??
+        rawAiFeedback?.ai_feedback ??
+        rawAiFeedback?.feedback ??
+        rawAiFeedback?.assessment ??
+        rawAiFeedback
+      : rawAiFeedback;
   
   // Extract scores from AI feedback or use defaults
   const extractScoreFromFeedback = (feedbackText: string) => {
@@ -125,14 +139,154 @@ export default function WritingTestResults() {
       .trim();
   };
 
+  const pickFirstText = (...values: any[]): string | undefined => {
+    for (const value of values) {
+      if (typeof value === "string" && value.trim()) {
+        return value.trim();
+      }
+    }
+    return undefined;
+  };
+
+  const extractSectionNarrative = (section: any): string | undefined => {
+    if (!section || typeof section !== "object") return undefined;
+    return pickFirstText(
+      section.degerlendirme,
+      section["değerlendirme"],
+      section.feedback,
+      section.yorum,
+      section.text,
+      section.analysis
+    );
+  };
+
+  const extractCriteriaValue = (sources: any[], keys: string[]): string | undefined => {
+    for (const source of sources) {
+      if (!source || typeof source !== "object") continue;
+      for (const key of keys) {
+        const candidate = source[key];
+        if (typeof candidate === "string" && candidate.trim()) {
+          return candidate.trim();
+        }
+      }
+    }
+    return undefined;
+  };
+
   // Parse AI feedback string to extract sections
   const parseAIFeedback = () => {
-    const feedback = writingData?.aiFeedback;
+    const feedback = aiFeedback;
     if (!feedback) return null;
 
-    // If feedback is an object, return it as is
+    // If feedback is an object, normalize common backend shapes
     if (typeof feedback === 'object' && feedback !== null) {
-      return feedback;
+      const feedbackObj: any = feedback;
+      const bolumler =
+        feedbackObj?.bolumler ??
+        feedbackObj?.["bölümler"] ??
+        feedbackObj?.sections ??
+        feedbackObj?.parts ??
+        {};
+
+      const bolum11 =
+        bolumler?.bolum_1_1 ??
+        bolumler?.["bölüm_1_1"] ??
+        feedbackObj?.bolum_1_1 ??
+        feedbackObj?.["bölüm_1_1"];
+      const bolum12 =
+        bolumler?.bolum_1_2 ??
+        bolumler?.["bölüm_1_2"] ??
+        feedbackObj?.bolum_1_2 ??
+        feedbackObj?.["bölüm_1_2"];
+      const bolum2 =
+        bolumler?.bolum_2 ??
+        bolumler?.["bölüm_2"] ??
+        feedbackObj?.bolum_2 ??
+        feedbackObj?.["bölüm_2"];
+
+      const criteriaSources = [
+        feedbackObj?.kriterler,
+        feedbackObj?.criteria,
+        bolum2?.kriterler,
+        bolum2?.criteria,
+        bolum12?.kriterler,
+        bolum12?.criteria,
+        bolum11?.kriterler,
+        bolum11?.criteria,
+      ];
+
+      return {
+        ...feedbackObj,
+        part1_1: pickFirstText(
+          feedbackObj?.part1_1,
+          feedbackObj?.part1,
+          extractSectionNarrative(bolum11)
+        ),
+        part1_2: pickFirstText(
+          feedbackObj?.part1_2,
+          extractSectionNarrative(bolum12)
+        ),
+        part2: pickFirstText(
+          feedbackObj?.part2,
+          feedbackObj?.part_2,
+          extractSectionNarrative(bolum2)
+        ),
+        general: pickFirstText(
+          feedbackObj?.general,
+          feedbackObj?.generalFeedback,
+          feedbackObj?.genel_degerlendirme,
+          feedbackObj?.genelDegerlendirme,
+          feedbackObj?.egitmen_notu,
+          feedbackObj?.egitmenNotu,
+          feedbackObj?.teacher_note,
+          feedbackObj?.teacherNote,
+          feedbackObj?.summary
+        ),
+        coherenceAndCohesion: pickFirstText(
+          feedbackObj?.coherenceAndCohesion,
+          extractCriteriaValue(criteriaSources, [
+            "coherenceAndCohesion",
+            "coherence_and_cohesion",
+            "tutarlilikVeBaglilik",
+            "tutarlilik_ve_baglilik",
+            "Tutarlılık ve Bağlılık",
+            "Tutarlılık"
+          ])
+        ),
+        grammaticalRangeAndAccuracy: pickFirstText(
+          feedbackObj?.grammaticalRangeAndAccuracy,
+          extractCriteriaValue(criteriaSources, [
+            "grammaticalRangeAndAccuracy",
+            "grammatical_range_and_accuracy",
+            "dilBilgisi",
+            "dil_bilgisi",
+            "Dil Bilgisi"
+          ])
+        ),
+        lexicalResource: pickFirstText(
+          feedbackObj?.lexicalResource,
+          extractCriteriaValue(criteriaSources, [
+            "lexicalResource",
+            "lexical_resource",
+            "kelimeKaynagi",
+            "kelime_kaynagi",
+            "Kelime Kaynağı"
+          ])
+        ),
+        taskAchievement: pickFirstText(
+          feedbackObj?.taskAchievement,
+          extractCriteriaValue(criteriaSources, [
+            "taskAchievement",
+            "task_achievement",
+            "gorevBasarisi",
+            "gorev_basarisi",
+            "gorevYaniti",
+            "gorev_yaniti",
+            "Görev Başarısı",
+            "Görev Yanıtı"
+          ])
+        ),
+      };
     }
 
     // If feedback is a string, parse it
@@ -206,36 +360,68 @@ export default function WritingTestResults() {
 
   const parsedFeedback = parseAIFeedback();
 
+  const getSectionScore = (key: "bolum_1_1" | "bolum_1_2" | "bolum_2") => {
+    const fromObject =
+      (typeof aiFeedback === "object" && aiFeedback?.bolumler?.[key]?.puan) ||
+      (typeof (parsedFeedback as any)?.bolumler === "object" && (parsedFeedback as any)?.bolumler?.[key]?.puan);
+    if (typeof fromObject === "number") return fromObject;
+    return null;
+  };
+
+  const getSectionCriteria = (key: "bolum_1_1" | "bolum_1_2" | "bolum_2") => {
+    const source =
+      (typeof aiFeedback === "object" && aiFeedback?.bolumler?.[key]) ||
+      (typeof (parsedFeedback as any)?.bolumler === "object" && (parsedFeedback as any)?.bolumler?.[key]);
+    if (source?.kriterler && typeof source.kriterler === "object") {
+      return {
+        coherence: source.kriterler.coherenceAndCohesion,
+        grammar: source.kriterler.grammaticalRangeAndAccuracy,
+        lexical: source.kriterler.lexicalResource,
+        achievement: source.kriterler.taskAchievement,
+      };
+    }
+    return {
+      coherence: "Kısa değerlendirme yok",
+      grammar: "Kısa değerlendirme yok",
+      lexical: "Kısa değerlendirme yok",
+      achievement: "Kısa değerlendirme yok",
+    };
+  };
+
   const scores = {
     overall: writingData?.score || 0,
     part1: 0, // We'll calculate this from individual answers
     part2: 0, // We'll calculate this from individual answers
-    coherence: extractScoreFromFeedback(parsedFeedback?.coherenceAndCohesion || writingData?.aiFeedback?.coherenceAndCohesion) || 0,
-    grammar: extractScoreFromFeedback(parsedFeedback?.grammaticalRangeAndAccuracy || writingData?.aiFeedback?.grammaticalRangeAndAccuracy) || 0,
-    lexical: extractScoreFromFeedback(parsedFeedback?.lexicalResource || writingData?.aiFeedback?.lexicalResource) || 0,
-    achievement: extractScoreFromFeedback(parsedFeedback?.taskAchievement || writingData?.aiFeedback?.taskAchievement) || 0,
+    coherence: extractScoreFromFeedback(parsedFeedback?.coherenceAndCohesion || aiFeedback?.coherenceAndCohesion) || 0,
+    grammar: extractScoreFromFeedback(parsedFeedback?.grammaticalRangeAndAccuracy || aiFeedback?.grammaticalRangeAndAccuracy) || 0,
+    lexical: extractScoreFromFeedback(parsedFeedback?.lexicalResource || aiFeedback?.lexicalResource) || 0,
+    achievement: extractScoreFromFeedback(parsedFeedback?.taskAchievement || aiFeedback?.taskAchievement) || 0,
   };
 
   // Extract answers array (supports both legacy answers[] and new sections/subParts structure)
   const extractWritingAnswers = () => {
-    // 1) If top-level answers array exists and has at least one non-empty answer, use it
-    if (Array.isArray(writingData?.answers)) {
-      const hasNonEmpty = writingData.answers.some(
-        (a: any) => a && typeof a.userAnswer === "string" && a.userAnswer.trim() !== ""
-      );
-      if (hasNonEmpty) {
-        return writingData.answers;
-      }
-    }
-
-    // 2) Otherwise, build answers from sections/subParts structure
-    const extracted: any[] = [];
+    // Prefer sections/subParts ordering when available to avoid misalignment
     const sections = Array.isArray(writingData?.sections) ? writingData.sections : [];
+    const hasSectionAnswers = sections.some(
+      (s: any) =>
+        (Array.isArray(s.subParts) && s.subParts.some((sp: any) => Array.isArray(sp.answers) && sp.answers.length > 0)) ||
+        (Array.isArray(s.answers) && s.answers.length > 0)
+    );
 
-    sections.forEach((section: any, sectionIndex: number) => {
-      // First push subPart answers (so Task 1.1 and 1.2 come first)
-      if (Array.isArray(section.subParts)) {
-        section.subParts.forEach((subPart: any, subPartIndex: number) => {
+    if (sections.length > 0 && hasSectionAnswers) {
+      const extracted: any[] = [];
+      const sortedSections = [...sections].sort((a: any, b: any) =>
+        (a.order ?? a.number ?? 0) - (b.order ?? b.number ?? 0)
+      );
+
+      sortedSections.forEach((section: any, sectionIndex: number) => {
+        const subParts = Array.isArray(section.subParts) ? section.subParts : [];
+        const sortedSubParts = [...subParts].sort((a: any, b: any) =>
+          (a.order ?? a.number ?? 0) - (b.order ?? b.number ?? 0)
+        );
+
+        // First push subPart answers (so Task 1.1 and 1.2 come first)
+        sortedSubParts.forEach((subPart: any, subPartIndex: number) => {
           const subPartAnswers = Array.isArray(subPart.answers) ? subPart.answers : [];
           subPartAnswers.forEach((ans: any) => {
             extracted.push({
@@ -250,24 +436,36 @@ export default function WritingTestResults() {
             });
           });
         });
-      }
 
-      // Then push section-level answers (e.g. Task 2 main essay)
-      if (Array.isArray(section.answers)) {
-        section.answers.forEach((ans: any, answerIndex: number) => {
-          extracted.push({
-            ...ans,
-            questionText:
-              ans.questionText ||
-              ans.question ||
-              section.description ||
-              `Görev ${sectionIndex + 1} ${answerIndex + 1}`,
+        // Then push section-level answers (e.g. Task 2 main essay)
+        if (Array.isArray(section.answers)) {
+          section.answers.forEach((ans: any, answerIndex: number) => {
+            extracted.push({
+              ...ans,
+              questionText:
+                ans.questionText ||
+                ans.question ||
+                section.description ||
+                `Görev ${sectionIndex + 1} ${answerIndex + 1}`,
+            });
           });
-        });
-      }
-    });
+        }
+      });
 
-    return extracted;
+      return extracted;
+    }
+
+    // Fallback: top-level answers array
+    if (Array.isArray(writingData?.answers)) {
+      const hasNonEmpty = writingData.answers.some(
+        (a: any) => a && typeof a.userAnswer === "string" && a.userAnswer.trim() !== ""
+      );
+      if (hasNonEmpty) {
+        return writingData.answers;
+      }
+    }
+
+    return [];
   };
 
   const answers = extractWritingAnswers();
@@ -295,8 +493,8 @@ export default function WritingTestResults() {
       // Get feedback for the specific part
       const feedbackKey = activeTask1Part === "part1" ? "part1_1" : "part1_2";
       const feedback = parsedFeedback?.[feedbackKey] || 
-                      writingData?.aiFeedback?.[feedbackKey] || 
-                      writingData?.aiFeedback?.taskAchievement || 
+                      aiFeedback?.[feedbackKey] || 
+                      aiFeedback?.taskAchievement || 
                       `Görev 1 ${activeTask1Part === "part1" ? "Bölüm 1" : "Bölüm 2"} geri bildirimi burada gösterilecek`;
       
       return {
@@ -316,8 +514,8 @@ export default function WritingTestResults() {
       
       // Get feedback for Task 2
       const feedback = parsedFeedback?.part2 || 
-                      writingData?.aiFeedback?.part2 || 
-                      writingData?.aiFeedback?.taskAchievement || 
+                      aiFeedback?.part2 || 
+                      aiFeedback?.taskAchievement || 
                       "Görev 2 geri bildirimi burada gösterilecek";
       
       return {
@@ -363,85 +561,33 @@ export default function WritingTestResults() {
           </div>
         </div>
 
-        {/* AI Feedback Grid - Simplified Design */}
-        {parsedFeedback && (() => {
-          const feedback = parsedFeedback;
-          const hasPartFeedback = feedback.part1_1 || feedback.part1_2 || feedback.part2;
-          const hasIELTSFeedback = feedback.coherenceAndCohesion || feedback.grammaticalRangeAndAccuracy ||
-                                   feedback.lexicalResource || feedback.taskAchievement;
-
-          // Eğer sadece genel eğitmen notu varsa, üst grid'i göstermeyelim;
-          // bu not zaten aşağıda "Eğitmen Notu" kartında gösterilecek.
-          if (!hasPartFeedback && !hasIELTSFeedback) {
-            return null;
-          }
-
-          return (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              {feedback.part1_1 && (
-                <div className="border border-gray-300 rounded-lg p-4 bg-white">
-                  <h3 className="font-semibold text-gray-900 mb-3">Görev 1.1</h3>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    {removeBullets(feedback.part1_1)}
-                  </p>
+        {/* Bölüm Bazlı Özet - Ham Puan + 4 Kriter */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          {[
+            { key: "bolum_1_1", title: "Görev 1.1" },
+            { key: "bolum_1_2", title: "Görev 1.2" },
+            { key: "bolum_2", title: "Bölüm 2" },
+          ].map((section) => {
+            const score = getSectionScore(section.key as any);
+            const criteria = getSectionCriteria(section.key as any);
+            return (
+              <div key={section.key} className="border border-gray-300 rounded-lg p-4 bg-white">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-gray-900">{section.title}</h3>
+                  <div className="text-sm font-semibold text-red-600">
+                    Ham Puan: {score !== null ? score : "-"}
+                  </div>
                 </div>
-              )}
-              {feedback.part1_2 && (
-                <div className="border border-gray-300 rounded-lg p-4 bg-white">
-                  <h3 className="font-semibold text-gray-900 mb-3">Görev 1.2</h3>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    {removeBullets(feedback.part1_2)}
-                  </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-700">
+                  <div><span className="font-semibold">Tutarlılık:</span> {criteria.coherence}</div>
+                  <div><span className="font-semibold">Dil Bilgisi:</span> {criteria.grammar}</div>
+                  <div><span className="font-semibold">Kelime Kaynağı:</span> {criteria.lexical}</div>
+                  <div><span className="font-semibold">Görev Başarısı:</span> {criteria.achievement}</div>
                 </div>
-              )}
-              {feedback.part2 && (
-                <div className="border border-gray-300 rounded-lg p-4 bg-white">
-                  <h3 className="font-semibold text-gray-900 mb-3">Bölüm 2</h3>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    {removeBullets(feedback.part2)}
-                  </p>
-                </div>
-              )}
-              {/* Fallback to IELTS-style feedback if part feedback not available */}
-              {!hasPartFeedback && hasIELTSFeedback && (
-                <>
-                  {feedback.coherenceAndCohesion && (
-                    <div className="border border-gray-300 rounded-lg p-4 bg-white">
-                      <h3 className="font-semibold text-gray-900 mb-3">Tutarlılık ve Bağlılık</h3>
-                      <p className="text-sm text-gray-600 leading-relaxed">
-                        {removeBullets(feedback.coherenceAndCohesion)}
-                      </p>
-                    </div>
-                  )}
-                  {feedback.grammaticalRangeAndAccuracy && (
-                    <div className="border border-gray-300 rounded-lg p-4 bg-white">
-                      <h3 className="font-semibold text-gray-900 mb-3">Dil Bilgisi</h3>
-                      <p className="text-sm text-gray-600 leading-relaxed">
-                        {removeBullets(feedback.grammaticalRangeAndAccuracy)}
-                      </p>
-                    </div>
-                  )}
-                  {feedback.lexicalResource && (
-                    <div className="border border-gray-300 rounded-lg p-4 bg-white">
-                      <h3 className="font-semibold text-gray-900 mb-3">Kelime Kaynağı</h3>
-                      <p className="text-sm text-gray-600 leading-relaxed">
-                        {removeBullets(feedback.lexicalResource)}
-                      </p>
-                    </div>
-                  )}
-                  {feedback.taskAchievement && (
-                    <div className="border border-gray-300 rounded-lg p-4 bg-white">
-                      <h3 className="font-semibold text-gray-900 mb-3">Görev Başarısı</h3>
-                      <p className="text-sm text-gray-600 leading-relaxed">
-                        {removeBullets(feedback.taskAchievement)}
-                      </p>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          );
-        })()}
+              </div>
+            );
+          })}
+        </div>
 
         {/* Task Navigation - Redesigned */}
         <div className="mb-5">
@@ -541,3 +687,4 @@ export default function WritingTestResults() {
     </div>
   );
 }
+

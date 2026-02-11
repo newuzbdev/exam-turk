@@ -203,13 +203,13 @@ export const MicrophoneCheck = ({ onSuccess }: Props) => {
 
 
   return (
-    <div className="min-h-0 bg-gray-50 p-4 sm:p-6 pb-20 safe-area-bottom safe-area-top">
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6 pb-28 sm:pb-20 safe-area-bottom safe-area-top overflow-y-auto sm:overflow-visible">
       <div className="max-w-5xl mx-auto">
-        <div className="flex justify-center mb-8 sm:mb-12">
+        <div className="flex justify-center mb-6 sm:mb-12">
           <img
             src="/logo11.svg"
             alt="TURKISHMOCK"
-            className="h-10 sm:h-11 md:h-12 w-auto object-contain"
+            className="h-9 sm:h-11 md:h-12 w-auto object-contain"
             onError={(e) => {
               console.error("Logo failed to load");
               (e.target as HTMLImageElement).style.display = 'none';
@@ -217,22 +217,22 @@ export const MicrophoneCheck = ({ onSuccess }: Props) => {
           />
         </div>
 
-        <div className="space-y-6 sm:space-y-8">
+        <div className="space-y-5 sm:space-y-8">
 
           <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
             <div className="flex-shrink-0 flex flex-row sm:flex-col items-center sm:items-start">
-              <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-2 border-rose-300 flex items-center justify-center">
-                <Mic className="w-6 h-6 sm:w-8 sm:h-8 text-rose-500" />
+              <div className="w-11 h-11 sm:w-16 sm:h-16 rounded-full border-2 border-rose-300 flex items-center justify-center">
+                <Mic className="w-5 h-5 sm:w-8 sm:h-8 text-rose-500" />
               </div>
             </div>
             <div className="flex-1">
-              <h2 className="text-lg sm:text-xl font-semibold mb-3 text-slate-700">
+              <h2 className="text-base sm:text-xl font-semibold mb-3 text-slate-700">
                 Mikrofon kontrolü
               </h2>
               <p className="mb-4 text-sm sm:text-base text-gray-600">
                 Sınava başlamadan önce mikrofonunuzun düzgün çalıştığından emin olun. Kaydı başlatmak için{" "}
                 <span className="inline-flex items-center mx-1">
-                  <div className="w-2 h-2 sm:w-3 sm:h-3 bg-rose-500 rounded-full"></div>
+                  <span className="w-2 h-2 sm:w-3 sm:h-3 bg-rose-500 rounded-full" />
                 </span>{" "}
                 simgesine basın ve aşağıdaki metni yüksek sesle okuyun, ardından{" "}
                 <span className="inline-flex items-center mx-1">
@@ -245,7 +245,7 @@ export const MicrophoneCheck = ({ onSuccess }: Props) => {
                 <>
                   <div className="bg-gray-50 rounded-lg p-3 sm:p-4 mb-4 text-center">
                     <p className="text-gray-500 text-xs sm:text-sm mb-2">Lütfen yüksek sesle okuyun:</p>
-                    <p className="text-gray-700 font-medium text-lg sm:text-xl">
+                    <p className="text-gray-700 font-medium text-base sm:text-xl">
                       {"\"Bir berber bir berbere, gel beraber bir berber d\u00fckk\u00e2n\u0131 a\u00e7al\u0131m demi\u015f.\""}
                     </p>
                   </div>
@@ -258,7 +258,7 @@ export const MicrophoneCheck = ({ onSuccess }: Props) => {
                           // Prevent double-tap zoom on mobile
                           e.preventDefault();
                         }}
-                        className={`w-16 h-16 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all duration-300 touch-manipulation shadow-lg hover:shadow-xl ${
+                        className={`w-14 h-14 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all duration-300 touch-manipulation shadow-lg hover:shadow-xl ${
                           recording
                             ? "bg-gray-600 hover:bg-gray-700 active:bg-gray-800 ring-2 ring-gray-400"
                             : "bg-rose-600 hover:bg-rose-700 active:bg-rose-800 ring-2 ring-rose-300"
@@ -270,9 +270,9 @@ export const MicrophoneCheck = ({ onSuccess }: Props) => {
                         }}
                       >
                         {recording ? (
-                          <Square className="w-7 h-7 sm:w-6 sm:h-6 text-white" />
+                          <Square className="w-6 h-6 sm:w-6 sm:h-6 text-white" />
                         ) : (
-                          <div className="w-4 h-4 sm:w-3 sm:h-3 bg-white rounded-full"></div>
+                          <div className="w-3 h-3 sm:w-3 sm:h-3 bg-white rounded-full"></div>
                         )}
                       </button>
 

@@ -49,6 +49,43 @@ export interface AuthResult {
 // Global variable to track ongoing user fetch requests
 let currentUserRequest: Promise<any> | null = null;
 
+const getApiErrorMessage = (error: any, fallback: string): string => {
+  const data = error?.response?.data;
+  const msg =
+    (typeof data?.message === "string" && data.message) ||
+    (typeof data?.error === "string" && data.error) ||
+    (typeof data?.data?.message === "string" && data.data.message) ||
+    (typeof data?.data?.error === "string" && data.data.error) ||
+    (typeof error?.message === "string" && error.message);
+  return msg || fallback;
+};
+
+const extractTokens = (
+  payload: any
+): { accessToken?: string; refreshToken?: string } => {
+  const data = payload && typeof payload === "object" ? payload : {};
+  const nested = data.data && typeof data.data === "object" ? data.data : {};
+
+  const accessToken =
+    data.accessToken ||
+    data.access_token ||
+    data.token ||
+    nested.accessToken ||
+    nested.access_token ||
+    nested.token;
+
+  const refreshToken =
+    data.refreshToken ||
+    data.refresh_token ||
+    nested.refreshToken ||
+    nested.refresh_token;
+
+  return {
+    accessToken: accessToken ? String(accessToken) : undefined,
+    refreshToken: refreshToken ? String(refreshToken) : undefined,
+  };
+};
+
 export const authService = {
   // Helper function to format phone number
   formatPhoneNumber: (phone: string): string => {
@@ -313,11 +350,19 @@ export const authService = {
   sendOtpRequest: async (phone: string): Promise<AuthResult> => {
     try {
       const phoneWithPrefix = authService.formatPhoneNumber(phone);
-      await axiosPrivate.post(authEndPoint.otpSend, { phone: phoneWithPrefix });
+      const res = await axiosPrivate.post(authEndPoint.otpSend, {
+        phone: phoneWithPrefix,
+      });
+
+      // Dev convenience: backend may return the OTP code when SMS provider isn't configured.
+      const otpCode = res?.data?.code ?? res?.data?.data?.code;
+      if (import.meta.env.DEV && otpCode) {
+        toast.info(`OTP: ${otpCode}`);
+      }
       toast.success("OTP kodu gönderildi");
       return { success: true };
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "OTP gönderilemedi");
+      toast.error(getApiErrorMessage(error, "OTP gönderilemedi"));
       return { success: false };
     }
   },
@@ -330,21 +375,28 @@ export const authService = {
     try {
       const response = await axiosPrivate.post(authEndPoint.login, credentials);
 
-      if (response.data.accessToken) {
-        authService.storeTokens(
-          response.data.accessToken,
-          response.data.refreshToken
-        );
+      const { accessToken, refreshToken } = extractTokens(response.data);
+
+      if (accessToken) {
+        authService.storeTokens(accessToken, refreshToken);
         toast.success("Giriş başarılı");
         navigate("/", { replace: true });
 
         return { success: true, shouldNavigate: true };
-      } else {
-        toast.error("Giriş başarısız");
-        return { success: false };
       }
+
+      const backendMsg =
+        (typeof response.data?.message === "string" && response.data.message) ||
+        (typeof response.data?.error === "string" && response.data.error) ||
+        (typeof response.data?.data?.message === "string" &&
+          response.data.data.message) ||
+        (typeof response.data?.data?.error === "string" &&
+          response.data.data.error);
+
+      toast.error(backendMsg || "Giriş başarısız");
+      return { success: false };
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Giriş başarısız");
+      toast.error(getApiErrorMessage(error, "Giriş başarısız"));
       return { success: false };
     }
   },
@@ -362,28 +414,36 @@ export const authService = {
         code: code,
       });
 
-      if (response.data.accessToken) {
-        authService.storeTokens(
-          response.data.accessToken,
-          response.data.refreshToken
-        );
+      const { accessToken, refreshToken } = extractTokens(response.data);
+
+      if (accessToken) {
+        authService.storeTokens(accessToken, refreshToken);
         toast.success("Giriş başarılı");
         navigate("/", { replace: true });
         return { success: true, shouldNavigate: true };
       }
 
       // OTP valid but no token = new user; show register form in modal instead of navigating home
-      if (response.status === 200 || response.data?.message) {
-        const msg = String(response.data?.message || "").toLowerCase();
+      const responseMsg =
+        (typeof response.data?.message === "string" && response.data.message) ||
+        (typeof response.data?.error === "string" && response.data.error) ||
+        (typeof response.data?.data?.message === "string" &&
+          response.data.data.message) ||
+        (typeof response.data?.data?.error === "string" &&
+          response.data.data.error) ||
+        "";
+
+      if (response.status === 200 || responseMsg) {
+        const msg = String(responseMsg || "").toLowerCase();
         const isNewUser =
-          !response.data?.accessToken &&
+          !accessToken &&
           (msg.includes("kayıt") ||
             msg.includes("register") ||
             msg.includes("mevcut değil") ||
             msg.includes("bulunamadı") ||
             msg.includes("doğrulandı") ||
             msg.includes("verified"));
-        if (isNewUser || !response.data?.accessToken) {
+        if (isNewUser || !accessToken) {
           toast.success("OTP doğrulandı - Kayıt formunu doldurun");
           return {
             success: true,
@@ -396,7 +456,13 @@ export const authService = {
       toast.error("OTP doğrulanamadı");
       return { success: false };
     } catch (error: any) {
-      const msg = String(error.response?.data?.message || "").toLowerCase();
+      const msg = String(
+        error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.response?.data?.data?.message ||
+          error.response?.data?.data?.error ||
+          ""
+      ).toLowerCase();
       if (
         error.response?.status === 404 ||
         msg.includes("bulunamadı") ||
@@ -411,7 +477,7 @@ export const authService = {
           phoneNumber: phoneWithPrefix,
         };
       }
-      toast.error(error.response?.data?.message || "OTP doğrulanamadı");
+      toast.error(getApiErrorMessage(error, "OTP doğrulanamadı"));
       return { success: false };
     }
   },
@@ -496,7 +562,7 @@ export const authService = {
       toast.error("OTP doğrulanamadı");
       return { success: false };
     } catch (error: any) {
-      toast.error(error?.message || error?.response?.data?.message || "OTP doğrulanamadı");
+      toast.error(getApiErrorMessage(error, "OTP doğrulanamadı"));
       return { success: false };
     }
   },
@@ -510,19 +576,24 @@ export const authService = {
       const response = await axiosPrivate.post(authEndPoint.register, data);
       console.log("Registration response:", response.data); // Debug log
 
-      if (response.data.accessToken) {
-        authService.storeTokens(
-          response.data.accessToken,
-          response.data.refreshToken
-        );
+      const { accessToken, refreshToken } = extractTokens(response.data);
+
+      if (accessToken) {
+        authService.storeTokens(accessToken, refreshToken);
 
         // Store user ID if returned in registration response
         if (response.data.user && response.data.user.id) {
           SecureStorage.setSessionItem("userId", response.data.user.id);
           console.log("Stored user ID:", response.data.user.id);
+        } else if (response.data.data?.user?.id) {
+          SecureStorage.setSessionItem("userId", response.data.data.user.id);
+          console.log("Stored user ID:", response.data.data.user.id);
         } else if (response.data.id) {
           SecureStorage.setSessionItem("userId", response.data.id);
           console.log("Stored user ID from root:", response.data.id);
+        } else if (response.data.data?.id) {
+          SecureStorage.setSessionItem("userId", response.data.data.id);
+          console.log("Stored user ID from data:", response.data.data.id);
         } else {
           console.log("No user ID found in registration response");
         }
@@ -554,7 +625,11 @@ export const authService = {
         }
       } else {
         // If backend returned the created user, use it directly to update UI
-        const createdUser = (response.data && (response.data.user || response.data)) as any;
+        const createdUser = (response.data &&
+          (response.data.user ||
+            response.data.data?.user ||
+            response.data.data ||
+            response.data)) as any;
         if (createdUser && createdUser.id && (createdUser.name || createdUser.userName)) {
           try {
             SecureStorage.setSessionItem("userId", createdUser.id);
@@ -573,8 +648,9 @@ export const authService = {
             name: data.name,
             password: data.password,
           });
-          if (loginResp?.data?.accessToken) {
-            authService.storeTokens(loginResp.data.accessToken, loginResp.data.refreshToken);
+          const loginTokens = extractTokens(loginResp?.data);
+          if (loginTokens.accessToken) {
+            authService.storeTokens(loginTokens.accessToken, loginTokens.refreshToken);
             // Fetch user and notify app
             try {
               const userResponse = await authService.getCurrentUser();
@@ -601,7 +677,7 @@ export const authService = {
       return { success: false };
     } catch (error: any) {
       console.error("Registration error:", error);
-      toast.error(error.response?.data?.message || "Kayıt başarısız");
+      toast.error(getApiErrorMessage(error, "Kayıt başarısız"));
       return { success: false };
     }
   },

@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+﻿import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GraduationCap, Briefcase, Home, Building2 } from "lucide-react";
 
@@ -92,6 +92,7 @@ const HomeWhoIsFor = () => {
 };
 
 export default HomeWhoIsFor;
+
 
 
 

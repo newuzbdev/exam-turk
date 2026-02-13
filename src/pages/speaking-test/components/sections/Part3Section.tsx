@@ -162,11 +162,11 @@ const Part3Section = ({
   // Preparation Phase - Show debate interface with timer
   if (currentPhase === "preparation") {
     return (
-      <div className="min-h-screen bg-amber-50 p-3 sm:p-6">
+      <div className="bg-amber-50 p-3 sm:p-6 pb-20 min-h-0 mt-0 safe-area-bottom">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <motion.div
-            className="flex flex-col sm:flex-row items-center justify-between mb-4 sm:mb-8 gap-3 sm:gap-0"
+            className="flex flex-col sm:flex-row items-center justify-between mb-4 sm:mb-8 gap-3 sm:gap-0 relative z-10"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
@@ -308,11 +308,11 @@ const Part3Section = ({
   // Speaking Phase
   if (currentPhase === "speaking") {
     return (
-      <div className="min-h-screen bg-amber-50 p-3 sm:p-6">
+      <div className="bg-amber-50 p-3 sm:p-6 pb-20 min-h-0 mt-0 safe-area-bottom">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <motion.div
-            className="flex flex-col sm:flex-row items-center justify-between mb-4 sm:mb-8 gap-3 sm:gap-0"
+            className="flex flex-col sm:flex-row items-center justify-between mb-4 sm:mb-8 gap-3 sm:gap-0 relative z-10"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
@@ -521,7 +521,7 @@ const Part3Section = ({
 
       {/* Instructions Phase */}
       {currentPhase === "instructions" && (
-        <div className="min-h-screen bg-amber-50 p-3 sm:p-6">
+        <div className="bg-amber-50 p-3 sm:p-6 pb-20 min-h-0 mt-0 safe-area-bottom">
           <div className="max-w-6xl mx-auto">
             {/* Header */}
             <motion.div

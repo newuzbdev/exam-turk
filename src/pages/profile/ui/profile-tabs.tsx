@@ -45,12 +45,10 @@ const getSelectedTests = (test: TestResult) => {
 
 const getCefrLevel = (score: number | null | undefined): string => {
   if (score == null) return "-";
-  if (score >= 90) return "C2";
-  if (score >= 75) return "C1";
-  if (score >= 60) return "B2";
-  if (score >= 45) return "B1";
-  if (score >= 30) return "A2";
-  return "A1";
+  if (score >= 65) return "C1";
+  if (score >= 51) return "B2";
+  if (score >= 38) return "B1";
+  return "B1 altı";
 };
 
 const ProfileTabs = () => {

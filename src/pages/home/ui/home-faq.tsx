@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+﻿import { useState } from "react";
+import { ChevronDown, HelpCircle } from "lucide-react";
 
 interface FAQItem {
   question: string;
@@ -20,12 +20,12 @@ const faqData: FAQItem[] = [
   {
     question: "Kullanıcı hesabımla ilerlemem kayıt altında tutuluyor mu?",
     answer:
-      "Evet. Tüm test geçmişiniz, seviyeleriniz ve puanlarınız hesabınızda saklanır.",
+      "Evet. Tüm test geçmişiniz, seviyeleriniz ve puanlarınız hesabınızda saklanır. Gelişiminizi profilinizden takip edebilirsiniz.",
   },
   {
     question: "Testi bitirdikten sonra sonuçları hemen görebilir miyim?",
     answer:
-      "Evet. Sonuçlar anında değerlendirilir ve seviyeniz hemen gösterilir.",
+      "Evet. Sonuçlar anında değerlendirilir ve seviyeniz hemen gösterilir. Bekleme süresi yoktur.",
   },
   {
     question: "Test sırasında teknik bir sorun yaşarsam ne yapmalıyım?",
@@ -42,47 +42,74 @@ const HomeFAQ = () => {
   };
 
   return (
-    <section className="py-20 bg-white">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Title */}
-        <h2 className="text-4xl font-bold text-center text-gray-900 mb-12 font-serif">
-          Sıkça Sorulan Sorular
-        </h2>
+    <section className="py-20 lg:py-24 bg-white font-sans">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+
+        {/* Header */}
+        <div className="text-center mb-14">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-gray-200 bg-white mb-5">
+            <HelpCircle className="w-4 h-4 text-red-600" />
+            <span className="text-sm font-semibold text-gray-900 tracking-tight">Yardım Merkezi</span>
+          </div>
+
+          <h2 className="text-xl sm:text-3xl font-semibold text-black mb-4 tracking-tight">
+            Sıkça Sorulan Sorular
+          </h2>
+          <p className="text-gray-500 font-medium">
+            Merak ettiğiniz tüm detaylar burada
+          </p>
+        </div>
 
         {/* FAQ Items */}
-        <div className="space-y-4">
-          {faqData.map((item, index) => (
-            <div
-              key={index}
-              className="bg-white rounded-lg border border-gray-200 overflow-hidden"
-            >
-              <button
-                onClick={() => toggleItem(index)}
-                className="w-full flex items-center justify-between p-5 text-left focus:outline-none"
+        <div className="space-y-3.5">
+          {faqData.map((item, index) => {
+            const isOpen = openIndex === index;
+            return (
+              <div
+                key={index}
+                className={`group rounded-2xl border transition-colors duration-300 overflow-hidden ${
+                  isOpen
+                    ? "bg-white border-red-200 shadow-sm ring-1 ring-red-50"
+                    : "bg-gray-50 border-gray-200 hover:bg-white hover:border-gray-300"
+                }`}
               >
-                <span
-                  className={`font-medium text-base pr-4 flex-1 ${
-                    openIndex === index ? "text-red-500" : "text-black"
+                <button
+                  onClick={() => toggleItem(index)}
+                  className="w-full flex items-center justify-between p-5 sm:p-6 text-left focus:outline-none"
+                >
+                  <span
+                    className={`font-medium text-[15px] sm:text-base pr-8 transition-colors duration-300 ${
+                      isOpen ? "text-gray-900" : "text-gray-700 group-hover:text-gray-900"
+                    }`}
+                  >
+                    {item.question}
+                  </span>
+
+                  {/* İkon Kutusu */}
+                  <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
+                    isOpen ? "bg-red-600 text-white rotate-180" : "bg-white text-gray-400 border border-gray-200 group-hover:border-red-200 group-hover:text-red-500"
+                  }`}>
+                    <ChevronDown className="w-5 h-5" />
+                  </div>
+                </button>
+
+                {/* Cevap Alanı (Basit Animasyon) */}
+                <div
+                  className={`transition-all duration-300 ease-in-out ${
+                    isOpen ? "max-h-48 opacity-100" : "max-h-0 opacity-0"
                   }`}
                 >
-                  {item.question}
-                </span>
-                <ChevronDown
-                  className={`w-5 h-5 text-gray-400 flex-shrink-0 transition-transform duration-200 ${
-                    openIndex === index ? "transform rotate-180" : ""
-                  }`}
-                />
-              </button>
-              {openIndex === index && (
-                <div className="px-5 pb-5 pt-0">
-                  <p className="text-gray-700 text-base leading-relaxed">
-                    {item.answer}
-                  </p>
+                  <div className="px-5 sm:px-6 pb-5 sm:pb-6 pt-0">
+                    <p className="text-[15px] sm:text-base text-gray-600 leading-relaxed font-normal">
+                      {item.answer}
+                    </p>
+                  </div>
                 </div>
-              )}
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
+
       </div>
     </section>
   );

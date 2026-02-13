@@ -1,0 +1,172 @@
+import { NavLink } from "react-router";
+import {
+  ArrowRight,
+  BookOpen,
+  Headphones,
+  Mic,
+  PenTool,
+  Shield,
+  Users,
+  Award,
+} from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+
+const HeroSection = () => {
+  return (
+    <div>
+      {/* Hero Section - Professional Minimal Design */}
+      <section className="min-h-screen flex items-start pt-8 sm:pt-10 bg-gradient-to-b from-gray-50/50 via-white to-gray-50/30 relative overflow-hidden hero-paper-bg">
+        {/* Subtle decorative elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-40 right-20 w-96 h-96 bg-blue-50/30 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-40 left-20 w-96 h-96 bg-gray-50/50 rounded-full blur-3xl"></div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 relative z-10 w-full">
+          {/* Main Content */}
+          <div className="text-center mb-16 space-y-8 animate-fade-in">
+            {/* Trust Badge */}
+            <div className="flex justify-center">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full shadow-sm">
+                <Shield className="w-4 h-4 text-gray-600" />
+                <span className="text-sm text-gray-600 font-medium">
+                  CEFR Standartlarına Uyumlu
+                </span>
+              </div>
+            </div>
+
+            {/* Main Heading */}
+            <div className="space-y-5 max-w-4xl mx-auto">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight tracking-tight">
+                TÜRKÇE SEVİYENİZİ
+                <br />
+                HEMEN ÖĞRENIN
+              </h1>
+
+              <p className="text-lg sm:text-xl text-gray-600 leading-relaxed max-w-3xl mx-auto font-light">
+                Gerçek sınav deneyimi. Yapay zekâ destekli değerlendirme.
+              </p>
+            </div>
+
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <NavLink to="/test">
+                <Button
+                  size="lg"
+                  className="bg-red-600 hover:bg-red-700 text-white px-8 py-6 text-base font-medium shadow-sm hover:shadow-md transition-all duration-300 rounded-lg group"
+                >
+                  Teste Başla
+                  <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </NavLink>
+              <NavLink to="/how-it-works">
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  className="text-gray-700 hover:text-gray-900 hover:bg-gray-100 px-8 py-6 text-base font-medium transition-all duration-300 rounded-lg"
+                >
+                  Nasıl Çalışır?
+                </Button>
+              </NavLink>
+            </div>
+
+            {/* Stats */}
+            <div className="flex flex-wrap justify-center items-center gap-8 text-gray-600 pt-8">
+              <div className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-gray-400" />
+                <span className="text-sm font-medium">1.500+ Kullanıcı</span>
+              </div>
+              <div className="w-px h-4 bg-gray-300"></div>
+              <div className="flex items-center gap-2">
+                <Award className="h-5 w-5 text-gray-400" />
+                <span className="text-sm font-medium">Uluslararası Standart</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Skills Cards - Minimalist Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
+            {/* Dinleme Card */}
+            <Card className="group border border-gray-200 bg-white hover:border-gray-300 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 rounded-xl overflow-hidden">
+              <CardContent className="p-6">
+                <div className="flex flex-col items-center text-center space-y-4">
+                  <div className="w-12 h-12 bg-gray-50 rounded-lg flex items-center justify-center group-hover:bg-gray-100 transition-colors duration-300">
+                    <Headphones className="h-6 w-6 text-gray-600" />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Dinleme
+                    </h3>
+                    <p className="text-sm text-gray-500 leading-relaxed">
+                      Konuşmaları ve duyuruları anlama
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Okuma Card */}
+            <Card className="group border border-gray-200 bg-white hover:border-gray-300 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 rounded-xl overflow-hidden">
+              <CardContent className="p-6">
+                <div className="flex flex-col items-center text-center space-y-4">
+                  <div className="w-12 h-12 bg-gray-50 rounded-lg flex items-center justify-center group-hover:bg-gray-100 transition-colors duration-300">
+                    <BookOpen className="h-6 w-6 text-gray-600" />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Okuma
+                    </h3>
+                    <p className="text-sm text-gray-500 leading-relaxed">
+                      Metinleri çözümleme ve anlama
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Yazma Card */}
+            <Card className="group border border-gray-200 bg-white hover:border-gray-300 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 rounded-xl overflow-hidden">
+              <CardContent className="p-6">
+                <div className="flex flex-col items-center text-center space-y-4">
+                  <div className="w-12 h-12 bg-gray-50 rounded-lg flex items-center justify-center group-hover:bg-gray-100 transition-colors duration-300">
+                    <PenTool className="h-6 w-6 text-gray-600" />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Yazma
+                    </h3>
+                    <p className="text-sm text-gray-500 leading-relaxed">
+                      Tutarlı ve etkili yazma
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Konuşma Card */}
+            <Card className="group border border-gray-200 bg-white hover:border-gray-300 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 rounded-xl overflow-hidden">
+              <CardContent className="p-6">
+                <div className="flex flex-col items-center text-center space-y-4">
+                  <div className="w-12 h-12 bg-gray-50 rounded-lg flex items-center justify-center group-hover:bg-gray-100 transition-colors duration-300">
+                    <Mic className="h-6 w-6 text-gray-600" />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Konuşma
+                    </h3>
+                    <p className="text-sm text-gray-500 leading-relaxed">
+                      Akıcı ve net ifade etme
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+};
+
+export default HeroSection;

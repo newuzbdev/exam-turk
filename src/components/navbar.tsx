@@ -101,17 +101,17 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="site-header bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50 shadow-sm w-full">
-      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
-        <div className="flex justify-between items-center h-16 sm:h-20">
+    <nav className="site-header bg-white/98 backdrop-blur-md border-b border-gray-100/60 sticky top-0 z-50 w-full">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-12 sm:h-14">
           <div
-            className="flex items-center cursor-pointer"
+            className="flex items-center justify-center cursor-pointer"
             onClick={() => navigate("/")}
           >
-            <img 
-              src="/logo.png" 
-              alt="TURKISHMOCK" 
-              className="h-24 sm:h-28 md:h-32 lg:h-36 xl:h-52 w-auto object-contain"
+            <img
+              src="/logo11.svg"
+              alt="TURKISHMOCK"
+              className="h-10 sm:h-11 md:h-12 w-auto object-contain my-auto"
               onError={(e) => {
                 console.error("Logo failed to load");
                 (e.target as HTMLImageElement).style.display = 'none';
@@ -161,21 +161,21 @@ const Navbar = () => {
                 <button
                   type="button"
                   onClick={() => setIsCoinModalOpen(true)}
-                  className="flex items-center gap-1.5 text-gray-900 bg-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-300 shadow-sm cursor-pointer ring-1 ring-gray-300"
+                  className="flex items-center gap-2 text-gray-900 bg-gradient-to-br from-gray-50 to-gray-100 px-4 py-2 rounded-lg hover:from-gray-100 hover:to-gray-200 shadow-sm hover:shadow transition-all duration-300 cursor-pointer border border-gray-200"
                 >
-                  <Coins className="h-4 w-4" />
+                  <Coins className="h-4 w-4 text-gray-900" />
                   <span className="text-sm font-semibold">{coin}</span>
                 </button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
-                      className="flex items-center space-x-2 text-sm   cursor-pointer bg-white"
+                      className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 transition-all duration-300 rounded-lg px-2 pr-0"
                     >
-                       <span className="text-gray-900 font-medium cursor-pointer">
+                      <span className="text-gray-900 font-medium cursor-pointer">
                         {user.name}
                       </span>
-                      <Avatar className="w-8 h-8">
+                      <Avatar className="w-10 h-10 border-2 border-gray-200">
                         <AvatarImage
                           src={(user.avatarUrl || user.avatar)
                             ? ((user.avatarUrl || user.avatar)!.startsWith('http')
@@ -184,17 +184,16 @@ const Navbar = () => {
                             : undefined}
                           alt={user.name}
                         />
-                        <AvatarFallback className="text-xs font-semibold text-red-700">
+                        <AvatarFallback className="text-xs font-semibold text-red-700 bg-red-50">
                           {user.name
                             .split(" ")
                             .map((n: string) => n[0])
                             .join("")}
                         </AvatarFallback>
                       </Avatar>
-                     
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48 bg-white border-none ">
+                  <DropdownMenuContent align="end" className="w-48 bg-white border border-gray-200 shadow-lg">
                     <DropdownMenuItem asChild>
                       <NavLink
                         to="/profile"
@@ -216,22 +215,24 @@ const Navbar = () => {
                 </DropdownMenu>
               </div>
             ) : (
-              <nav className="flex items-center gap-4">
+              <nav className="flex items-center gap-3">
                 <button
+                  type="button"
                   onClick={() => {
                     setAuthModalMode("login");
                     setIsAuthModalOpen(true);
                   }}
-                  className="text-sm font-medium text-gray-900 hover:text-red-600 transition-colors px-3 py-2"
+                  className="text-sm font-medium text-gray-700 hover:text-red-600 transition-all duration-300 px-4 py-2"
                 >
                   Giriş Yap
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     setAuthModalMode("register");
                     setIsAuthModalOpen(true);
                   }}
-                  className="text-sm font-medium bg-red-600 hover:bg-red-700 text-white py-2.5 px-5 rounded transition-colors"
+                  className="text-sm font-semibold bg-red-600 hover:bg-red-700 text-white py-2.5 px-6 rounded-lg transition-all duration-300 shadow-sm hover:shadow-md"
                 >
                   Kayıt Ol
                 </button>
@@ -243,9 +244,9 @@ const Navbar = () => {
               <button
                 type="button"
                 onClick={() => setIsCoinModalOpen(true)}
-                className="sm:hidden flex items-center gap-1.5 text-gray-900 bg-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-300 shadow-sm cursor-pointer ring-1 ring-gray-300"
+                className="sm:hidden flex items-center gap-2 text-gray-900 bg-gradient-to-br from-gray-50 to-gray-100 px-3 py-2 rounded-lg hover:from-gray-100 hover:to-gray-200 shadow-sm hover:shadow transition-all duration-300 cursor-pointer border border-gray-200"
               >
-                <Coins className="h-4 w-4" />
+                <Coins className="h-4 w-4 text-gray-900" />
                 <span className="text-sm font-semibold">{coin}</span>
               </button>
             )}
@@ -293,19 +294,17 @@ const Navbar = () => {
                               <span className="text-xs font-semibold">{coin}</span>
                             </span>
                           </div>
-                          <Button
-                            onClick={() => setIsCoinModalOpen(true)}
-                            className="w-full bg-red-600 hover:bg-red-700 text-white"
-                          >
-                            Kredi Satın Al
-                          </Button>
-                          <div className="rounded-lg ring-1 ring-gray-200 bg-white">
-                            <div className="px-2 py-2">
-                              <BalanceTopUp 
-                                currentBalance={balance} 
-                                onBalanceUpdate={handleBalanceUpdate} 
-                              />
-                            </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Button
+                              onClick={() => setIsCoinModalOpen(true)}
+                              className="bg-red-600 hover:bg-red-700 text-white shadow-sm hover:shadow-md transition-all"
+                            >
+                              Kredi Al
+                            </Button>
+                            <BalanceTopUp
+                              currentBalance={balance}
+                              onBalanceUpdate={handleBalanceUpdate}
+                            />
                           </div>
                           <NavLink
                             to="/profile"
@@ -327,8 +326,9 @@ const Navbar = () => {
                     ) : (
                       <div className="flex space-x-2 px-3 py-2">
                         <Button
+                          type="button"
                           variant="ghost"
-                          className="flex-1 text-gray-600 hover:text-red-600"
+                          className="flex-1 text-gray-700 hover:text-red-600 hover:bg-gray-50 transition-all duration-300"
                           onClick={() => {
                             setAuthModalMode("login");
                             setIsAuthModalOpen(true);
@@ -337,7 +337,8 @@ const Navbar = () => {
                           Giriş Yap
                         </Button>
                         <Button
-                          className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                          type="button"
+                          className="flex-1 bg-red-600 hover:bg-red-700 text-white shadow-sm hover:shadow-md transition-all duration-300"
                           onClick={() => {
                             setAuthModalMode("register");
                             setIsAuthModalOpen(true);
@@ -365,6 +366,12 @@ const Navbar = () => {
                     >
                       Test
                     </NavLink>
+                    {/* <NavLink
+                      to="/about"
+                      className="text-gray-600 hover:text-red-600 px-3 py-2 text-sm font-medium transition-colors duration-200 cursor-pointer"
+                    >
+                      Hakkımızda
+                    </NavLink> */}
                     <NavLink
                       to="/lugat"
                       className="text-gray-600 hover:text-red-600 px-3 py-2 text-sm font-medium transition-colors duration-200 cursor-pointer"
@@ -450,8 +457,9 @@ const Navbar = () => {
         planName="Kredi Satın Al"
         planId="quick"
       />
-      {/* Auth Modal */}
+      {/* Auth Modal - key forces remount with correct mode when opening */}
       <AuthModal
+        key={isAuthModalOpen ? `auth-${authModalMode}` : "auth-closed"}
         open={isAuthModalOpen}
         onOpenChange={setIsAuthModalOpen}
         initialMode={authModalMode}

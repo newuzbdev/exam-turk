@@ -7,9 +7,12 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "check": "npm run build",
+    "check:full": "npm run lint && npm run build",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@radix-ui/react-alert-dialog": "^1.1.14",
     "@radix-ui/react-avatar": "^1.1.10",
     "@radix-ui/react-dialog": "^1.1.14",
@@ -32,6 +35,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "devtools-detect": "^4.0.2",
+    "dotenv": "^17.2.3",
     "framer-motion": "^12.23.12",
     "google-auth-library": "^10.1.0",
     "input-otp": "^1.4.2",

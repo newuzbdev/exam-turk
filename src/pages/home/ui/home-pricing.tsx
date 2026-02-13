@@ -1,114 +1,108 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { toast } from "@/utils/toast";
+import { Send, AlertCircle } from "lucide-react";
 
-// Telegram config only from env
+// Telegram config
 const TELEGRAM_BOT_TOKEN = import.meta.env.VITE_TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = import.meta.env.VITE_TELEGRAM_CHAT_ID;
 
 const HomePricing = () => {
   const [pricingMessage, setPricingMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [_success, setSuccess] = useState(false);
 
+  // --- Telegram Gönderme Fonksiyonu ---
   const handleSendFromPricing = async () => {
     if (!pricingMessage.trim()) return;
 
     if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
-      setError(
-        "Telegram konfiguratsiyasi mavjud emas. Bu haqda tizim administratoriga xabar bering."
-      );
-      toast.error(
-        "Telegram yapılandırması eksik. Lütfen sistem yöneticisine bildirin."
-      );
+      toast.error("İletişim sistemi şu an aktif değil.");
       return;
     }
 
     try {
       setIsSending(true);
-      setError(null);
-      setSuccess(false);
-
       const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
 
       const res = await fetch(url, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           chat_id: TELEGRAM_CHAT_ID,
-          text: `Narxlar bo'limidan yangi savol:\n${pricingMessage}`,
+          text: `💬 Destek Sorusu:\n${pricingMessage}`,
         }),
       });
 
-      if (!res.ok) {
-        throw new Error("Telegram isteği başarısız oldu");
-      }
+      if (!res.ok) throw new Error("Gönderim hatası");
 
       setPricingMessage("");
-      setSuccess(true);
-      toast.success("Mesajınız gönderildi.");
+      toast.success("Mesajınız iletildi. En kısa sürede döneceğiz.");
     } catch (e) {
-      console.error("Pricing Telegram send error", e);
-      setError("Xabar yuborilmadi, iltimos qayta urinib ko'ring.");
-       toast.error(
-        "Mesaj gönderilirken bir hata oluştu. Lütfen tekrar deneyin."
-      );
+      console.error("Telegram error", e);
+      toast.error("Mesaj gönderilemedi.");
     } finally {
       setIsSending(false);
     }
   };
 
   return (
-    <div>
-      <section
-        id="pricing"
-        className="py-24 bg-white border-t border-gray-100"
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Header with highlight card under title */}
+    <section id="contact" className="py-16 sm:py-20 bg-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
+        {/* Telegram / Hızlı Destek Barı */}
+        <div className="max-w-4xl mx-auto">
+          <div className="relative overflow-hidden rounded-2xl bg-white border border-gray-200 p-7 sm:p-8 shadow-sm">
 
-          {/* Small conceptual overview */}
+            {/* Arka plan dekoru (Hafif Kırmızı Blur) */}
+            <div className="absolute top-0 right-0 -mt-6 -mr-6 w-24 h-24 bg-red-50 opacity-70 rounded-full blur-2xl pointer-events-none"></div>
 
-          {/* Info text about detailed pricing + Telegram quick question input */}
-          <div className="max-w-7xl mx-auto text-center">
-          
-            {/* Red telegram bar directly under pricing text */}
-            <div className="rounded-2xl bg-gradient-to-r from-red-600 to-red-700 px-4 py-4 sm:px-6 sm:py-5 text-white shadow-md inline-block w-full">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs sm:text-sm font-medium text-left sm:pr-4">
-                  Testle ilgili herhangi bir zorlukla karşılaşırsanız veya sorularınız varsa lütfen yöneticilerimizle şu adresten iletişime geçin:
+            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+
+              {/* Sol Taraf: Metin */}
+              <div className="text-center md:text-left text-gray-900 md:w-1/2">
+                <div className="flex items-center justify-center md:justify-start gap-3 mb-2.5">
+                  <div className="p-2.5 bg-red-100 rounded-xl">
+                    <AlertCircle className="w-6 h-6 text-red-600" />
+                  </div>
+                  <h4 className="font-semibold text-lg sm:text-xl tracking-tight">Yardıma mı ihtiyacınız var?</h4>
+                </div>
+                <p className="text-gray-600 text-sm leading-relaxed pl-1">
+                  Ödeme, kredi satın alma ve teknik konularla ilgili sorularınızı buradan iletebilirsiniz. Test sırasında bir sorun yaşadıysanız detayları yazın; uygun durumlarda test hakkınız yeniden tanımlanabilir. Yöneticilerimiz en kısa sürede yanıt verir.
                 </p>
-                <div className="mt-1 w-full sm:w-auto sm:min-w-[320px] flex items-center gap-3">
+              </div>
+
+              {/* Sağ Taraf: Input */}
+              <div className="w-full md:w-1/2">
+                <div className="flex items-center bg-gray-50 border border-gray-200 rounded-full p-1.5 pl-5 focus-within:border-red-500 focus-within:ring-2 focus-within:ring-red-500/20 transition-all duration-300">
                   <input
                     type="text"
                     placeholder="Sorunuzu buraya yazın..."
-                    className="w-full rounded-full border border-red-200 bg-white/95 px-4 py-2.5 text-xs sm:text-sm text-gray-900 placeholder:text-red-300 outline-none focus:border-white focus:ring-2 focus:ring-white"
+                    className="flex-1 bg-transparent text-gray-900 placeholder:text-gray-400 text-sm outline-none font-medium py-2"
                     value={pricingMessage}
                     onChange={(e) => setPricingMessage(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSendFromPricing()}
                   />
                   <button
-                    type="button"
                     onClick={handleSendFromPricing}
                     disabled={isSending || !pricingMessage.trim()}
-                    className="inline-flex shrink-0 items-center justify-center cursor-pointer rounded-full bg-white px-4 py-2 text-xs sm:text-sm font-semibold text-red-600 shadow-md transition hover:bg-red-50 disabled:cursor-not-allowed disabled:bg-red-200 disabled:text-white"
+                    className="flex-shrink-0 w-11 h-11 bg-red-600 rounded-full flex items-center justify-center text-white transition-colors hover:bg-red-700 disabled:opacity-70 disabled:cursor-not-allowed shadow-sm"
                   >
-                    {isSending ? "Gönderiliyor..." : "Gönder"}
+                    {isSending ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Send className="w-5 h-5 ml-0.5" />
+                    )}
                   </button>
                 </div>
-              </div>
-              <div className="mt-1 min-h-[1.25rem] text-[11px] text-left">
-                {error && <span className="text-red-50">{error}</span>}
-             
               </div>
             </div>
           </div>
         </div>
-      </section>
-    </div>
+
+      </div>
+    </section>
   );
 };
 
 export default HomePricing;
+
+

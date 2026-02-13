@@ -124,7 +124,11 @@ export const router = createBrowserRouter([
       {
         path: "/how-it-works",
         element: <HowItWorksPage />,
-      }
+      },
+      // {
+      //   path: "/about",
+      //   element: <About />,
+      // }
     ],
   },
 ]);

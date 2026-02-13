@@ -12,8 +12,8 @@ interface InstructionsPageProps {
 
 const InstructionsPage = ({ testTitle, onStartTest, sections }: InstructionsPageProps) => {
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-6 sm:py-8">
+    <div className="min-h-0 bg-white">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-6 sm:py-8 pb-20 safe-area-bottom safe-area-top">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-8 sm:mb-10">
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3 sm:mb-4">

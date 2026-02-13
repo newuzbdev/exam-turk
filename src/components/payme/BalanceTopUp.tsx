@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Wallet, Plus, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Wallet,  Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { paymeService } from '@/services/payme.service';
 import { toast } from '@/utils/toast';
 
@@ -111,37 +111,36 @@ export const BalanceTopUp: React.FC<BalanceTopUpProps> = ({
         variant="ghost"
         size="sm"
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-900 shadow-sm px-3 ring-1 ring-gray-300"
+        className="flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 text-gray-900 shadow-sm px-3 py-2 border border-gray-200 transition-all h-auto"
       >
         <Wallet className="w-4 h-4" />
-        <span className="hidden sm:inline font-semibold">{formattedBalance}</span>
-        <Plus className="w-3 h-3" />
+        <span className="text-sm font-semibold whitespace-nowrap">{formattedBalance}</span>
       </Button>
 
       {/* Top-up Dialog */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-md w-[92vw] bg-white border-0 shadow-xl">
+        <DialogContent className="sm:max-w-md w-[92vw] bg-gray-50 border border-gray-200 shadow-xl">
           <DialogHeader>
-            <DialogTitle className="text-center text-black">Bakiye Yükle</DialogTitle>
-            <DialogDescription className="text-center text-black">Bakiye yükleme</DialogDescription>
+            <DialogTitle className="text-center text-gray-900">Bakiye İşlemleri</DialogTitle>
+            <DialogDescription className="text-center text-gray-600">Hesabınıza bakiye yükleyin</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             {/* Current Balance */}
-            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50">
-              <span className="text-sm font-medium text-black">Mevcut Bakiye:</span>
+            <div className="flex items-center justify-between p-4 rounded-xl bg-white border border-gray-200">
+              <span className="text-sm font-medium text-gray-700">Mevcut Bakiye</span>
               <div className="flex items-center gap-2">
                 {isCheckingBalance ? (
                   <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
                 ) : (
-                  <span className="font-semibold text-black">{formattedBalance}</span>
+                  <span className="font-semibold text-gray-900">{formattedBalance}</span>
                 )}
               </div>
             </div>
 
             {/* Amount Input */}
             <div className="space-y-2">
-              <Label htmlFor="topup-amount" className="text-black">Yüklenecek Miktar (UZS)</Label>
+              <Label htmlFor="topup-amount" className="text-gray-700 font-medium">Yüklenecek Miktar (UZS)</Label>
               <Input
                 id="topup-amount"
                 type="number"
@@ -150,10 +149,10 @@ export const BalanceTopUp: React.FC<BalanceTopUpProps> = ({
                 onChange={(e) => setAmount(e.target.value)}
                 min="1000"
                 step="1000"
-                className="text-center text-lg focus-visible:ring-0 focus-visible:ring-offset-0 border-gray-200 text-black rounded-xl"
+                className="text-center text-lg focus-visible:ring-0 focus-visible:ring-offset-0 border-gray-300 text-gray-900 bg-white rounded-xl"
               />
               {amountValue > 0 && (
-                <div className="text-center text-sm text-black">
+                <div className="text-center text-sm text-gray-600">
                   Yüklenecek: {formattedAmount}
                 </div>
               )}
@@ -161,14 +160,14 @@ export const BalanceTopUp: React.FC<BalanceTopUpProps> = ({
 
             {/* Validation Messages */}
             {amountValue > 0 && amountValue < 1000 && (
-              <div className="flex items-center gap-2 text-sm text-red-700">
+              <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-3 rounded-lg">
                 <AlertCircle className="w-4 h-4" />
                 <span>Minimum yükleme miktarı 1,000 UZS</span>
               </div>
             )}
 
             {amountValue >= 1000 && (
-              <div className="flex items-center gap-2 text-sm text-green-700">
+              <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 p-3 rounded-lg">
                 <CheckCircle className="w-4 h-4" />
                 <span>Miktar geçerli</span>
               </div>
@@ -179,7 +178,7 @@ export const BalanceTopUp: React.FC<BalanceTopUpProps> = ({
               <Button
                 onClick={handleTopUp}
                 disabled={isLoading || amountValue < 1000}
-                className="w-full bg-red-600 hover:bg-red-700 text-white rounded-lg"
+                className="w-full h-11 bg-red-600 hover:bg-red-700 text-white rounded-lg shadow-sm hover:shadow-md transition-all"
               >
                 {isLoading ? (
                   <>
@@ -197,7 +196,7 @@ export const BalanceTopUp: React.FC<BalanceTopUpProps> = ({
               <Button
                 variant="outline"
                 onClick={() => setIsOpen(false)}
-                className="w-full border-gray-200 rounded-xl"
+                className="w-full h-11 border-gray-300 bg-white text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 İptal
               </Button>

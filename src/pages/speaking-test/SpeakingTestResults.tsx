@@ -213,171 +213,55 @@ export default function SpeakingTestResults() {
   }, [activePart]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-8">
+    <div className="min-h-screen bg-white">
+      <div className="max-w-3xl mx-auto px-4 py-6">
         {/* Header Section */}
-        <div className="mb-8">
-          <div className="flex items-center gap-4 mb-6">
+        <div className="mb-6">
+          <div className="flex items-center gap-3">
             <Button
               variant="ghost"
               onClick={() => navigate("/test")}
-              className="p-2 hover:bg-white/80 rounded-full transition-colors"
+              className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
             >
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Konuşma Testi Sonuçları</h1>
-              <p className="text-gray-600 mt-1">Performansınızı ve geri bildirimi inceleyin</p>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Konuşma Testi Sonuçları</h1>
+              <p className="text-gray-600 mt-1 text-sm">Performansınızı ve geri bildirimi inceleyin</p>
             </div>
           </div>
 
           {/* Overall Score Card */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+          <div className="border border-gray-300 rounded-lg px-4 py-3 mt-5">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">Genel Puan</h2>
-                <p className="text-gray-600">Konuşma testi performansınız</p>
+                <div className="text-sm font-semibold text-gray-800">Genel Puan</div>
+                <div className="text-xs text-gray-500">Konuşma testi performansınız</div>
               </div>
               <div className="text-right">
-                <div className="text-4xl font-bold text-red-600">{scores.overall}</div>
-                <div className="text-sm text-gray-500">Bant Puanı</div>
+                <div className="text-3xl font-bold text-red-600">{scores.overall}</div>
+                <div className="text-xs text-gray-500">Bant Puanı</div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Scoring Categories Grid */}
-        {speakingData?.aiFeedback && (() => {
-          const feedback = speakingData.aiFeedback as any;
-          const hasPartFeedback = feedback.part1 || feedback.part2 || feedback.part3 || feedback.part4;
-          const hasIELTSFeedback = feedback.coherenceAndCohesion || feedback.grammaticalRangeAndAccuracy || 
-                                   feedback.lexicalResource || feedback.taskAchievement;
-          
-          if (!hasPartFeedback && !hasIELTSFeedback) {
-            return null;
-          }
-          
-          return (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              {feedback.part1 && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-gray-900">Bölüm 1</h3>
-                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                  </div>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    {feedback.part1}
-                  </p>
-                </div>
-              )}
-              {feedback.part2 && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-gray-900">Bölüm 2</h3>
-                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  </div>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    {feedback.part2}
-                  </p>
-                </div>
-              )}
-              {feedback.part3 && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-gray-900">Bölüm 3</h3>
-                    <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                  </div>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    {feedback.part3}
-                  </p>
-                </div>
-              )}
-              {feedback.part4 && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-gray-900">Bölüm 4</h3>
-                    <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-                  </div>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    {feedback.part4}
-                  </p>
-                </div>
-              )}
-              {/* Fallback to IELTS-style feedback if part1-4 not available */}
-              {!hasPartFeedback && hasIELTSFeedback && (
-                <>
-                  {feedback.coherenceAndCohesion && (
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="font-semibold text-gray-900">Tutarlılık ve Bağlılık</h3>
-                        <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                      </div>
-                      <p className="text-sm text-gray-600 leading-relaxed">
-                        {feedback.coherenceAndCohesion}
-                      </p>
-                    </div>
-                  )}
-                  {feedback.grammaticalRangeAndAccuracy && (
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="font-semibold text-gray-900">Dil Bilgisi</h3>
-                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                      </div>
-                      <p className="text-sm text-gray-600 leading-relaxed">
-                        {feedback.grammaticalRangeAndAccuracy}
-                      </p>
-                    </div>
-                  )}
-                  {feedback.lexicalResource && (
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="font-semibold text-gray-900">Kelime Kaynağı</h3>
-                        <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                      </div>
-                      <p className="text-sm text-gray-600 leading-relaxed">
-                        {feedback.lexicalResource}
-                      </p>
-                    </div>
-                  )}
-                  {feedback.taskAchievement && (
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="font-semibold text-gray-900">Görev Başarısı</h3>
-                        <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-                      </div>
-                      <p className="text-sm text-gray-600 leading-relaxed">
-                        {feedback.taskAchievement}
-                      </p>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          );
-        })()}
-
-        {/* Part Navigation - Redesigned */}
         {parts.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
-            <h3 className="text-lg font-semibold text-gray-900 mb-6">Konuşma Bölümleri</h3>
-            
-            {/* All Parts in One Row */}
-            <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="mb-5">
+            <div className="text-sm font-semibold text-gray-700 mb-2">Konuşma Bölümleri</div>
+            <div className="flex flex-wrap gap-2 mb-3">
               {parts.map((_part, index: number) => (
                 <Button
                   key={index}
                   onClick={() => setActivePart(index)}
                   variant="outline"
-                  className={`h-16 rounded-lg font-medium transition-all ${
+                  className={`h-9 px-4 text-sm font-medium transition-colors ${
                     activePart === index
-                      ? "bg-red-600 text-white hover:bg-red-700 shadow-md border-red-600"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-300 hover:border-gray-400"
+                      ? "bg-red-600 text-white hover:bg-red-700 border-red-600"
+                      : "bg-white text-gray-700 hover:bg-gray-100 border-gray-300"
                   }`}
                 >
-                  <div className="text-center">
-                    <div className="font-semibold">Bölüm {index + 1}</div>
-                    <div className="text-xs opacity-75">Part {index + 1}</div>
-                  </div>
+                  Bölüm {index + 1}
                 </Button>
               ))}
             </div>
@@ -391,10 +275,10 @@ export default function SpeakingTestResults() {
                     onClick={() => setActiveQuestion(index)}
                     variant="outline"
                     size="sm"
-                    className={`transition-all ${
+                    className={`transition-colors ${
                       activeQuestion === index
                         ? "bg-red-600 text-white hover:bg-red-700 border-red-600"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-300"
+                        : "bg-white text-gray-700 hover:bg-gray-100 border-gray-300"
                     }`}
                   >
                     Soru {index + 1}
@@ -406,61 +290,40 @@ export default function SpeakingTestResults() {
         )}
 
         {/* Content Sections */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Question Section */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                <span className="text-blue-600 font-semibold text-sm">Q</span>
-              </div>
-              <h2 className="text-lg font-semibold text-gray-900">Soru</h2>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-4">
-              <p className="text-gray-700 leading-relaxed">{currentData.question}</p>
-            </div>
+          <div className="border border-gray-300 rounded-lg p-4">
+            <div className="text-sm font-semibold text-gray-700 mb-2">Soru</div>
+            <div className="text-gray-800">{currentData.question}</div>
           </div>
 
           {/* Answer Section */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                <span className="text-green-600 font-semibold text-sm">A</span>
-              </div>
-              <h2 className="text-lg font-semibold text-gray-900">Cevabınız</h2>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-4">
-              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{currentData.answer}</p>
-            </div>
+          <div className="border border-gray-300 rounded-lg p-4">
+            <div className="text-sm font-semibold text-gray-700 mb-2">Cevabınız</div>
+            <div className="text-gray-800 whitespace-pre-wrap">{currentData.answer}</div>
           </div>
 
           {/* Comment Section */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                <span className="text-purple-600 font-semibold text-sm">💬</span>
-              </div>
-              <h2 className="text-lg font-semibold text-gray-900">Eğitmen Notu</h2>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-4">
-              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{currentData.comment}</p>
-            </div>
+          <div className="border border-gray-300 rounded-lg p-4">
+            <div className="text-sm font-semibold text-gray-700 mb-2">Eğitmen Notu</div>
+            <div className="text-gray-800 whitespace-pre-wrap">{currentData.comment}</div>
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
+        <div className="mt-6 flex items-center justify-center gap-3">
           <Button
             onClick={handleDownloadPDF}
             disabled={downloadingPDF}
-            className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200"
+            className="bg-red-600 hover:bg-red-700 text-white h-9 px-4 text-sm"
           >
-            <Download className="w-5 h-5 mr-2" />
+            <Download className="w-4 h-4 mr-2" />
             {downloadingPDF ? "İndiriliyor..." : "Sertifikayı İndir (PDF)"}
           </Button>
           <Button
             onClick={() => navigate("/test")}
             variant="outline"
-            className="px-8 py-3 rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200"
+            className="h-9 px-4 text-sm"
           >
             Başka Test Al
           </Button>

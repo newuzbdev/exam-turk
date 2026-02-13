@@ -243,7 +243,7 @@ const Part1Section = ({
   // Show instructions first
   if (currentPhase === "instructions") {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 min-h-0 pb-20 safe-area-bottom">
         {/* Section Header */}
         <div className="mb-6">
           <h2 className="text-3xl font-bold text-gray-900 mb-4 text-center">
@@ -302,7 +302,7 @@ const Part1Section = ({
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 pb-20 min-h-0 safe-area-bottom">
       {/* Section Header */}
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900 mb-3">
@@ -367,7 +367,7 @@ const Part1Section = ({
               const imgs = section.subParts[1]?.images || [];
               if (imgs.length === 1) {
                 return (
-                  <div className="w-full max-w-xl aspect-[4/3] bg-transparent rounded-lg overflow-hidden flex items-center justify-center">
+                  <div className="w-full max-w-xl aspect-[4/3] bg-transparent rounded-lg overflow-hidden flex items-center justify-center max-h-[40vh] sm:max-h-[50vh]">
                     <img
                       src={imgs[0]}
                       alt={`Speaking test visual 1`}
@@ -384,7 +384,7 @@ const Part1Section = ({
                 return (
                   <div className="w-full max-w-4xl grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {[imgs[0], imgs[1]].map((src, idx) => (
-                      <div key={`img-${idx}`} className="aspect-[4/3] bg-transparent rounded-lg overflow-hidden flex items-center justify-center">
+                      <div key={`img-${idx}`} className="aspect-[4/3] bg-transparent rounded-lg overflow-hidden flex items-center justify-center max-h-[35vh] sm:max-h-[40vh]">
                         <img
                           src={src}
                           alt={`Speaking test visual ${idx + 1}`}

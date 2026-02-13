@@ -130,7 +130,7 @@ const Part2Section = ({
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 pb-20 min-h-0 safe-area-bottom">
       {/* Section Header */}
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900 mb-3">
@@ -148,15 +148,17 @@ const Part2Section = ({
         <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
           <h3 className="text-base font-medium text-gray-900 mb-3">Görsel</h3>
           <div className="flex justify-center">
-            <img
-              src={section.images[0]}
-              alt="Speaking test visual"
-              className="max-w-full h-auto rounded-lg border border-gray-300"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.src = "https://placehold.co/400x300?text=Görsel+Yüklenemedi";
-              }}
-            />
+            <div className="w-full max-w-2xl max-h-[45vh] sm:max-h-[55vh] flex items-center justify-center">
+              <img
+                src={section.images[0]}
+                alt="Speaking test visual"
+                className="max-w-full max-h-full h-auto rounded-lg border border-gray-300 object-contain"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = "https://placehold.co/400x300?text=Görsel+Yüklenemedi";
+                }}
+              />
+            </div>
           </div>
         </div>
       )}

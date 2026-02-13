@@ -2,88 +2,41 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  CheckCircle,
-  Zap,
-  Target,
-  Trophy,
-  Users,
-  CreditCard,
-  Coins,
-} from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Coins, Wallet } from "lucide-react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import PaymeCheckoutModal from "@/components/payme/PaymeCheckoutModal";
-import { toast } from "@/utils/toast";
+import BalanceTopUp from "@/components/payme/BalanceTopUp";
 import testCoinPriceService from "@/services/testCoinPrice.service";
+import { paymeService } from "@/services/payme.service";
 import { useAuth } from "@/contexts/AuthContext";
 
-// Pricing plans configuration
-const pricingPlans = [
-  {
-    id: 'free',
-    name: 'Başlangıç Deneme',
-    units: 8,
-    price: 0,
-    description: 'Platformumuzu deneyimlemek isteyen yeni kullanıcılar için mükemmel',
-    icon: CheckCircle,
-    iconColor: 'green',
-    isFree: true,
-    buttonText: 'Ücretsiz Bonusu Al'
-  },
-  {
-    id: 'quick',
-    name: 'Hızlı Değerlendirme',
-    units: 15,
-    price: 25000, // 25,000 UZS
-    description: 'Hedefli pratik testlerle tahmini puanınızı alın',
-    icon: Target,
-    iconColor: 'blue',
-    isFree: false,
-    buttonText: '15U Paketi Satın Al'
-  },
-  {
-    id: 'intensive',
-    name: 'Yoğun Hazırlık ⚡',
-    units: 50,
-    price: 75000, // 75,000 UZS
-    description: '6-8 tam sınav veya odaklı beceri pratiği için mükemmel',
-    icon: Zap,
-    iconColor: 'yellow',
-    isFree: false,
-    buttonText: '50U Paketi Satın Al',
-    isPopular: true
-  },
-  {
-    id: 'expert',
-    name: 'Uzman Paketi ✨',
-    units: 120,
-    price: 150000, // 150,000 UZS
-    description: 'Sınırsız pratik fırsatlarıyla nihai hazırlık',
-    icon: Trophy,
-    iconColor: 'purple',
-    isFree: false,
-    buttonText: '120U Paketi Satın Al'
-  }
-];
-
 export default function Price() {
-  const [selectedPlan, setSelectedPlan] = useState<typeof pricingPlans[0] | null>(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [initialUnits, setInitialUnits] = useState<number | undefined>(undefined);
   const [coinPrices, setCoinPrices] = useState<any[] | null>(null);
-  const { user } = useAuth();
+  const [coinUnitPrice, setCoinUnitPrice] = useState<number>(1000);
+  const { user, refreshUser } = useAuth();
+  const currentBalance = user?.balance ?? 0;
   const currentCoins = user?.coin ?? 0;
+  const balanceButtonRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let mounted = true;
     testCoinPriceService.getAll().then((items) => {
       if (mounted) setCoinPrices(items);
+    });
+    return () => { mounted = false; };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    paymeService.getAllProducts().then((products) => {
+      const price = products?.[0]?.price;
+      if (mounted && typeof price === 'number' && price > 0) {
+        setCoinUnitPrice(price);
+      }
     });
     return () => { mounted = false; };
   }, []);
@@ -94,283 +47,205 @@ export default function Price() {
     return map;
   }, [coinPrices]);
 
-  const handlePurchaseClick = (plan: typeof pricingPlans[0]) => {
-    if (plan.isFree) {
-      toast.success('Ücretsiz bonus hesabınıza eklendi!');
-      return;
-    }
-    
-    setSelectedPlan(plan);
+  const totalTestCost = useMemo(() => {
+    return (
+      (coinByType["LISTENING"] ?? 3) +
+      (coinByType["READING"] ?? 3) +
+      (coinByType["WRITING"] ?? 5) +
+      (coinByType["SPEAKING"] ?? 5)
+    );
+  }, [coinByType]);
+
+  const handleCreditPurchase = () => {
     setIsCheckoutOpen(true);
   };
 
-  // Prefill from query param neededCoins
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
-  const url = typeof window !== 'undefined' ? new URL(window.location.href) : null;
-  const neededCoins = url ? Number(url.searchParams.get('neededCoins') || 0) : 0;
-  useState(() => {
-    if (neededCoins > 0) {
-      setSelectedPlan(pricingPlans[1]);
-      setIsCheckoutOpen(true);
-      setInitialUnits(neededCoins);
-    }
-    return undefined;
-  });
-
-  const handleCheckoutSuccess = (transactionId: string, purchaseData?: any) => {
-    console.log('Payment successful:', transactionId);
-    console.log('Purchase data:', purchaseData);
-    toast.success(`${selectedPlan?.name} planı başarıyla satın alındı!`);
+  const handleCheckoutSuccess = () => {
     setIsCheckoutOpen(false);
-    setSelectedPlan(null);
+    refreshUser?.();
   };
 
   const handleCheckoutClose = () => {
     setIsCheckoutOpen(false);
-    setSelectedPlan(null);
+  };
+
+  const handleBalanceUpdate = async () => {
+    await refreshUser?.();
+  };
+
+  const handleBalanceLoadClick = () => {
+    // Trigger the BalanceTopUp button
+    const button = balanceButtonRef.current?.querySelector('button');
+    if (button) {
+      button.click();
+    }
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Balance Overview */}
-        <section className="mb-10">
-          <Card className="border-red-100 bg-white shadow-sm">
-            <CardContent className="p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Coins className="h-5 w-5 text-red-600" />
-                  <span className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
-                    Mevcut Bakiyeniz
-                  </span>
-                </div>
-                <div className="flex items-baseline gap-2 mb-1">
-                  <span className="text-3xl font-bold text-gray-900">
-                    {currentCoins} Kredi
-                  </span>
-                  <span className="text-sm text-gray-500">
-                    (Türkçe deneme sınavları için kullanılabilir)
-                  </span>
-                </div>
-                <p className="text-sm text-gray-500 max-w-xl">
-                  Dinleme, Okuma, Yazma ve Konuşma testleri için yalnızca kredi
-                  harcarsınız. Yeterli bakiyeniz yoksa aşağıdan hızlıca
-                  yükleyebilirsiniz.
-                </p>
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Page Title */}
+        <div className="text-center mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
+            Bakiye ve Kredi
+          </h1>
+          <p className="text-gray-600">
+            Para yükleyin ve kredi satın alın
+          </p>
+        </div>
+
+        {/* Balance and Credit Overview */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          {/* Balance Card */}
+          <Card className="border border-gray-200 bg-white">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-2 mb-2">
+                <Wallet className="h-5 w-5 text-green-600" />
+                <span className="text-sm font-semibold text-gray-900">
+                  Bakiye (Para)
+                </span>
               </div>
-              <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                <Button
-                  className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white"
-                  onClick={() => {
-                    const fallback = pricingPlans.find(p => p.id === "quick") || pricingPlans[0];
-                    setSelectedPlan(fallback);
-                    setInitialUnits(undefined);
-                    setIsCheckoutOpen(true);
-                  }}
-                >
-                  Hızlı Bakiye Yükle
-                </Button>
+              <div className="text-3xl font-bold text-gray-900">
+                {currentBalance.toLocaleString('tr-TR')} UZS
               </div>
             </CardContent>
           </Card>
-        </section>
 
-        {/* Hero / Explanation Section */}
-        <section className="text-center mb-10">
-          <Badge className="mb-4 bg-red-100 text-red-700 border-red-200">
-            Fiyatlandırma ve Bakiye
-          </Badge>
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-            Türkçe Deneme Sınavları için Esnek Bakiye Sistemi
-          </h1>
-          <p className="text-lg text-gray-600 max-w-3xl mx-auto mb-3">
-            Abonelik yok, taahhüt yok. Yalnızca çözdüğünüz deneme sınavları
-            için kredi harcarsınız.
-          </p>
-          <p className="text-sm text-gray-500 max-w-3xl mx-auto">
-            Her beceri için ayrı ayrı ödeme yapabilir veya tam sınav paketi
-            oluşturarak en verimli şekilde pratiğinizi planlayabilirsiniz.
-          </p>
-        </section>
-
-        {/* Test Pricing Overview (dynamic) */}
-        <div className="rounded-xl p-6 mb-12 bg-white border border-gray-100 shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">
-            Bireysel Test Ücretleri
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="text-center">
-              <div className="text-base font-medium text-gray-600">Dinleme</div>
-              <div className="text-lg font-bold text-red-600">{(coinByType["LISTENING"] ?? 3)} Kredi</div>
-            </div>
-            <div className="text-center">
-              <div className="text-base font-medium text-gray-600">Okuma</div>
-              <div className="text-lg font-bold text-red-600">{(coinByType["READING"] ?? 3)} Kredi</div>
-            </div>
-            <div className="text-center">
-              <div className="text-base font-medium text-gray-600">Yazma</div>
-              <div className="text-lg font-bold text-red-600">{(coinByType["WRITING"] ?? 5)}U</div>
-            </div>
-            <div className="text-center">
-              <div className="text-base font-medium text-gray-600">Konuşma</div>
-              <div className="text-lg font-bold text-red-600">{(coinByType["SPEAKING"] ?? 5)} Kredi</div>
-            </div>
-            <div className="text-center">
-              <div className="text-base font-medium text-gray-600">
-                Tam Test
+          {/* Credit Card */}
+          <Card className="border border-gray-200 bg-white">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-2 mb-2">
+                <Coins className="h-5 w-5 text-red-600" />
+                <span className="text-sm font-semibold text-gray-900">
+                  Kredi
+                </span>
               </div>
-              <div className="text-lg font-bold text-red-600">{
-                ((coinByType["LISTENING"] ?? 3)
-                + (coinByType["READING"] ?? 3)
-                + (coinByType["WRITING"] ?? 5)
-                + (coinByType["SPEAKING"] ?? 5))
-              } Kredi</div>
-            </div>
-          </div>
+              <div className="text-3xl font-bold text-gray-900">
+                {currentCoins} Kredi
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Custom coin purchase */}
-        <div className="mb-10">
-          <Card className="border border-blue-200 bg-white">
+        {/* Coin Price Info */}
+        <Card className="border border-gray-200 bg-white mb-6">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Coins className="h-5 w-5 text-red-600" />
+                <span className="text-sm font-semibold text-gray-900">
+                  1 Kredi Fiyatı
+                </span>
+              </div>
+              <div className="text-2xl font-bold text-gray-900">
+                {coinUnitPrice.toLocaleString('tr-TR')} UZS
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Test Pricing */}
+        <Card className="border border-gray-200 bg-white mb-6">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-gray-900">
+              Test Ücretleri
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                <span className="text-gray-700">Dinleme</span>
+                <span className="font-semibold text-red-600">{(coinByType["LISTENING"] ?? 3)} Kredi</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                <span className="text-gray-700">Okuma</span>
+                <span className="font-semibold text-red-600">{(coinByType["READING"] ?? 3)} Kredi</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                <span className="text-gray-700">Yazma</span>
+                <span className="font-semibold text-red-600">{(coinByType["WRITING"] ?? 5)} Kredi</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                <span className="text-gray-700">Konuşma</span>
+                <span className="font-semibold text-red-600">{(coinByType["SPEAKING"] ?? 5)} Kredi</span>
+              </div>
+              <div className="flex justify-between items-center py-3 bg-gray-50 px-3 rounded-lg mt-2">
+                <div>
+                  <div className="font-semibold text-gray-900">Tam Test</div>
+                  <div className="text-xs text-gray-500">Toplam Maliyet</div>
+                </div>
+                <div className="text-right">
+                  <div className="font-bold text-red-600">{totalTestCost} Kredi</div>
+                  <div className="text-sm text-gray-600">{(totalTestCost * coinUnitPrice).toLocaleString('tr-TR')} UZS</div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Actions */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Balance Load Card */}
+          <Card className="border border-gray-200 bg-white">
             <CardHeader>
-              <CardTitle>İstediğiniz Kadar Birim Satın Alın</CardTitle>
-              <CardDescription>Kaç birime ihtiyacınız varsa girin ve Payme ile ödeyin</CardDescription>
+              <CardTitle className="text-lg font-semibold text-gray-900">
+                Para Yükle
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <Button
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-                onClick={() => {
-                  const fallback = pricingPlans.find(p => p.id === 'quick') || pricingPlans[0];
-                  setSelectedPlan({ ...fallback, name: 'Kredi Satın Al' } as any);
-                  setInitialUnits(undefined);
-                  setIsCheckoutOpen(true);
-                }}
-              >
-                Özel Miktar Satın Al
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Recommended Packs */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {pricingPlans.map((plan) => {
-            const IconComponent = plan.icon;
-            
-            // Define icon colors explicitly to avoid dynamic class issues
-            const getIconStyles = (color: string) => {
-              switch (color) {
-                case 'green':
-                  return { bg: 'bg-green-100', text: 'text-green-600' };
-                case 'blue':
-                  return { bg: 'bg-blue-100', text: 'text-blue-600' };
-                case 'yellow':
-                  return { bg: 'bg-yellow-100', text: 'text-yellow-600' };
-                case 'purple':
-                  return { bg: 'bg-purple-100', text: 'text-purple-600' };
-                default:
-                  return { bg: 'bg-gray-100', text: 'text-gray-600' };
-              }
-            };
-            
-            const iconStyles = getIconStyles(plan.iconColor);
-            
-            return (
-              <Card 
-                key={plan.id}
-                className={`relative border-2 ${
-                  plan.isPopular 
-                    ? 'border-red-300 hover:border-red-400' 
-                    : 'border-gray-200 hover:border-red-300'
-                } transition-colors flex flex-col`}
-              >
-                {plan.isPopular && (
-            <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-red-600 text-white">
-              En Popüler
-            </Badge>
-                )}
-                
-            <CardHeader className="text-center flex-grow">
-                  <div className={`w-12 h-12 ${iconStyles.bg} rounded-full flex items-center justify-center mx-auto`}>
-                    <IconComponent className={`w-6 h-6 ${iconStyles.text}`} />
-              </div>
-
-              <CardTitle className="text-xl font-bold mt-4">
-                    {plan.name}
-              </CardTitle>
-              <CardDescription className="text-sm">
-                    {plan.description}
-              </CardDescription>
-            </CardHeader>
-
-            <CardContent className="text-center">
-              <div className="flex justify-center items-center gap-2">
-                <span className="text-sm text-gray-600">Birim dahil:</span>
-                    <span className="text-lg font-bold text-yellow-600">{plan.units}U</span>
-              </div>
-
-              <div className="text-3xl font-bold text-gray-900 mt-4">
-                    {plan.isFree ? 'Ücretsiz' : `${plan.price.toLocaleString('tr-TR')} UZS`}
-              </div>
-              <p className="text-sm text-gray-600 mt-2">
-                    {plan.isFree 
-                      ? 'İlk kayıt olduğunuzda bonus krediler kazanın'
-                      : 'Payme ile güvenli ödeme'
-                    }
+              <p className="text-sm text-gray-600 mb-4">
+                Payme ile hesabınıza para yükleyin
               </p>
-            </CardContent>
-
-            <CardFooter className="mt-auto">
-                  <Button 
-                    onClick={() => handlePurchaseClick(plan)}
-                    className={`w-full ${
-                      plan.isFree 
-                        ? 'bg-green-600 hover:bg-green-700' 
-                        : 'bg-red-600 hover:bg-red-700'
-                    } text-white`}
-                  >
-                    {plan.isFree ? (
-                      plan.buttonText
-                    ) : (
-                      <>
-                        <CreditCard className="w-4 h-4 mr-2" />
-                        {plan.buttonText}
-                      </>
-                    )}
+              <Button
+                onClick={handleBalanceLoadClick}
+                className="w-full bg-green-600 hover:bg-green-700 text-white"
+              >
+                <Wallet className="w-4 h-4 mr-2" />
+                Para Yükle
               </Button>
-            </CardFooter>
+            </CardContent>
           </Card>
-            );
-          })}
-        </div>
 
-        {/* Additional Info */}
-        <div className="mt-12 text-center">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-4xl mx-auto">
-            <Users className="w-8 h-8 text-red-600 mx-auto mb-3" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Binlerce Başarılı Öğrenciye Katılın
-            </h3>
-            <p className="text-gray-600">
-              Kanıtlanmış metodolojimiz ve kapsamlı pratik testlerimiz, dünya
-              çapında öğrencilerin hedef Türkçe Yeterlilik puanlarına
-              ulaşmalarına yardımcı oldu. Başarı yolculuğunuza bugün başlayın!
-            </p>
-          </div>
+          {/* Credit Purchase Card */}
+          <Card className="border border-gray-200 bg-white">
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold text-gray-900">
+                Kredi Satın Al
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600 mb-4">
+                Bakiyenizden kredi satın alın
+              </p>
+              <Button
+                onClick={handleCreditPurchase}
+                className="w-full bg-red-600 hover:bg-red-700 text-white"
+              >
+                <Coins className="w-4 h-4 mr-2" />
+                Kredi Satın Al
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </main>
 
-      {/* Payme Checkout Modal */}
-      {selectedPlan && (
+      {/* Balance Top-Up - Hidden trigger */}
+      <div ref={balanceButtonRef} style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}>
+        <BalanceTopUp
+          currentBalance={currentBalance}
+          onBalanceUpdate={handleBalanceUpdate}
+        />
+      </div>
+
+      {/* Payme Checkout Modal - For Credit Purchase */}
+      {isCheckoutOpen && (
         <PaymeCheckoutModal
           isOpen={isCheckoutOpen}
           onClose={handleCheckoutClose}
-          planName={selectedPlan.name}
-          planId={selectedPlan.id}
+          planName="Kredi Satın Al"
+          planId="credit"
           onSuccess={handleCheckoutSuccess}
-          initialUnits={initialUnits}
+          initialUnits={undefined}
         />
       )}
     </div>

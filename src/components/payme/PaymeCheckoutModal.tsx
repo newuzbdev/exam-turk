@@ -39,21 +39,22 @@ export const PaymeCheckoutModal: React.FC<PaymeCheckoutModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-3xl w-[96vw] max-h-[85vh] overflow-y-auto p-0 border border-gray-200 bg-white">
+      <DialogContent className="sm:max-w-3xl w-[96vw] max-h-[85vh] overflow-y-auto p-0 border border-gray-200 bg-gray-50">
         <DialogHeader>
           <div className="flex items-center justify-between px-4 pt-4">
             <div>
-              <DialogTitle className="text-lg font-bold text-black">
-                {isSuccess ? 'İşlem Başarılı!' : 'Kredi Satın Al'}
+              <DialogTitle className="text-lg font-bold text-gray-900">
+                {isSuccess ? 'İşlem Başarılı!' : planName}
               </DialogTitle>
-              <DialogDescription className="mt-1 text-black">
-                {isSuccess 
-                  ? `${planName} işlemi başarıyla tamamlandı` 
-                  : 'Satın almak istediğiniz birim sayısını girin'
+              <DialogDescription className="mt-1 text-gray-600">
+                {isSuccess
+                  ? `İşleminiz başarıyla tamamlandı`
+                  : planId === 'balance'
+                    ? 'Hesabınıza para yükleyin'
+                    : 'Satın almak istediğiniz kredi sayısını seçin'
                 }
               </DialogDescription>
             </div>
-            {/* Built-in dialog close exists; remove extra X */}
           </div>
         </DialogHeader>
 
@@ -69,7 +70,10 @@ export const PaymeCheckoutModal: React.FC<PaymeCheckoutModalProps> = ({
                   Tebrikler!
                 </h3>
                 <p className="text-gray-600">
-                  Kredileriniz hesabınıza başarıyla eklendi
+                  {planId === 'balance'
+                    ? 'Para hesabınıza başarıyla eklendi'
+                    : 'Kredileriniz hesabınıza başarıyla eklendi'
+                  }
                 </p>
                 {transactionId && (
                   <Badge variant="outline" className="text-xs">

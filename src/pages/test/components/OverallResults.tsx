@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axiosPrivate from "@/config/api";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ interface Question {
   }>;
 }
 
-interface TestSonuç {
+interface TestSonuc {
   aiFeedback?: any;
   test: {
     id: string;
@@ -63,10 +63,10 @@ interface OverallResponse {
     name: string;
   };
   level?: string;
-  listening?: TestSonuç;
-  reading?: TestSonuç;
-  writing?: TestSonuç;
-  speaking?: TestSonuç;
+  listening?: TestSonuc;
+  reading?: TestSonuc;
+  writing?: TestSonuc;
+  speaking?: TestSonuc;
 }
 
 export default function OverallResults() {
@@ -120,6 +120,23 @@ export default function OverallResults() {
     fetchOverallResults();
   }, [params.overallId, navigate]);
 
+  const displayLevel = (level?: string) => {
+    if (!level) return level;
+    return level === "A0" || level === "B1_ALTI" ? "B1 altı" : level;
+  };
+  const levelFrom75 = (score?: number | null) => {
+    if (typeof score !== "number" || Number.isNaN(score)) return undefined;
+    if (score >= 65) return "C1";
+    if (score >= 51) return "B2";
+    if (score >= 38) return "B1";
+    return "B1 altı";
+  };
+  const isMultiTest =
+    (data?.listening ? 1 : 0) +
+    (data?.reading ? 1 : 0) +
+    (data?.writing ? 1 : 0) +
+    (data?.speaking ? 1 : 0) > 1;
+
 
   if (loading) {
     return (
@@ -170,14 +187,14 @@ export default function OverallResults() {
     return (
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mx-4 gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           {/* <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Sınav Sonuçları</h1> */}
         </div>
         
-        <div className="mx-4 space-y-6">
+          <div className="space-y-6">
 
           {/* Report Info */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-muted-foreground">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-muted-foreground ml-2">
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
               <span className="break-all">Report ID: {data.id}</span>
               <span>İsim: {data.user.name}</span>
@@ -185,21 +202,88 @@ export default function OverallResults() {
             <span className="text-xs sm:text-sm">Tarih: {new Date(data.listening.completedAt || data.startedAt).toISOString().replace('T', ' ').substring(0, 19) + " "}</span>
           </div>
 
-          {/* Listening Score */}
-          <div className="mb-6">
-            <h2 className="text-lg sm:text-xl font-semibold text-foreground">
-              Dinleme Puanı: {data.listening.score}
-              <span className="ml-2 sm:ml-3 text-sm sm:text-base text-muted-foreground">
-                ({examData.filter(r => r.result === "Doğru").length} / {examData.length} doğru)
-              </span>
-            </h2>
-          </div>
+          {/* Listening Score with Level */}
+          {isMultiTest && displayLevel(data.level) ? (
+                <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_145px] items-stretch gap-4 mb-6">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-3 sm:px-6 sm:py-4 h-full">
+                <div className="h-full flex items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Dinleme Puanı</h2>
+                    <p className="text-sm text-gray-600 mt-1">
+                      ({examData.filter(r => r.result === "Doğru").length} / {examData.length} doğru)
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm text-gray-500 mb-1">Puan</div>
+                    <div className="text-3xl sm:text-4xl font-bold text-red-600">{data.listening.score}</div>
+                  </div>
+                </div>
+              </div>
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-3 sm:px-6 sm:py-4 h-full flex flex-col items-center justify-center">
+                <div className="text-sm text-gray-500 mb-1">Genel Seviye</div>
+                <div className="text-2xl sm:text-3xl font-semibold text-gray-900">{displayLevel(data.level)}</div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-3 sm:px-6 sm:py-4 h-full mb-6">
+              <div className="h-full flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Dinleme Puanı</h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    ({examData.filter(r => r.result === "Doğru").length} / {examData.length} doğru)
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="flex items-center gap-2">
+                    <div className="text-3xl sm:text-4xl font-bold text-red-600">{data.listening.score}</div>
+                    {displayLevel(data.level) && (
+                      <span className="text-base sm:text-lg font-semibold text-gray-700"> / {displayLevel(data.level)}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
-          {/* Sonuçs Table */}
+          {/* Results Table - Mobile Card Layout + Desktop Table */}
           <Card className="overflow-hidden rounded-lg border border-gray-200">
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[600px]">
+              {/* Mobile Card Layout */}
+              <div className="block sm:hidden">
+                {examData.map((item, index: number) => (
+                  <div
+                    key={item.no}
+                    className={`p-4 border-b border-gray-200 last:border-b-0 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-semibold text-gray-700">Soru {item.no}</span>
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        item.result === "Doğru"
+                          ? "bg-green-100 text-green-800"
+                          : item.result === "Yanlış"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-gray-100 text-gray-700"
+                      }`}>
+                        {item.result}
+                      </span>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-start gap-2">
+                        <span className="text-xs text-gray-500 min-w-[90px]">Cevabınız:</span>
+                        <span className="text-xs text-gray-700 break-words">{item.userAnswer}</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-xs text-gray-500 min-w-[90px]">Doğru Cevap:</span>
+                        <span className="text-xs text-gray-800 font-medium break-words">{item.correctAnswer}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop Table Layout */}
+              <div className="hidden sm:block overflow-x-auto">
+                <table className="w-full min-w-[500px]">
                   <thead>
                     <tr className="bg-green-600 text-white">
                       <th className="px-2 sm:px-4 py-2 sm:py-3 text-left font-medium rounded-tl-lg text-xs sm:text-base">No.</th>
@@ -264,36 +348,98 @@ export default function OverallResults() {
     });
 
     return (
-      <div className="max-w-6xl mx-auto space-y-6 p-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-foreground">Sınav Sonuçları</h1>
-        </div>
-
+      <div className="space-y-6">
         {/* Report Info */}
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <div className="flex items-center gap-6">
-            <span>Report ID: {data.id}</span>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-muted-foreground ml-2">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
+            <span className="break-all">Report ID: {data.id}</span>
             <span>İsim: {data.user.name}</span>
           </div>
-          <span>Tarih: {new Date(data.reading.completedAt || data.startedAt).toISOString().replace('T', ' ').substring(0, 19) + " GMT+5"}</span>
+          <span className="text-xs sm:text-sm">Tarih: {new Date(data.reading.completedAt || data.startedAt).toISOString().replace('T', ' ').substring(0, 19) + " "}</span>
         </div>
 
-        {/* Reading Score */}
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold text-foreground">
-            Okuma Puanı: {data.reading.score}
-            <span className="ml-3 text-base text-muted-foreground">
-              ({examData.filter(r => r.result === "Doğru").length} / {examData.length} doğru)
-            </span>
-          </h2>
-        </div>
+        {/* Reading Score with Level */}
+        {isMultiTest && displayLevel(data.level) ? (
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_145px] items-stretch gap-4 mb-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-3 sm:px-6 sm:py-4 h-full">
+              <div className="h-full flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Okuma Puanı</h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    ({examData.filter(r => r.result === "Doğru").length} / {examData.length} doğru)
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-gray-500 mb-1">Puan</div>
+                  <div className="text-3xl sm:text-4xl font-bold text-red-600">{data.reading.score}</div>
+                </div>
+              </div>
+            </div>
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-3 sm:px-6 sm:py-4 h-full flex flex-col items-center justify-center">
+              <div className="text-sm text-gray-500 mb-1">Genel Seviye</div>
+              <div className="text-2xl sm:text-3xl font-semibold text-gray-900">{displayLevel(data.level)}</div>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-3 sm:px-6 sm:py-4 h-full mb-6">
+            <div className="h-full flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Okuma Puanı</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  ({examData.filter(r => r.result === "Doğru").length} / {examData.length} doğru)
+                </p>
+              </div>
+              <div className="text-right">
+                <div className="flex items-center gap-2">
+                  <div className="text-3xl sm:text-4xl font-bold text-red-600">{data.reading.score}</div>
+                  {displayLevel(data.level) && (
+                    <span className="text-base sm:text-lg font-semibold text-gray-700"> / {displayLevel(data.level)}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
-        {/* Sonuçs Table */}
+        {/* Results Table */}
         <Card className="overflow-hidden rounded-lg border border-gray-200">
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full">
+            {/* Mobile Card Layout */}
+            <div className="block sm:hidden">
+              {examData.map((item, index: number) => (
+                <div
+                  key={item.no}
+                  className={`p-4 border-b border-gray-200 last:border-b-0 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-semibold text-gray-700">Soru {item.no}</span>
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      item.result === "Doğru"
+                        ? "bg-green-100 text-green-800"
+                        : item.result === "Yanlış"
+                          ? "bg-red-100 text-red-800"
+                          : "bg-gray-100 text-gray-700"
+                    }`}>
+                      {item.result}
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-start gap-2">
+                      <span className="text-xs text-gray-500 min-w-[90px]">Cevabınız:</span>
+                      <span className="text-xs text-gray-700 break-words">{item.userAnswer}</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-xs text-gray-500 min-w-[90px]">Doğru Cevap:</span>
+                      <span className="text-xs text-gray-800 font-medium break-words">{item.correctAnswer}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table Layout */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full min-w-[500px]">
                 <thead>
                   <tr className="bg-green-600 text-white">
                     <th className="px-4 py-3 text-left font-medium rounded-tl-lg">No.</th>
@@ -343,7 +489,20 @@ export default function OverallResults() {
     }
 
     const { writing } = data;
-    const aiFeedback = writing.aiFeedback;
+    const rawAiFeedback =
+      writing.aiFeedback ??
+      (writing as any).ai_feedback ??
+      (writing as any).feedback ??
+      (writing as any).assessment ??
+      null;
+    const aiFeedback =
+      rawAiFeedback && typeof rawAiFeedback === "object"
+        ? (rawAiFeedback as any).aiFeedback ??
+          (rawAiFeedback as any).ai_feedback ??
+          (rawAiFeedback as any).feedback ??
+          (rawAiFeedback as any).assessment ??
+          rawAiFeedback
+        : rawAiFeedback;
     
     // Local helper to remove bullet / box symbols from text for writing feedback
     const cleanBullets = (text: string): string => {
@@ -365,6 +524,53 @@ export default function OverallResults() {
         .join('\n')
         .replace(/\s+/g, " ") // Normalize multiple spaces to single space
         .trim();
+    };
+
+    // Remove raw AI metadata blocks from general feedback text
+    const sanitizeGeneralFeedback = (text: string): string => {
+      if (!text) return text;
+      return cleanBullets(
+        text
+          .replace(/\[[^\]]+\]/g, " ")
+          .replace(/GENEL PUAN\s*:[^\n\r]*/gi, " ")
+          .replace(/BELİRLENEN SEVİYE\s*:[^\n\r]*/gi, " ")
+          .replace(/AI GERİ BİLDİRİMİ\s*\(EĞİTMEN NOTU\)\s*:/gi, " ")
+          .replace(/GENEL DEĞERLENDİRME\s*:/gi, " ")
+      );
+    };
+
+    const pickFirstText = (...values: any[]): string | undefined => {
+      for (const value of values) {
+        if (typeof value === "string" && value.trim()) {
+          return value.trim();
+        }
+      }
+      return undefined;
+    };
+
+    const extractSectionNarrative = (section: any): string | undefined => {
+      if (!section || typeof section !== "object") return undefined;
+      return pickFirstText(
+        section.degerlendirme,
+        section["değerlendirme"],
+        section.feedback,
+        section.yorum,
+        section.text,
+        section.analysis
+      );
+    };
+
+    const extractCriteriaValue = (sources: any[], keys: string[]): string | undefined => {
+      for (const source of sources) {
+        if (!source || typeof source !== "object") continue;
+        for (const key of keys) {
+          const candidate = source[key];
+          if (typeof candidate === "string" && candidate.trim()) {
+            return candidate.trim();
+          }
+        }
+      }
+      return undefined;
     };
     
     // Debug: Log the writing data structure
@@ -396,12 +602,18 @@ export default function OverallResults() {
       if (pattern) {
         const match = feedbackText.match(pattern);
         if (match && match[1]) {
+          if (sectionName === "general") {
+            return sanitizeGeneralFeedback(match[1].trim());
+          }
           return match[1].trim();
         }
       }
       
       // If no specific section found, return the full feedback for general or fallback
-      if (sectionName === 'general' || sectionName === 'taskAchievement') {
+      if (sectionName === 'general') {
+        return sanitizeGeneralFeedback(feedbackText);
+      }
+      if (sectionName === 'taskAchievement') {
         return feedbackText;
       }
       
@@ -423,10 +635,10 @@ export default function OverallResults() {
       if (typeof aiFeedback === 'string') {
         // Try to extract from the string format
         const patterns: Record<string, RegExp> = {
-          'coherenceAndCohesion': /Tutarlılık[:\s]*([^\n•]*)/i,
-          'grammaticalRangeAndAccuracy': /Dil Bilgisi[:\s]*([^\n•]*)/i,
-          'lexicalResource': /Kelime Kaynağı[:\s]*([^\n•]*)/i,
-          'taskAchievement': /Görev Başarısı[:\s]*([^\n•]*)/i,
+          'coherenceAndCohesion': /Tutarlılık(?:\s*ve\s*Bağlılık)?[:\s]*([^\n\r•]*)/i,
+          'grammaticalRangeAndAccuracy': /Dil Bilgisi[:\s]*([^\n\r•]*)/i,
+          'lexicalResource': /Kelime Kaynağı[:\s]*([^\n\r•]*)/i,
+          'taskAchievement': /(?:Görev Başarısı|Görev Yanıtı)[:\s]*([^\n\r•]*)/i,
         };
         const pattern = patterns[key];
         if (pattern) {
@@ -435,8 +647,8 @@ export default function OverallResults() {
             return match[1].trim();
           }
         }
-        // If not found, return general feedback
-        return aiFeedback;
+        // If not found, avoid dumping raw full feedback into criterion cards
+        return '';
       } else if (aiFeedback && typeof aiFeedback === 'object') {
         return aiFeedback[key] || '';
       }
@@ -447,9 +659,115 @@ export default function OverallResults() {
     const parseAIFeedback = () => {
       if (!aiFeedback) return null;
 
-      // If feedback is an object, return it as is
+      // If feedback is an object, normalize common backend shapes
       if (typeof aiFeedback === 'object' && aiFeedback !== null) {
-        return aiFeedback;
+        const feedbackObj: any = aiFeedback;
+        const bolumler =
+          feedbackObj?.bolumler ??
+          feedbackObj?.["bölümler"] ??
+          feedbackObj?.sections ??
+          feedbackObj?.parts ??
+          {};
+
+        const bolum11 =
+          bolumler?.bolum_1_1 ??
+          bolumler?.["bölüm_1_1"] ??
+          feedbackObj?.bolum_1_1 ??
+          feedbackObj?.["bölüm_1_1"];
+        const bolum12 =
+          bolumler?.bolum_1_2 ??
+          bolumler?.["bölüm_1_2"] ??
+          feedbackObj?.bolum_1_2 ??
+          feedbackObj?.["bölüm_1_2"];
+        const bolum2 =
+          bolumler?.bolum_2 ??
+          bolumler?.["bölüm_2"] ??
+          feedbackObj?.bolum_2 ??
+          feedbackObj?.["bölüm_2"];
+
+        const criteriaSources = [
+          feedbackObj?.kriterler,
+          feedbackObj?.criteria,
+          bolum2?.kriterler,
+          bolum2?.criteria,
+          bolum12?.kriterler,
+          bolum12?.criteria,
+          bolum11?.kriterler,
+          bolum11?.criteria,
+        ];
+
+        return {
+          ...feedbackObj,
+          part1_1: pickFirstText(
+            feedbackObj?.part1_1,
+            feedbackObj?.part1,
+            extractSectionNarrative(bolum11)
+          ),
+          part1_2: pickFirstText(
+            feedbackObj?.part1_2,
+            extractSectionNarrative(bolum12)
+          ),
+          part2: pickFirstText(
+            feedbackObj?.part2,
+            feedbackObj?.part_2,
+            extractSectionNarrative(bolum2)
+          ),
+          general: pickFirstText(
+            feedbackObj?.general,
+            feedbackObj?.generalFeedback,
+            feedbackObj?.genel_degerlendirme,
+            feedbackObj?.genelDegerlendirme,
+            feedbackObj?.egitmen_notu,
+            feedbackObj?.egitmenNotu,
+            feedbackObj?.teacher_note,
+            feedbackObj?.teacherNote,
+            feedbackObj?.summary
+          ),
+          coherenceAndCohesion: pickFirstText(
+            feedbackObj?.coherenceAndCohesion,
+            extractCriteriaValue(criteriaSources, [
+              "coherenceAndCohesion",
+              "coherence_and_cohesion",
+              "tutarlilikVeBaglilik",
+              "tutarlilik_ve_baglilik",
+              "Tutarlılık ve Bağlılık",
+              "Tutarlılık"
+            ])
+          ),
+          grammaticalRangeAndAccuracy: pickFirstText(
+            feedbackObj?.grammaticalRangeAndAccuracy,
+            extractCriteriaValue(criteriaSources, [
+              "grammaticalRangeAndAccuracy",
+              "grammatical_range_and_accuracy",
+              "dilBilgisi",
+              "dil_bilgisi",
+              "Dil Bilgisi"
+            ])
+          ),
+          lexicalResource: pickFirstText(
+            feedbackObj?.lexicalResource,
+            extractCriteriaValue(criteriaSources, [
+              "lexicalResource",
+              "lexical_resource",
+              "kelimeKaynagi",
+              "kelime_kaynagi",
+              "Kelime Kaynağı"
+            ])
+          ),
+          taskAchievement: pickFirstText(
+            feedbackObj?.taskAchievement,
+            extractCriteriaValue(criteriaSources, [
+              "taskAchievement",
+              "task_achievement",
+              "gorevBasarisi",
+              "gorev_basarisi",
+              "gorevYaniti",
+              "gorev_yaniti",
+              "Görev Başarısı",
+              "Görev Yanıtı"
+            ])
+          ),
+        };
       }
 
       // If feedback is a string, parse it
@@ -484,26 +802,26 @@ export default function OverallResults() {
         const extractCriteria = (text: string) => {
           const criteria: any = {};
           
-          // Extract Tutarlılık
-          const coherenceMatch = text.match(/Tutarlılık[:\s]*([^\n•]*)/i);
+          // Extract Tutarlılık ve Bağlılık
+          const coherenceMatch = text.match(/Tutarlılık(?:\s*ve\s*Bağlılık)?[:\s]*([^\n\r•]*)/i);
           if (coherenceMatch) {
             criteria.coherenceAndCohesion = coherenceMatch[1].trim();
           }
           
           // Extract Dil Bilgisi
-          const grammarMatch = text.match(/Dil Bilgisi[:\s]*([^\n•]*)/i);
+          const grammarMatch = text.match(/Dil Bilgisi[:\s]*([^\n\r•]*)/i);
           if (grammarMatch) {
             criteria.grammaticalRangeAndAccuracy = grammarMatch[1].trim();
           }
           
           // Extract Kelime Kaynağı
-          const lexicalMatch = text.match(/Kelime Kaynağı[:\s]*([^\n•]*)/i);
+          const lexicalMatch = text.match(/Kelime Kaynağı[:\s]*([^\n\r•]*)/i);
           if (lexicalMatch) {
             criteria.lexicalResource = lexicalMatch[1].trim();
           }
           
           // Extract Görev Başarısı
-          const taskMatch = text.match(/Görev Başarısı[:\s]*([^\n•]*)/i);
+          const taskMatch = text.match(/(?:Görev Başarısı|Görev Yanıtı)[:\s]*([^\n\r•]*)/i);
           if (taskMatch) {
             criteria.taskAchievement = taskMatch[1].trim();
           }
@@ -523,6 +841,148 @@ export default function OverallResults() {
 
     const parsedFeedback = parseAIFeedback();
 
+    const isPlaceholderText = (value?: string) => {
+      if (!value || typeof value !== "string") return true;
+      const normalized = value
+        .trim()
+        .toLowerCase()
+        .replace(/\./g, "");
+      return (
+        normalized === "yanit yok" ||
+        normalized === "yanıt yok" ||
+        normalized === "degerlendirme yok" ||
+        normalized === "değerlendirme yok" ||
+        normalized === "yok" ||
+        normalized === "-"
+      );
+    };
+
+    const pickMeaningfulText = (...values: any[]): string | undefined => {
+      for (const value of values) {
+        if (typeof value === "string" && value.trim() && !isPlaceholderText(value)) {
+          return value.trim();
+        }
+      }
+      return undefined;
+    };
+
+    const extractCriteriaFromNarrative = (text?: string) => {
+      if (!text || typeof text !== "string") return {};
+      const source = cleanBullets(text);
+
+      return {
+        coherence: pickMeaningfulText(
+          source.match(/Tutarlılık(?:\s*ve\s*Bağlılık)?[:\s-]*([^\n\r]+)/i)?.[1],
+          source.match(/Tutarlilik(?:\s*ve\s*Baglilik)?[:\s-]*([^\n\r]+)/i)?.[1]
+        ),
+        grammar: pickMeaningfulText(
+          source.match(/Dil Bilgisi[:\s-]*([^\n\r]+)/i)?.[1]
+        ),
+        lexical: pickMeaningfulText(
+          source.match(/Kelime Kaynağı[:\s-]*([^\n\r]+)/i)?.[1],
+          source.match(/Kelime Kaynagi[:\s-]*([^\n\r]+)/i)?.[1]
+        ),
+        achievement: pickMeaningfulText(
+          source.match(/(?:Görev Başarısı|Görev Yanıtı)[:\s-]*([^\n\r]+)/i)?.[1],
+          source.match(/(?:Gorev Basarisi|Gorev Yaniti)[:\s-]*([^\n\r]+)/i)?.[1]
+        ),
+      };
+    };
+
+    const extractCriteriaFromGeneralFeedback = (text?: string) => {
+      if (!text || typeof text !== "string") return {};
+      const sentences = cleanBullets(text)
+        .split(/(?<=[.!?])\s+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      const pickSentence = (patterns: RegExp[]) =>
+        pickMeaningfulText(
+          ...sentences.filter((sentence) => patterns.some((pattern) => pattern.test(sentence)))
+        );
+
+      return {
+        coherence: pickSentence([/tutarl/i, /bağlılık/i, /baglilik/i, /akış/i, /akis/i]),
+        grammar: pickSentence([/dil\s*bilg/i, /gramer/i, /cümle/i, /cumle/i]),
+        lexical: pickSentence([/kelime/i, /söz varlığı/i, /soz varligi/i, /vocabulary/i]),
+        achievement: pickSentence([/görev/i, /gorev/i, /yanıt/i, /yanit/i, /talimat/i, /konu/i, /başarı/i, /basari/i]),
+      };
+    };
+
+    const getActiveSectionKey = (): "bolum_1_1" | "bolum_1_2" | "bolum_2" =>
+      activeTask === "task1"
+        ? activeTask1Part === "part1"
+          ? "bolum_1_1"
+          : "bolum_1_2"
+        : "bolum_2";
+
+    const getSectionCriteriaFromObject = (sectionKey: "bolum_1_1" | "bolum_1_2" | "bolum_2") => {
+      if (!aiFeedback || typeof aiFeedback !== "object") return {};
+      const bolumler = (aiFeedback as any)?.bolumler || (aiFeedback as any)?.["bölümler"];
+      const section = bolumler?.[sectionKey] || (aiFeedback as any)?.[sectionKey];
+      const criteria = section?.kriterler || section?.criteria || section;
+
+      return {
+        coherence: pickMeaningfulText(
+          criteria?.coherenceAndCohesion,
+          criteria?.coherence_and_cohesion,
+          criteria?.tutarlilikVeBaglilik,
+          criteria?.tutarlilik_ve_baglilik,
+          criteria?.["Tutarlılık ve Bağlılık"],
+          criteria?.["Tutarlılık"]
+        ),
+        grammar: pickMeaningfulText(
+          criteria?.grammaticalRangeAndAccuracy,
+          criteria?.grammatical_range_and_accuracy,
+          criteria?.dilBilgisi,
+          criteria?.dil_bilgisi,
+          criteria?.["Dil Bilgisi"]
+        ),
+        lexical: pickMeaningfulText(
+          criteria?.lexicalResource,
+          criteria?.lexical_resource,
+          criteria?.kelimeKaynagi,
+          criteria?.kelime_kaynagi,
+          criteria?.["Kelime Kaynağı"]
+        ),
+        achievement: pickMeaningfulText(
+          criteria?.taskAchievement,
+          criteria?.task_achievement,
+          criteria?.gorevBasarisi,
+          criteria?.gorev_basarisi,
+          criteria?.gorevYaniti,
+          criteria?.gorev_yaniti,
+          criteria?.["Görev Başarısı"],
+          criteria?.["Görev Yanıtı"]
+        ),
+      };
+    };
+
+    const getSectionNarrative = (sectionKey: "bolum_1_1" | "bolum_1_2" | "bolum_2") => {
+      if (sectionKey === "bolum_1_1") return parsedFeedback?.part1_1;
+      if (sectionKey === "bolum_1_2") return parsedFeedback?.part1_2;
+      return parsedFeedback?.part2;
+    };
+
+    const activeSectionKey = getActiveSectionKey();
+    const criteriaFromObject = getSectionCriteriaFromObject(activeSectionKey);
+    const criteriaFromNarrative = extractCriteriaFromNarrative(getSectionNarrative(activeSectionKey));
+    const criteriaFromGeneral = extractCriteriaFromGeneralFeedback(
+      pickMeaningfulText(parsedFeedback?.general, extractFeedbackSection(aiFeedback, "general"))
+    );
+    const fallbackGlobalCriteria = {
+      coherence: pickMeaningfulText(parsedFeedback?.coherenceAndCohesion, getFeedbackText("coherenceAndCohesion")),
+      grammar: pickMeaningfulText(parsedFeedback?.grammaticalRangeAndAccuracy, getFeedbackText("grammaticalRangeAndAccuracy")),
+      lexical: pickMeaningfulText(parsedFeedback?.lexicalResource, getFeedbackText("lexicalResource")),
+      achievement: pickMeaningfulText(parsedFeedback?.taskAchievement, getFeedbackText("taskAchievement")),
+    };
+    const activeCriteria = {
+      coherence: criteriaFromObject.coherence || criteriaFromNarrative.coherence || fallbackGlobalCriteria.coherence || criteriaFromGeneral.coherence || "Kısa değerlendirme yok",
+      grammar: criteriaFromObject.grammar || criteriaFromNarrative.grammar || fallbackGlobalCriteria.grammar || criteriaFromGeneral.grammar || "Kısa değerlendirme yok",
+      lexical: criteriaFromObject.lexical || criteriaFromNarrative.lexical || fallbackGlobalCriteria.lexical || criteriaFromGeneral.lexical || "Kısa değerlendirme yok",
+      achievement: criteriaFromObject.achievement || criteriaFromNarrative.achievement || fallbackGlobalCriteria.achievement || criteriaFromGeneral.achievement || "Kısa değerlendirme yok",
+    };
+
     const scores = {
       overall: writing?.score || 0,
       part1: 0,
@@ -533,59 +993,71 @@ export default function OverallResults() {
       achievement: extractScoreFromFeedback(getFeedbackText('taskAchievement')) || 0,
     };
 
-    // Use level from overall data
-    const level = data?.level;
+    // Prefer score-derived writing level to avoid mixed/overall-level mismatches in this tab
+    const level = levelFrom75(writing?.score) || displayLevel(data?.level);
     console.log('Using level from data:', level);
 
     // Extract answers from either answers array or sections structure
     const extractWritingAnswers = () => {
-      // First try to use the answers array if it exists and has content
-      if (writing?.answers && Array.isArray(writing.answers) && writing.answers.length > 0) {
-        console.log("Using answers array from writing data:", writing.answers);
-        return writing.answers;
-      }
-      
-      // If not, try to extract from sections structure
-      if (writing?.sections && Array.isArray(writing.sections)) {
-        console.log("Extracting answers from sections structure:", writing.sections);
-        const extractedAnswers: Array<{ questionId: string; questionText: string; userAnswer: string }> = [];
-        
-        writing.sections.forEach((section: any) => {
-          // Handle sections with subParts (like Task 1 with 1.1 and 1.2)
-          if (section.subParts && Array.isArray(section.subParts) && section.subParts.length > 0) {
-            section.subParts.forEach((subPart: any) => {
-              if (subPart.answers && Array.isArray(subPart.answers)) {
-                subPart.answers.forEach((q: any) => {
-                  // Include answer even if empty, but we'll filter later if needed
-                  extractedAnswers.push({
-                    questionId: q.questionId || q.id || '',
-                    questionText: q.questionText || q.question || `${section.description} ${subPart.description}`,
-                    userAnswer: q.userAnswer || ''
-                  });
-                });
-              }
+      const sections = Array.isArray(writing?.sections) ? writing.sections : [];
+      const hasSectionAnswers = sections.some(
+        (s: any) =>
+          (Array.isArray(s.subParts) && s.subParts.some((sp: any) => Array.isArray(sp.answers) && sp.answers.length > 0)) ||
+          (Array.isArray(s.answers) && s.answers.length > 0)
+      );
+
+      if (sections.length > 0 && hasSectionAnswers) {
+        const extracted: any[] = [];
+        const sortedSections = [...sections].sort((a: any, b: any) =>
+          (a.order ?? a.number ?? 0) - (b.order ?? b.number ?? 0)
+        );
+
+        sortedSections.forEach((section: any, sectionIndex: number) => {
+          const subParts = Array.isArray(section.subParts) ? section.subParts : [];
+          const sortedSubParts = [...subParts].sort((a: any, b: any) =>
+            (a.order ?? a.number ?? 0) - (b.order ?? b.number ?? 0)
+          );
+
+          sortedSubParts.forEach((subPart: any, subPartIndex: number) => {
+            const subPartAnswers = Array.isArray(subPart.answers) ? subPart.answers : [];
+            subPartAnswers.forEach((ans: any) => {
+              extracted.push({
+                ...ans,
+                questionText:
+                  ans.questionText ||
+                  ans.question ||
+                  subPart.description ||
+                  section.description ||
+                  `Görev 1.${subPartIndex + 1}`,
+              });
             });
-          }
-          // Handle sections without subParts (like Task 2)
-          else if (section.answers && Array.isArray(section.answers)) {
-            section.answers.forEach((q: any) => {
-              extractedAnswers.push({
-                questionId: q.questionId || q.id || '',
-                questionText: q.questionText || q.question || section.description,
-                userAnswer: q.userAnswer || ''
+          });
+
+          if (Array.isArray(section.answers)) {
+            section.answers.forEach((ans: any, answerIndex: number) => {
+              extracted.push({
+                ...ans,
+                questionText:
+                  ans.questionText ||
+                  ans.question ||
+                  section.description ||
+                  `Görev ${sectionIndex + 1} ${answerIndex + 1}`,
               });
             });
           }
         });
-        
-        console.log("Extracted writing answers:", extractedAnswers);
-        return extractedAnswers;
+
+        return extracted;
       }
-      
-      console.log("No answers found in writing data");
+
+      if (writing?.answers && Array.isArray(writing.answers) && writing.answers.length > 0) {
+        console.log("Using answers array from writing data:", writing.answers);
+        return writing.answers;
+      }
+
       return [];
     };
-    
+
     const answers = extractWritingAnswers();
     
     console.log("OverallResults - Writing data:", writing);
@@ -595,6 +1067,49 @@ export default function OverallResults() {
     // Task 1 typically has 2 subparts (1.1 and 1.2), Task 2 has 1 answer
     const task1Answers = answers.filter((_: any, index: number) => index < 2);
     const task2Answers = answers.filter((_: any, index: number) => index >= 2);
+
+    const hasMeaningfulAnswer = (answer?: any) => {
+      if (!answer || typeof answer !== "object") return false;
+      const value = typeof answer.userAnswer === "string" ? answer.userAnswer.trim() : "";
+      return value.length > 0 && value !== "Cevap verilmedi";
+    };
+
+    const answeredTask11 = hasMeaningfulAnswer(task1Answers[0]);
+    const answeredTask12 = hasMeaningfulAnswer(task1Answers[1]);
+    const answeredTask2 = task2Answers.some((a: any) => hasMeaningfulAnswer(a));
+    const answeredTaskCount = [answeredTask11, answeredTask12, answeredTask2].filter(Boolean).length;
+
+    const sanitizeWritingGeneralFeedback = (rawText: string) => {
+      if (!rawText || typeof rawText !== "string") return "";
+      let text = cleanBullets(rawText);
+
+      if (answeredTaskCount >= 3) {
+        text = text
+          .replace(/Üçüncü bölümde[^.?!]*[.?!]?\s*/gi, " ")
+          .replace(/3\.\s*bölümde[^.?!]*[.?!]?\s*/gi, " ")
+          .replace(/üçüncü görevde[^.?!]*[.?!]?\s*/gi, " ")
+          .replace(/3\.\s*görevde[^.?!]*[.?!]?\s*/gi, " ");
+      }
+
+      if (answeredTaskCount >= 3) {
+        text = text
+          .replace(/\bverilen iki bölümde\b/gi, "verilen üç görevde")
+          .replace(/\biki bölümde\b/gi, "üç görevde");
+      }
+
+      if (level) {
+        const levelUpper = level.toUpperCase();
+        const mentionedLevels = (text.match(/\b(?:A1|A2|B1|B2|C1|C2)\b/gi) || []).map((l) => l.toUpperCase());
+        const isCompatible = mentionedLevels.some((l) => levelUpper.includes(l));
+        if (!isCompatible && mentionedLevels.length > 0) {
+          text = text
+            .replace(/\b(?:A1|A2|B1|B2|C1|C2)\s*(?:ile|ve|-)\s*(?:A1|A2|B1|B2|C1|C2)\s*arasında\b/gi, level)
+            .replace(/\b(?:A1|A2|B1|B2|C1|C2)\s*düzey(?:inde|i)?\b/gi, `${level} düzeyinde`);
+        }
+      }
+
+      return text.replace(/\s{2,}/g, " ").trim();
+    };
     
     console.log("OverallResults - Task 1 answers:", task1Answers);
     console.log("OverallResults - Task 2 answers:", task2Answers);
@@ -619,16 +1134,16 @@ export default function OverallResults() {
         } else if (aiFeedback && typeof aiFeedback === 'object') {
           feedback = aiFeedback[feedbackKey] ||
                     aiFeedback?.taskAchievement ||
-                    `Görev 1 ${activeTask1Part === "part1" ? "Bölüm 1" : "Bölüm 2"} geri bildirimi burada gösterilecek`;
+                    `Görev 1 ${activeTask1Part === "part1" ? "Bölüm 1.1" : "Bölüm 1.2"} geri bildirimi burada gösterilecek`;
         } else {
-          feedback = `Görev 1 ${activeTask1Part === "part1" ? "Bölüm 1" : "Bölüm 2"} geri bildirimi burada gösterilecek`;
+          feedback = `Görev 1 ${activeTask1Part === "part1" ? "Bölüm 1.1" : "Bölüm 1.2"} geri bildirimi burada gösterilecek`;
         }
 
         // Get description for 1.1 and 1.2
         const description = (currentAnswer as any)?.section?.description;
 
         return {
-          question: (currentAnswer as any)?.questionText || `Görev 1 ${activeTask1Part === "part1" ? "Bölüm 1" : "Bölüm 2"} Sorusu`,
+          question: (currentAnswer as any)?.questionText || `Görev 1 ${activeTask1Part === "part1" ? "Bölüm 1.1" : "Bölüm 1.2"} Sorusu`,
           answer: (userAnswer && typeof userAnswer === 'string' && userAnswer.trim() !== "") ? userAnswer : "Cevap verilmedi",
           comment: feedback,
           description: description
@@ -669,141 +1184,60 @@ export default function OverallResults() {
     };
 
     const currentData = getCurrentQuestionAndAnswer();
+    const activeWritingLabel =
+      activeTask === "task1"
+        ? `Görev 1.${activeTask1Part === "part1" ? "1" : "2"}`
+        : "Görev 2";
 
     return (
-      <div className="w-full bg-gradient-to-br from-gray-50 to-gray-100 p-8">
-        <div className="mx-auto max-w-6xl">
+      <div className="w-full">
+        <div className="w-full">
           {/* Header Section */}
           <div className="mb-8">
-            {/* <div className="mb-6">
-              <h1 className="text-3xl font-bold text-gray-900">Writing Test Sonuçs</h1>
-              <p className="text-gray-600 mt-1">Review your performance and feedback</p>
-            </div> */}
-
             {/* Overall Score Card */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Genel Puan</h2>
-                  <p className="text-gray-600">Yazma testi performansınız</p>
-                </div>
-                <div className="text-right">
-                  <div className="flex items-center gap-2">
-                    <div className="text-4xl font-bold text-red-600">{scores.overall}</div>
-                    {level && <span className="text-lg font-semibold text-gray-700"> / {level}</span>}
+            {isMultiTest && level ? (
+              <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_145px] items-stretch gap-4 mb-8">
+                <div className="bg-white rounded-lg border border-gray-200 px-6 py-4 h-full">
+                  <div className="h-full flex items-center justify-between gap-4">
+                    <div>
+                      <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Genel Puan</h2>
+                      <p className="text-sm sm:text-base text-gray-600">Yazma testi performansınız</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm text-gray-500 mb-1">Puan</div>
+                      <div className="text-3xl sm:text-4xl font-bold text-red-600">{scores.overall}</div>
+                    </div>
                   </div>
-                  <div className="text-sm text-gray-500">75 üzerinden</div>
+                </div>
+                  <div className="bg-white rounded-lg border border-gray-200 px-6 py-4 h-full flex flex-col items-center justify-center">
+                  <div className="text-sm text-gray-500 mb-1">Genel Seviye</div>
+                  <div className="text-2xl sm:text-3xl font-semibold text-gray-900">{level}</div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="bg-white rounded-lg border border-gray-200 px-6 py-4 h-full mb-8">
+                <div className="h-full flex items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Genel Puan</h2>
+                    <p className="text-sm sm:text-base text-gray-600">Yazma testi performansınız</p>
+                  </div>
+                  <div className="text-right">
+                    <div className="flex items-center gap-2">
+                      <div className="text-3xl sm:text-4xl font-bold text-red-600">{scores.overall}</div>
+                      {level && <span className="text-base sm:text-lg font-semibold text-gray-700"> / {level}</span>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* AI Feedback Grid - Similar to Speaking Test */}
-          {parsedFeedback && (() => {
-            const feedback = parsedFeedback;
-            const hasPartFeedback = feedback.part1_1 || feedback.part1_2 || feedback.part2;
-            const hasIELTSFeedback = feedback.coherenceAndCohesion || feedback.grammaticalRangeAndAccuracy || 
-                                     feedback.lexicalResource || feedback.taskAchievement;
-            
-            // Eğer sadece genel eğitmen notu varsa, üst grid'i göstermeyelim;
-            // bu not zaten aşağıda "Eğitmen Notu" kartında gösterilecek.
-            if (!hasPartFeedback && !hasIELTSFeedback) {
-              return null;
-            }
-            
-            return (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                {feedback.part1_1 && (
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-semibold text-gray-900">Görev 1.1</h3>
-                      <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                    </div>
-                    <p className="text-sm text-gray-600 leading-relaxed">
-                      {cleanBullets(feedback.part1_1)}
-                    </p>
-                  </div>
-                )}
-                {feedback.part1_2 && (
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-semibold text-gray-900">Görev 1.2</h3>
-                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                    </div>
-                    <p className="text-sm text-gray-600 leading-relaxed">
-                      {cleanBullets(feedback.part1_2)}
-                    </p>
-                  </div>
-                )}
-                {feedback.part2 && (
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-semibold text-gray-900">Bölüm 2</h3>
-                      <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                    </div>
-                    <p className="text-sm text-gray-600 leading-relaxed">
-                      {cleanBullets(feedback.part2)}
-                    </p>
-                  </div>
-                )}
-                {/* Eğitmen Notu is shown in the bottom section, not in the grid */}
-                {/* Fallback to IELTS-style feedback if part feedback not available */}
-                {!hasPartFeedback && hasIELTSFeedback && (
-                  <>
-                    {feedback.coherenceAndCohesion && (
-                      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <div className="flex items-center justify-between mb-3">
-                          <h3 className="font-semibold text-gray-900">Tutarlılık ve Bağlılık</h3>
-                          <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                        </div>
-                        <p className="text-sm text-gray-600 leading-relaxed">
-                          {feedback.coherenceAndCohesion}
-                        </p>
-                      </div>
-                    )}
-                    {feedback.grammaticalRangeAndAccuracy && (
-                      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <div className="flex items-center justify-between mb-3">
-                          <h3 className="font-semibold text-gray-900">Dil Bilgisi</h3>
-                          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                        </div>
-                        <p className="text-sm text-gray-600 leading-relaxed">
-                          {feedback.grammaticalRangeAndAccuracy}
-                        </p>
-                      </div>
-                    )}
-                    {feedback.lexicalResource && (
-                      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <div className="flex items-center justify-between mb-3">
-                          <h3 className="font-semibold text-gray-900">Kelime Kaynağı</h3>
-                          <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                        </div>
-                        <p className="text-sm text-gray-600 leading-relaxed">
-                          {feedback.lexicalResource}
-                        </p>
-                      </div>
-                    )}
-                    {feedback.taskAchievement && (
-                      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <div className="flex items-center justify-between mb-3">
-                          <h3 className="font-semibold text-gray-900">Görev Başarısı</h3>
-                          <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-                        </div>
-                        <p className="text-sm text-gray-600 leading-relaxed">
-                          {feedback.taskAchievement}
-                        </p>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            );
-          })()}
+          {/* Task Navigation - Simplified Design */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6 mb-6 sm:mb-8">
+            <h3 className="text-base sm:text-lg font-semibold tracking-tight text-gray-900 mb-4 sm:mb-6">
+              Yazma Görevleri
+            </h3>
 
-          {/* Task Navigation - Redesigned */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
-            <h3 className="text-lg font-semibold text-gray-900 mb-6">Yazma Görevleri</h3>
-            
           {/* All Tasks - Mobile friendly layout */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             {/* Task 1.1 */}
@@ -815,8 +1249,8 @@ export default function OverallResults() {
               variant="outline"
               className={`h-14 sm:h-16 w-full rounded-lg font-medium transition-all ${
                 activeTask === "task1" && activeTask1Part === "part1"
-                  ? "bg-red-600 text-white hover:bg-red-700 shadow-md border-red-600"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-300 hover:border-gray-400"
+                  ? "bg-red-600 text-white hover:bg-red-700 border-red-600"
+                  : "bg-white text-gray-700 hover:bg-gray-50 border-gray-300"
               }`}
             >
               <div className="text-center">
@@ -834,13 +1268,13 @@ export default function OverallResults() {
               variant="outline"
               className={`h-14 sm:h-16 w-full rounded-lg font-medium transition-all ${
                 activeTask === "task1" && activeTask1Part === "part2"
-                  ? "bg-red-600 text-white hover:bg-red-700 shadow-md border-red-600"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-300 hover:border-gray-400"
+                  ? "bg-red-600 text-white hover:bg-red-700 border-red-600"
+                  : "bg-white text-gray-700 hover:bg-gray-50 border-gray-300"
               }`}
             >
               <div className="text-center">
                 <div className="font-semibold">Görev 1.2</div>
-                <div className="text-xs opacity-75">Bölüm 2</div>
+                <div className="text-xs opacity-75">Bölüm 1</div>
               </div>
             </Button>
 
@@ -850,32 +1284,62 @@ export default function OverallResults() {
               variant="outline"
               className={`h-14 sm:h-16 w-full rounded-lg font-medium transition-all ${
                 activeTask === "task2"
-                  ? "bg-red-600 text-white hover:bg-red-700 shadow-md border-red-600"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-300 hover:border-gray-400"
+                  ? "bg-red-600 text-white hover:bg-red-700 border-red-600"
+                  : "bg-white text-gray-700 hover:bg-gray-50 border-gray-300"
               }`}
             >
               <div className="text-center">
                 <div className="font-semibold">Görev 2</div>
-                <div className="text-xs opacity-75">Makale</div>
+                <div className="text-xs opacity-75">Bölüm 2</div>
               </div>
             </Button>
           </div>
           </div>
 
-          {/* Content Sections */}
+          {/* Yazma Kriterleri - Konuşma düzenine benzer, yazmaya özel */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6 mb-6 sm:mb-8">
+            <div className="mb-4">
+              <h3 className="text-base sm:text-lg font-semibold tracking-tight text-gray-900">
+                {activeWritingLabel}
+              </h3>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="w-full rounded-lg border border-gray-200 bg-white p-3 sm:p-4">
+                <div className="text-sm font-semibold text-gray-700 mb-2">Tutarlılık ve Bağlılık</div>
+                <div className="min-h-[92px] rounded-lg bg-gray-50 p-3 text-sm text-gray-700 whitespace-pre-wrap break-words leading-relaxed">
+                  {cleanBullets(activeCriteria.coherence)}
+                </div>
+              </div>
+              <div className="w-full rounded-lg border border-gray-200 bg-white p-3 sm:p-4">
+                <div className="text-sm font-semibold text-gray-700 mb-2">Dil Bilgisi</div>
+                <div className="min-h-[92px] rounded-lg bg-gray-50 p-3 text-sm text-gray-700 whitespace-pre-wrap break-words leading-relaxed">
+                  {cleanBullets(activeCriteria.grammar)}
+                </div>
+              </div>
+              <div className="w-full rounded-lg border border-gray-200 bg-white p-3 sm:p-4">
+                <div className="text-sm font-semibold text-gray-700 mb-2">Kelime Kaynağı</div>
+                <div className="min-h-[92px] rounded-lg bg-gray-50 p-3 text-sm text-gray-700 whitespace-pre-wrap break-words leading-relaxed">
+                  {cleanBullets(activeCriteria.lexical)}
+                </div>
+              </div>
+              <div className="w-full rounded-lg border border-gray-200 bg-white p-3 sm:p-4">
+                <div className="text-sm font-semibold text-gray-700 mb-2">Görev Başarısı</div>
+                <div className="min-h-[92px] rounded-lg bg-gray-50 p-3 text-sm text-gray-700 whitespace-pre-wrap break-words leading-relaxed">
+                  {cleanBullets(activeCriteria.achievement)}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Content Sections - Simplified */}
           <div className="space-y-6">
             {/* Question Section */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <span className="text-blue-600 font-semibold text-sm">Q</span>
-                </div>
-                <h2 className="text-lg font-semibold text-gray-900">Soru</h2>
-              </div>
+            <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
+              <h2 className="text-base sm:text-lg font-semibold tracking-tight text-gray-900 mb-4">Soru</h2>
               <div className="space-y-4">
                 {/* Render description above question text for 1.1 and 1.2 */}
                 {currentData.description && (
-                  <div className="bg-gray-50 p-4 rounded-lg border-l-4 border-blue-500">
+                  <div className="bg-gray-50 p-4 rounded-lg">
                     <h4 className="font-medium text-gray-800 mb-2">Görev Açıklaması:</h4>
                     <p className="text-gray-700 whitespace-pre-line">{currentData.description}</p>
                   </div>
@@ -887,33 +1351,24 @@ export default function OverallResults() {
             </div>
 
             {/* Answer Section */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                  <span className="text-green-600 font-semibold text-sm">A</span>
-                </div>
-                <h2 className="text-lg font-semibold text-gray-900">Cevabınız</h2>
-              </div>
+            <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
+              <h2 className="text-base sm:text-lg font-semibold tracking-tight text-gray-900 mb-4">Cevabınız</h2>
               <div className="bg-gray-50 rounded-lg p-4">
                 <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{currentData.answer}</p>
               </div>
             </div>
 
-            {/* GENEL DEĞERLENDİRME Section - Shows general feedback */}
+            {/* GENEL DEĞERLENDİRME Section */}
             {(() => {
-              const generalFeedback = extractFeedbackSection(aiFeedback, 'general');
+              const rawGeneralFeedback = parsedFeedback?.general || extractFeedbackSection(aiFeedback, "general");
+              const generalFeedback = sanitizeWritingGeneralFeedback(rawGeneralFeedback);
               if (!generalFeedback) return null;
 
               return (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                      <span className="text-purple-600 font-semibold text-sm">💬</span>
-                    </div>
-                    <h2 className="text-lg font-semibold text-gray-900">GENEL DEĞERLENDİRME</h2>
-                  </div>
+                <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
+                  <h2 className="text-base sm:text-lg font-semibold tracking-tight text-gray-900 mb-4">Genel Değerlendirme</h2>
                   <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{cleanBullets(generalFeedback)}</p>
+                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{generalFeedback}</p>
                   </div>
                 </div>
               );
@@ -959,6 +1414,19 @@ export default function OverallResults() {
         .replace(/\s+/g, ' ') // Replace multiple spaces with single space
         .trim();
     };
+
+    // Remove raw AI metadata blocks from general feedback text
+    const sanitizeGeneralFeedback = (text: string): string => {
+      if (!text) return text;
+      return removeBullets(
+        text
+          .replace(/\[[^\]]+\]/g, " ")
+          .replace(/GENEL PUAN\s*:[^\n\r]*/gi, " ")
+          .replace(/BELİRLENEN SEVİYE\s*:[^\n\r]*/gi, " ")
+          .replace(/AI GERİ BİLDİRİMİ\s*\(EĞİTMEN NOTU\)\s*:/gi, " ")
+          .replace(/GENEL DEĞERLENDİRME\s*:/gi, " ")
+      );
+    };
     
     // Helper function to extract feedback sections from string format
     const extractFeedbackSection = (feedbackText: string | undefined, sectionName: string): string => {
@@ -978,12 +1446,18 @@ export default function OverallResults() {
       if (pattern) {
         const match = feedbackText.match(pattern);
         if (match && match[1]) {
+          if (sectionName === "general") {
+            return sanitizeGeneralFeedback(match[1].trim());
+          }
           return removeBullets(match[1].trim());
         }
       }
       
       // If no specific section found, return the full feedback for general or fallback
-      if (sectionName === 'general' || sectionName === 'taskAchievement') {
+      if (sectionName === 'general') {
+        return sanitizeGeneralFeedback(feedbackText);
+      }
+      if (sectionName === 'taskAchievement') {
         return removeBullets(feedbackText);
       }
       
@@ -1005,7 +1479,7 @@ export default function OverallResults() {
     };
 
     // Use level from overall data
-    const level = data?.level;
+    const level = displayLevel(data?.level);
 
     // Extract answers from either answers array or parts structure
     const extractAnswers = () => {
@@ -1213,153 +1687,57 @@ export default function OverallResults() {
     const currentData = getCurrentQuestionAndAnswer();
 
     return (
-      <div className="w-full bg-gradient-to-br from-gray-50 to-gray-100 p-8">
-        <div className="mx-auto max-w-6xl">
+      <div className="w-full">
+        <div className="w-full">
           {/* Header Section */}
           <div className="mb-8">
             {/* Overall Score Card */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Genel Puan</h2>
-                  <p className="text-gray-600">Konuşma testi performansınız</p>
-                </div>
-                <div className="text-right">
-                  <div className="flex items-center gap-2">
-                    <div className="text-4xl font-bold text-red-600">{scores.overall}</div>
-                    {level && <span className="text-lg font-semibold text-gray-700"> / {level}</span>}
+            {isMultiTest && level ? (
+              <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_145px] items-stretch gap-4 mb-8">
+                <div className="bg-white rounded-lg border border-gray-200 px-6 py-4 h-full">
+                  <div className="h-full flex items-center justify-between gap-4">
+                    <div>
+                      <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Genel Puan</h2>
+                      <p className="text-sm sm:text-base text-gray-600">Konuşma testi performansınız</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm text-gray-500 mb-1">Puan</div>
+                      <div className="text-3xl sm:text-4xl font-bold text-red-600">{scores.overall}</div>
+                    </div>
                   </div>
-                  <div className="text-sm text-gray-500">Bant Puanı</div>
+                </div>
+                  <div className="bg-white rounded-lg border border-gray-200 px-6 py-4 h-full flex flex-col items-center justify-center">
+                  <div className="text-sm text-gray-500 mb-1">Genel Seviye</div>
+                  <div className="text-2xl sm:text-3xl font-semibold text-gray-900">{level}</div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="bg-white rounded-lg border border-gray-200 px-6 py-4 h-full mb-8">
+                <div className="h-full flex items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Genel Puan</h2>
+                    <p className="text-sm sm:text-base text-gray-600">Konuşma testi performansınız</p>
+                  </div>
+                  <div className="text-right">
+                    <div className="flex items-center gap-2">
+                      <div className="text-3xl sm:text-4xl font-bold text-red-600">{scores.overall}</div>
+                      {level && <span className="text-base sm:text-lg font-semibold text-gray-700"> / {level}</span>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Scoring Categories Grid */}
-          {aiFeedback && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              {(() => {
-                // Helper to get feedback text for a part
-                const getPartFeedback = (partKey: string) => {
-                  if (typeof aiFeedback === 'string') {
-                    return extractFeedbackSection(aiFeedback, partKey);
-                  } else if (aiFeedback && typeof aiFeedback === 'object') {
-                    const rawFeedback = (aiFeedback as any)?.[partKey] || '';
-                    return typeof rawFeedback === 'string' ? removeBullets(rawFeedback) : rawFeedback;
-                  }
-                  return '';
-                };
-                
-                const part1Feedback = getPartFeedback('part1');
-                const part2Feedback = getPartFeedback('part2');
-                const part3Feedback = getPartFeedback('part3');
-                const hasPartFeedback = part1Feedback || part2Feedback || part3Feedback;
-                
-                return (
-                  <>
-                    {part1Feedback && (
-                      <>
-                        {/* Bölüm 1.1 */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                          <div className="flex items-center justify-between mb-3">
-                            <h3 className="font-semibold text-gray-900">Bölüm 1.1</h3>
-                            <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                          </div>
-                          <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
-                            {part1Feedback}
-                          </p>
-                        </div>
-                        {/* Bölüm 1.2 */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                          <div className="flex items-center justify-between mb-3">
-                            <h3 className="font-semibold text-gray-900">Bölüm 1.2</h3>
-                            <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                          </div>
-                          <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
-                            {part1Feedback}
-                          </p>
-                        </div>
-                      </>
-                    )}
-                    {part2Feedback && (
-                      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <div className="flex items-center justify-between mb-3">
-                          <h3 className="font-semibold text-gray-900">Bölüm 2</h3>
-                          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                        </div>
-                        <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
-                          {part2Feedback}
-                        </p>
-                      </div>
-                    )}
-                    {part3Feedback && (
-                      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <div className="flex items-center justify-between mb-3">
-                          <h3 className="font-semibold text-gray-900">Bölüm 3</h3>
-                          <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                        </div>
-                        <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
-                          {part3Feedback}
-                        </p>
-                      </div>
-                    )}
-                    {/* Show general feedback if available */}
-                    {/* Genel eğitmen notunu üst gridde göstermiyoruz; 
-                        bu not aşağıda "Eğitmen Notu" kartında yer alıyor. */}
-                    {/* Fallback to IELTS-style feedback if part1-3 not available */}
-                    {!hasPartFeedback && (
-                <>
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-semibold text-gray-900">Tutarlılık ve Bağlılık</h3>
-                      <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                    </div>
-                    <p className="text-sm text-gray-600 leading-relaxed">
-                      {aiFeedback.coherenceAndCohesion || "Geri bildirim mevcut değil"}
-                    </p>
-                  </div>
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-semibold text-gray-900">Dil Bilgisi</h3>
-                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                    </div>
-                    <p className="text-sm text-gray-600 leading-relaxed">
-                      {aiFeedback.grammaticalRangeAndAccuracy || "Geri bildirim mevcut değil"}
-                    </p>
-                  </div>
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-semibold text-gray-900">Kelime Kaynağı</h3>
-                      <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                    </div>
-                    <p className="text-sm text-gray-600 leading-relaxed">
-                      {aiFeedback.lexicalResource || "Geri bildirim mevcut değil"}
-                    </p>
-                  </div>
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-semibold text-gray-900">Görev Başarısı</h3>
-                      <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-                    </div>
-                    <p className="text-sm text-gray-600 leading-relaxed">
-                      {aiFeedback.taskAchievement || "Geri bildirim mevcut değil"}
-                    </p>
-                  </div>
-                </>
-                    )}
-                  </>
-                );
-              })()}
-            </div>
-          )}
-
-          {/* Part Navigation - Redesigned */}
+          {/* Part Navigation - Simplified Design */}
           {parts.length > 0 && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
-              <h3 className="text-lg font-semibold text-gray-900 mb-6">Konuşma Bölümleri</h3>
-              
-              {/* All Parts in One Row */}
-              <div className="grid grid-cols-4 gap-4 mb-6">
+            <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6 mb-6 sm:mb-8">
+              <h3 className="text-base sm:text-lg font-semibold tracking-tight text-gray-900 mb-4 sm:mb-6">
+                Konuşma Bölümleri
+              </h3>
+
+              {/* All Parts - 2x2 on mobile, 4 columns on tablet+ */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
                 {parts.map((_part, index: number) => {
                   const partLabel = getPartLabel(index);
                   return (
@@ -1370,10 +1748,10 @@ export default function OverallResults() {
                         setActiveSpeakingQuestion(0);
                       }}
                       variant="outline"
-                      className={`h-16 rounded-lg font-medium transition-all ${
+                      className={`h-14 sm:h-16 rounded-lg font-medium transition-all text-xs sm:text-sm ${
                         activeSpeakingPart === index
-                          ? "bg-red-600 text-white hover:bg-red-700 shadow-md border-red-600"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-300 hover:border-gray-400"
+                          ? "bg-red-600 text-white hover:bg-red-700 border-red-600"
+                          : "bg-white text-gray-700 hover:bg-gray-50 border-gray-300"
                       }`}
                     >
                       <div className="text-center">
@@ -1409,16 +1787,45 @@ export default function OverallResults() {
             </div>
           )}
 
-          {/* Content Sections */}
+          {/* Bölüm Bazlı Özet - Ham Puan + 4 Kriter */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6 mb-6 sm:mb-8">
+            <div className="mb-4">
+              <h3 className="text-base sm:text-lg font-semibold tracking-tight text-gray-900">
+                {getPartLabel(activeSpeakingPart).main}
+              </h3>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="w-full rounded-lg border border-gray-200 bg-white p-3 sm:p-4">
+                <div className="text-sm font-semibold text-gray-700 mb-2">Akıcılık ve Bağlılık</div>
+                <div className="min-h-[92px] rounded-lg bg-gray-50 p-3 text-sm text-gray-700 whitespace-pre-wrap break-words leading-relaxed">
+                  {typeof aiFeedback === "object" ? (aiFeedback?.coherenceAndCohesion || "Kısa değerlendirme yok") : "Kısa değerlendirme yok"}
+                </div>
+              </div>
+              <div className="w-full rounded-lg border border-gray-200 bg-white p-3 sm:p-4">
+                <div className="text-sm font-semibold text-gray-700 mb-2">Dil Bilgisi</div>
+                <div className="min-h-[92px] rounded-lg bg-gray-50 p-3 text-sm text-gray-700 whitespace-pre-wrap break-words leading-relaxed">
+                  {typeof aiFeedback === "object" ? (aiFeedback?.grammaticalRangeAndAccuracy || "Kısa değerlendirme yok") : "Kısa değerlendirme yok"}
+                </div>
+              </div>
+              <div className="w-full rounded-lg border border-gray-200 bg-white p-3 sm:p-4">
+                <div className="text-sm font-semibold text-gray-700 mb-2">Kelime Kaynağı</div>
+                <div className="min-h-[92px] rounded-lg bg-gray-50 p-3 text-sm text-gray-700 whitespace-pre-wrap break-words leading-relaxed">
+                  {typeof aiFeedback === "object" ? (aiFeedback?.lexicalResource || "Kısa değerlendirme yok") : "Kısa değerlendirme yok"}
+                </div>
+              </div>
+              <div className="w-full rounded-lg border border-gray-200 bg-white p-3 sm:p-4">
+                <div className="text-sm font-semibold text-gray-700 mb-2">Görev Yanıtı</div>
+                <div className="min-h-[92px] rounded-lg bg-gray-50 p-3 text-sm text-gray-700 whitespace-pre-wrap break-words leading-relaxed">
+                  {typeof aiFeedback === "object" ? (aiFeedback?.taskAchievement || "Kısa değerlendirme yok") : "Kısa değerlendirme yok"}
+                </div>
+              </div>
+            </div>
+          </div>
+          {/* Content Sections - Simplified */}
           <div className="space-y-6">
             {/* Answer Section */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                  <span className="text-green-600 font-semibold text-sm">A</span>
-                </div>
-                <h2 className="text-lg font-semibold text-gray-900">Cevabınız</h2>
-              </div>
+            <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
+              <h2 className="text-base sm:text-lg font-semibold tracking-tight text-gray-900 mb-4">Cevabınız</h2>
               <div className="bg-gray-50 rounded-lg p-4">
                 <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{currentData.answer}</p>
               </div>
@@ -1430,13 +1837,8 @@ export default function OverallResults() {
               if (!generalFeedback) return null;
 
               return (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                      <span className="text-purple-600 font-semibold text-sm">💬</span>
-                    </div>
-                    <h2 className="text-lg font-semibold text-gray-900">GENEL DEĞERLENDİRME</h2>
-                  </div>
+                <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
+                  <h2 className="text-base sm:text-lg font-semibold tracking-tight text-gray-900 mb-4">Eğitmen Notu</h2>
                   <div className="bg-gray-50 rounded-lg p-4">
                     <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{removeBullets(generalFeedback)}</p>
                   </div>
@@ -1462,37 +1864,42 @@ export default function OverallResults() {
     return (
       <>
         {!loading && data && <ConfettiSideCannons key={`confetti-overall-${params.overallId || 'single'}`} />}
-        <div className="min-h-screen bg-gray-50 py-10">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="mb-8 mx-4">
-            <h1 className="text-3xl font-bold text-foreground mb-2">
+        <div className="min-h-screen bg-gray-50 py-6 sm:py-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Header with PDF Button */}
+            <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-1">
               {testType === 'listening' && 'Dinleme Testi Sonuçları'}
               {testType === 'reading' && 'Okuma Testi Sonuçları'}
               {testType === 'writing' && 'Yazma Testi Sonuçları'}
               {testType === 'speaking' && 'Konuşma Testi Sonuçları'}
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               {testType === 'listening' && 'Dinleme testi performansınızı inceleyin'}
               {testType === 'reading' && 'Okuma testi performansınızı inceleyin'}
               {testType === 'writing' && 'Yazma testi performansınızı inceleyin'}
               {testType === 'speaking' && 'Konuşma testi performansınızı inceleyin'}
             </p>
+            </div>
+
+            {/* PDF Download Button - Top Right */}
+            <Button
+              onClick={handleDownloadPDF}
+              disabled={downloadingPDF}
+              className="bg-red-600 hover:bg-red-700 text-white w-full sm:w-auto"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              {downloadingPDF ? "İndiriliyor..." : "PDF İndir"}
+            </Button>
           </div>
-          
+
           {testType === 'listening' && renderListeningResults()}
           {testType === 'reading' && renderReadingResults()}
           {testType === 'writing' && renderWritingResults()}
           {testType === 'speaking' && renderSpeakingResults()}
 
-          <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row gap-4 justify-center mx-4">
-            <Button
-              onClick={handleDownloadPDF}
-              disabled={downloadingPDF}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              {downloadingPDF ? "İndiriliyor..." : "Sertifikayı İndir (PDF)"}
-            </Button>
+            <div className="mt-6 sm:mt-8 flex justify-center">
             <Button variant="outline" onClick={() => navigate("/test")} className="w-full sm:w-auto">
               Testlere Dön
             </Button>
@@ -1507,22 +1914,27 @@ export default function OverallResults() {
   return (
     <>
       {!loading && data && <ConfettiSideCannons key={`confetti-overall-${params.overallId || 'multiple'}`} />}
-      <div className="min-h-screen bg-gray-50 py-10">
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="mb-8 flex items-center justify-between">
-          <div></div>
+      <div className="min-h-screen bg-gray-50 py-6 sm:py-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header with PDF Button */}
+          <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-lg sm:text-xl font-bold text-foreground">Genel Test Sonuçları</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1">Tüm test sonuçlarınızı görüntüleyin</p>
+            </div>
           <Button
             onClick={handleDownloadPDF}
             disabled={downloadingPDF}
-            className="bg-red-600 hover:bg-red-700 text-white"
+            className="bg-red-600 hover:bg-red-700 text-white w-full sm:w-auto"
           >
             <Download className="w-4 h-4 mr-2" />
-            {downloadingPDF ? "İndiriliyor..." : "Sertifikayı İndir (PDF)"}
+            {downloadingPDF ? "İndiriliyor..." : "PDF İndir"}
           </Button>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <div className="sticky top-0 z-40 bg-gray-50 pb-4">
+            <TabsList className="grid w-full grid-cols-4 bg-white shadow-sm">
             <TabsTrigger value="listening" className="flex items-center gap-2">
               <span className="hidden sm:inline">Dinleme</span>
               <span className="sm:hidden">D</span>
@@ -1560,6 +1972,7 @@ export default function OverallResults() {
               )}
             </TabsTrigger>
           </TabsList>
+          </div>
 
           <TabsContent value="listening" className="mt-6">
             {renderListeningResults()}
@@ -1578,16 +1991,8 @@ export default function OverallResults() {
           </TabsContent>
         </Tabs>
 
-        <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-          <Button
-            onClick={handleDownloadPDF}
-            disabled={downloadingPDF}
-            className="bg-red-600 hover:bg-red-700 text-white"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            {downloadingPDF ? "İndiriliyor..." : "Sertifikayı İndir (PDF)"}
-          </Button>
-          <Button variant="outline" onClick={() => navigate("/test")}>
+        <div className="mt-6 sm:mt-8 flex justify-center">
+          <Button variant="outline" onClick={() => navigate("/test")} className="w-full sm:w-auto">
             Testlere Dön
           </Button>
         </div>
@@ -1596,5 +2001,8 @@ export default function OverallResults() {
     </>
   );
 }
+
+
+
 
 

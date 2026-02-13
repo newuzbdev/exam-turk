@@ -1,4 +1,4 @@
-import axiosPrivate from '@/config/api';
+﻿import axiosPrivate from '@/config/api';
 import { toast } from 'sonner';
 
 export interface QuestionAnswer {
@@ -8,11 +8,13 @@ export interface QuestionAnswer {
 
 export interface SubPartSubmission {
   image?: string;
+  duration: number;
   questions: QuestionAnswer[];
 }
 
 export interface PartSubmission {
   description: string;
+  duration: number;
   image?: string;
   type?: string;
   subParts?: SubPartSubmission[];
@@ -51,7 +53,7 @@ export const speakingSubmissionService = {
       });
 
       if (response.data && (response.data.success || response.status === 200 || response.status === 201)) {
-        // toast.success('Konuşma testi başarıyla gönderildi!');
+        // toast.success('KonuÅŸma testi baÅŸarÄ±yla gÃ¶nderildi!');
         const result = {
           success: true,
           submissionId: response.data.id || response.data.submissionId
@@ -61,15 +63,19 @@ export const speakingSubmissionService = {
       } else {
         return {
           success: false,
-          error: 'Test gönderilemedi'
+          error: 'Test gÃ¶nderilemedi'
         };
       }
     } catch (error: any) {
       console.error('Speaking test submission error:', error);
       
-      let errorMessage = 'Test gönderilirken hata oluştu';
-      
-      if (error.response?.status === 400) {
+      let errorMessage = 'Test gÃ¶nderilirken hata oluÅŸtu';
+      // Prefer backend message (more actionable) over generic status buckets.
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.status === 400) {
         errorMessage = 'Geçersiz test verisi';
       } else if (error.response?.status === 401) {
         errorMessage = 'Oturum süresi dolmuş, lütfen tekrar giriş yapın';
@@ -77,11 +83,8 @@ export const speakingSubmissionService = {
         errorMessage = 'Test verisi çok büyük';
       } else if (error.code === 'ECONNABORTED') {
         errorMessage = 'İşlem zaman aşımına uğradı';
-      } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
       }
-
-      toast.error(errorMessage);
+toast.error(errorMessage);
       
       return {
         success: false,
@@ -99,7 +102,7 @@ export const speakingSubmissionService = {
      return res.data?.data || res.data || null
   } catch (error: any) {
     console.error('Failed to fetch speaking submission', error)
-     toast.error('Konuşma sonucu bulunamadı')
+     toast.error('KonuÅŸma sonucu bulunamadÄ±')
       return null
     }
   },
@@ -110,16 +113,17 @@ export const speakingSubmissionService = {
     * @param answers - The user's answers mapped by question ID
     * @returns Formatted submission data
     */
-   formatSubmissionData: (
+  formatSubmissionData: (
     testData: any, 
     answers: Record<string, string>
    ): SpeakingSubmissionData => {
     const parts: PartSubmission[] = [];
 
-    testData.sections.forEach((section: any) => {
+    (testData.sections || []).forEach((section: any) => {
       const part: PartSubmission = {
         description: section.description,
         image: section.images?.[0] || undefined,
+        duration: Number(section.duration ?? 0),
       };
 
       // Handle sections with subparts (like Part 1)
@@ -127,18 +131,18 @@ export const speakingSubmissionService = {
         part.subParts = section.subParts.map((subPart: any) => {
           const subPartSubmission: SubPartSubmission = {
             image: subPart.images?.[0] || undefined,
+            duration: Number(subPart.duration ?? 0),
             questions: []
           };
 
           // Add questions from subpart
-          subPart.questions.forEach((question: any) => {
+          const subQuestions = Array.isArray(subPart.questions) ? subPart.questions : [];
+          subQuestions.forEach((question: any) => {
             const questionId = question.id || question.questionId;
-            if (answers[questionId]) {
-              subPartSubmission.questions.push({
-                questionId: questionId,
-                userAnswer: answers[questionId]
-              });
-            }
+            subPartSubmission.questions.push({
+              questionId: questionId,
+              userAnswer: answers[questionId] ?? ''
+            });
           });
 
           return subPartSubmission;
@@ -149,18 +153,17 @@ export const speakingSubmissionService = {
         
         // Set type for Part 3 if needed
         if (section.type === 'PART3') {
-          part.type = 'DISADVANTAGE'; // or determine based on content
+          part.type = 'DISADVANTAGE';
         }
 
         // Add questions from section
-        section.questions.forEach((question: any) => {
+        const secQuestions = Array.isArray(section.questions) ? section.questions : [];
+        secQuestions.forEach((question: any) => {
           const questionId = question.id || question.questionId;
-          if (answers[questionId]) {
-            part.questions!.push({
-              questionId: questionId,
-              userAnswer: answers[questionId]
-            });
-          }
+          part.questions!.push({
+            questionId: questionId,
+            userAnswer: answers[questionId] ?? ''
+          });
         });
       }
 
@@ -168,7 +171,8 @@ export const speakingSubmissionService = {
     });
 
     return {
-      speakingTestId: testData.id,
+      // submit-all flow stores `testId`, while direct flow has `id`
+      speakingTestId: testData.id || testData.testId,
       parts: parts
     };
   },
@@ -180,24 +184,24 @@ export const speakingSubmissionService = {
    */
   formatAssessmentFeedback: (assessment: any): string => {
     const formattedFeedback = `
-GENEL SONUÇ:
- Genel CEFR Puanı: ${assessment.cefr_puan ?? 0}/75
+GENEL SONUÃ‡:
+ Genel CEFR PuanÄ±: ${assessment.cefr_puan ?? 0}/75
  Belirlenen Seviye: ${assessment.seviye ?? 'Belirlenmedi'}
 
-[BÖLÜM 1.1 ANALİZİ]
-${assessment.bolumler?.bolum_1_1?.degerlendirme ?? 'Değerlendirme yapılamadı.'}
+[BÃ–LÃœM 1.1 ANALÄ°ZÄ°]
+${assessment.bolumler?.bolum_1_1?.degerlendirme ?? 'DeÄŸerlendirme yapÄ±lamadÄ±.'}
 
-[BÖLÜM 1.2 ANALİZİ]
-${assessment.bolumler?.bolum_1_2?.degerlendirme ?? 'Değerlendirme yapılamadı.'}
+[BÃ–LÃœM 1.2 ANALÄ°ZÄ°]
+${assessment.bolumler?.bolum_1_2?.degerlendirme ?? 'DeÄŸerlendirme yapÄ±lamadÄ±.'}
 
-[BÖLÜM 2 ANALİZİ]
-${assessment.bolumler?.bolum_2?.degerlendirme ?? 'Değerlendirme yapılamadı.'}
+[BÃ–LÃœM 2 ANALÄ°ZÄ°]
+${assessment.bolumler?.bolum_2?.degerlendirme ?? 'DeÄŸerlendirme yapÄ±lamadÄ±.'}
 
-[BÖLÜM 3 ANALİZİ]
-${assessment.bolumler?.bolum_3?.degerlendirme ?? 'Değerlendirme yapılamadı.'}
+[BÃ–LÃœM 3 ANALÄ°ZÄ°]
+${assessment.bolumler?.bolum_3?.degerlendirme ?? 'DeÄŸerlendirme yapÄ±lamadÄ±.'}
 
-GENEL DEĞERLENDİRME:
-${assessment.genel_degerlendirme ?? 'Genel değerlendirme yapılamadı.'}
+GENEL DEÄERLENDÄ°RME:
+${assessment.genel_degerlendirme ?? 'Genel deÄŸerlendirme yapÄ±lamadÄ±.'}
 `.trim();
 
     return formattedFeedback;
@@ -210,35 +214,16 @@ ${assessment.genel_degerlendirme ?? 'Genel değerlendirme yapılamadı.'}
    */
   validateSubmissionData: (submissionData: SpeakingSubmissionData): boolean => {
     if (!submissionData.speakingTestId) {
-      toast.error('Test ID bulunamadı');
+      toast.error('Test ID bulunamadÄ±');
       return false;
     }
 
     if (!submissionData.parts || submissionData.parts.length === 0) {
-      toast.error('Test cevapları bulunamadı');
+      toast.error('Test cevaplarÄ± bulunamadÄ±');
       return false;
     }
 
-    // Check if there are any answers
-    let hasAnswers = false;
-    submissionData.parts.forEach(part => {
-      if (part.questions && part.questions.length > 0) {
-        hasAnswers = true;
-      }
-      if (part.subParts) {
-        part.subParts.forEach(subPart => {
-          if (subPart.questions && subPart.questions.length > 0) {
-            hasAnswers = true;
-          }
-        });
-      }
-    });
-
-    if (!hasAnswers) {
-      toast.error('En az bir soruyu cevaplamalısınız');
-      return false;
-    }
-
+    // Allow empty submissions: backend will score as 0 and still return a result page.
     return true;
   }
 };

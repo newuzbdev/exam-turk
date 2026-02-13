@@ -495,7 +495,7 @@ const SpeakingTest = () => {
   const questionInfo = getCurrentQuestionInfo();
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="h-screen-mobile bg-white overflow-y-auto overscroll-behavior-y-contain flex flex-col">
       <TestHeader
         testTitle={testData.title}
         currentQuestion={questionInfo.currentQuestion}
@@ -504,7 +504,8 @@ const SpeakingTest = () => {
         onBack={() => navigate("/test")}
       />
 
-      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-6">
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-6 pb-20 safe-area-bottom">
         <ProgressBar percentage={progressInfo.percentage} />
 
         {/* Current Question */}
@@ -608,6 +609,7 @@ const SpeakingTest = () => {
             )}
           </div>
         )}
+        </div>
       </div>
     </div>
   );

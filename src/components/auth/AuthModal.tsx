@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router";
+import { toast } from "sonner";
 import { authService } from "@/services/auth.service";
 import {
   InputOTP,
@@ -47,6 +49,18 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
   // Timer states
   const [timer, setTimer] = useState(0);
   const [canResend, setCanResend] = useState(false);
+
+  // Sync authMode with initialMode when modal opens or parent changes mode (e.g. "Kayıt Ol" vs "Giriş Yap")
+  useEffect(() => {
+    if (open) {
+      setAuthMode(initialMode);
+      if (initialMode === "register") {
+        setRegisterStep("options");
+      } else {
+        setLoginStep("login");
+      }
+    }
+  }, [open, initialMode]);
 
   // Phone number formatting function
   const formatPhoneNumber = (value: string) => {
@@ -146,9 +160,23 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
   const handleLoginOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    await authService.verifyOtpForLogin(loginPhone, loginOtp.toString(), navigate);
+    const result = await authService.verifyOtpForLogin(
+      loginPhone,
+      loginOtp.toString(),
+      navigate
+    );
     setLoading(false);
-    if (open) {
+    if (result?.shouldShowRegister && result?.phoneNumber) {
+      setRegisterPhone(loginPhone);
+      setRegisterData((prev) => ({
+        ...prev,
+        phoneNumber: result.phoneNumber!,
+      }));
+      setAuthMode("register");
+      setRegisterStep("register");
+      return;
+    }
+    if (result?.success && result?.shouldNavigate) {
       onOpenChange(false);
     }
   };
@@ -196,15 +224,11 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
       navigate
     );
 
-    if (
-      result.success &&
-      result.phoneNumber &&
-      !result.shouldNavigate &&
-      !result.shouldRedirectToLogin
-    ) {
+    if (result.success && !result.shouldNavigate && !result.shouldRedirectToLogin) {
+      const phoneNumber = result.phoneNumber || authService.formatPhoneNumber(registerPhone);
       setRegisterData({
         ...registerData,
-        phoneNumber: result.phoneNumber,
+        phoneNumber,
       });
       setRegisterStep("register");
     }
@@ -214,13 +238,27 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    
+    // Get the phone number from registerData (set during OTP verification)
+    const phoneNumber = registerData.phoneNumber || authService.formatPhoneNumber(registerPhone);
+    
+    // Validate userName is not empty
+    const userName = registerMethod === "email" ? registerData.email : registerData.userName;
+    if (!userName || userName.trim() === "") {
+      toast.error("Kullanıcı adı boş olamaz");
+      setLoading(false);
+      return;
+    }
+    
     const registrationPayload = {
       name: registerData.name,
       password: registerData.password,
-      phoneNumber: registerMethod === "phone" ? registerData.phoneNumber : "",
-      userName: registerMethod === "email" ? registerData.email : registerData.userName || "",
+      phoneNumber: phoneNumber,
+      userName: userName,
       avatarUrl: "",
     };
+
+    console.log("DEBUG handleRegister - registrationPayload:", registrationPayload);
 
     await authService.registerUser(registrationPayload, navigate);
     setLoading(false);
@@ -231,9 +269,9 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
 
   if (!open) return null;
 
-  return (
+  const modalContent = (
     <div 
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200 min-h-screen"
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200 min-h-screen"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           onOpenChange(false);
@@ -248,7 +286,7 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
           <X className="w-5 h-5" />
         </button>
 
-        <h2 className="text-3xl font-serif font-bold text-gray-900 mb-8 text-center">
+        <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">
           {authMode === "login" 
             ? loginStep === "phone" 
               ? "Telefon Numarası"
@@ -271,7 +309,7 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    E-posta veya Kullanıcı Adı
+                  Kullanıcı Adı
                   </label>
                   <input
                     type="text"
@@ -280,7 +318,7 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
                     onChange={(e) =>
                       setLoginData({ ...loginData, name: e.target.value })
                     }
-                    placeholder="E-posta, kullanıcı adı veya telefon"
+                    placeholder="Kullanıcı adı veya telefon"
                     className="w-full bg-white border border-[#E5E5E5] text-gray-900 rounded-lg p-3 outline-none focus:border-black transition-colors placeholder-gray-400"
                   />
                 </div>
@@ -504,7 +542,8 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
                         : "text-gray-400 hover:text-gray-600"
                     }`}
                   >
-                    E-posta ile
+                  Kullanıcı adı
+
                   </button>
                   <button
                     onClick={() => setRegisterStep("phone")}
@@ -660,20 +699,41 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
                 {registerMethod === "email" && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      E-posta
+                    Kullanıcı adı
+
                     </label>
                     <input
-                      type="email"
+                      type="text"
                       required
                       value={registerData.email}
                       onChange={(e) =>
                         setRegisterData({ ...registerData, email: e.target.value })
                       }
                       className="w-full bg-white border border-[#E5E5E5] text-gray-900 rounded-lg p-3 outline-none focus:border-black transition-colors placeholder-gray-400"
-                      placeholder="ornek@email.com"
+                      placeholder="Kullanıcı adı adresiniz"
                     />
                   </div>
                 )}
+
+                {registerMethod === "phone" && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Kullanıcı Adı
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={registerData.userName || ""}
+                      onChange={(e) =>
+                        setRegisterData({ ...registerData, userName: e.target.value })
+                      }
+                      className="w-full bg-white border border-[#E5E5E5] text-gray-900 rounded-lg p-3 outline-none focus:border-black transition-colors placeholder-gray-400"
+                      placeholder="Kullanıcı adınız"
+                    />
+                  </div>
+                )}
+
+
 
                 {(registerMethod === "email" || registerStep === "register") && (
                   <div>
@@ -758,6 +818,8 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
 export default AuthModal;

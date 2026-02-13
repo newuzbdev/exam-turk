@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { Volume2 } from "lucide-react";
 
 interface AudioPlayerProps {
   src: string;
@@ -95,10 +96,15 @@ export const AudioPlayer = ({ src, onAudioEnded }: AudioPlayerProps) => {
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseFloat(e.target.value);
     setVolume(newVolume);
+    const audio = audioRef.current;
+    if (audio) {
+      audio.muted = newVolume === 0;
+      audio.volume = newVolume;
+    }
   };
 
   return (
-    <div className="flex items-center gap-1 sm:gap-2 bg-gray-100 px-2 sm:px-3 py-1 sm:py-2 rounded-lg border border-gray-300">
+    <div className="flex items-center gap-2 bg-gray-100 px-2 sm:px-3 py-1 sm:py-2 rounded-lg border border-gray-300">
       <audio 
         ref={audioRef} 
         src={src} 
@@ -114,8 +120,11 @@ export const AudioPlayer = ({ src, onAudioEnded }: AudioPlayerProps) => {
       />
       
       {/* Volume Slider */}
-      <div className="flex items-center gap-1 sm:gap-2">
-        <span className="text-xs text-gray-600 hidden sm:inline">Volume:</span>
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 text-xs text-gray-600">
+          <Volume2 size={14} className="text-gray-500" />
+          <span className="hidden sm:inline">Ses</span>
+        </div>
         <input
           type="range"
           min="0"
@@ -125,7 +134,7 @@ export const AudioPlayer = ({ src, onAudioEnded }: AudioPlayerProps) => {
           onChange={handleVolumeChange}
           className="w-12 sm:w-16 lg:w-20 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
           style={{
-            background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${volume * 100}%, #e5e7eb ${volume * 100}%, #e5e7eb 100%)`
+            background: `linear-gradient(to right, #438553 0%, #438553 ${volume * 100}%, #e5e7eb ${volume * 100}%, #e5e7eb 100%)`
           }}
         />
         <span className="text-xs text-gray-600 min-w-[25px] sm:min-w-[30px]">

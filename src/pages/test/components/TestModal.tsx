@@ -1,4 +1,4 @@
-import { BookOpen, Headphones, PenTool, X, Coins, MessageCircle } from "lucide-react";
+import { BookOpen, Headphones, Pencil, X, Coins, MessageCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useMemo, useState } from "react";
@@ -142,7 +142,7 @@ const TestModal = ({
       duration: '60 dk', 
       testCount: writingTests.length > 0 ? `${writingTests.length} test` : '0 test', 
       cost: coinByType["WRITING"] ?? 5, 
-      icon: PenTool 
+      icon: Pencil 
     },
     { 
       id: 'speaking', 
@@ -340,7 +340,9 @@ const TestModal = ({
                 <div className="flex justify-between items-start gap-3">
                   <div className="flex-1 min-w-0">
                     <h2 className="font-serif text-xl sm:text-2xl font-bold text-gray-900 break-words">{selectedTest.title}</h2>
-                    <p className="text-xs sm:text-sm text-gray-500 mt-1">Almak istediğiniz test bölümlerini seçin</p>
+                    <p className="text-xs sm:text-sm text-gray-500 mt-1">
+                      Lütfen katılmak istediğiniz test bölümlerini seçiniz.
+                    </p>
                   </div>
                   <button 
                     onClick={() => onOpenChange(false)} 
@@ -353,7 +355,7 @@ const TestModal = ({
               </div>
               
               {/* Modal Body */}
-              <div className="p-4 sm:p-6 space-y-3 sm:space-y-4 overflow-y-auto flex-1 min-h-0">
+              <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-4 overflow-y-auto flex-1 min-h-0">
                 {skillsData.map((skill) => {
                   const isSelected = selectedSkills.includes(skill.id);
                   const isAvailable = skill.testCount !== '0 test';
@@ -362,26 +364,41 @@ const TestModal = ({
                     <div 
                       key={skill.id}
                       onClick={() => isAvailable && toggleSkill(skill.id)}
-                      className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 transition-all duration-200 ${
-                        !isAvailable ? 'opacity-50 cursor-not-allowed bg-gray-50 border-gray-100' :
-                        isSelected 
-                          ? 'bg-red-600/5 border-red-600 text-red-600 cursor-pointer' 
-                          : 'bg-gray-50 border-gray-200 hover:border-gray-400 text-gray-900 cursor-pointer'
+                      className={`group p-4 sm:p-5 rounded-2xl border-2 flex flex-col justify-between gap-4 transition-all duration-300 min-h-[140px] ${
+                        !isAvailable
+                          ? 'opacity-50 cursor-not-allowed bg-gray-100/70 border-gray-200'
+                          : isSelected
+                            ? 'bg-red-600/10 border-red-600 text-red-600 cursor-pointer shadow-xl shadow-red-600/10 -translate-y-1'
+                            : 'bg-gray-50/80 border-gray-300 text-gray-900 cursor-pointer hover:border-red-600 hover:shadow-2xl hover:-translate-y-1'
                       }`}
                     >
                       <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
-                        <div className={`p-2 rounded-lg flex-shrink-0 ${isSelected ? 'bg-red-600/10' : 'bg-gray-100'}`}>
-                          <skill.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${isSelected ? 'text-red-600' : 'text-gray-600'}`} />
+                        <div
+                          className={`p-2 rounded-lg flex-shrink-0 ${
+                            isSelected
+                              ? "bg-red-600/10"
+                              : "bg-gray-100 group-hover:bg-red-600/10"
+                          }`}
+                        >
+                          <skill.icon
+                            className={`w-4 h-4 sm:w-5 sm:h-5 ${
+                              isSelected
+                                ? "text-red-600"
+                                : "text-gray-600 group-hover:text-red-600"
+                            }`}
+                          />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="font-bold uppercase tracking-wide text-sm sm:text-base truncate">{skill.name}</p>
-                          <p className={`text-xs font-medium ${isSelected ? 'text-red-600/80' : 'text-gray-500'}`}>
+                          <p className={`font-bold uppercase tracking-wide text-sm sm:text-base truncate ${isSelected ? 'text-red-600' : 'group-hover:text-red-600'}`}>
+                            {skill.name}
+                          </p>
+                          <p className={`text-xs font-medium ${isSelected ? 'text-red-600/80' : 'text-gray-500 group-hover:text-red-600/80'}`}>
                             {skill.duration} • {skill.testCount}
                           </p>
                         </div>
                       </div>
-                      <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium flex-shrink-0 ${isSelected ? 'bg-red-600/10 text-red-600' : 'bg-gray-200 text-gray-700'}`}>
-                        <Coins className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs sm:text-sm font-semibold border-2 flex-shrink-0 ${isSelected ? 'bg-red-600/15 text-red-600 border-red-300' : 'bg-gray-50 text-gray-700 border-gray-300 group-hover:border-red-300 group-hover:text-red-600 group-hover:bg-red-600/5'}`}>
+                        <Coins className={`w-3 h-3 sm:w-4 sm:h-4 ${isSelected ? 'text-red-600' : 'text-gray-600 group-hover:text-red-600'}`} />
                         <span>{skill.cost} kredi</span>
                       </div>
                     </div>

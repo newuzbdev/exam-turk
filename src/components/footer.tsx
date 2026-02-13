@@ -1,4 +1,5 @@
-import { NavLink } from "react-router";
+﻿import { NavLink } from "react-router-dom";
+import { Instagram, Youtube, Send } from "lucide-react";
 
 export const Footer = () => {
   return (
@@ -6,21 +7,20 @@ export const Footer = () => {
       <footer id="contact" className="bg-gray-50 pt-20 pb-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           {/* Main footer content */}
-          <div className="grid md:grid-cols-4 gap-8">
-            <div>
-              <div className="text-2xl font-bold text-red-600 mb-4">
+          <div className="grid md:grid-cols-4 gap-12 items-start">
+            <div className="space-y-4">
+              <div className="text-2xl font-bold text-red-600">
                 TURKISHMOCK
               </div>
-              <p className="text-gray-600 mb-6 leading-relaxed">
-                Türkçe dil yeterlilik seviyenizi belirlemek ve geliştirmek için
-                profesyonel platform.
+              <p className="text-gray-600 leading-relaxed">
+                Türkçe CEFR seviyenizi belirlemek, sınavlara hazırlanmak ve
+                gelişiminizi takip etmek için tasarlanmış yapay zekâ destekli
+                platform.
               </p>
             </div>
 
-            <div>
-              <h3 className="font-semibold text-gray-900 mb-4">
-                Hızlı Bağlantılar
-              </h3>
+            <div className="space-y-4">
+              <h3 className="font-semibold text-gray-900">Hızlı Bağlantılar</h3>
               <ul className="space-y-3 text-gray-600">
                 <li>
                   <NavLink
@@ -32,20 +32,36 @@ export const Footer = () => {
                 </li>
                 <li>
                   <NavLink
-                    to="#about"
+                    to="/profile"
+                    className="hover:text-red-600 transition-colors"
+                  >
+                    Profil
+                  </NavLink>
+                </li>
+                <li>
+                  <NavLink
+                    to="/test"
+                    className="hover:text-red-600 transition-colors"
+                  >
+                    Test
+                  </NavLink>
+                </li>
+                {/* <li>
+                  <NavLink
+                    to="/about"
                     className="hover:text-red-600 transition-colors"
                   >
                     Hakkımızda
                   </NavLink>
-                </li>
-                <li>
+                </li> */}
+                {/* <li>
                   <NavLink
                     to="#features"
                     className="hover:text-red-600 transition-colors"
                   >
                     Özellikler
                   </NavLink>
-                </li>
+                </li> */}
                 <li>
                   <NavLink
                     to="/price"
@@ -57,8 +73,8 @@ export const Footer = () => {
               </ul>
             </div>
 
-            <div>
-              <h3 className="font-semibold text-gray-900 mb-4">Test Türleri</h3>
+            <div className="space-y-4">
+              <h3 className="font-semibold text-gray-900">Test Türleri</h3>
               <ul className="space-y-3 text-gray-600">
                 <li>
                   <NavLink
@@ -95,36 +111,68 @@ export const Footer = () => {
               </ul>
             </div>
 
-            <div>
-              <h3 className="font-semibold text-gray-900 mb-4">
-                İletişim Bilgileri
-              </h3>
-              <div className="text-gray-600 space-y-3 text-sm">
-                <p className="font-medium text-gray-800">
-                  Hafta içi 09:00 – 18:00
-                </p>
-                <p>destek@turktest.com</p>
-                <p>+998 97 777-79-07</p>
-                <p>
-                  Türkiye Caddesi No:123
-                  <br />
-                  İstanbul, Türkiye 34000
-                </p>
+            <div className="space-y-4">
+              <h3 className="font-semibold text-gray-900">Sosyal Medya</h3>
+              <div className="flex gap-4">
+                <a
+                  href="https://t.me/turkishmock"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:text-red-600 hover:border-red-200 transition-all hover:-translate-y-1 shadow-sm"
+                  aria-label="Telegram"
+                >
+                  <Send className="w-5 h-5" />
+                </a>
+                <a
+                  href="#"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:text-red-600 hover:border-red-200 transition-all hover:-translate-y-1 shadow-sm"
+                  aria-label="Instagram"
+                >
+                  <Instagram className="w-5 h-5" />
+                </a>
+                <a
+                  href="#"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:text-red-600 hover:border-red-200 transition-all hover:-translate-y-1 shadow-sm"
+                  aria-label="YouTube"
+                >
+                  <Youtube className="w-5 h-5" />
+                </a>
               </div>
             </div>
           </div>
 
           <div className="border-t border-gray-200 mt-8 pt-6 text-center text-gray-500 flex items-center justify-between flex-col sm:flex-row gap-3">
-            
             <p>
-              &copy; {new Date().getFullYear()} TürkTest. Tüm hakları saklıdır.
+              &copy; {new Date().getFullYear()} TURKISHMOCK. Tüm hakları saklıdır.
             </p>
-            <a
-              href="https://t.me/new_uzb_dev"
-              className="text-sm text-gray-500 hover:text-red-600 transition-colors"
-            >
-              Created and designed by Ochilov Jaxongirmirzo
-            </a>
+            <div className="text-sm text-gray-500">
+              <p>
+                <a
+                  href="https://t.me/timur_makarov"
+                  className="hover:text-red-600 transition-colors"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Founded and led by Timur Makarov
+                </a>
+                .
+              </p>
+              <p>
+                <a
+                  href="https://t.me/new_uzb_dev"
+                  className="hover:text-red-600 transition-colors"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Development by Ochilov Jahongirmirzo
+                </a>
+                .
+              </p>
+            </div>
           </div>
         </div>
       </footer>

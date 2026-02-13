@@ -1,5 +1,5 @@
+﻿import type { ReactNode } from "react";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import HighlightableText from "@/pages/reading-test/components/HighlightableText";
 
 interface ReadingPart1Props {
@@ -13,11 +13,13 @@ export default function ReadingPart1({ testData, answers, onAnswerChange, partNu
   const part1 = (testData.parts || []).find((p: any) => (p.number || 0) === 1) || (testData.parts || [])[0];
   const section1 = part1?.sections && part1.sections[0];
   const content = section1?.content || "";
-  const questions = (section1?.questions || []);
-  
-  // Build options from answers
+  const [titleLine, ...bodyLines] = String(content).split(/\r?\n/);
+  const contentTitle = (titleLine || "").trim();
+  const contentBody = bodyLines.join("\n").trim();
+  const questions = section1?.questions || [];
+
   const optionMap = new Map<string, { variantText: string; answer: string }>();
-  (section1?.questions || []).forEach((q: any) => {
+  questions.forEach((q: any) => {
     (q.answers || []).forEach((a: any) => {
       if (a.variantText && !optionMap.has(a.variantText)) {
         optionMap.set(a.variantText, { variantText: a.variantText, answer: a.answer });
@@ -25,100 +27,140 @@ export default function ReadingPart1({ testData, answers, onAnswerChange, partNu
     });
   });
   const optionList = Array.from(optionMap.values()).sort((a, b) => a.variantText.localeCompare(b.variantText));
+  const optionSet = new Set(optionList.map((o) => o.variantText));
+  const selectedVariants = new Set(
+    (questions || [])
+      .map((q: any) => answers[q.id])
+      .filter((v: unknown): v is string => typeof v === "string" && optionSet.has(v))
+  );
+  const questionByNumber = new Map<number, any>();
+  questions.forEach((q: any, idx: number) => {
+    const num = typeof q.number === "number" ? q.number : idx + 1;
+    questionByNumber.set(num, q);
+  });
 
+  const renderInlineText = (text: string, isMobile: boolean, keyPrefix: string) => {
+    const parts: ReactNode[] = [];
+    const pattern = /_{3,}\s*\(S(\d+)\)/g;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = pattern.exec(text)) !== null) {
+      const start = match.index;
+      if (start > lastIndex) {
+        const chunk = text.slice(lastIndex, start);
+        parts.push(
+          <span key={`${keyPrefix}-t-${lastIndex}`} className="reading-text">
+            {chunk}
+          </span>
+        );
+      }
+
+      const qNum = Number(match[1]);
+      const q = questionByNumber.get(qNum);
+      if (q) {
+        parts.push(
+          <span key={`${keyPrefix}-b-${qNum}`} className="inline-block align-middle mx-1">
+            <select
+              className={
+                isMobile
+                  ? "bg-white border border-gray-200 rounded px-1.5 py-1 text-sm"
+                  : "bg-white border border-gray-200 rounded px-2 py-1 text-sm md:text-base"
+              }
+              value={answers[q.id] || ""}
+              onChange={(e) => onAnswerChange(q.id, e.target.value)}
+            >
+              <option value="">{`Se\u00e7iniz`}</option>
+              {optionList.map((opt) => (
+                <option key={opt.variantText} value={opt.variantText}>
+                  {opt.variantText}. {opt.answer}
+                </option>
+              ))}
+            </select>
+          </span>
+        );
+      } else {
+        parts.push(<span key={`${keyPrefix}-u-${qNum}`}>{match[0]}</span>);
+      }
+      lastIndex = pattern.lastIndex;
+    }
+
+    if (lastIndex < text.length) {
+      parts.push(
+        <span key={`${keyPrefix}-t-end`} className="reading-text">
+          {text.slice(lastIndex)}
+        </span>
+      );
+    }
+
+    return parts;
+  };
+
+  const renderContentWithBlanks = (isMobile: boolean) => {
+    if (!contentBody) return null;
+    const paragraphs = contentBody.split(/\r?\n\s*\r?\n/);
+    return paragraphs.map((para, idx) => (
+      <p key={`p-${idx}`} className="leading-relaxed">
+        {renderInlineText(para.replace(/\r?\n/g, "\n"), isMobile, `p-${idx}`)}
+      </p>
+    ));
+  };
 
   return (
-    <div className="mx-2 pb-24 max-h-[calc(100vh-120px)] overflow-y-auto overscroll-contain pr-2">
+    <div className="mx-2 reading-body overflow-hidden pr-2 text-slate-800">
       {/* Mobile Layout - Stacked */}
-      <div className="block lg:hidden">
-        <div className="rounded-lg border border-gray-300 shadow-lg overflow-hidden">
-          {/* Passage Section */}
-          <div className="bg-[#fffef5] p-4">
-            <div className="space-y-4 leading-relaxed">
-              <HighlightableText text={content || ""} partNumber={partNumber} />
+      <div className="block lg:hidden h-full">
+        <div className="rounded-lg border reading-surface shadow-lg overflow-hidden h-full flex flex-col">
+          <div className="reading-surface p-3 border-b border-gray-200">
+            <div className="text-sm reading-strong-title text-slate-800">
+              {contentTitle || "Metin"}
             </div>
-          </div>
-          
-          {/* Questions Section - More scroll space for mobile */}
-          <div className="bg-white p-4 space-y-4 pb-32">
-            <h4 className="text-base font-bold text-gray-800 mb-3">Sorular</h4>
-            {questions.map((q: any, idx: number) => (
-              <div key={q.id} className="flex items-center gap-2">
-                <label className="font-bold text-base w-8">S{idx + 1}.</label>
-                <Select
-                  value={answers[q.id] || ""}
-                  onValueChange={(value) => onAnswerChange(q.id, value)}
-                >
-                  <SelectTrigger className="flex-1 bg-white border border-gray-300 rounded-md px-2 py-1 h-8 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
-                    <SelectValue placeholder="Seçiniz">
-                      {answers[q.id] ? answers[q.id] : "Seçiniz"}
-                    </SelectValue>
-                  </SelectTrigger>
-                        <SelectContent className="bg-white max-h-48 overflow-y-auto z-50">
-                          {optionList.map((opt) => (
-                            <SelectItem key={opt.variantText} value={opt.variantText} className="cursor-pointer text-sm py-1">
-                              {opt.variantText}) {opt.answer}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                </Select>
+            <div className="mt-3 max-h-[38vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent reading-scroll">
+              <div className="space-y-4 reading-text pr-2">
+                {contentBody && renderContentWithBlanks(true)}
               </div>
-            ))}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Desktop Layout - Resizable */}
-      <div className="hidden lg:block">
-        <ResizablePanelGroup direction="horizontal" className="rounded-lg border border-gray-300 shadow-lg">
-          {/* Left: Passage */}
-          <ResizablePanel defaultSize={60} minSize={30} className="bg-[#fffef5]">
-            <div className="h-full p-6 overflow-visible pb-32">
-              <div className="space-y-4 leading-relaxed">
-                <HighlightableText text={content || ""} partNumber={partNumber} />
+      <div className="hidden lg:block h-full">
+        <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border border-gray-200 shadow-lg">
+          <ResizablePanel defaultSize={60} minSize={30} className="reading-surface">
+            <div className="h-full p-6 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent pb-40 reading-scroll">
+              <div className="space-y-4 reading-text">
+                {contentTitle && (
+                  <div className="reading-strong-title text-slate-800 mb-3">
+                    <HighlightableText text={contentTitle} partNumber={partNumber} />
+                  </div>
+                )}
+                {contentBody && renderContentWithBlanks(false)}
               </div>
             </div>
           </ResizablePanel>
 
-          <ResizableHandle withHandle={true} className="bg-gray-300 hover:bg-gray-400 transition-colors" />
+          <ResizableHandle withHandle={true} className="bg-gray-200/40 hover:bg-gray-300/60 transition-colors w-px" />
 
-          {/* Right: Answers */}
-          <ResizablePanel defaultSize={45} minSize={20} className="bg-white min-h-0">
-            <div className="h-full max-h-full p-6 overflow-visible pb-32">
-              <div className="space-y-4 mb-8">
-                {questions.map((q: any, idx: number) => (
-                  <div key={q.id} className="flex items-center gap-4">
-                    <label className="font-bold text-lg w-12">S{idx + 1}.</label>
-                    <Select
-                      value={answers[q.id] || ""}
-                      onValueChange={(value) => onAnswerChange(q.id, value)}
-                    >
-                      <SelectTrigger className="flex-1 bg-white border border-gray-300 rounded-md px-3 py-2 h-10 min-w-[10rem] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
-                        <SelectValue placeholder="Seçiniz">
-                          {answers[q.id] ? answers[q.id] : "Seçiniz"}
-                        </SelectValue>
-                      </SelectTrigger>
-                              <SelectContent className="bg-white max-h-64 overflow-y-auto z-50">
-                                {optionList.map((opt) => (
-                                  <SelectItem key={opt.variantText} value={opt.variantText} className="cursor-pointer py-1">
-                                    {opt.variantText}) {opt.answer}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                    </Select>
-                  </div>
-                ))}
-              </div>
-
-              <div className="space-y-2">
-                {optionList.map((opt) => (
-                  <div key={opt.variantText} className="flex items-center gap-3 text-lg">
-                    <div className="w-10 h-10 rounded-full border-2 border-black flex items-center justify-center font-bold bg-white">
-                      {opt.variantText}
+          <ResizablePanel defaultSize={45} minSize={20} className="reading-surface-alt min-h-0">
+            <div className="h-full max-h-full p-6 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent pb-40 reading-scroll">
+              <div className="reading-surface-card border border-gray-200 bg-gray-50 rounded-lg p-4">
+                <div className="text-sm font-semibold text-slate-700 mb-3">{`Se\u00e7enekler`}</div>
+                <div className="space-y-2">
+                  {optionList.map((opt) => {
+                    const isUsed = selectedVariants.has(opt.variantText);
+                    return (
+                    <div key={opt.variantText} className="flex items-start gap-3">
+                      <span className={`font-semibold min-w-[2rem] text-right tabular-nums mt-[3px] ${isUsed ? "text-slate-400 line-through" : "text-slate-800"}`}>
+                        {opt.variantText}.
+                      </span>
+                      <span className={`reading-text leading-tight font-normal ${isUsed ? "text-slate-400 line-through" : ""}`}>
+                        {opt.answer}
+                      </span>
                     </div>
-                    <span>{opt.answer}</span>
-                  </div>
-                ))}
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </ResizablePanel>
@@ -127,3 +169,7 @@ export default function ReadingPart1({ testData, answers, onAnswerChange, partNu
     </div>
   );
 }
+
+
+
+

@@ -1,625 +1,294 @@
-import { NavLink } from "react-router";
-import { 
-  Coins, 
-  BookOpen, 
-  Headphones, 
-  PenTool, 
+import { NavLink } from "react-router-dom";
+import {
+  Coins,
+  BookOpen,
+  Headphones,
+  PenTool,
   Mic,
   ArrowRight,
-  CheckCircle,
-  X,
+  CheckCircle2,
   Clock,
   FileText,
   Award,
-  Sparkles,
   Zap,
   Target,
   TrendingUp,
+  CreditCard,
+  Layout,
+  HelpCircle
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const HowItWorksPage = () => {
   return (
-    <main className="flex-grow pt-16 pb-32 bg-gradient-to-b from-gray-50 via-white to-gray-50">
-        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
-          
-          {/* Hero Section */}
-          <div className="text-center mb-16 sm:mb-20 lg:mb-24 pt-8 sm:pt-12">
-            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-red-100 to-orange-100 text-red-700 px-5 py-2.5 rounded-full text-sm font-semibold mb-6 shadow-sm">
-              <Sparkles className="w-4 h-4" />
-              <span>Başlangıç Rehberi</span>
-            </div>
-            <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-6 leading-tight">
-              Nasıl <span className="bg-gradient-to-r from-red-600 to-orange-600 bg-clip-text text-transparent">Çalışır?</span>
-            </h1>
-            <p className="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto mb-12 px-4 leading-relaxed">
-              TURKISHMOCK platformunu kullanarak Türkçe seviyenizi öğrenmek için gereken tüm adımlar
-            </p>
-            
-            {/* Quick Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
-              <div className="bg-white rounded-2xl p-5 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow">
-                <div className="text-3xl font-bold bg-gradient-to-r from-red-600 to-orange-600 bg-clip-text text-transparent mb-2">4</div>
-                <div className="text-sm text-gray-600 font-medium">Test Türü</div>
+    <div className="bg-white text-gray-900 min-h-screen font-sans">
+      {/* Hero Section */}
+      <section className="pt-24 pb-16 bg-white border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-red-50 border border-red-100 rounded-full mb-8">
+            <span className="flex h-2 w-2 rounded-full bg-red-600 animate-pulse"></span>
+            <span className="text-sm text-red-700 font-bold tracking-wide uppercase">
+              Başlangıç Rehberi
+            </span>
+          </div>
+          <h1 className="text-4xl md:text-6xl font-extrabold text-gray-900 mb-6 tracking-tight leading-tight">
+            Süreç Nasıl <span className="text-red-600">İşliyor?</span>
+          </h1>
+          <p className="text-lg md:text-xl text-gray-500 max-w-2xl mx-auto font-normal leading-relaxed">
+            TURKISHMOCK platformunu kullanarak Türkçe seviyenizi öğrenmek için gereken tüm adımlar. Karmaşık prosedürler yok, sadece sonuç var.
+          </p>
+        </div>
+      </section>
+
+      {/* Steps Container */}
+      <section className="py-20 bg-gray-50">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+
+          {/* STEP 1: Bakiye Yükleme */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-8 md:p-12 shadow-sm hover:shadow-xl transition-all duration-300 group">
+            <div className="flex flex-col md:flex-row gap-8 items-start">
+              <div className="flex-shrink-0">
+                <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center text-red-600 font-bold text-2xl border border-red-100 group-hover:bg-red-600 group-hover:text-white transition-colors duration-300">
+                  1
+                </div>
               </div>
-              <div className="bg-white rounded-2xl p-5 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow">
-                <div className="text-3xl font-bold bg-gradient-to-r from-red-600 to-orange-600 bg-clip-text text-transparent mb-2">5</div>
-                <div className="text-sm text-gray-600 font-medium">Basit Adım</div>
-              </div>
-              <div className="bg-white rounded-2xl p-5 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow">
-                <div className="text-3xl font-bold bg-gradient-to-r from-red-600 to-orange-600 bg-clip-text text-transparent mb-2">AI</div>
-                <div className="text-sm text-gray-600 font-medium">Değerlendirme</div>
-              </div>
-              <div className="bg-white rounded-2xl p-5 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow">
-                <div className="text-3xl font-bold bg-gradient-to-r from-red-600 to-orange-600 bg-clip-text text-transparent mb-2">24/7</div>
-                <div className="text-sm text-gray-600 font-medium">Erişim</div>
+              <div className="flex-grow">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-3">
+                  Bakiye Yükleme
+                  <CreditCard className="w-6 h-6 text-gray-400" />
+                </h2>
+                <p className="text-gray-600 mb-6 leading-relaxed">
+                  Sınavlara girmek için öncelikle hesabınıza bakiye yüklemeniz gerekir. Güvenli ödeme altyapımız ile saniyeler içinde işleminizi tamamlayabilirsiniz.
+                </p>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                    <CheckCircle2 className="w-5 h-5 text-red-600 mt-0.5" />
+                    <span className="text-sm text-gray-700 font-medium">Sağ üst köşedeki bakiye kutusuna tıklayın.</span>
+                  </div>
+                  <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                    <CheckCircle2 className="w-5 h-5 text-red-600 mt-0.5" />
+                    <span className="text-sm text-gray-700 font-medium">Yüklemek istediğiniz tutarı girin (Min: 1.000 UZS).</span>
+                  </div>
+                  <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                    <CheckCircle2 className="w-5 h-5 text-red-600 mt-0.5" />
+                    <span className="text-sm text-gray-700 font-medium">Payme ile güvenli ödemeyi tamamlayın.</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Steps Container */}
-          <div className="space-y-8 sm:space-y-12">
-            
-            {/* STEP 1: LOAD BALANCE */}
-            <div className="relative">
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-green-500 to-emerald-600 rounded-full hidden lg:block"></div>
-              <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden ml-0 lg:ml-8 hover:shadow-3xl transition-shadow">
-                <div className="grid lg:grid-cols-2 gap-0">
-                  {/* Left: Content */}
-                  <div className="p-6 sm:p-8 lg:p-12 order-2 lg:order-1">
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-lg">
-                        1
-                      </div>
-                      <div>
-                        <div className="text-green-600 text-xs font-bold uppercase tracking-wider">İlk Adım</div>
-                        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Bakiye Yükleme</h2>
-                      </div>
-                    </div>
-                    
-                    <p className="text-gray-600 mb-6 leading-relaxed">
-                      Sınavlara girmek için öncelikle hesabınıza bakiye yüklemeniz gerekir. Sağ üst köşedeki menüden cüzdan simgesine veya bakiyenize tıklayarak yükleme ekranını açın.
-                    </p>
-
-                    <div className="space-y-3 mb-6">
-                      <div className="flex items-start gap-3 p-3 bg-green-50 rounded-xl">
-                        <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-semibold text-gray-900 text-sm">Üst menüdeki bakiye kutusuna tıklayın</div>
-                          <div className="text-xs text-gray-500 mt-1">Sağ üst köşede "UZS 0" yazan kutuya tıklayın</div>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3 p-3 bg-green-50 rounded-xl">
-                        <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-semibold text-gray-900 text-sm">Yüklemek istediğiniz tutarı girin</div>
-                          <div className="text-xs text-gray-500 mt-1">Örn: 50.000 UZS, 100.000 UZS</div>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3 p-3 bg-green-50 rounded-xl">
-                        <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-semibold text-gray-900 text-sm">Payme ile Yükle butonuna basın</div>
-                          <div className="text-xs text-gray-500 mt-1">Ödeme tamamlandıktan sonra bakiye otomatik yüklenir</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-xl p-4">
-                      <div className="flex items-start gap-3">
-                        <Zap className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                        <p className="text-sm text-yellow-900">
-                          <strong>İpucu:</strong> Minimum yükleme tutarı 1.000 UZS'dir. Daha fazla yükleyerek daha fazla test çözebilirsiniz.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right: Visual */}
-                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 sm:p-8 lg:p-12 flex items-center justify-center order-1 lg:order-2">
-                    <div className="w-full max-w-sm">
-                      <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-200">
-                        <div className="flex items-center justify-between mb-6">
-                          <h3 className="font-bold text-lg">Bakiye Yükle</h3>
-                          <X className="w-5 h-5 text-gray-400" />
-                        </div>
-                        <div className="space-y-4">
-                          <div className="bg-gray-50 p-4 rounded-lg">
-                            <div className="text-xs text-gray-500 mb-1">Mevcut Bakiye</div>
-                            <div className="text-2xl font-bold text-gray-900">UZS 0</div>
-                          </div>
-                          <div>
-                            <label className="text-xs font-semibold text-gray-600 uppercase mb-2 block">Miktar</label>
-                            <div className="border-2 border-gray-300 rounded-lg p-3 font-bold text-lg">50 000</div>
-                          </div>
-                          <button className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 rounded-lg font-bold shadow-lg hover:shadow-xl transition-all">
-                            Payme ile Yükle
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+          {/* STEP 2: Kredi Satın Alma */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-8 md:p-12 shadow-sm hover:shadow-xl transition-all duration-300 group">
+            <div className="flex flex-col md:flex-row gap-8 items-start">
+              <div className="flex-shrink-0">
+                <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center text-red-600 font-bold text-2xl border border-red-100 group-hover:bg-red-600 group-hover:text-white transition-colors duration-300">
+                  2
                 </div>
               </div>
-            </div>
-
-            {/* STEP 2: BUY CREDITS */}
-            <div className="relative">
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-yellow-500 to-orange-600 rounded-full hidden lg:block"></div>
-              <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden ml-0 lg:ml-8 hover:shadow-3xl transition-shadow">
-                <div className="grid lg:grid-cols-2 gap-0">
-                  {/* Left: Visual */}
-                  <div className="bg-gradient-to-br from-yellow-50 to-orange-50 p-6 sm:p-8 lg:p-12 flex items-center justify-center order-1">
-                    <div className="w-full max-w-sm">
-                      <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-200">
-                        <h3 className="font-bold text-lg mb-4">Kredi Paketleri</h3>
-                        <div className="grid grid-cols-2 gap-3 mb-4">
-                          <div className="border-2 border-gray-200 p-4 rounded-xl text-center">
-                            <div className="font-bold text-gray-900">10</div>
-                            <div className="text-xs text-gray-500">20.000 UZS</div>
-                          </div>
-                          <div className="border-2 border-red-600 bg-red-50 p-4 rounded-xl text-center relative">
-                            <div className="absolute top-0 right-0 bg-red-600 text-white text-[10px] px-2 py-1 rounded-bl">SEÇİLDİ</div>
-                            <div className="font-bold text-red-600">50</div>
-                            <div className="text-xs text-gray-500">100.000 UZS</div>
-                          </div>
-                        </div>
-                        <div className="bg-gray-50 p-3 rounded-lg mb-4 flex justify-between">
-                          <span className="text-sm font-semibold">Toplam</span>
-                          <span className="font-bold">100.000 UZS</span>
-                        </div>
-                        <button className="w-full bg-black text-white py-3 rounded-lg font-bold">
-                          Devam Et
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right: Content */}
-                  <div className="p-6 sm:p-8 lg:p-12 order-2">
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="w-14 h-14 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-lg">
-                        2
-                      </div>
-                      <div>
-                        <div className="text-yellow-600 text-xs font-bold uppercase tracking-wider">İkinci Adım</div>
-                        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Kredi Satın Alma</h2>
-                      </div>
-                    </div>
-                    
-                    <p className="text-gray-600 mb-6 leading-relaxed">
-                      Sınavlara giriş yapmak için "Kredi" birimi kullanılır. Yüklediğiniz bakiyeyi krediye çevirerek avantajlı paketlerden yararlanabilirsiniz.
-                    </p>
-
-                    <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-xl p-5 mb-6">
-                      <div className="flex items-start gap-3">
-                        <Coins className="w-6 h-6 text-yellow-600 flex-shrink-0" />
-                        <div>
-                          <h4 className="font-bold text-yellow-900 mb-2">Neden Kredi Sistemi?</h4>
-                          <p className="text-sm text-yellow-800">
-                            Her sınav bölümünün maliyeti farklıdır. Kredi sistemi, bakiyenizi parçalar halinde kullanmanıza olanak tanır.
-                          </p>
-                          <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                            <div className="bg-white/50 p-2 rounded">Okuma: 2 Kredi</div>
-                            <div className="bg-white/50 p-2 rounded">Dinleme: 2 Kredi</div>
-                            <div className="bg-white/50 p-2 rounded">Yazma: 4 Kredi</div>
-                            <div className="bg-white/50 p-2 rounded">Konuşma: 4 Kredi</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <div className="flex items-start gap-3 p-3 bg-yellow-50 rounded-xl">
-                        <CheckCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-semibold text-gray-900 text-sm">Üst menüdeki Kredi butonuna tıklayın</div>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3 p-3 bg-yellow-50 rounded-xl">
-                        <CheckCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-semibold text-gray-900 text-sm">İhtiyacınıza uygun paketi seçin</div>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3 p-3 bg-yellow-50 rounded-xl">
-                        <CheckCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-semibold text-gray-900 text-sm">Onaylayın - Tutar bakiyenizden düşülecektir</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* STEP 3: SELECT EXAM */}
-            <div className="relative">
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-red-500 to-pink-600 rounded-full hidden lg:block"></div>
-              <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden ml-0 lg:ml-8 hover:shadow-3xl transition-shadow">
-                <div className="grid lg:grid-cols-2 gap-0">
-                  {/* Left: Content */}
-                  <div className="p-6 sm:p-8 lg:p-12 order-2 lg:order-1">
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="w-14 h-14 bg-gradient-to-br from-red-500 to-pink-600 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-lg">
-                        3
-                      </div>
-                      <div>
-                        <div className="text-red-600 text-xs font-bold uppercase tracking-wider">Üçüncü Adım</div>
-                        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Sınav Seçimi</h2>
-                      </div>
-                    </div>
-                    
-                    <p className="text-gray-600 mb-6 leading-relaxed">
-                      Krediniz hazır olduğunda, ana sayfadan "Teste Başla" butonuna tıklayarak seçim ekranına gidin.
-                    </p>
-
-                    <div className="grid grid-cols-2 gap-4 mb-6">
-                      <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl border border-blue-200 text-center">
-                        <BookOpen className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-                        <div className="font-bold text-sm text-gray-900">Okuma/Dinleme</div>
-                        <div className="text-xs text-gray-600 mt-1">2 Kredi</div>
-                      </div>
-                      <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-xl border border-purple-200 text-center">
-                        <Mic className="w-8 h-8 text-purple-600 mx-auto mb-2" />
-                        <div className="font-bold text-sm text-gray-900">Yazma/Konuşma</div>
-                        <div className="text-xs text-gray-600 mt-1">4 Kredi</div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <div className="flex items-start gap-3 p-3 bg-red-50 rounded-xl">
-                        <Target className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-semibold text-gray-900 text-sm">Ana sayfadan "Teste Başla" butonuna tıklayın</div>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3 p-3 bg-red-50 rounded-xl">
-                        <Target className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-semibold text-gray-900 text-sm">Test türünü seçin (Okuma, Dinleme, Yazma, Konuşma)</div>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3 p-3 bg-red-50 rounded-xl">
-                        <Target className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-semibold text-gray-900 text-sm">Bir test kartına tıklayın ve bölümleri seçin</div>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3 p-3 bg-red-50 rounded-xl">
-                        <Target className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-semibold text-gray-900 text-sm">"Başla" butonuna tıklayın</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right: Visual */}
-                  <div className="bg-gradient-to-br from-red-50 to-pink-50 p-6 sm:p-8 lg:p-12 flex items-center justify-center order-1 lg:order-2">
-                    <div className="w-full max-w-sm">
-                      <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
-                        <div className="bg-gray-50 p-4 border-b border-gray-200 flex justify-between items-center">
-                          <span className="font-bold">CEFR Testi</span>
-                          <span className="text-xs font-bold text-red-600 bg-red-50 px-2 py-1 rounded">POPÜLER</span>
-                        </div>
-                        <div className="p-4 space-y-3">
-                          <div className="flex items-center justify-between p-3 border-2 border-red-600 bg-red-50 rounded-lg">
-                            <div className="flex items-center gap-3">
-                              <BookOpen className="w-5 h-5 text-red-600" />
-                              <span className="font-bold text-sm text-red-600">OKUMA</span>
-                            </div>
-                            <span className="text-xs font-bold bg-white px-2 py-1 rounded">2 Kredi</span>
-                          </div>
-                          <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg opacity-50">
-                            <div className="flex items-center gap-3">
-                              <Headphones className="w-5 h-5 text-gray-400" />
-                              <span className="font-bold text-sm text-gray-400">DİNLEME</span>
-                            </div>
-                            <span className="text-xs font-bold bg-gray-100 px-2 py-1 rounded">2 Kredi</span>
-                          </div>
-                        </div>
-                        <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
-                          <div>
-                            <div className="text-[10px] text-gray-500 uppercase font-bold">Toplam</div>
-                            <div className="font-bold text-gray-900">2 Kredi</div>
-                          </div>
-                          <button className="bg-gradient-to-r from-red-600 to-pink-600 text-white px-6 py-2 rounded-lg font-bold text-sm shadow-lg">
-                            Başla
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* STEP 4: TAKING TESTS */}
-            <div className="bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 rounded-3xl p-6 sm:p-8 lg:p-12 shadow-2xl border border-purple-100">
-              <div className="text-center mb-10">
-                <div className="inline-flex items-center gap-3 mb-4">
-                  <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-lg">
-                    4
-                  </div>
-                  <div className="text-left">
-                    <div className="text-purple-600 text-xs font-bold uppercase tracking-wider">Dördüncü Adım</div>
-                    <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Test Çözme Süreci</h2>
-                  </div>
-                </div>
-                <p className="text-gray-600 max-w-2xl mx-auto">
-                  Test başladıktan sonra ne yapmanız gerektiğini öğrenin
+              <div className="flex-grow">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-3">
+                  Kredi Satın Alma
+                  <Coins className="w-6 h-6 text-gray-400" />
+                </h2>
+                <p className="text-gray-600 mb-6 leading-relaxed">
+                  Yüklediğiniz bakiyeyi "Kredi"ye çevirerek avantajlı paketlerden yararlanın. Her sınav bölümü belirli bir kredi karşılığında açılır.
                 </p>
-              </div>
 
-              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-                <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow">
-                  <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4">
-                    <BookOpen className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <h3 className="font-bold text-gray-900 mb-3">Okuma Testi</h3>
-                  <ul className="space-y-2 text-sm text-gray-600">
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-                      <span>Metinleri dikkatlice okuyun</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-                      <span>Süre takibini yapın</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-                      <span>Cevaplarınızı kontrol edin</span>
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow">
-                  <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mb-4">
-                    <Headphones className="w-6 h-6 text-green-600" />
-                  </div>
-                  <h3 className="font-bold text-gray-900 mb-3">Dinleme Testi</h3>
-                  <ul className="space-y-2 text-sm text-gray-600">
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                      <span>Kulaklık kullanın</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                      <span>Ses dosyasını dinleyin</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                      <span>Her metin iki kere dinletilecek</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                      <span>Dinleme bittikten sonra cevaplamak için 10 dakıka süre verilecek </span>
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow">
-                  <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mb-4">
-                    <PenTool className="w-6 h-6 text-orange-600" />
-                  </div>
-                  <h3 className="font-bold text-gray-900 mb-3">Yazma Testi</h3>
-                  <ul className="space-y-2 text-sm text-gray-600">
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="w-4 h-4 text-orange-600 flex-shrink-0 mt-0.5" />
-                      <span>Görevleri okuyun</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="w-4 h-4 text-orange-600 flex-shrink-0 mt-0.5" />
-                      <span>Minimum kelime sayısına dikkat edin</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="w-4 h-4 text-orange-600 flex-shrink-0 mt-0.5" />
-                      <span>Süre bitmeden yazılarınızı gönderin</span>
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow">
-                  <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center mb-4">
-                    <Mic className="w-6 h-6 text-red-600" />
-                  </div>
-                  <h3 className="font-bold text-gray-900 mb-3">Konuşma Testi</h3>
-                  <ul className="space-y-2 text-sm text-gray-600">
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
-                      <span>Mikrofon izni verin</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
-                      <span>Doğal bir şekilde cevap verin</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
-                      <span>Süreye dikkat edin </span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-
-              <div className="mt-8 bg-white/80 backdrop-blur rounded-2xl p-6 border border-purple-200">
-                <div className="flex items-start gap-4">
-                  <Clock className="w-6 h-6 text-purple-600 flex-shrink-0" />
-                  <div>
-                    <h4 className="font-bold text-gray-900 mb-2">Süre Yönetimi İpuçları</h4>
-                    <ul className="space-y-2 text-sm text-gray-600">
-                      <li>• Her test bölümü için belirli bir süre vardır - ekranın sağ alt köşesinde görebilirsiniz</li>
-                      <li>• Süre dolmadan önce cevaplarınızı gönderin</li>
-                      <li>• Test sırasında sayfayı yenilemeyin veya kapatmayın</li>
-                      <li>• İnternet bağlantınızın stabil olduğundan emin olun</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* STEP 5: VIEWING RESULTS */}
-            <div className="relative">
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-500 to-indigo-600 rounded-full hidden lg:block"></div>
-              <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden ml-0 lg:ml-8 hover:shadow-3xl transition-shadow">
-                <div className="grid lg:grid-cols-2 gap-0">
-                  {/* Left: Content */}
-                  <div className="p-6 sm:p-8 lg:p-12 order-2 lg:order-1">
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-lg">
-                        5
-                      </div>
-                      <div>
-                        <div className="text-blue-600 text-xs font-bold uppercase tracking-wider">Son Adım</div>
-                        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Sonuçları Görüntüleme</h2>
-                      </div>
-                    </div>
-                    
-                    <p className="text-gray-600 mb-6 leading-relaxed">
-                      Testinizi tamamladıktan sonra anında sonuçlarınızı görebilirsiniz. AI destekli değerlendirme ile detaylı geri bildirim alırsınız.
-                    </p>
-
-                    <div className="space-y-4">
-                      <div className="flex items-start gap-4 p-4 bg-blue-50 rounded-xl">
-                        <Award className="w-6 h-6 text-blue-600 flex-shrink-0" />
-                        <div>
-                          <h4 className="font-bold text-gray-900 mb-1">Anında Puanlama</h4>
-                          <p className="text-sm text-gray-600">Testinizi tamamladıktan sonra hemen puanınızı görebilirsiniz. Okuma ve Dinleme testleri için anında sonuç alırsınız.</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-4 p-4 bg-blue-50 rounded-xl">
-                        <FileText className="w-6 h-6 text-blue-600 flex-shrink-0" />
-                        <div>
-                          <h4 className="font-bold text-gray-900 mb-1">Detaylı Rapor</h4>
-                          <p className="text-sm text-gray-600">Yazma ve Konuşma testleri için AI destekli detaylı geri bildirim alırsınız. Hangi konularda iyi olduğunuzu ve neleri geliştirmeniz gerektiğini öğrenirsiniz.</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-4 p-4 bg-blue-50 rounded-xl">
-                        <TrendingUp className="w-6 h-6 text-blue-600 flex-shrink-0" />
-                        <div>
-                          <h4 className="font-bold text-gray-900 mb-1">Geçmiş Sonuçlar</h4>
-                          <p className="text-sm text-gray-600">Tüm test sonuçlarınızı profil sayfanızdan görüntüleyebilir ve ilerlemenizi takip edebilirsiniz.</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right: Visual */}
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 sm:p-8 lg:p-12 flex items-center justify-center order-1 lg:order-2">
-                    <div className="w-full max-w-sm">
-                      <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-200">
-                        <div className="flex items-center justify-between mb-6">
-                          <h3 className="font-bold text-lg">Test Sonuçları</h3>
-                          <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-bold">
-                            TAMAMLANDI
-                          </div>
-                        </div>
-                        <div className="space-y-4">
-                          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl">
-                            <div className="flex justify-between items-center mb-2">
-                              <span className="text-sm font-medium text-gray-700">Toplam Puan</span>
-                              <span className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">69/75</span>
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-3">
-                              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 h-3 rounded-full" style={{ width: '85%' }}></div>
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            <div className="flex justify-between text-sm">
-                              <span className="text-gray-600">Okuma</span>
-                              <span className="font-bold text-gray-900">75/75</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                              <span className="text-gray-600">Dinleme</span>
-                              <span className="font-bold text-gray-900">75/75</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                              <span className="text-gray-600">Yazma</span>
-                              <span className="font-bold text-gray-900">70/75</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                              <span className="text-gray-600">Konuşma</span>
-                              <span className="font-bold text-gray-900">58/75</span>
-                            </div>
-                          </div>
-                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4">
-                            <p className="text-xs text-blue-800">
-                              <strong>AI Geri Bildirimi:</strong> Genel olarak iyi bir performans gösterdiniz. Kelime haznenizi genişletmeye devam edin.
-                            </p>
-                          </div>
-                        </div>
+                <div className="bg-blue-50 border border-blue-100 rounded-xl p-5 mb-6">
+                  <div className="flex items-start gap-3">
+                    <Zap className="w-5 h-5 text-blue-600 mt-1" />
+                    <div>
+                      <h4 className="font-bold text-blue-900 mb-1">Kredi Maliyetleri</h4>
+                      <p className="text-sm text-blue-800 mb-3">
+                        Bakiyenizi verimli kullanmak için ihtiyacınız olan modülleri seçin.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="bg-white text-blue-700 px-3 py-1 rounded-md text-xs font-bold border border-blue-100">Okuma: 2 Kredi</span>
+                        <span className="bg-white text-blue-700 px-3 py-1 rounded-md text-xs font-bold border border-blue-100">Dinleme: 2 Kredi</span>
+                        <span className="bg-white text-blue-700 px-3 py-1 rounded-md text-xs font-bold border border-blue-100">Yazma: 4 Kredi</span>
+                        <span className="bg-white text-blue-700 px-3 py-1 rounded-md text-xs font-bold border border-blue-100">Konuşma: 4 Kredi</span>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-
-            {/* TIPS SECTION */}
-            <div className="bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 rounded-3xl p-6 sm:p-8 lg:p-12 shadow-2xl border border-red-100">
-              <div className="text-center mb-8">
-                <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur px-4 py-2 rounded-full mb-4">
-                  <Sparkles className="w-5 h-5 text-red-600" />
-                  <span className="font-bold text-gray-900">Başarı İpuçları</span>
-                </div>
-                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-3">Testlerinizden En İyi Sonuçları Alın</h2>
-                <p className="text-gray-600 max-w-2xl mx-auto">
-                  Bu ipuçlarını takip ederek performansınızı artırın
-                </p>
-              </div>
-              <div className="grid md:grid-cols-3 gap-6">
-                <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all hover:-translate-y-1">
-                  <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-orange-500 rounded-xl flex items-center justify-center mb-4">
-                    <Clock className="w-6 h-6 text-white" />
-                  </div>
-                  <h3 className="font-bold text-gray-900 mb-3">Zaman Yönetimi</h3>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    Her bölüm için ayrılan süreyi dikkatlice kullanın. Zor sorulara takılıp kalmayın, önce kolay soruları cevaplayın.
-                  </p>
-                </div>
-                <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all hover:-translate-y-1">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center mb-4">
-                    <FileText className="w-6 h-6 text-white" />
-                  </div>
-                  <h3 className="font-bold text-gray-900 mb-3">Dikkatli Okuyun</h3>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    Soruları ve metinleri dikkatlice okuyun. Küçük detaylar büyük fark yaratabilir. Cevaplarınızı göndermeden önce kontrol edin.
-                  </p>
-                </div>
-                <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all hover:-translate-y-1">
-                  <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center mb-4">
-                    <TrendingUp className="w-6 h-6 text-white" />
-                  </div>
-                  <h3 className="font-bold text-gray-900 mb-3">Düzenli Pratik</h3>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    Düzenli olarak test çözerek kendinizi geliştirin. Her test sonrası geri bildirimleri okuyun ve hatalarınızdan öğrenin.
-                  </p>
-                </div>
-              </div>
-            </div>
-
           </div>
 
-          {/* CTA Section */}
-          <section className="text-center py-12 sm:py-16 mt-12">
-            <div className="bg-gradient-to-r from-red-600 to-orange-600 rounded-3xl p-8 sm:p-12 lg:p-16 shadow-2xl">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">
-                Hazır mısınız?
-              </h2>
-              <p className="text-lg sm:text-xl text-red-50 mb-8 max-w-2xl mx-auto">
-                Türkçe seviyenizi öğrenmek için hemen teste başlayın!
-              </p>
-              <NavLink to="/test">
-                <button className="bg-white text-red-600 px-8 py-4 rounded-xl font-bold text-lg shadow-2xl hover:shadow-3xl transition-all hover:scale-105 inline-flex items-center gap-2">
-                  Teste Başla
-                  <ArrowRight className="w-5 h-5" />
-                </button>
-              </NavLink>
+          {/* STEP 3: Sınav Seçimi */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-8 md:p-12 shadow-sm hover:shadow-xl transition-all duration-300 group">
+            <div className="flex flex-col md:flex-row gap-8 items-start">
+              <div className="flex-shrink-0">
+                <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center text-red-600 font-bold text-2xl border border-red-100 group-hover:bg-red-600 group-hover:text-white transition-colors duration-300">
+                  3
+                </div>
+              </div>
+              <div className="flex-grow">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-3">
+                  Sınav Seçimi
+                  <Layout className="w-6 h-6 text-gray-400" />
+                </h2>
+                <p className="text-gray-600 mb-6 leading-relaxed">
+                  Krediniz hazır olduğunda, ana sayfadan veya test sayfasından dilediğiniz sınav paketini seçin ve "Başla" butonuna tıklayın.
+                </p>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                    <Target className="w-5 h-5 text-red-600" />
+                    <span className="text-sm text-gray-700 font-medium">Test türünü belirleyin.</span>
+                  </div>
+                  <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                    <Target className="w-5 h-5 text-red-600" />
+                    <span className="text-sm text-gray-700 font-medium">Bölümleri seçin.</span>
+                  </div>
+                </div>
+              </div>
             </div>
-          </section>
+          </div>
+
+          {/* STEP 4: Test Çözme Süreci */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-8 md:p-12 shadow-sm hover:shadow-xl transition-all duration-300 group">
+            <div className="flex flex-col md:flex-row gap-8 items-start">
+              <div className="flex-shrink-0">
+                <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center text-red-600 font-bold text-2xl border border-red-100 group-hover:bg-red-600 group-hover:text-white transition-colors duration-300">
+                  4
+                </div>
+              </div>
+              <div className="flex-grow">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-3">
+                  Test Çözme Süreci
+                  <Clock className="w-6 h-6 text-gray-400" />
+                </h2>
+                <p className="text-gray-600 mb-8 leading-relaxed">
+                  Yapay zeka destekli sınav arayüzümüzde her bölüm için özel yönergeler bulunur.
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="p-4 rounded-xl bg-gray-50 border border-gray-100 text-center hover:border-red-100 transition-colors">
+                    <BookOpen className="w-8 h-8 text-blue-600 mx-auto mb-3" />
+                    <h3 className="font-bold text-gray-900 text-sm mb-1">Okuma</h3>
+                    <p className="text-xs text-gray-500">Metinleri analiz edin, süreyi takip edin.</p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-gray-50 border border-gray-100 text-center hover:border-red-100 transition-colors">
+                    <Headphones className="w-8 h-8 text-green-600 mx-auto mb-3" />
+                    <h3 className="font-bold text-gray-900 text-sm mb-1">Dinleme</h3>
+                    <p className="text-xs text-gray-500">Kulaklık kullanın, her metin 2 kez çalar.</p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-gray-50 border border-gray-100 text-center hover:border-red-100 transition-colors">
+                    <PenTool className="w-8 h-8 text-orange-600 mx-auto mb-3" />
+                    <h3 className="font-bold text-gray-900 text-sm mb-1">Yazma</h3>
+                    <p className="text-xs text-gray-500">Kelime limitine uyun, özgün olun.</p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-gray-50 border border-gray-100 text-center hover:border-red-100 transition-colors">
+                    <Mic className="w-8 h-8 text-red-600 mx-auto mb-3" />
+                    <h3 className="font-bold text-gray-900 text-sm mb-1">Konuşma</h3>
+                    <p className="text-xs text-gray-500">Net konuşun, süreyi verimli kullanın.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* STEP 5: Sonuçlar */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-8 md:p-12 shadow-sm hover:shadow-xl transition-all duration-300 group">
+            <div className="flex flex-col md:flex-row gap-8 items-start">
+              <div className="flex-shrink-0">
+                <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center text-red-600 font-bold text-2xl border border-red-100 group-hover:bg-red-600 group-hover:text-white transition-colors duration-300">
+                  5
+                </div>
+              </div>
+              <div className="flex-grow">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-3">
+                  Sonuçları Görüntüleme
+                  <Award className="w-6 h-6 text-gray-400" />
+                </h2>
+                <p className="text-gray-600 mb-6 leading-relaxed">
+                  Test biter bitmez yapay zeka performansınızı analiz eder. Okuma ve Dinleme puanlarınız anında, Yazma ve Konuşma raporlarınız ise detaylı analizle sunulur.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex items-center gap-3 p-4 bg-green-50 rounded-xl border border-green-100 flex-1">
+                    <TrendingUp className="w-5 h-5 text-green-600" />
+                    <div>
+                      <div className="font-bold text-gray-900 text-sm">Anında Puanlama</div>
+                      <div className="text-xs text-gray-500">Objektif değerlendirme</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-4 bg-purple-50 rounded-xl border border-purple-100 flex-1">
+                    <FileText className="w-5 h-5 text-purple-600" />
+                    <div>
+                      <div className="font-bold text-gray-900 text-sm">Detaylı Rapor</div>
+                      <div className="text-xs text-gray-500">Gelişim alanları analizi</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
         </div>
-      </main>
+      </section>
+
+      {/* Tips Section */}
+      <section className="py-20 bg-white border-t border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Başarı İpuçları</h2>
+            <p className="text-gray-500">Testlerinizden en iyi sonuçları almanız için öneriler.</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="bg-gray-50 rounded-2xl p-8 border border-gray-100 hover:border-red-100 transition-colors">
+              <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mb-6 shadow-sm text-red-600">
+                <Clock className="w-6 h-6" />
+              </div>
+              <h3 className="font-bold text-gray-900 mb-3">Zaman Yönetimi</h3>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Her bölüm için ayrılan süreyi dikkatlice kullanın. Zor sorulara takılıp kalmayın, önce bildiklerinizi yapın.
+              </p>
+            </div>
+            <div className="bg-gray-50 rounded-2xl p-8 border border-gray-100 hover:border-red-100 transition-colors">
+              <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mb-6 shadow-sm text-red-600">
+                <FileText className="w-6 h-6" />
+              </div>
+              <h3 className="font-bold text-gray-900 mb-3">Dikkatli Okuyun</h3>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Soruları ve metinleri dikkatlice okuyun. Küçük detaylar büyük fark yaratabilir. Kontrol etmeyi unutmayın.
+              </p>
+            </div>
+            <div className="bg-gray-50 rounded-2xl p-8 border border-gray-100 hover:border-red-100 transition-colors">
+              <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mb-6 shadow-sm text-red-600">
+                <TrendingUp className="w-6 h-6" />
+              </div>
+              <h3 className="font-bold text-gray-900 mb-3">Düzenli Pratik</h3>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Düzenli olarak test çözerek kendinizi geliştirin. Her test sonrası geri bildirimleri inceleyin.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-24 bg-white border-t border-gray-100">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <h2 className="text-4xl font-bold text-gray-900 mb-6 tracking-tight">Hazır mısınız?</h2>
+          <p className="text-gray-500 text-xl mb-10 max-w-2xl mx-auto font-normal">
+            Türkçe seviyenizi öğrenmek için hemen teste başlayın!
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <NavLink to="/test">
+              <Button size="lg" className="bg-red-600 hover:bg-red-700 text-white px-10 py-7 text-lg rounded-full shadow-xl hover:shadow-red-200 transition-all hover:-translate-y-1">
+                Teste Başla <ArrowRight className="ml-2 w-5 h-5" />
+              </Button>
+            </NavLink>
+            <NavLink to="/#contact">
+              <Button variant="outline" size="lg" className="bg-white border-gray-200 text-gray-700 hover:bg-gray-50 px-10 py-7 text-lg rounded-full hover:border-gray-300 transition-all">
+                <HelpCircle className="mr-2 w-5 h-5" /> Destek Al
+              </Button>
+            </NavLink>
+          </div>
+        </div>
+      </section>
+    </div>
   );
 };
 

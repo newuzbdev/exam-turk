@@ -11,7 +11,7 @@ interface TestHeaderProps {
 
 const TestHeader = ({ testTitle, currentQuestion, totalQuestions, currentSubPart, onBack }: TestHeaderProps) => {
   return (
-    <div className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-40 shadow-sm w-full">
+    <div className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50 shadow-sm w-full safe-area-top">
       <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
         <div className="flex flex-wrap items-center justify-between gap-4 py-3 sm:py-4">
           <div className="flex items-center gap-4">

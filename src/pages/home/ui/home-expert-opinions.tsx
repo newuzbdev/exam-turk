@@ -6,7 +6,7 @@ const experts = [
     name: "Muattar Mamatkarimova",
     role: "Türkçe Eğitmeni",
     image: "/mattuqiz.jpg",
-    text: "Sınav öncesi öğrencilere gerçek seviyesini gösterecek böyle platforma uzun zamandır ihtiyaç vardı. Artık sınava katılmak isteyenler bu yapıda rahat çalışabilirler!",
+    text: "Sınav öncesi öğrencilere gerçek seviyelerini gösterecek böyle bir platforma uzun zamandır ihtiyaç vardı. Artık sınava katılmak isteyenler bu yapıda rahatça çalışabilirler.",
     telegram: "https://t.me/+HWz8P0XvqHNkMDUy",
     instagram: "https://www.instagram.com/mattu_turkish?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==",
   },
@@ -111,8 +111,8 @@ const HomeExpertOpinions = () => {
                         <h3 className="text-base sm:text-lg font-semibold text-gray-900 tracking-tight leading-tight">
                           {expert.name}
                         </h3>
-                        <p className="text-xs sm:text-sm uppercase tracking-[0.08em] text-gray-500 leading-tight">
-                          {expert.role}
+                        <p className="text-xs sm:text-sm tracking-[0.08em] text-gray-500 leading-tight">
+                          {expert.role.toLocaleUpperCase("tr-TR")}
                         </p>
                       </div>
                     </div>

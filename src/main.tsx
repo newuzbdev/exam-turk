@@ -5,15 +5,18 @@ import { RouterProviders } from "./providers/route-provider";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "./contexts/AuthContext";
+import { ThemeProvider } from "./contexts/ThemeContext";
 import "./utils/tokenCleanup"; // Import for global functions
 
 createRoot(document.getElementById("root")!).render(
   <QueryProvider>
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
-      <AuthProvider>
-        <RouterProviders />
-        <Toaster />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <RouterProviders />
+          <Toaster />
+        </AuthProvider>
+      </ThemeProvider>
     </GoogleOAuthProvider>
   </QueryProvider>
 );

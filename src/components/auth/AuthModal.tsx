@@ -184,12 +184,12 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    await authService.loginWithCredentials(
+    const result = await authService.loginWithCredentials(
       { name: loginData.name, password: loginData.password },
       navigate
     );
     setLoading(false);
-    if (open) {
+    if (result?.success && open) {
       onOpenChange(false);
     }
   };
@@ -260,9 +260,9 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
 
     console.log("DEBUG handleRegister - registrationPayload:", registrationPayload);
 
-    await authService.registerUser(registrationPayload, navigate);
+    const result = await authService.registerUser(registrationPayload, navigate);
     setLoading(false);
-    if (open) {
+    if (result?.success && open) {
       onOpenChange(false);
     }
   };

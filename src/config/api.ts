@@ -8,13 +8,40 @@ const axiosPrivate = axios.create({
   // withCredentials: true,
 });
 
+const readFirstToken = (keys: string[]): string | null => {
+  for (const key of keys) {
+    const fromSession = SecureStorage.getSessionItem(key);
+    if (fromSession) return fromSession;
+    const fromLocal = SecureStorage.getItem(key);
+    if (fromLocal) return fromLocal;
+  }
+  return null;
+};
+
+const readAccessToken = (): string | null =>
+  readFirstToken(["accessToken", "token", "authToken"]);
+
+const readRefreshToken = (): string | null =>
+  readFirstToken(["refreshToken"]);
+
+const extractAccessTokenFromPayload = (payload: any): string | null => {
+  const accessToken =
+    payload?.accessToken ||
+    payload?.access_token ||
+    payload?.token ||
+    payload?.data?.accessToken ||
+    payload?.data?.access_token ||
+    payload?.data?.token;
+  return accessToken ? String(accessToken) : null;
+};
+
 // Request interceptor
 axiosPrivate.interceptors.request.use(
   (config) => {
     console.log(
       `🚀 Making request to: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`
     );
-    const token = SecureStorage.getSessionItem("accessToken");
+    const token = readAccessToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
       console.log("🔑 Token attached to request:", token.substring(0, 20) + "...");
@@ -91,22 +118,29 @@ axiosPrivate.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const refreshResponse = await axios.post(`${baseURL}/api/user/refresh`, {}, { withCredentials: true });
+        const refreshToken = readRefreshToken();
+        const refreshPayload = refreshToken ? { refreshToken } : {};
+        const refreshResponse = await axios.post(
+          `${baseURL}/api/user/refresh`,
+          refreshPayload,
+          { withCredentials: true }
+        );
         console.log("🔄 refreshResponse:", refreshResponse.data);
 
-        if (refreshResponse?.data?.accessToken) {
-          const newAccessToken = refreshResponse.data.accessToken;
+        const newAccessToken = extractAccessTokenFromPayload(refreshResponse?.data);
+        if (newAccessToken) {
           SecureStorage.setSessionItem("accessToken", newAccessToken);
+          SecureStorage.setItem("accessToken", newAccessToken);
+          SecureStorage.setSessionItem("token", newAccessToken);
+          SecureStorage.setItem("token", newAccessToken);
           originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
           return axiosPrivate(originalRequest);
         }
       } catch (err) {
         console.error("❌ Error refreshing token:", err);
-        // Clear all tokens and redirect to login
-        const { authService } = await import("@/services/auth.service");
-        authService.clearStoredTokens();
-        window.location.href = "/login";
-        return Promise.reject(err);
+        // Keep the user on the current page so in-progress test answers are not interrupted.
+        // Caller layers handle retry messaging and safe re-submit guidance.
+        return Promise.reject(error);
       }
     }
 

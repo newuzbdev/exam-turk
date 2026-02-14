@@ -11,6 +11,7 @@ import ReadingPart3 from "./ui/ReadingPart3";
 import ReadingPart4 from "./ui/ReadingPart4";
 import ReadingPart5 from "./ui/ReadingPart5";
 import NotesPanel from "./NotesPanel";
+import { toast } from "sonner";
 
 export default function ReadingPage({ testId }: { testId: string }) {
   const navigate = useNavigate();
@@ -117,6 +118,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
   };
 
   const handleSubmit = async () => {
+    if (isSubmitting) return;
     try {
       setIsSubmitting(true);
       
@@ -155,8 +157,8 @@ export default function ReadingPage({ testId }: { testId: string }) {
       // If no next test, we're at the end - submit all tests
       const overallId = overallTestFlowStore.getOverallId();
       if (overallId && overallTestFlowStore.isAllDone()) {
-        // Submit all tests at once
-        await submitAllTests(overallId);
+        const submitAllOk = await submitAllTests(overallId);
+        if (!submitAllOk) return;
         return;
       }
       
@@ -169,7 +171,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
     }
   };
 
-  const submitAllTests = async (overallId: string) => {
+  const submitAllTests = async (overallId: string): Promise<boolean> => {
     try {
       // toast.info("Submitting all tests...");
       
@@ -177,8 +179,41 @@ export default function ReadingPage({ testId }: { testId: string }) {
       const { readingSubmissionService } = await import("@/services/readingTest.service");
       const { listeningSubmissionService } = await import("@/services/listeningTest.service");
       const { writingSubmissionService } = await import("@/services/writingSubmission.service");
+      const { speakingSubmissionService } = await import("@/services/speakingSubmission.service");
       const { overallTestTokenStore } = await import("@/services/overallTest.service");
-      const axiosPrivate = (await import("@/config/api")).default;
+      const failedSubmissions: string[] = [];
+      const successfulSubmissions: string[] = [];
+
+      const runWithRetries = async <T,>(
+        runner: () => Promise<T>,
+        isSuccess?: (value: T) => boolean,
+        attempts: number = 3
+      ): Promise<T> => {
+        let lastError: any = null;
+        let lastValue: T | null = null;
+
+        for (let attempt = 1; attempt <= attempts; attempt++) {
+          try {
+            const value = await runner();
+            lastValue = value;
+            if (!isSuccess || isSuccess(value)) {
+              return value;
+            }
+            lastError = new Error("Submission returned unsuccessful result");
+          } catch (error) {
+            lastError = error;
+          }
+
+          if (attempt < attempts) {
+            await new Promise((resolve) => setTimeout(resolve, 700 * attempt));
+          }
+        }
+
+        if (lastValue !== null) {
+          return lastValue;
+        }
+        throw lastError || new Error("Submission failed after retries");
+      };
       
       // Submit reading test - look for reading answers from any test
       const readingAnswersKeys = Object.keys(sessionStorage).filter(key => key.startsWith('reading_answers_'));
@@ -186,17 +221,41 @@ export default function ReadingPage({ testId }: { testId: string }) {
         const readingAnswers = sessionStorage.getItem(key);
         if (readingAnswers) {
           const readingData = JSON.parse(readingAnswers);
-          console.log("Submitting reading test:", readingData.testId, "with answers:", readingData.answers);
-          const payload = Object.entries(readingData.answers).map(([questionId, userAnswer]) => ({ 
-            questionId, 
-            userAnswer: String(userAnswer) 
-          }));
+          const rawReadingAnswers = readingData.answers;
+          const payload = Array.isArray(rawReadingAnswers)
+            ? rawReadingAnswers.map((item: any) => ({
+                questionId: String(item?.questionId ?? ""),
+                userAnswer: String(item?.userAnswer ?? ""),
+              }))
+            : Object.entries(rawReadingAnswers || {}).map(([questionId, userAnswer]) => ({
+                questionId,
+                userAnswer: String(userAnswer),
+              }));
+          const sanitizedPayload = payload.filter((item) => item.questionId);
           const overallToken = overallTestTokenStore.getByTestId(readingData.testId);
           if (!overallToken) {
-            console.warn("Skipping reading submit-all; overall token not found for testId:", readingData.testId);
-            continue;
+            console.warn(
+              "Reading submit-all without overall token; falling back to standard auth:",
+              readingData.testId
+            );
           }
-          await readingSubmissionService.submitAnswers(readingData.testId, payload, overallToken);
+          try {
+            await runWithRetries(
+              () =>
+                readingSubmissionService.submitAnswers(
+                  readingData.testId,
+                  sanitizedPayload,
+                  overallToken || undefined
+                ),
+              undefined,
+              3
+            );
+            successfulSubmissions.push(`Okuma (${readingData.testId})`);
+            try { sessionStorage.removeItem(key); } catch {}
+          } catch (submitError) {
+            console.error("Reading submit-all failed:", submitError);
+            failedSubmissions.push(`Okuma (${readingData.testId})`);
+          }
         }
       }
       
@@ -206,19 +265,43 @@ export default function ReadingPage({ testId }: { testId: string }) {
         const listeningAnswers = sessionStorage.getItem(key);
         if (listeningAnswers) {
           const listeningData = JSON.parse(listeningAnswers);
-          console.log("Submitting listening test:", listeningData.testId, "with answers:", listeningData.answers, "audioUrl:", listeningData.audioUrl, "imageUrls:", listeningData.imageUrls);
+          const rawListeningAnswers = listeningData.answers;
+          const payload = Array.isArray(rawListeningAnswers)
+            ? rawListeningAnswers.map((item: any) => ({
+                questionId: String(item?.questionId ?? ""),
+                userAnswer: String(item?.userAnswer ?? ""),
+              }))
+            : Object.entries(rawListeningAnswers || {}).map(([questionId, userAnswer]) => ({
+                questionId,
+                userAnswer: String(userAnswer),
+              }));
+          const sanitizedPayload = payload.filter((item) => item.questionId);
           const overallToken = overallTestTokenStore.getByTestId(listeningData.testId);
           if (!overallToken) {
-            console.warn("Skipping listening submit-all; overall token not found for testId:", listeningData.testId);
-            continue;
+            console.warn(
+              "Listening submit-all without overall token; falling back to standard auth:",
+              listeningData.testId
+            );
           }
-          await listeningSubmissionService.submitAnswers(
-            listeningData.testId, 
-            listeningData.answers,
-            overallToken,
-            listeningData.audioUrl,
-            listeningData.imageUrls
-          );
+          try {
+            await runWithRetries(
+              () =>
+                listeningSubmissionService.submitAnswers(
+                  listeningData.testId, 
+                  sanitizedPayload,
+                  overallToken || undefined,
+                  listeningData.audioUrl,
+                  listeningData.imageUrls
+                ),
+              undefined,
+              3
+            );
+            successfulSubmissions.push(`Dinleme (${listeningData.testId})`);
+            try { sessionStorage.removeItem(key); } catch {}
+          } catch (submitError) {
+            console.error("Listening submit-all failed:", submitError);
+            failedSubmissions.push(`Dinleme (${listeningData.testId})`);
+          }
         }
       }
       
@@ -228,115 +311,183 @@ export default function ReadingPage({ testId }: { testId: string }) {
         const writingAnswers = sessionStorage.getItem(key);
         if (writingAnswers) {
           const writingData = JSON.parse(writingAnswers);
-          console.log("Submitting writing test:", writingData.testId, "with answers:", writingData.answers);
+          const overallToken = overallTestTokenStore.getByTestId(writingData.testId);
+          if (!overallToken) {
+            console.warn(
+              "Writing submit-all without overall token; falling back to standard auth:",
+              writingData.testId
+            );
+          }
+
+          const getWritingAnswer = (
+            questionId: string,
+            sectionIndex: number,
+            fallbackId?: string,
+            itemIndex?: number
+          ) => {
+            const direct = writingData.answers?.[questionId];
+            if (typeof direct === "string") return direct;
+            const fallback = typeof fallbackId === "string" ? fallbackId : "";
+            const idx = typeof itemIndex === "number" ? String(itemIndex) : "";
+            const keys = [
+              `${sectionIndex}-${questionId}`,
+              `${sectionIndex}-${fallback}`,
+              fallback,
+              idx && fallback ? `${sectionIndex}-${idx}-${fallback}` : "",
+              idx ? `${sectionIndex}-${idx}-${questionId}` : "",
+            ].filter(Boolean);
+            for (const k of keys) {
+              const v = writingData.answers?.[k];
+              if (typeof v === "string") return v;
+            }
+            return "";
+          };
+
           const payload = {
             writingTestId: writingData.testId,
-            sections: writingData.sections.map((section: any, sectionIndex: number) => {
-              const sectionData = {
-                description: section.title || section.description || `Section ${section.order || 1}`,
-                answers: [] as any[],
-                subParts: [] as any[],
+            sections: (writingData.sections || []).map((section: any, sectionIndex: number) => {
+              const sectionDescription =
+                (typeof section?.title === "string" && section.title.trim()) ||
+                (typeof section?.description === "string" && section.description.trim()) ||
+                `Section ${section?.order || sectionIndex + 1}`;
+              const sectionData: any = {
+                description: sectionDescription,
               };
-              // Handle sections with subParts
-              if (section.subParts && section.subParts.length > 0) {
+
+              if (Array.isArray(section.subParts) && section.subParts.length > 0) {
                 sectionData.subParts = section.subParts.map((subPart: any, subPartIndex: number) => {
-                  const questionId = subPart.questions?.[0]?.id || subPart.id;
-                  const userAnswer = writingData.answers[`${sectionIndex}-${subPartIndex}-${subPart.id}`] || "";
+                  const questions = Array.isArray(subPart.questions) ? subPart.questions : [];
+                  const subPartDescription =
+                    (typeof subPart?.label === "string" && subPart.label.trim()) ||
+                    (typeof subPart?.description === "string" && subPart.description.trim()) ||
+                    `Sub Part ${subPart?.order || subPartIndex + 1}`;
+                  const answersArr = questions
+                    .map((q: any) => {
+                      const rawQuestionId = q?.id || q?.questionId;
+                      const qid =
+                        typeof rawQuestionId === "string"
+                          ? rawQuestionId
+                          : String(rawQuestionId || "").trim();
+                      if (!qid) return null;
+                      return { questionId: qid, userAnswer: getWritingAnswer(qid, sectionIndex, subPart?.id, subPartIndex) };
+                    })
+                    .filter(Boolean);
                   return {
-                    description: subPart.label || subPart.description,
-                    answers: [{ questionId, userAnswer }],
+                    description: subPartDescription,
+                    answers: answersArr,
                   };
                 });
               }
-              // Handle sections with questions
-              if (section.questions && section.questions.length > 0) {
-                let questionAnswer = "";
-                const possibleKeys = [
-                  `${sectionIndex}-0-${section.questions[0].id}`,
-                  `${sectionIndex}-${section.questions[0].id}`,
-                  `${sectionIndex}-${section.id}`,
-                  section.questions[0].id,
-                  section.id,
-                ];
-                for (const key of possibleKeys) {
-                  if (writingData.answers[key]) {
-                    questionAnswer = writingData.answers[key];
-                    break;
-                  }
-                }
-                sectionData.answers = [{ questionId: section.questions[0].id, userAnswer: questionAnswer }];
+
+              if (Array.isArray(section.questions) && section.questions.length > 0) {
+                sectionData.answers = section.questions
+                  .map((q: any, questionIndex: number) => {
+                    const rawQuestionId = q?.id || q?.questionId;
+                    const qid =
+                      typeof rawQuestionId === "string"
+                        ? rawQuestionId
+                        : String(rawQuestionId || "").trim();
+                    if (!qid) return null;
+                    return { questionId: qid, userAnswer: getWritingAnswer(qid, sectionIndex, section?.id, questionIndex) };
+                  })
+                  .filter(Boolean);
               }
+
               return sectionData;
             }),
           };
-          await writingSubmissionService.create(payload);
+          if (overallToken) {
+            (payload as any).sessionToken = overallToken;
+          }
+          try {
+            await runWithRetries(
+              () => writingSubmissionService.create(payload as any),
+              (value) => !!value,
+              3
+            );
+            successfulSubmissions.push(`Yazma (${writingData.testId})`);
+            try { sessionStorage.removeItem(key); } catch {}
+          } catch (submitError) {
+            console.error("Writing submit-all failed:", submitError);
+            failedSubmissions.push(`Yazma (${writingData.testId})`);
+          }
         }
       }
       
       // Submit speaking test - look for speaking answers from any test
-      const speakingAnswersKeys = Object.keys(sessionStorage).filter(key => key.startsWith('speaking_answers_'));
+      const speakingAnswersKeys = Object.keys(sessionStorage).filter((key) => key.startsWith("speaking_answers_"));
       for (const key of speakingAnswersKeys) {
         const speakingAnswers = sessionStorage.getItem(key);
-        if (speakingAnswers) {
-          const speakingData = JSON.parse(speakingAnswers);
-          console.log("Submitting speaking test:", speakingData.testId, "with recordings:", speakingData.recordings?.length || 0);
-          // Process speaking recordings and submit
-          const answerMap = new Map();
-          for (const [qid, rec] of speakingData.recordings) {
-            try {
-              const fd = new FormData();
-              fd.append("audio", rec.blob, "recording.webm");
-              const res = await axiosPrivate.post("/api/speaking-submission/speech-to-text", fd, {
-                headers: { "Content-Type": "multipart/form-data" },
-                timeout: 30000,
-              });
-              const text = res.data?.text || "[Ses metne dönüştürülemedi]";
-              answerMap.set(qid, { text, duration: rec.duration });
-            } catch (e) {
-              answerMap.set(qid, { text: "[Ses metne dönüştürülemedi]", duration: rec.duration || 0 });
+        if (!speakingAnswers) continue;
+
+        const speakingData = JSON.parse(speakingAnswers);
+        const answerTextRecord: Record<string, string> = {};
+        const isMeaningfulText = (value: unknown) => {
+          if (typeof value !== "string") return false;
+          const trimmed = value.trim();
+          return (
+            trimmed.length > 0 &&
+            trimmed !== "[Cevap bulunamadı]" &&
+            trimmed !== "[Ses metne dönüştürülemedi]"
+          );
+        };
+
+        if (speakingData.transcripts && typeof speakingData.transcripts === "object") {
+          for (const [qid, t] of Object.entries(speakingData.transcripts)) {
+            if (isMeaningfulText(t)) answerTextRecord[qid] = String(t).trim();
+          }
+        }
+
+        if (speakingData.answers && typeof speakingData.answers === "object") {
+          for (const [qid, val] of Object.entries(speakingData.answers)) {
+            const maybeObj: any = val;
+            const text = typeof val === "string" ? val : maybeObj?.text;
+            if (isMeaningfulText(text)) {
+              answerTextRecord[qid] = String(text).trim();
             }
           }
-          
-          const parts = speakingData.sections.map((s: any) => {
-            const p: any = { description: s.description, image: "" };
-            if (s.subParts?.length) {
-              const subParts = s.subParts.map((sp: any) => {
-                const questions = sp.questions.map((q: any) => {
-                  const a = answerMap.get(q.id);
-                  return {
-                    questionId: q.id,
-                    userAnswer: a?.text ?? "[Cevap bulunamadı]",
-                    duration: a?.duration ?? 0,
-                  };
-                });
-                const duration = questions.reduce((acc: number, q: any) => acc + (q.duration || 0), 0);
-                return { image: sp.images?.[0] || "", duration, questions };
-              });
-              const duration = subParts.reduce((acc: number, sp: any) => acc + (sp.duration || 0), 0);
-              p.subParts = subParts;
-              p.duration = duration;
-            } else {
-              const questions = s.questions.map((q: any) => {
-                const a = answerMap.get(q.id);
-                return {
-                  questionId: q.id,
-                  userAnswer: a?.text ?? "[Cevap bulunamadı]",
-                  duration: a?.duration ?? 0,
-                };
-              });
-              const duration = questions.reduce((acc: number, q: any) => acc + (q.duration || 0), 0);
-              p.questions = questions;
-              p.duration = duration;
-              if (s.type === "PART3") p.type = "DISADVANTAGE";
-            }
-            return p;
-          });
-          
-          await axiosPrivate.post("/api/speaking-submission", {
-            speakingTestId: speakingData.testId,
-            parts,
-          });
         }
+
+        const formattedSubmission = speakingSubmissionService.formatSubmissionData(
+          speakingData,
+          answerTextRecord
+        );
+        const overallToken = overallTestTokenStore.getByTestId(speakingData.testId);
+        if (overallToken) {
+          formattedSubmission.sessionToken = overallToken;
+        } else {
+          console.warn(
+            "Speaking submit-all without overall token; falling back to standard auth:",
+            speakingData.testId
+          );
+        }
+
+        if (!speakingSubmissionService.validateSubmissionData(formattedSubmission)) {
+          console.warn("Skipping speaking submit-all; formatted submission is invalid.");
+          continue;
+        }
+
+        const submissionResult = await speakingSubmissionService.submitSpeakingTest(formattedSubmission);
+        if (!submissionResult.success) {
+          console.error("Speaking submit-all failed:", submissionResult.error);
+          failedSubmissions.push(`Konusma (${speakingData.testId})`);
+          continue;
+        }
+
+        successfulSubmissions.push(`Konusma (${speakingData.testId})`);
+        try {
+          sessionStorage.removeItem(key);
+        } catch {}
+      }
+
+      if (failedSubmissions.length > 0) {
+        toast.error(
+          `Bazi bolumler gecici olarak kaydedilemedi: ${failedSubmissions.join(", ")}. Cevaplariniz saklandi.`
+        );
+        if (successfulSubmissions.length > 0) {
+          toast.message(`Kaydedilen bolumler: ${successfulSubmissions.join(", ")}`);
+        }
+        return false;
       }
       
       // Now complete the overall test
@@ -353,10 +504,11 @@ export default function ReadingPage({ testId }: { testId: string }) {
         } catch {}
       }
       navigate(`/overall-results/${overallId}`);
+      return true;
     } catch (error) {
       console.error("Error submitting all tests:", error);
-      // toast.error("Error submitting tests, but continuing to results...");
-      navigate(`/overall-results/${overallId}`);
+      toast.error("Testler gonderilirken hata olustu. Cevaplariniz saklandi.");
+      return false;
     }
   };
 

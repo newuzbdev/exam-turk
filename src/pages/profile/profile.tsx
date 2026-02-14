@@ -79,6 +79,16 @@ export default function ProfilePage() {
     return avatar.startsWith("http") ? avatar : `https://api.turkishmock.uz/${avatar}`;
   };
 
+  const getUserInitials = (fullName?: string) => {
+    const value = String(fullName || "").trim();
+    if (!value) return "U";
+    const parts = value.split(/\s+/).filter(Boolean);
+    return parts
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() || "")
+      .join("");
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -103,6 +113,7 @@ export default function ProfilePage() {
         }
       } catch (error) {
         console.error("Error fetching profile data:", error);
+        navigate("/login", { replace: true, state: { redirectTo: "/profile" } });
       } finally {
         setLoading(false);
       }
@@ -212,10 +223,7 @@ export default function ProfilePage() {
                     <Avatar className="w-24 h-24">
                       <AvatarImage src={getAvatarUrl() || undefined} alt={user?.name} />
                       <AvatarFallback className="text-2xl font-semibold text-gray-700 bg-gray-100">
-                        {user?.name
-                          .split(" ")
-                          .map((n: string) => n[0])
-                          .join("")}
+                        {getUserInitials(user?.name)}
                       </AvatarFallback>
                     </Avatar>
                   </div>
@@ -504,10 +512,7 @@ export default function ProfilePage() {
             ) : (
               <div className="w-64 h-64 sm:w-80 sm:h-80 rounded-full bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center shadow-2xl">
                 <span className="text-6xl sm:text-8xl font-semibold text-white">
-                  {user?.name
-                    .split(" ")
-                    .map((n: string) => n[0])
-                    .join("")}
+                  {getUserInitials(user?.name)}
                 </span>
               </div>
             )}

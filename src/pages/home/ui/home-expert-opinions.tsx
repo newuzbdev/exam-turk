@@ -1,54 +1,97 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type TouchEvent } from "react";
 import { Instagram, Quote, Send } from "lucide-react";
 
 const experts = [
   {
-    name: "Dr. Elif Kaya",
-    role: "Türkçe Eğitmeni",
-    image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=320&q=80",
-    text: "Bu yapı, öğrencilerin seviyesini net şekilde gösteriyor. Özellikle sınav öncesi hangi beceriye odaklanması gerektiğini hızlıca anlamasını sağlıyor.",
-    telegram: "",
-    instagram: "",
+    name: "Muattar Mamatkarimova",
+    role: "Turkce Egitmeni",
+    image: "/mattuqiz.jpg",
+    text: "Sınav öncesi öğrencilere gerçek seviyesini gösterecek böyle platforma uzun zamandır ihtiyaç vardı. Artık sınava katılmak isteyenler bu yapıda rahat çalışabilirler!",
+    telegram: "https://t.me/+HWz8P0XvqHNkMDUy",
+    instagram: "https://www.instagram.com/mattu_turkish?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==",
   },
   {
     name: "Mehmet Arslan",
-    role: "Sınav Hazırlık Uzmanı",
+    role: "Sinav Hazirlik Uzmani",
     image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=320&q=80",
-    text: "Konuşma ve yazma geri bildirimleri pratik ve uygulanabilir. Öğrencinin eksik yönlerini bir çalışma planına dönüştürmek için güçlü bir temel sunuyor.",
+    text: "Konusma ve yazma geri bildirimleri pratik ve uygulanabilir. Ogrencinin eksik yonlerini bir calisma planina donusturmek icin guclu bir temel sunuyor.",
     telegram: "",
     instagram: "",
   },
   {
     name: "Timur Makarov",
-    role: "Platform Kurucusu ve Geliştiricisi",
-    image: "/tim.jpg",
-    text: "Bu platform, gerçek sınav deneyimini yaşamanız, seviyenizi ve gelişime açık yönlerinizi net şekilde görmeniz amacıyla hazırlanmıştır. Böylece sınava daha bilinçli ve etkili bir şekilde hazırlanabilirsiniz.",
+    role: "Platform Kurucusu ve Gelistiricisi",
+    image: "/tim%202.png",
+    text: "Bu platform, gercek sinav deneyimini yasamaniz, seviyenizi ve gelisime acik yonlerinizi net sekilde gormeniz amaciyla hazirlanmistir. Boylece sinava daha bilincli ve etkili bir sekilde hazirlanabilirsiniz.",
     telegram: "https://t.me/timur_makarov",
     instagram: "",
   },
 ];
 
 const AUTO_SLIDE_MS = 8000;
+const SWIPE_THRESHOLD = 50;
 
 const HomeExpertOpinions = () => {
   const [activeIndex, setActiveIndex] = useState(0);
+  const touchStartXRef = useRef<number | null>(null);
+  const touchEndXRef = useRef<number | null>(null);
+  const timeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
-    const id = window.setInterval(() => {
+    if (timeoutRef.current !== null) {
+      window.clearTimeout(timeoutRef.current);
+    }
+
+    timeoutRef.current = window.setTimeout(() => {
       setActiveIndex((prev) => (prev + 1) % experts.length);
     }, AUTO_SLIDE_MS);
 
-    return () => window.clearInterval(id);
-  }, []);
+    return () => {
+      if (timeoutRef.current !== null) {
+        window.clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [activeIndex]);
+
+  const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    touchStartXRef.current = event.touches[0]?.clientX ?? null;
+    touchEndXRef.current = null;
+  };
+
+  const handleTouchMove = (event: TouchEvent<HTMLDivElement>) => {
+    touchEndXRef.current = event.touches[0]?.clientX ?? null;
+  };
+
+  const handleTouchEnd = () => {
+    const startX = touchStartXRef.current;
+    const endX = touchEndXRef.current;
+    if (startX === null || endX === null) return;
+
+    const delta = startX - endX;
+    if (Math.abs(delta) < SWIPE_THRESHOLD) return;
+
+    if (delta > 0) {
+      setActiveIndex((prev) => (prev + 1) % experts.length);
+    } else {
+      setActiveIndex((prev) => (prev - 1 + experts.length) % experts.length);
+    }
+  };
 
   return (
     <section className="py-6 sm:py-8 lg:py-10 bg-white font-sans">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl mb-4 sm:mb-5 text-center md:text-left">
-          <h2 className="text-xl sm:text-3xl font-medium text-gray-900 tracking-tight">Uzmanlar Hakkımızda Ne Diyor?</h2>
+          <h2 className="text-xl sm:text-3xl font-medium text-gray-900 tracking-tight">
+            Uzmanlar Hakkimizda Ne Diyor?
+          </h2>
         </div>
 
-        <article className="relative overflow-hidden rounded-xl md:rounded-2xl border border-gray-200 bg-gray-50 shadow-sm">
+        <article
+          className="relative overflow-hidden rounded-xl md:rounded-2xl border border-gray-200 bg-gray-50 shadow-sm"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
           <div className="overflow-hidden">
             <div
               className="flex transition-transform duration-700 ease-out"
@@ -63,19 +106,25 @@ const HomeExpertOpinions = () => {
                       <p className="text-sm sm:text-base md:text-lg leading-relaxed text-gray-700 italic font-medium relative z-10 max-w-[62ch] mx-auto md:mx-0">
                         {expert.text}
                       </p>
-                      <div className="mt-3 md:mt-4 flex flex-col md:flex-row items-center md:items-center justify-center md:justify-start flex-wrap gap-1.5 md:gap-2">
-                        <h3 className="text-lg sm:text-xl font-semibold text-gray-900 tracking-tight">{expert.name}</h3>
-                        <span className="hidden md:inline-block w-1 h-1 rounded-full bg-gray-400" />
-                        <p className="text-base sm:text-lg text-gray-600">{expert.role}</p>
-                      </div>
 
+                      <div className="mt-4 flex flex-col items-center md:items-start gap-1">
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 tracking-tight leading-tight">
+                          {expert.name}
+                        </h3>
+                        <p className="text-xs sm:text-sm uppercase tracking-[0.08em] text-gray-500 leading-tight">
+                          {expert.role}
+                        </p>
+                      </div>
                     </div>
 
                     <div className="flex flex-col items-center justify-center md:justify-between gap-2.5 md:gap-3 h-full order-1 md:order-2">
                       <img
                         src={expert.image}
                         alt={expert.name}
-                        className="w-24 h-24 sm:w-28 sm:h-28 md:w-36 md:h-36 rounded-full object-cover border-2 border-white shadow-md"
+                        className="w-24 h-24 sm:w-28 sm:h-28 md:w-36 md:h-36 rounded-full object-cover border-2 border-white shadow-md pointer-events-none select-none"
+                        draggable={false}
+                        onContextMenu={(event) => event.preventDefault()}
+                        onDragStart={(event) => event.preventDefault()}
                       />
                       <div className="flex items-center gap-2">
                         {expert.instagram ? (
@@ -83,7 +132,7 @@ const HomeExpertOpinions = () => {
                             href={expert.instagram}
                             target="_blank"
                             rel="noreferrer"
-                            className="w-8 h-8 rounded-full border border-gray-400/50 text-gray-700 hover:text-gray-900 hover:border-gray-600/40 transition-colors duration-300 inline-flex items-center justify-center"
+                            className="w-8 h-8 rounded-full border border-gray-400/50 text-gray-700 hover:bg-gray-200 transition-colors duration-300 inline-flex items-center justify-center"
                             aria-label={`${expert.name} Instagram`}
                           >
                             <Instagram className="w-4 h-4" />
@@ -91,7 +140,7 @@ const HomeExpertOpinions = () => {
                         ) : (
                           <span
                             className="w-8 h-8 rounded-full border border-gray-300/70 text-gray-400 inline-flex items-center justify-center"
-                            aria-label="Instagram yakında"
+                            aria-label="Instagram yakinda"
                           >
                             <Instagram className="w-4 h-4" />
                           </span>
@@ -110,7 +159,7 @@ const HomeExpertOpinions = () => {
                         ) : (
                           <span
                             className="w-8 h-8 rounded-full border border-gray-300/70 text-gray-400 inline-flex items-center justify-center"
-                            aria-label="Telegram yakında"
+                            aria-label="Telegram yakinda"
                           >
                             <Send className="w-4 h-4" />
                           </span>
@@ -124,7 +173,17 @@ const HomeExpertOpinions = () => {
           </div>
 
           <div className="px-4 sm:px-6 pb-4 pt-1 flex items-center justify-center">
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 sm:hidden">
+              {experts.map((_, index) => (
+                <span
+                  key={`mobile-dot-${index}`}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    index === activeIndex ? "w-6 bg-gray-500" : "w-3 bg-gray-300"
+                  }`}
+                />
+              ))}
+            </div>
+            <div className="hidden sm:flex items-center gap-1.5">
               {experts.map((_, index) => (
                 <button
                   key={index}

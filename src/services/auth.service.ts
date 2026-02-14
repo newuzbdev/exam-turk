@@ -86,6 +86,46 @@ const extractTokens = (
   };
 };
 
+
+const extractUserIdFromPayload = (payload: any): string | undefined => {
+  const data = payload && typeof payload === "object" ? payload : {};
+  const nested = data.data && typeof data.data === "object" ? data.data : {};
+
+  const candidates = [
+    data?.user?.id,
+    data?.data?.user?.id,
+    data?.userId,
+    data?.id,
+    nested?.user?.id,
+    nested?.userId,
+    nested?.id,
+  ];
+
+  const matched = candidates.find(
+    (value) => typeof value === "string" && value.trim().length > 0
+  );
+
+  return matched ? String(matched) : undefined;
+};
+
+const decodeUserIdFromStoredAccessToken = (): string | null => {
+  const token =
+    SecureStorage.getSessionItem("accessToken") ||
+    SecureStorage.getItem("accessToken") ||
+    SecureStorage.getSessionItem("token") ||
+    SecureStorage.getItem("token");
+
+  if (!token) return null;
+
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1] || ""));
+    const id = payload?.id || payload?.sub || payload?.userId;
+    return typeof id === "string" && id.trim().length > 0 ? id : null;
+  } catch {
+    return null;
+  }
+};
+
 export const authService = {
   // Helper function to format phone number
   formatPhoneNumber: (phone: string): string => {
@@ -157,8 +197,13 @@ export const authService = {
   // Helper function to store tokens securely
   storeTokens: (accessToken: string, refreshToken?: string): void => {
     SecureStorage.setSessionItem("accessToken", accessToken);
+    SecureStorage.setItem("accessToken", accessToken);
+    // Legacy compatibility keys used in some flows/tools
+    SecureStorage.setSessionItem("token", accessToken);
+    SecureStorage.setItem("token", accessToken);
     if (refreshToken) {
       SecureStorage.setSessionItem("refreshToken", refreshToken);
+      SecureStorage.setItem("refreshToken", refreshToken);
     }
     try {
       if (typeof window !== "undefined") {
@@ -171,8 +216,12 @@ export const authService = {
   // trigger auth context and redirect; register request will use this token).
   storeTokensSilent: (accessToken: string, refreshToken?: string): void => {
     SecureStorage.setSessionItem("accessToken", accessToken);
+    SecureStorage.setItem("accessToken", accessToken);
+    SecureStorage.setSessionItem("token", accessToken);
+    SecureStorage.setItem("token", accessToken);
     if (refreshToken) {
       SecureStorage.setSessionItem("refreshToken", refreshToken);
+      SecureStorage.setItem("refreshToken", refreshToken);
     }
   },
 
@@ -191,7 +240,14 @@ export const authService = {
   clearStoredTokens: (): void => {
     SecureStorage.removeSessionItem("accessToken");
     SecureStorage.removeSessionItem("refreshToken");
+    SecureStorage.removeSessionItem("token");
+    SecureStorage.removeSessionItem("authToken");
+    SecureStorage.removeItem("accessToken");
+    SecureStorage.removeItem("refreshToken");
+    SecureStorage.removeItem("token");
+    SecureStorage.removeItem("authToken");
     SecureStorage.removeSessionItem("userId");
+    SecureStorage.removeItem("userId");
     
     // Clear all test-related session tokens
     authService.clearAllTestTokens();
@@ -308,6 +364,11 @@ export const authService = {
         console.log("User data from /api/auth/me:", response.data);
 
         if (response.data) {
+          const meUserId = extractUserIdFromPayload(response.data);
+          if (meUserId) {
+            SecureStorage.setSessionItem("userId", meUserId);
+            SecureStorage.setItem("userId", meUserId);
+          }
           return response.data;
         }
 
@@ -316,7 +377,17 @@ export const authService = {
         console.error("Error fetching user from /api/auth/me:", error);
 
         // If /api/auth/me fails, try to use /api/user/{id} if we have a stored user ID
-        const userId = SecureStorage.getSessionItem("userId");
+        let userId =
+          SecureStorage.getSessionItem("userId") ||
+          SecureStorage.getItem("userId");
+        if (!userId) {
+          const decodedUserId = decodeUserIdFromStoredAccessToken();
+          if (decodedUserId) {
+            userId = decodedUserId;
+            SecureStorage.setSessionItem("userId", decodedUserId);
+            SecureStorage.setItem("userId", decodedUserId);
+          }
+        }
         if (userId) {
           try {
             console.log(
@@ -378,6 +449,11 @@ export const authService = {
       const { accessToken, refreshToken } = extractTokens(response.data);
 
       if (accessToken) {
+        const userId = extractUserIdFromPayload(response.data);
+        if (userId) {
+          SecureStorage.setSessionItem("userId", userId);
+          SecureStorage.setItem("userId", userId);
+        }
         authService.storeTokens(accessToken, refreshToken);
         toast.success("Giriş başarılı");
         navigate("/", { replace: true });
@@ -417,6 +493,11 @@ export const authService = {
       const { accessToken, refreshToken } = extractTokens(response.data);
 
       if (accessToken) {
+        const userId = extractUserIdFromPayload(response.data);
+        if (userId) {
+          SecureStorage.setSessionItem("userId", userId);
+          SecureStorage.setItem("userId", userId);
+        }
         authService.storeTokens(accessToken, refreshToken);
         toast.success("Giriş başarılı");
         navigate("/", { replace: true });
@@ -579,6 +660,11 @@ export const authService = {
       const { accessToken, refreshToken } = extractTokens(response.data);
 
       if (accessToken) {
+        const userId = extractUserIdFromPayload(response.data);
+        if (userId) {
+          SecureStorage.setSessionItem("userId", userId);
+          SecureStorage.setItem("userId", userId);
+        }
         authService.storeTokens(accessToken, refreshToken);
 
         // Store user ID if returned in registration response

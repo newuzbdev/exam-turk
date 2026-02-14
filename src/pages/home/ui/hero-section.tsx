@@ -63,7 +63,7 @@ const HeroSection = () => {
               <NavLink to="/test">
                 <Button
                   size="lg"
-                  className="group bg-red-600 hover:bg-red-700 text-white pl-7 pr-6 py-5 text-base sm:text-lg font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-300"
+                  className="theme-important group bg-red-600 hover:bg-red-700 text-white pl-7 pr-6 py-5 text-base sm:text-lg font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-300"
                 >
                   Teste Başla
                   <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />

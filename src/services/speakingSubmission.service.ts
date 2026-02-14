@@ -1,5 +1,6 @@
-﻿import axiosPrivate from '@/config/api';
+import axiosPrivate from '@/config/api';
 import { toast } from 'sonner';
+import { normalizeDisplayText } from '@/utils/text';
 
 export interface QuestionAnswer {
   questionId: string;
@@ -33,6 +34,61 @@ export interface SubmissionResponse {
   error?: string;
 }
 
+const RETRY_ACTION_GUIDE =
+  "Cevaplariniz bu tarayicida guvenle saklandi.";
+
+const appendRetryGuide = (message: string): string => {
+  const base = String(message || "").trim();
+  if (!base) return RETRY_ACTION_GUIDE;
+  if (base.includes(RETRY_ACTION_GUIDE)) return base;
+  return `${base}. ${RETRY_ACTION_GUIDE}`;
+};
+
+const shouldShowRetryGuide = (
+  message: string,
+  status?: number,
+  code?: string
+): boolean => {
+  const normalized = String(message || "").toLowerCase();
+  const isAuthRelated =
+    status === 401 ||
+    (/(token|session|oturum)/i.test(normalized) &&
+      /(expired|not found|invalid|suresi|dol|bulunamad|gecersiz|giris)/i.test(normalized));
+
+  if (isAuthRelated) return false;
+  if (code === "ECONNABORTED" || status === 408) return true;
+  if (typeof status === "number" && status >= 500) return true;
+
+  return /(genel_degerlendirme|kelime|degerlendirme|openai|json|timeout|zaman asimi|yarim|eksik)/i.test(
+    normalized
+  );
+};
+
+const extractSubmissionId = (payload: any): string | undefined => {
+  const candidates = [
+    payload?.id,
+    payload?.submissionId,
+    payload?.resultId,
+    payload?.data?.id,
+    payload?.data?.submissionId,
+    payload?.data?.resultId,
+    payload?.data?.data?.id,
+    payload?.data?.data?.submissionId,
+    payload?.data?.data?.resultId,
+  ];
+
+  for (const value of candidates) {
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value.trim();
+    }
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return String(value);
+    }
+  }
+
+  return undefined;
+};
+
 export const speakingSubmissionService = {
   /**
    * Submit the complete speaking test results
@@ -41,50 +97,64 @@ export const speakingSubmissionService = {
    */
   submitSpeakingTest: async (submissionData: SpeakingSubmissionData): Promise<SubmissionResponse> => {
     try {
-      const { overallTestTokenStore } = await import('./overallTest.service');
-      const embeddedToken = submissionData.sessionToken || overallTestTokenStore.getByTestId(submissionData.speakingTestId);
+      const { overallTestTokenStore, overallTestFlowStore } = await import('./overallTest.service');
+      const isOverallFlowActive =
+        overallTestFlowStore.hasActive() || !!overallTestFlowStore.getOverallId();
+      const embeddedToken =
+        submissionData.sessionToken ||
+        (isOverallFlowActive
+          ? overallTestTokenStore.getByTestId(submissionData.speakingTestId)
+          : null);
       const payload = embeddedToken ? { ...submissionData, sessionToken: embeddedToken } : submissionData;
 
       const response = await axiosPrivate.post('/api/speaking-submission', payload, {
         headers: {
           'Content-Type': 'application/json',
         },
-        timeout: 30000, // 30 second timeout
+        timeout: 180000, // AI degerlendirme icin genis timeout
       });
 
       if (response.data && (response.data.success || response.status === 200 || response.status === 201)) {
-        // toast.success('KonuÅŸma testi baÅŸarÄ±yla gÃ¶nderildi!');
+        // toast.success('Konuşma testi başarıyla gönderildi!');
+        const submissionId = extractSubmissionId(response.data);
         const result = {
           success: true,
-          submissionId: response.data.id || response.data.submissionId
+          submissionId
         };
         try { if (embeddedToken) overallTestTokenStore.clearByTestId(submissionData.speakingTestId); } catch {}
         return result;
       } else {
         return {
           success: false,
-          error: 'Test gÃ¶nderilemedi'
+          error: 'Test g�nderilemedi'
         };
       }
     } catch (error: any) {
       console.error('Speaking test submission error:', error);
       
-      let errorMessage = 'Test gÃ¶nderilirken hata oluÅŸtu';
+      let errorMessage = 'Test g�nderilirken hata olu�tu';
       // Prefer backend message (more actionable) over generic status buckets.
       if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
+        errorMessage = normalizeDisplayText(error.response.data.message);
       } else if (error.response?.data?.error) {
-        errorMessage = error.response.data.error;
+        errorMessage = normalizeDisplayText(error.response.data.error);
       } else if (error.response?.status === 400) {
-        errorMessage = 'Geçersiz test verisi';
+        errorMessage = 'Ge�ersiz test verisi';
       } else if (error.response?.status === 401) {
-        errorMessage = 'Oturum süresi dolmuş, lütfen tekrar giriş yapın';
+        errorMessage = 'Oturum tarafinda gecici bir hata olustu';
       } else if (error.response?.status === 413) {
-        errorMessage = 'Test verisi çok büyük';
+        errorMessage = 'Test verisi �ok b�y�k';
       } else if (error.code === 'ECONNABORTED') {
-        errorMessage = 'İşlem zaman aşımına uğradı';
+        errorMessage = '��lem zaman a��m�na u�rad�';
       }
-toast.error(errorMessage);
+
+      errorMessage = normalizeDisplayText(errorMessage);
+
+      if (shouldShowRetryGuide(errorMessage, error.response?.status, error.code)) {
+        errorMessage = appendRetryGuide(errorMessage);
+      }
+
+      toast.error(errorMessage);
       
       return {
         success: false,
@@ -102,7 +172,7 @@ toast.error(errorMessage);
      return res.data?.data || res.data || null
   } catch (error: any) {
     console.error('Failed to fetch speaking submission', error)
-     toast.error('KonuÅŸma sonucu bulunamadÄ±')
+     toast.error('Konu�ma sonucu bulunamad�')
       return null
     }
   },
@@ -121,7 +191,7 @@ toast.error(errorMessage);
 
     (testData.sections || []).forEach((section: any) => {
       const part: PartSubmission = {
-        description: section.description,
+        description: typeof section.description === "string" ? section.description : String(section.description || ""),
         image: section.images?.[0] || undefined,
         duration: Number(section.duration ?? 0),
       };
@@ -184,24 +254,24 @@ toast.error(errorMessage);
    */
   formatAssessmentFeedback: (assessment: any): string => {
     const formattedFeedback = `
-GENEL SONUÃ‡:
- Genel CEFR PuanÄ±: ${assessment.cefr_puan ?? 0}/75
+GENEL SONU�:
+ Genel CEFR Puan�: ${assessment.cefr_puan ?? 0}/75
  Belirlenen Seviye: ${assessment.seviye ?? 'Belirlenmedi'}
 
-[BÃ–LÃœM 1.1 ANALÄ°ZÄ°]
-${assessment.bolumler?.bolum_1_1?.degerlendirme ?? 'DeÄŸerlendirme yapÄ±lamadÄ±.'}
+[B�L�M 1.1 ANAL�Z�]
+${assessment.bolumler?.bolum_1_1?.degerlendirme ?? 'De�erlendirme yap�lamad�.'}
 
-[BÃ–LÃœM 1.2 ANALÄ°ZÄ°]
-${assessment.bolumler?.bolum_1_2?.degerlendirme ?? 'DeÄŸerlendirme yapÄ±lamadÄ±.'}
+[B�L�M 1.2 ANAL�Z�]
+${assessment.bolumler?.bolum_1_2?.degerlendirme ?? 'De�erlendirme yap�lamad�.'}
 
-[BÃ–LÃœM 2 ANALÄ°ZÄ°]
-${assessment.bolumler?.bolum_2?.degerlendirme ?? 'DeÄŸerlendirme yapÄ±lamadÄ±.'}
+[B�L�M 2 ANAL�Z�]
+${assessment.bolumler?.bolum_2?.degerlendirme ?? 'De�erlendirme yap�lamad�.'}
 
-[BÃ–LÃœM 3 ANALÄ°ZÄ°]
-${assessment.bolumler?.bolum_3?.degerlendirme ?? 'DeÄŸerlendirme yapÄ±lamadÄ±.'}
+[B�L�M 3 ANAL�Z�]
+${assessment.bolumler?.bolum_3?.degerlendirme ?? 'De�erlendirme yap�lamad�.'}
 
-GENEL DEÄERLENDÄ°RME:
-${assessment.genel_degerlendirme ?? 'Genel deÄŸerlendirme yapÄ±lamadÄ±.'}
+GENEL DE�ERLEND�RME:
+${assessment.genel_degerlendirme ?? 'Genel De�erlendirme yap�lamad�.'}
 `.trim();
 
     return formattedFeedback;
@@ -214,12 +284,12 @@ ${assessment.genel_degerlendirme ?? 'Genel deÄŸerlendirme yapÄ±lamadÄ±.'}
    */
   validateSubmissionData: (submissionData: SpeakingSubmissionData): boolean => {
     if (!submissionData.speakingTestId) {
-      toast.error('Test ID bulunamadÄ±');
+      toast.error('Test ID bulunamad�');
       return false;
     }
 
     if (!submissionData.parts || submissionData.parts.length === 0) {
-      toast.error('Test cevaplarÄ± bulunamadÄ±');
+      toast.error('Test cevaplar� bulunamad�');
       return false;
     }
 

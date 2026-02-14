@@ -10,6 +10,8 @@ export const AudioPlayer = ({ src, onAudioEnded }: AudioPlayerProps) => {
   const [volume, setVolume] = useState(0.7);
   const audioRef = useRef<HTMLAudioElement>(null);
   const hasStartedRef = useRef(false);
+  const startTimerRef = useRef<number | null>(null);
+  const retryTimerRef = useRef<number | null>(null);
   // Web Audio removed: rely on native element volume/muted only for reliability
 
   // Debug: Log the src when component mounts
@@ -21,41 +23,62 @@ export const AudioPlayer = ({ src, onAudioEnded }: AudioPlayerProps) => {
   // Auto-play when component mounts - only once
   useEffect(() => {
     const audio = audioRef.current;
-    if (audio && src && !hasStartedRef.current) {
-      console.log("Attempting auto-play...");
-      
-      const tryAutoPlay = async () => {
-        if (hasStartedRef.current) return; // Prevent double play
-        
-        try {
-          // Ensure audio is loaded before playing
-          if (audio.readyState < 2) {
-            audio.load();
-            await new Promise((resolve) => {
-              audio.addEventListener('canplay', resolve, { once: true });
-            });
-          }
-          
-          if (!hasStartedRef.current && audio.paused) {
-            hasStartedRef.current = true;
-            await audio.play();
-            console.log("Auto-play successful!");
-          }
-        } catch (error) {
-          console.log("Auto-play failed:", error);
-          hasStartedRef.current = false;
-          // Retry after a delay only if not already started
-          setTimeout(() => {
-            if (!hasStartedRef.current) {
-              tryAutoPlay();
-            }
-          }, 2000);
-        }
-      };
+    if (!audio || !src || hasStartedRef.current) return;
 
-      // Try to play after a small delay to ensure audio is loaded
-      setTimeout(tryAutoPlay, 500);
-    }
+    console.log("Attempting auto-play...");
+    let disposed = false;
+
+    const clearPendingTimers = () => {
+      if (startTimerRef.current !== null) {
+        window.clearTimeout(startTimerRef.current);
+        startTimerRef.current = null;
+      }
+      if (retryTimerRef.current !== null) {
+        window.clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
+    };
+
+    const tryAutoPlay = async () => {
+      if (disposed || hasStartedRef.current) return;
+
+      try {
+        if (audio.readyState < 2) {
+          audio.load();
+          await new Promise<void>((resolve) => {
+            const onCanPlay = () => {
+              audio.removeEventListener("canplay", onCanPlay);
+              resolve();
+            };
+            audio.addEventListener("canplay", onCanPlay);
+          });
+        }
+
+        if (!disposed && !hasStartedRef.current && audio.paused) {
+          hasStartedRef.current = true;
+          await audio.play();
+          console.log("Auto-play successful!");
+        }
+      } catch (error) {
+        if (disposed) return;
+        console.log("Auto-play failed:", error);
+        hasStartedRef.current = false;
+        retryTimerRef.current = window.setTimeout(() => {
+          tryAutoPlay();
+        }, 2000);
+      }
+    };
+
+    startTimerRef.current = window.setTimeout(tryAutoPlay, 500);
+
+    return () => {
+      disposed = true;
+      clearPendingTimers();
+      try {
+        audio.pause();
+        audio.currentTime = 0;
+      } catch {}
+    };
   }, [src]);
 
   // Removed Web Audio pipeline
@@ -74,23 +97,10 @@ export const AudioPlayer = ({ src, onAudioEnded }: AudioPlayerProps) => {
     }
   }, [volume]);
 
-
-  // Handle audio ended event - start timer
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (audio) {
-      const handleEnded = () => {
-        console.log("Audio ended - starting timer");
-        onAudioEnded();
-      };
-      
-      audio.addEventListener('ended', handleEnded);
-      
-      return () => {
-        audio.removeEventListener('ended', handleEnded);
-      };
-    }
-  }, [onAudioEnded]);
+  const handleEnded = () => {
+    console.log("Audio ended - starting timer");
+    onAudioEnded();
+  };
 
   // Volume control
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -113,10 +123,7 @@ export const AudioPlayer = ({ src, onAudioEnded }: AudioPlayerProps) => {
         onLoadedData={() => console.log("Audio data loaded")}
         onCanPlay={() => console.log("Audio can play")}
         onError={(e) => console.error("Audio error:", e)}
-        onEnded={() => {
-          console.log("Audio ended - starting timer");
-          onAudioEnded();
-        }}
+        onEnded={handleEnded}
       />
       
       {/* Volume Slider */}

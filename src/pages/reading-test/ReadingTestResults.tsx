@@ -158,6 +158,21 @@ export default function ReadingTestResults() {
   const hasSummaryData = summary && summary.score !== undefined;
 
   const score = summary?.score ?? data?.score ?? 0;
+  const normalizeLevel = (raw?: string | null) => {
+    if (!raw) return undefined;
+    const value = String(raw).trim().toUpperCase();
+    if (value === "A0" || value === "B1_ALTI" || value === "B1 ALTI") return "B1 altı";
+    return value;
+  };
+  const levelFromScore = (value: number) => {
+    if (value >= 65) return "C1";
+    if (value >= 51) return "B2";
+    if (value >= 38) return "B1";
+    return "B1 altı";
+  };
+  const resolvedLevel =
+    normalizeLevel((summary as any)?.level ?? (data as any)?.level) ||
+    levelFromScore(Number(score) || 0);
   // Prefer reconstructed rows, but if most are "Seçilmedi", fall back to raw API rows
   const finalRows = useMemo(() => {
     if (fullExamData && fullExamData.length) {
@@ -262,6 +277,21 @@ export default function ReadingTestResults() {
               <span>{currentDate}</span>
             </div>
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Card className="border border-gray-200 rounded-lg">
+            <CardContent className="p-4">
+              <p className="text-xs text-gray-500">Puan</p>
+              <p className="text-2xl font-bold text-gray-900">{score}</p>
+            </CardContent>
+          </Card>
+          <Card className="border border-gray-200 rounded-lg">
+            <CardContent className="p-4">
+              <p className="text-xs text-gray-500">Seviye</p>
+              <p className="text-2xl font-bold text-red-600">{resolvedLevel}</p>
+            </CardContent>
+          </Card>
         </div>
 
         <div className="mb-6">
@@ -388,6 +418,21 @@ export default function ReadingTestResults() {
           <span>Name: {userName}</span>
         </div>
         <span>Date: {currentDate}</span>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Card className="border border-gray-200 rounded-lg">
+          <CardContent className="p-4">
+            <p className="text-xs text-gray-500">Puan</p>
+            <p className="text-2xl font-bold text-gray-900">{score}</p>
+          </CardContent>
+        </Card>
+        <Card className="border border-gray-200 rounded-lg">
+          <CardContent className="p-4">
+            <p className="text-xs text-gray-500">Seviye</p>
+            <p className="text-2xl font-bold text-red-600">{resolvedLevel}</p>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="mb-6">

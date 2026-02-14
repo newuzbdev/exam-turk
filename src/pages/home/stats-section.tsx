@@ -69,16 +69,23 @@ const StatsSection = () => {
     let mounted = true;
     (async () => {
       try {
-        const { data } = await axiosPrivate.get("/api/admin/stats");
-        // Expecting: { activeUsers: number, completedTests: number }
+        const { data } = await axiosPrivate.get("/api/overal-test-result/stats");
+        const payload = data?.data && typeof data.data === "object" ? data.data : data;
         if (!mounted) return;
-        setActiveUsers(Number(data?.activeUsers ?? 0));
-        setCompletedTests(Number(data?.completedTests ?? 0));
+        setActiveUsers(Number(payload?.activeUsers ?? 0));
+        setCompletedTests(Number(payload?.completedTests ?? 0));
       } catch (e) {
-        // Fallback to previous static-like defaults if API fails
-        if (!mounted) return;
-        setActiveUsers(1500);
-        setCompletedTests(5000);
+        try {
+          const { data } = await axiosPrivate.get("/api/admin/stats");
+          const payload = data?.data && typeof data.data === "object" ? data.data : data;
+          if (!mounted) return;
+          setActiveUsers(Number(payload?.activeUsers ?? 0));
+          setCompletedTests(Number(payload?.completedTests ?? 0));
+        } catch {
+          if (!mounted) return;
+          setActiveUsers(0);
+          setCompletedTests(0);
+        }
       } finally {
         if (mounted) setLoading(false);
       }

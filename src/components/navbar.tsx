@@ -81,6 +81,17 @@ const Navbar = () => {
   const coin = user?.coin ?? 0;
   const [isCoinModalOpen, setIsCoinModalOpen] = useState(false);
 
+  const getInitials = (fullName?: string) => {
+    const value = String(fullName || "").trim();
+    if (!value) return "U";
+    return value
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((word) => word[0]?.toUpperCase() || "")
+      .join("");
+  };
+
   // Function to refresh user data (including balance)
   const handleBalanceUpdate = async () => {
     await refreshUser();
@@ -145,6 +156,7 @@ const Navbar = () => {
           </div>
 
           <div className="flex items-center space-x-2 sm:space-x-4">  
+
             {/* Authentication buttons or user info */}
             {isAuthenticated && (
               <div className="hidden md:block">
@@ -185,10 +197,7 @@ const Navbar = () => {
                           alt={user.name}
                         />
                         <AvatarFallback className="text-xs font-semibold text-red-700 bg-red-50">
-                          {user.name
-                            .split(" ")
-                            .map((n: string) => n[0])
-                            .join("")}
+                          {getInitials(user.name)}
                         </AvatarFallback>
                       </Avatar>
                     </Button>
@@ -232,7 +241,7 @@ const Navbar = () => {
                     setAuthModalMode("register");
                     setIsAuthModalOpen(true);
                   }}
-                  className="text-sm font-semibold bg-red-600 hover:bg-red-700 text-white py-2.5 px-6 rounded-lg transition-all duration-300 shadow-sm hover:shadow-md"
+                  className="theme-important text-sm font-semibold bg-red-600 hover:bg-red-700 text-white py-2.5 px-6 rounded-lg transition-all duration-300 shadow-sm hover:shadow-md"
                 >
                   Kayıt Ol
                 </button>
@@ -282,10 +291,7 @@ const Navbar = () => {
                                 alt={user.name}
                               />
                               <AvatarFallback className="text-xs font-semibold text-red-700">
-                                {user.name
-                                  .split(" ")
-                                  .map((n: string) => n[0])
-                                  .join("")}
+                                {getInitials(user.name)}
                               </AvatarFallback>
                             </Avatar>
                             <span className="text-gray-900 font-medium truncate">{user.name}</span>
@@ -297,7 +303,7 @@ const Navbar = () => {
                           <div className="grid grid-cols-2 gap-2">
                             <Button
                               onClick={() => setIsCoinModalOpen(true)}
-                              className="bg-red-600 hover:bg-red-700 text-white shadow-sm hover:shadow-md transition-all"
+                              className="theme-important bg-red-600 hover:bg-red-700 text-white shadow-sm hover:shadow-md transition-all"
                             >
                               Kredi Al
                             </Button>
@@ -338,7 +344,7 @@ const Navbar = () => {
                         </Button>
                         <Button
                           type="button"
-                          className="flex-1 bg-red-600 hover:bg-red-700 text-white shadow-sm hover:shadow-md transition-all duration-300"
+                          className="theme-important flex-1 bg-red-600 hover:bg-red-700 text-white shadow-sm hover:shadow-md transition-all duration-300"
                           onClick={() => {
                             setAuthModalMode("register");
                             setIsAuthModalOpen(true);

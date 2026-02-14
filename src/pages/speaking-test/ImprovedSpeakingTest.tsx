@@ -96,6 +96,35 @@ const formatTime = (seconds: number) => {
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
 
+const SUBMIT_RETRY_GUIDE = "Cevaplariniz bu tarayicida guvenle saklandi."
+
+const buildSubmitRetryMessage = (errorLike: unknown, fallback: string) => {
+  const raw =
+    typeof errorLike === "string"
+      ? errorLike
+      : errorLike && typeof errorLike === "object" && "message" in errorLike
+      ? String((errorLike as any).message || "")
+      : ""
+
+  const base = raw.trim() || fallback
+  const normalized = base.toLowerCase()
+  const isTokenError =
+    /(token|session|oturum)/i.test(normalized) &&
+    /(expired|not found|invalid|suresi|dol|bulunamad|gecersiz)/i.test(normalized)
+
+  if (isTokenError) {
+    return "Oturum tarafinda gecici bir hata olustu. Sistem gonderimi otomatik olarak tekrar deneyecek."
+  }
+
+  if (base.includes(SUBMIT_RETRY_GUIDE)) return base
+  return `${base}. ${SUBMIT_RETRY_GUIDE}`
+}
+
+const wait = (ms: number) =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, ms)
+  })
+
 
 export default function ImprovedSpeakingTest() {
   const { testId } = useParams()
@@ -169,6 +198,7 @@ export default function ImprovedSpeakingTest() {
   // Guard to ensure section instruction audio plays only once per section
   const instructionPlayStartedRef = useRef<boolean>(false)
   const lastInstructionSectionRef = useRef<string | null>(null)
+  const submitAllRetryRef = useRef<number>(0)
 
   useEffect(() => {
     // Activate exam mode immediately when entering speaking test
@@ -945,6 +975,8 @@ export default function ImprovedSpeakingTest() {
     setIsPrepRunning(false)
 
     if (isRecording) {
+      // Preserve partial audio, then move to next section as soon as onstop persists it.
+      skipToNextSectionRef.current = true
       stopRecording()
       return
     }
@@ -1184,7 +1216,12 @@ export default function ImprovedSpeakingTest() {
   // }
 
   const submitTest = async () => {
-    if (!testData) return
+    if (!testData) {
+      setIsTestComplete(false)
+      setIsSubmitting(false)
+      toast.error("Test verisi bulunamadi")
+      return
+    }
     setIsSubmitting(true)
 
     try {
@@ -1196,6 +1233,24 @@ export default function ImprovedSpeakingTest() {
           trimmed !== "[Cevap bulunamadı]" &&
           trimmed !== "[Ses metne dönüştürülemedi]"
         )
+      }
+
+      const withTimeout = async <T,>(promise: Promise<T>, ms: number, label: string): Promise<T> => {
+        let timeoutId: number | null = null
+        try {
+          return await Promise.race([
+            promise,
+            new Promise<T>((_, reject) => {
+              timeoutId = window.setTimeout(() => {
+                reject(new Error(`${label} timeout (${ms}ms)`))
+              }, ms)
+            }),
+          ])
+        } finally {
+          if (timeoutId !== null) {
+            window.clearTimeout(timeoutId)
+          }
+        }
       }
 
       const ensureTranscriptsReady = async () => {
@@ -1210,7 +1265,11 @@ export default function ImprovedSpeakingTest() {
         for (const [qid, rec] of Array.from(_recordings.entries())) {
           if (transcriptByQid[qid]) continue
           try {
-            const stt = await speechToTextService.convertAudioToText(rec.blob)
+            const stt = await withTimeout(
+              speechToTextService.convertAudioToText(rec.blob),
+              15000,
+              `speech-to-text ${qid}`
+            )
             if (isMeaningfulText(stt.text)) {
               transcriptByQid[qid] = String(stt.text).trim()
               setAnswers((prev) => new Map(prev).set(qid, { text: transcriptByQid[qid], duration: rec.duration }))
@@ -1244,6 +1303,38 @@ export default function ImprovedSpeakingTest() {
       // Keep a simple questionId -> transcript map for direct submission
       // Persist transcripts (not placeholders) for reliable submit-all flow.
       const answerTextRecord = transcriptByQid
+      const fallbackAnswers: Array<{ questionId: string; questionText: string; userAnswer: string }> = []
+      for (const section of testData.sections || []) {
+        if (Array.isArray(section.subParts) && section.subParts.length > 0) {
+          for (const subPart of section.subParts) {
+            for (const question of subPart.questions || []) {
+              fallbackAnswers.push({
+                questionId: question.id,
+                questionText: question.questionText || "Soru metni mevcut değil",
+                userAnswer: answerTextRecord[question.id] || "",
+              })
+            }
+          }
+        } else {
+          for (const question of section.questions || []) {
+            fallbackAnswers.push({
+              questionId: question.id,
+              questionText: question.questionText || "Soru metni mevcut değil",
+              userAnswer: answerTextRecord[question.id] || "",
+            })
+          }
+        }
+      }
+      const fallbackSummary = {
+        testId: testData.id,
+        submittedAt: new Date().toISOString(),
+        score: 0,
+        aiFeedback:
+          Object.keys(transcriptByQid).length === 0
+            ? "Herhangi bir konuşma yanıtı tespit edilmedi. Boş gönderim 0 puan olarak değerlendirildi."
+            : "Sonuç kimliği üretilemedi. Yanıtlarınız kaydedildi; bu geçici geri bildirim ekranıdır.",
+        answers: fallbackAnswers,
+      }
 
       const answersData = {
         testId: testData.id,
@@ -1282,39 +1373,103 @@ export default function ImprovedSpeakingTest() {
 
       const overallId = overallTestFlowStore.getOverallId()
       if (overallId && overallTestFlowStore.isAllDone()) {
-        await submitAllTests(overallId)
+        const submitAllOk = await submitAllTests(overallId)
+        if (!submitAllOk) {
+          navigate(`/speaking-test/results/temp`, {
+            state: {
+              summary: {
+                ...fallbackSummary,
+                aiFeedback:
+                  "Bazi bolumler simdilik gonderilemedi. Cevaplariniz yerel olarak saklandi; daha sonra tekrar denenebilir.",
+              },
+            },
+          })
+        }
         return
       }
 
       if (!wasOverallFlowActive) {
         const formattedSubmission = speakingSubmissionService.formatSubmissionData(testData, answerTextRecord)
         if (!speakingSubmissionService.validateSubmissionData(formattedSubmission)) {
+          navigate(`/speaking-test/results/temp`, {
+            state: {
+              summary: {
+                ...fallbackSummary,
+                aiFeedback:
+                  "Gonderim verisi dogrulanamadi. Cevaplariniz kaydedildi; bu gecici sonuc ekranidir.",
+              },
+            },
+          })
           return
         }
 
-        const submissionResult = await speakingSubmissionService.submitSpeakingTest(formattedSubmission)
+        let submissionResult = await speakingSubmissionService.submitSpeakingTest(formattedSubmission)
         if (!submissionResult.success) {
+          // One silent retry to absorb transient auth/network races.
+          await wait(1000)
+          const retried = await speakingSubmissionService.submitSpeakingTest(formattedSubmission)
+          if (retried.success) {
+            submissionResult = retried
+          }
+        }
+
+        if (!submissionResult.success) {
+          const submitError = String(submissionResult.error || "").trim()
+          navigate(`/speaking-test/results/temp`, {
+            state: {
+              summary: {
+                ...fallbackSummary,
+                aiFeedback: submitError
+                  ? buildSubmitRetryMessage(
+                      `Gonderim sirasinda hata alindi: ${submitError}. Yanitlariniz yerel olarak kaydedildi`,
+                      "Gonderim sirasinda hata alindi"
+                    )
+                  : fallbackSummary.aiFeedback,
+              },
+            },
+          })
           return
         }
 
         if (submissionResult.submissionId) {
           navigate(`/speaking-test/results/${submissionResult.submissionId}`)
         } else {
-          navigate(`/speaking-test/results/temp`, { state: { summary: { testId: testData.id } } })
+          navigate(`/speaking-test/results/temp`, { state: { summary: fallbackSummary } })
         }
         return
       }
 
-      navigate(`/speaking-test/results/temp`, { state: { summary: { testId: testData.id } } })
+      navigate(`/speaking-test/results/temp`, { state: { summary: fallbackSummary } })
     } catch (e) {
       console.error("speaking navigation error", e)
-      toast.error("Test geçişinde hata oluştu")
+      const emergencyAnswers = Array.from(answers.entries()).map(([questionId, answer]) => ({
+        questionId,
+        questionText: "Soru metni mevcut degil",
+        userAnswer: typeof answer?.text === "string" ? answer.text : "",
+      }))
+      const emergencySummary = {
+        testId: testData.id,
+        submittedAt: new Date().toISOString(),
+        score: 0,
+        aiFeedback: buildSubmitRetryMessage(e, "Test gecisinde hata olustu"),
+        answers: emergencyAnswers,
+      }
+
+      try {
+        navigate(`/speaking-test/results/temp`, { state: { summary: emergencySummary } })
+        return
+      } catch (navError) {
+        console.error("speaking emergency navigation failed", navError)
+      }
+
+      setIsTestComplete(false)
+      toast.error(buildSubmitRetryMessage(e, "Test gecisinde hata olustu"))
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  const submitAllTests = async (overallId: string) => {
+  const submitAllTests = async (overallId: string): Promise<boolean> => {
     try {
       // toast.info("Submitting all tests...");
       
@@ -1322,6 +1477,54 @@ export default function ImprovedSpeakingTest() {
       const { readingSubmissionService } = await import("@/services/readingTest.service");
       const { listeningSubmissionService } = await import("@/services/listeningTest.service");
       const { writingSubmissionService } = await import("@/services/writingSubmission.service");
+      const failedSubmissions: string[] = [];
+      const successfulSubmissions: string[] = [];
+      const runWithRetries = async <T,>(
+        runner: () => Promise<T>,
+        isSuccess?: (value: T) => boolean,
+        attempts: number = 3
+      ): Promise<T> => {
+        let lastError: any = null;
+        let lastValue: T | null = null;
+
+        for (let attempt = 1; attempt <= attempts; attempt++) {
+          try {
+            const value = await runner();
+            lastValue = value;
+            if (!isSuccess || isSuccess(value)) {
+              return value;
+            }
+            lastError = new Error("Submission returned unsuccessful result");
+          } catch (error) {
+            lastError = error;
+          }
+
+          if (attempt < attempts) {
+            await wait(700 * attempt);
+          }
+        }
+
+        if (lastValue !== null) {
+          return lastValue;
+        }
+        throw lastError || new Error("Submission failed after retries");
+      };
+
+      const normalizeChoiceAnswers = (
+        rawAnswers: any
+      ): { questionId: string; userAnswer: string }[] => {
+        const mapped = Array.isArray(rawAnswers)
+          ? rawAnswers.map((item: any) => ({
+              questionId: String(item?.questionId ?? "").trim(),
+              userAnswer: String(item?.userAnswer ?? ""),
+            }))
+          : Object.entries(rawAnswers || {}).map(([questionId, userAnswer]) => ({
+              questionId: String(questionId).trim(),
+              userAnswer: String(userAnswer ?? ""),
+            }));
+
+        return mapped.filter((item) => item.questionId.length > 0);
+      };
       
       // Submit reading test - look for reading answers from any test
       const readingAnswersKeys = Object.keys(sessionStorage).filter(key => key.startsWith('reading_answers_'));
@@ -1330,16 +1533,31 @@ export default function ImprovedSpeakingTest() {
         if (readingAnswers) {
           const readingData = JSON.parse(readingAnswers);
           console.log("Submitting reading test:", readingData.testId, "with answers:", readingData.answers);
-          const payload = Object.entries(readingData.answers).map(([questionId, userAnswer]) => ({ 
-            questionId: questionId as string, 
-            userAnswer: String(userAnswer) 
-          }));
+          const payload = normalizeChoiceAnswers(readingData.answers);
           const overallToken = overallTestTokenStore.getByTestId(readingData.testId);
           if (!overallToken) {
-            console.warn("Skipping reading submit-all; overall token not found for testId:", readingData.testId);
-            continue;
+            console.warn(
+              "Reading submit-all without overall token; falling back to standard auth:",
+              readingData.testId
+            );
           }
-          await readingSubmissionService.submitAnswers(readingData.testId, payload, overallToken);
+          try {
+            await runWithRetries(
+              () =>
+                readingSubmissionService.submitAnswers(
+                  readingData.testId,
+                  payload,
+                  overallToken || undefined
+                ),
+              undefined,
+              3
+            );
+            successfulSubmissions.push(`Okuma (${readingData.testId})`);
+            try { sessionStorage.removeItem(key); } catch {}
+          } catch (submitError) {
+            console.error("Reading submit-all failed:", submitError);
+            failedSubmissions.push(`Okuma (${readingData.testId})`);
+          }
         }
       }
       
@@ -1350,18 +1568,33 @@ export default function ImprovedSpeakingTest() {
         if (listeningAnswers) {
           const listeningData = JSON.parse(listeningAnswers);
           console.log("Submitting listening test:", listeningData.testId, "with answers:", listeningData.answers, "audioUrl:", listeningData.audioUrl, "imageUrls:", listeningData.imageUrls);
+          const payload = normalizeChoiceAnswers(listeningData.answers);
           const overallToken = overallTestTokenStore.getByTestId(listeningData.testId);
           if (!overallToken) {
-            console.warn("Skipping listening submit-all; overall token not found for testId:", listeningData.testId);
-            continue;
+            console.warn(
+              "Listening submit-all without overall token; falling back to standard auth:",
+              listeningData.testId
+            );
           }
-          await listeningSubmissionService.submitAnswers(
-            listeningData.testId, 
-            listeningData.answers,
-            overallToken,
-            listeningData.audioUrl,
-            listeningData.imageUrls
-          );
+          try {
+            await runWithRetries(
+              () =>
+                listeningSubmissionService.submitAnswers(
+                  listeningData.testId,
+                  payload,
+                  overallToken || undefined,
+                  listeningData.audioUrl,
+                  listeningData.imageUrls
+                ),
+              undefined,
+              3
+            );
+            successfulSubmissions.push(`Dinleme (${listeningData.testId})`);
+            try { sessionStorage.removeItem(key); } catch {}
+          } catch (submitError) {
+            console.error("Listening submit-all failed:", submitError);
+            failedSubmissions.push(`Dinleme (${listeningData.testId})`);
+          }
         }
       }
       
@@ -1374,17 +1607,28 @@ export default function ImprovedSpeakingTest() {
           console.log("Submitting writing test:", writingData.testId, "with answers:", writingData.answers);
           const overallToken = overallTestTokenStore.getByTestId(writingData.testId);
           if (!overallToken) {
-            console.warn("Skipping writing submit-all; overall token not found for testId:", writingData.testId);
-            continue;
+            console.warn(
+              "Writing submit-all without overall token; falling back to standard auth:",
+              writingData.testId
+            );
           }
 
-          const getWritingAnswer = (questionId: string, sectionIndex: number, fallbackId?: string) => {
+          const getWritingAnswer = (
+            questionId: string,
+            sectionIndex: number,
+            fallbackId?: string,
+            itemIndex?: number
+          ) => {
             const direct = writingData.answers?.[questionId];
             if (typeof direct === "string") return direct;
+            const fallback = typeof fallbackId === "string" ? fallbackId : "";
+            const idx = typeof itemIndex === "number" ? String(itemIndex) : "";
             const keys = [
               `${sectionIndex}-${questionId}`,
-              `${sectionIndex}-${fallbackId ?? ""}`,
-              fallbackId ?? "",
+              `${sectionIndex}-${fallback}`,
+              fallback,
+              idx && fallback ? `${sectionIndex}-${idx}-${fallback}` : "",
+              idx ? `${sectionIndex}-${idx}-${questionId}` : "",
             ].filter(Boolean);
             for (const k of keys) {
               const v = writingData.answers?.[k];
@@ -1395,24 +1639,35 @@ export default function ImprovedSpeakingTest() {
 
           const payload = {
             writingTestId: writingData.testId,
-            sessionToken: overallToken,
             sections: (writingData.sections || []).map((section: any, sectionIndex: number) => {
+              const sectionDescription =
+                (typeof section?.title === "string" && section.title.trim()) ||
+                (typeof section?.description === "string" && section.description.trim()) ||
+                `Section ${section?.order || sectionIndex + 1}`;
               const sectionData: any = {
-                description: section.title || section.description || `Section ${section.order || 1}`,
+                description: sectionDescription,
               };
 
               if (Array.isArray(section.subParts) && section.subParts.length > 0) {
-                sectionData.subParts = section.subParts.map((subPart: any) => {
+                sectionData.subParts = section.subParts.map((subPart: any, subPartIndex: number) => {
                   const questions = Array.isArray(subPart.questions) ? subPart.questions : [];
+                  const subPartDescription =
+                    (typeof subPart?.label === "string" && subPart.label.trim()) ||
+                    (typeof subPart?.description === "string" && subPart.description.trim()) ||
+                    `Sub Part ${subPart?.order || subPartIndex + 1}`;
                   const answersArr = questions
                     .map((q: any) => {
-                      const qid = q?.id || q?.questionId;
+                      const rawQuestionId = q?.id || q?.questionId;
+                      const qid =
+                        typeof rawQuestionId === "string"
+                          ? rawQuestionId
+                          : String(rawQuestionId || "").trim();
                       if (!qid) return null;
-                      return { questionId: qid, userAnswer: getWritingAnswer(qid, sectionIndex, subPart?.id) };
+                      return { questionId: qid, userAnswer: getWritingAnswer(qid, sectionIndex, subPart?.id, subPartIndex) };
                     })
                     .filter(Boolean);
                   return {
-                    description: subPart.label || subPart.description || "",
+                    description: subPartDescription,
                     answers: answersArr,
                   };
                 });
@@ -1420,10 +1675,14 @@ export default function ImprovedSpeakingTest() {
 
               if (Array.isArray(section.questions) && section.questions.length > 0) {
                 sectionData.answers = section.questions
-                  .map((q: any) => {
-                    const qid = q?.id || q?.questionId;
+                  .map((q: any, questionIndex: number) => {
+                    const rawQuestionId = q?.id || q?.questionId;
+                    const qid =
+                      typeof rawQuestionId === "string"
+                        ? rawQuestionId
+                        : String(rawQuestionId || "").trim();
                     if (!qid) return null;
-                    return { questionId: qid, userAnswer: getWritingAnswer(qid, sectionIndex, section?.id) };
+                    return { questionId: qid, userAnswer: getWritingAnswer(qid, sectionIndex, section?.id, questionIndex) };
                   })
                   .filter(Boolean);
               }
@@ -1431,8 +1690,22 @@ export default function ImprovedSpeakingTest() {
               return sectionData;
             }),
           };
+          if (overallToken) {
+            (payload as any).sessionToken = overallToken;
+          }
 
-          await writingSubmissionService.create(payload as any);
+          try {
+            await runWithRetries(
+              () => writingSubmissionService.create(payload as any),
+              (value) => !!value,
+              3
+            );
+            successfulSubmissions.push(`Yazma (${writingData.testId})`);
+            try { sessionStorage.removeItem(key); } catch {}
+          } catch (submitError) {
+            console.error("Writing submit-all failed:", submitError);
+            failedSubmissions.push(`Yazma (${writingData.testId})`);
+          }
         }
       }
       
@@ -1496,20 +1769,70 @@ export default function ImprovedSpeakingTest() {
           answerTextRecord
         );
         const overallToken = overallTestTokenStore.getByTestId(speakingData.testId);
-        if (overallToken) {
+        if (!overallToken) {
+          console.warn(
+            "Speaking submit-all without overall token; falling back to standard auth:",
+            speakingData.testId
+          );
+        } else {
           formattedSubmission.sessionToken = overallToken;
         }
 
         if (!speakingSubmissionService.validateSubmissionData(formattedSubmission)) {
-          throw new Error("Konuşma testi için geçerli cevap bulunamadı.");
+          console.warn("Skipping speaking submit-all; formatted submission is invalid.");
+          failedSubmissions.push(`Konusma (${speakingData.testId})`);
+          continue;
         }
 
-        const submissionResult = await speakingSubmissionService.submitSpeakingTest(formattedSubmission);
+        const submissionResult = await runWithRetries(
+          () => speakingSubmissionService.submitSpeakingTest(formattedSubmission),
+          (value) => !!value?.success,
+          3
+        );
         if (!submissionResult.success) {
-          throw new Error(submissionResult.error || "Konuşma testi gönderilemedi.");
+          const normalizedError = String(submissionResult.error || "").toLowerCase();
+          const isTokenError =
+            /(token|session|oturum)/i.test(normalizedError) &&
+            /(expired|not found|invalid|süresi|dol|bulunamad|geçersiz)/i.test(normalizedError);
+          if (isTokenError) {
+            console.warn(
+              "Skipping speaking submit-all due token issue:",
+              submissionResult.error
+            );
+            failedSubmissions.push(`Konusma (${speakingData.testId})`);
+            continue;
+          }
+          console.error("Speaking submit-all failed:", submissionResult.error);
+          failedSubmissions.push(`Konusma (${speakingData.testId})`);
+          continue;
         }
+        successfulSubmissions.push(`Konusma (${speakingData.testId})`);
+        try { sessionStorage.removeItem(key); } catch {}
       }
       
+      if (failedSubmissions.length > 0) {
+        if (submitAllRetryRef.current < 1) {
+          submitAllRetryRef.current += 1;
+          toast.message(
+            `Gonderim tekrar deneniyor (${failedSubmissions.join(", ")}). Cevaplariniz saklandi.`
+          );
+          await wait(1400);
+          return await submitAllTests(overallId);
+        }
+
+        toast.error(
+          `Bazi bolumler gecici olarak kaydedilemedi: ${failedSubmissions.join(", ")}. ` +
+            "Cevaplariniz saklandi."
+        );
+        if (successfulSubmissions.length > 0) {
+          toast.message(`Kaydedilen bolumler: ${successfulSubmissions.join(", ")}`);
+        }
+        submitAllRetryRef.current = 0;
+        return false;
+      }
+
+      submitAllRetryRef.current = 0;
+
       // Now complete the overall test
       if (!overallTestFlowStore.isCompleted()) {
         const { overallTestService } = await import("@/services/overallTest.service");
@@ -1524,10 +1847,12 @@ export default function ImprovedSpeakingTest() {
         } catch {}
       }
       navigate(`/overall-results/${overallId}`);
+      return true;
     } catch (error) {
       console.error("Error submitting all tests:", error);
-      toast.error("Testler gönderilirken hata oluştu. Lütfen tekrar deneyin.");
-      return;
+      submitAllRetryRef.current = 0;
+      toast.error(buildSubmitRetryMessage(error, "Testler gonderilirken hata olustu"));
+      return false;
     }
   }
 
@@ -2126,7 +2451,7 @@ export default function ImprovedSpeakingTest() {
               </>
             )}
             <motion.div
-              className={`w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-32 lg:h-32 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 ${
+              className={`speaking-mic-core w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-32 lg:h-32 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 ${
                 isRecording
                   ? "bg-red-600"
                   : isProcessingSpeechToText

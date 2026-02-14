@@ -258,7 +258,7 @@ export const MicrophoneCheck = ({ onSuccess }: Props) => {
                           // Prevent double-tap zoom on mobile
                           e.preventDefault();
                         }}
-                        className={`w-14 h-14 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all duration-300 touch-manipulation shadow-lg hover:shadow-xl ${
+                        className={`speaking-mic-check-core w-14 h-14 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all duration-300 touch-manipulation shadow-lg hover:shadow-xl ${
                           recording
                             ? "bg-gray-600 hover:bg-gray-700 active:bg-gray-800 ring-2 ring-gray-400"
                             : "bg-rose-600 hover:bg-rose-700 active:bg-rose-800 ring-2 ring-rose-300"

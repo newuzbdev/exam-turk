@@ -109,6 +109,41 @@ function extractData<T = any>(res: any): T {
   );
 }
 
+const readClientAccessToken = (): string | null => {
+  const keys = ["accessToken", "token", "authToken"];
+  for (const key of keys) {
+    const fromSession = SecureStorage.getSessionItem?.(key);
+    if (fromSession) return fromSession;
+    const fromSecure = SecureStorage.getItem?.(key);
+    if (fromSecure) return fromSecure;
+    try {
+      const fromLocal = localStorage.getItem(key);
+      if (fromLocal) return fromLocal;
+    } catch {}
+  }
+  return null;
+};
+
+const normalizeExamAnswers = (
+  rawAnswers: { questionId: string; userAnswer: string }[] | Record<string, unknown>
+): { questionId: string; userAnswer: string }[] => {
+  const uuidLike =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const mapped = Array.isArray(rawAnswers)
+    ? rawAnswers.map((item: any) => ({
+        questionId: String(item?.questionId ?? "").trim(),
+        userAnswer: String(item?.userAnswer ?? ""),
+      }))
+    : Object.entries(rawAnswers || {}).map(([questionId, userAnswer]) => ({
+        questionId: String(questionId).trim(),
+        userAnswer: String(userAnswer ?? ""),
+      }));
+
+  return mapped.filter(
+    (item) => item.questionId.length > 0 && uuidLike.test(item.questionId)
+  );
+};
+
 export const listeningTestService = {
   getAllListeningTests: async (
     page = 1,
@@ -148,38 +183,41 @@ export const listeningTestService = {
 export const listeningSubmissionService = {
   submitAnswers: async (
     testId: string,
-    answers: { questionId: string; userAnswer: string }[],
+    answers: { questionId: string; userAnswer: string }[] | Record<string, unknown>,
     token?: string | null,
     audioUrl?: string | null,
     imageUrls?: string[]
   ) => {
     try {
       const { overallTestTokenStore } = await import("./overallTest.service");
-      const sessionToken =
+      const authToken = readClientAccessToken();
+      const overallSessionToken =
         overallTestTokenStore.getByTestId(testId) ||
-        SecureStorage.getSessionItem?.("accessToken") ||
-        localStorage.getItem("accessToken") ||
-        token;
+        token ||
+        null;
+      const normalizedAnswers = normalizeExamAnswers(answers);
       
       console.log("🔍 Dinleme testi gönderim hata ayıklama:", {
         testId,
         hasOverallToken: !!overallTestTokenStore.getByTestId(testId),
-        hasSessionToken: !!sessionToken,
+        hasSessionToken: !!overallSessionToken,
         tokenSource: overallTestTokenStore.getByTestId(testId) ? 'genel' : 'oturum',
         hasAudioUrl: !!audioUrl,
         imageUrlsCount: imageUrls?.length || 0
       });
 
-      if (!sessionToken) {
+      if (!authToken) {
         toast.error("Javoblarni yuborish uchun tizimga kirishingiz kerak.");
         throw new Error("Sınav sonuçlarını göndermek için kimlik doğrulama gerekli.");
       }
 
       const payload: any = { 
         testId, 
-        sessionToken, 
-        answers 
+        answers: normalizedAnswers
       };
+      if (overallSessionToken) {
+        payload.sessionToken = overallSessionToken;
+      }
       
       // Add audio and images if provided
       if (audioUrl) {
@@ -189,17 +227,11 @@ export const listeningSubmissionService = {
         payload.imageUrls = imageUrls;
       }
       
-      const opts = { headers: { Authorization: `Bearer ${sessionToken}` } };
-
-      const res = await axiosPrivate.post(
-        "/api/exam/submit-all",
-        payload,
-        opts
-      );
+      const res = await axiosPrivate.post("/api/exam/submit-all", payload);
       const data = extractData<any>(res);
 
       // toast.success("Javoblar muvaffaqiyatli jo'natildi");
-      try { overallTestTokenStore.clearByTestId(testId); } catch {}
+      try { if (overallSessionToken) overallTestTokenStore.clearByTestId(testId); } catch {}
       return data ?? res.data ?? res;
     } catch (error: any) {
       const status = error?.response?.status;

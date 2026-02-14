@@ -115,6 +115,21 @@ export default function ListeningResultsPage() {
   const hasSummaryData = summary && summary.score !== undefined;
 
   const score = summary?.score ?? data?.score ?? 0;
+  const normalizeLevel = (raw?: string | null) => {
+    if (!raw) return undefined;
+    const value = String(raw).trim().toUpperCase();
+    if (value === "A0" || value === "B1_ALTI" || value === "B1 ALTI") return "B1 altı";
+    return value;
+  };
+  const levelFromScore = (value: number) => {
+    if (value >= 65) return "C1";
+    if (value >= 51) return "B2";
+    if (value >= 38) return "B1";
+    return "B1 altı";
+  };
+  const resolvedLevel =
+    normalizeLevel((summary as any)?.level ?? (data as any)?.level) ||
+    levelFromScore(Number(score) || 0);
   const computedDoğruFromFull = useMemo(() => {
     if (fullExamData) return fullExamData.filter(r => r.result === "Doğru").length;
     if (hasDetailedData) return (data!.userAnswers || []).filter((u: any) => u.isCorrect).length;
@@ -196,6 +211,21 @@ export default function ListeningResultsPage() {
               </Button>
             </div>
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Card className="border border-gray-200 rounded-lg">
+            <CardContent className="p-4">
+              <p className="text-xs text-gray-500">Puan</p>
+              <p className="text-2xl font-bold text-gray-900">{score}</p>
+            </CardContent>
+          </Card>
+          <Card className="border border-gray-200 rounded-lg">
+            <CardContent className="p-4">
+              <p className="text-xs text-gray-500">Seviye</p>
+              <p className="text-2xl font-bold text-red-600">{resolvedLevel}</p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Report Meta */}
@@ -337,6 +367,21 @@ export default function ListeningResultsPage() {
           <span>Name: {userName}</span>
         </div>
         <span>Date: {currentDate}</span>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Card className="border border-gray-200 rounded-lg">
+          <CardContent className="p-4">
+            <p className="text-xs text-gray-500">Puan</p>
+            <p className="text-2xl font-bold text-gray-900">{score}</p>
+          </CardContent>
+        </Card>
+        <Card className="border border-gray-200 rounded-lg">
+          <CardContent className="p-4">
+            <p className="text-xs text-gray-500">Seviye</p>
+            <p className="text-2xl font-bold text-red-600">{resolvedLevel}</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Listening Score */}

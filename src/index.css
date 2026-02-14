@@ -37,6 +37,429 @@ body {
   letter-spacing: -0.011em;
 }
 
+html[data-theme="retro"] {
+  --theme-font-sans: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --theme-font-heading: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --theme-letter-spacing: -0.004em;
+  --theme-page-bg: #e6e2d9;
+  --theme-surface: #ebe6db;
+  --theme-surface-muted: #e1dbcf;
+  --theme-surface-strong: #d4cdbc;
+  --theme-border: #3a352d;
+  --theme-border-soft: #555048;
+  --theme-text: #161513;
+  --theme-text-muted: #4f4a43;
+  --theme-accent: #2f2b25;
+  --theme-accent-hover: #24211c;
+  --theme-shadow: rgba(37, 32, 24, 0.22);
+}
+
+html[data-theme="retro"] body {
+  background-color: var(--theme-page-bg);
+  color: var(--theme-text);
+  font-family: var(--theme-font-sans);
+  letter-spacing: var(--theme-letter-spacing);
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(25, 25, 25, 0.07) 0.6px, transparent 0),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(0, 0, 0, 0.02));
+  background-size: 12px 12px, 100% 100%;
+}
+
+html[data-theme="retro"] h1,
+html[data-theme="retro"] h2,
+html[data-theme="retro"] h3,
+html[data-theme="retro"] h4 {
+  font-family: var(--theme-font-heading);
+  letter-spacing: -0.01em;
+}
+
+html[data-theme="retro"] .site-header,
+html[data-theme="retro"] .bg-white,
+html[data-theme="retro"] .bg-white\/98,
+html[data-theme="retro"] .bg-background,
+html[data-theme="retro"] .bg-card {
+  background-color: var(--theme-surface) !important;
+}
+
+html[data-theme="retro"] .bg-gray-50,
+html[data-theme="retro"] .bg-gray-50\/80,
+html[data-theme="retro"] .bg-gray-100,
+html[data-theme="retro"] .bg-gray-200 {
+  background-color: var(--theme-surface-muted) !important;
+}
+
+html[data-theme="retro"] .bg-gray-300,
+html[data-theme="retro"] .bg-gray-400,
+html[data-theme="retro"] .bg-red-50,
+html[data-theme="retro"] .data-\[state\=active\]\:bg-white[data-state="active"] {
+  background-color: var(--theme-surface-strong) !important;
+}
+
+html[data-theme="retro"] .text-black,
+html[data-theme="retro"] .text-foreground,
+html[data-theme="retro"] .text-card-foreground,
+html[data-theme="retro"] .text-gray-900,
+html[data-theme="retro"] .text-gray-800 {
+  color: var(--theme-text) !important;
+}
+
+html[data-theme="retro"] .text-gray-700,
+html[data-theme="retro"] .text-gray-600,
+html[data-theme="retro"] .text-gray-500,
+html[data-theme="retro"] .text-gray-400,
+html[data-theme="retro"] .text-muted-foreground {
+  color: var(--theme-text-muted) !important;
+}
+
+html[data-theme="retro"] .bg-white.text-white,
+html[data-theme="retro"] .bg-gray-50.text-white,
+html[data-theme="retro"] .bg-gray-100.text-white,
+html[data-theme="retro"] .bg-gray-200.text-white,
+html[data-theme="retro"] .bg-gray-300.text-white,
+html[data-theme="retro"] .bg-gray-400.text-white,
+html[data-theme="retro"] [class*="bg-white/"].text-white,
+html[data-theme="retro"] .bg-white .text-white,
+html[data-theme="retro"] .bg-gray-50 .text-white,
+html[data-theme="retro"] .bg-gray-100 .text-white,
+html[data-theme="retro"] .bg-gray-200 .text-white,
+html[data-theme="retro"] .bg-gray-300 .text-white,
+html[data-theme="retro"] .bg-gray-400 .text-white,
+html[data-theme="retro"] [class*="bg-white/"] .text-white {
+  color: var(--theme-text) !important;
+}
+
+html[data-theme="retro"] .text-red-600,
+html[data-theme="retro"] .text-red-700,
+html[data-theme="retro"] .hover\:text-red-600:hover,
+html[data-theme="retro"] .hover\:text-red-700:hover,
+html[data-theme="retro"] .data-\[state\=active\]\:text-gray-900[data-state="active"],
+html[data-theme="retro"] .data-\[state\=active\]\:text-gray-800[data-state="active"] {
+  color: var(--theme-text) !important;
+}
+
+html[data-theme="retro"] [class*="text-red-"],
+html[data-theme="retro"] [class*="text-rose-"],
+html[data-theme="retro"] [class*="text-orange-"],
+html[data-theme="retro"] [class*="text-amber-"],
+html[data-theme="retro"] [class*="text-yellow-"],
+html[data-theme="retro"] [class*="text-lime-"],
+html[data-theme="retro"] [class*="text-green-"],
+html[data-theme="retro"] [class*="text-emerald-"],
+html[data-theme="retro"] [class*="text-teal-"],
+html[data-theme="retro"] [class*="text-cyan-"],
+html[data-theme="retro"] [class*="text-sky-"],
+html[data-theme="retro"] [class*="text-blue-"],
+html[data-theme="retro"] [class*="text-indigo-"],
+html[data-theme="retro"] [class*="text-violet-"],
+html[data-theme="retro"] [class*="text-purple-"],
+html[data-theme="retro"] [class*="text-fuchsia-"],
+html[data-theme="retro"] [class*="text-pink-"] {
+  color: var(--theme-text) !important;
+}
+
+html[data-theme="retro"] .border-gray-100,
+html[data-theme="retro"] .border-gray-100\/60,
+html[data-theme="retro"] .border-gray-200,
+html[data-theme="retro"] .border-gray-300,
+html[data-theme="retro"] .border-gray-400,
+html[data-theme="retro"] .border-black,
+html[data-theme="retro"] .border-input,
+html[data-theme="retro"] .border-red-600,
+html[data-theme="retro"] .focus\:border-black:focus {
+  border-color: var(--theme-border) !important;
+}
+
+html[data-theme="retro"] .ring-gray-100,
+html[data-theme="retro"] .ring-gray-200,
+html[data-theme="retro"] .ring-gray-300,
+html[data-theme="retro"] .ring-red-500,
+html[data-theme="retro"] .focus\:ring-red-500:focus {
+  --tw-ring-color: var(--theme-border) !important;
+}
+
+html[data-theme="retro"] [class*="border-red-"],
+html[data-theme="retro"] [class*="border-rose-"],
+html[data-theme="retro"] [class*="border-orange-"],
+html[data-theme="retro"] [class*="border-amber-"],
+html[data-theme="retro"] [class*="border-yellow-"],
+html[data-theme="retro"] [class*="border-lime-"],
+html[data-theme="retro"] [class*="border-green-"],
+html[data-theme="retro"] [class*="border-emerald-"],
+html[data-theme="retro"] [class*="border-teal-"],
+html[data-theme="retro"] [class*="border-cyan-"],
+html[data-theme="retro"] [class*="border-sky-"],
+html[data-theme="retro"] [class*="border-blue-"],
+html[data-theme="retro"] [class*="border-indigo-"],
+html[data-theme="retro"] [class*="border-violet-"],
+html[data-theme="retro"] [class*="border-purple-"],
+html[data-theme="retro"] [class*="border-fuchsia-"],
+html[data-theme="retro"] [class*="border-pink-"] {
+  border-color: var(--theme-border) !important;
+}
+
+html[data-theme="retro"] [class*="ring-red-"],
+html[data-theme="retro"] [class*="ring-rose-"],
+html[data-theme="retro"] [class*="ring-orange-"],
+html[data-theme="retro"] [class*="ring-amber-"],
+html[data-theme="retro"] [class*="ring-yellow-"],
+html[data-theme="retro"] [class*="ring-lime-"],
+html[data-theme="retro"] [class*="ring-green-"],
+html[data-theme="retro"] [class*="ring-emerald-"],
+html[data-theme="retro"] [class*="ring-teal-"],
+html[data-theme="retro"] [class*="ring-cyan-"],
+html[data-theme="retro"] [class*="ring-sky-"],
+html[data-theme="retro"] [class*="ring-blue-"],
+html[data-theme="retro"] [class*="ring-indigo-"],
+html[data-theme="retro"] [class*="ring-violet-"],
+html[data-theme="retro"] [class*="ring-purple-"],
+html[data-theme="retro"] [class*="ring-fuchsia-"],
+html[data-theme="retro"] [class*="ring-pink-"] {
+  --tw-ring-color: var(--theme-border) !important;
+}
+
+html[data-theme="retro"] [class*="bg-white/"] {
+  background-color: var(--theme-surface) !important;
+}
+
+html[data-theme="retro"] [class*="bg-red-"],
+html[data-theme="retro"] [class*="bg-rose-"],
+html[data-theme="retro"] [class*="bg-orange-"],
+html[data-theme="retro"] [class*="bg-amber-"],
+html[data-theme="retro"] [class*="bg-yellow-"],
+html[data-theme="retro"] [class*="bg-lime-"],
+html[data-theme="retro"] [class*="bg-green-"],
+html[data-theme="retro"] [class*="bg-emerald-"],
+html[data-theme="retro"] [class*="bg-teal-"],
+html[data-theme="retro"] [class*="bg-cyan-"],
+html[data-theme="retro"] [class*="bg-sky-"],
+html[data-theme="retro"] [class*="bg-blue-"],
+html[data-theme="retro"] [class*="bg-indigo-"],
+html[data-theme="retro"] [class*="bg-violet-"],
+html[data-theme="retro"] [class*="bg-purple-"],
+html[data-theme="retro"] [class*="bg-fuchsia-"],
+html[data-theme="retro"] [class*="bg-pink-"] {
+  background-color: var(--theme-surface-strong) !important;
+  color: var(--theme-text) !important;
+  border-color: var(--theme-border) !important;
+}
+
+html[data-theme="retro"] [class*="from-red-"],
+html[data-theme="retro"] [class*="from-rose-"],
+html[data-theme="retro"] [class*="from-orange-"],
+html[data-theme="retro"] [class*="from-amber-"],
+html[data-theme="retro"] [class*="from-yellow-"],
+html[data-theme="retro"] [class*="from-lime-"],
+html[data-theme="retro"] [class*="from-green-"],
+html[data-theme="retro"] [class*="from-emerald-"],
+html[data-theme="retro"] [class*="from-teal-"],
+html[data-theme="retro"] [class*="from-cyan-"],
+html[data-theme="retro"] [class*="from-sky-"],
+html[data-theme="retro"] [class*="from-blue-"],
+html[data-theme="retro"] [class*="from-indigo-"],
+html[data-theme="retro"] [class*="from-violet-"],
+html[data-theme="retro"] [class*="from-purple-"],
+html[data-theme="retro"] [class*="from-fuchsia-"],
+html[data-theme="retro"] [class*="from-pink-"] {
+  --tw-gradient-from: var(--theme-surface-strong) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: var(--theme-surface) var(--tw-gradient-to-position) !important;
+}
+
+html[data-theme="retro"] [class*="via-red-"],
+html[data-theme="retro"] [class*="via-rose-"],
+html[data-theme="retro"] [class*="via-orange-"],
+html[data-theme="retro"] [class*="via-amber-"],
+html[data-theme="retro"] [class*="via-yellow-"],
+html[data-theme="retro"] [class*="via-lime-"],
+html[data-theme="retro"] [class*="via-green-"],
+html[data-theme="retro"] [class*="via-emerald-"],
+html[data-theme="retro"] [class*="via-teal-"],
+html[data-theme="retro"] [class*="via-cyan-"],
+html[data-theme="retro"] [class*="via-sky-"],
+html[data-theme="retro"] [class*="via-blue-"],
+html[data-theme="retro"] [class*="via-indigo-"],
+html[data-theme="retro"] [class*="via-violet-"],
+html[data-theme="retro"] [class*="via-purple-"],
+html[data-theme="retro"] [class*="via-fuchsia-"],
+html[data-theme="retro"] [class*="via-pink-"] {
+  --tw-gradient-via-position: var(--tw-gradient-via-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--theme-surface-muted) var(--tw-gradient-via-position), var(--tw-gradient-to) !important;
+}
+
+html[data-theme="retro"] [class*="to-red-"],
+html[data-theme="retro"] [class*="to-rose-"],
+html[data-theme="retro"] [class*="to-orange-"],
+html[data-theme="retro"] [class*="to-amber-"],
+html[data-theme="retro"] [class*="to-yellow-"],
+html[data-theme="retro"] [class*="to-lime-"],
+html[data-theme="retro"] [class*="to-green-"],
+html[data-theme="retro"] [class*="to-emerald-"],
+html[data-theme="retro"] [class*="to-teal-"],
+html[data-theme="retro"] [class*="to-cyan-"],
+html[data-theme="retro"] [class*="to-sky-"],
+html[data-theme="retro"] [class*="to-blue-"],
+html[data-theme="retro"] [class*="to-indigo-"],
+html[data-theme="retro"] [class*="to-violet-"],
+html[data-theme="retro"] [class*="to-purple-"],
+html[data-theme="retro"] [class*="to-fuchsia-"],
+html[data-theme="retro"] [class*="to-pink-"] {
+  --tw-gradient-to: var(--theme-surface-muted) var(--tw-gradient-to-position) !important;
+}
+
+html[data-theme="retro"] [class*="fill-red-"],
+html[data-theme="retro"] [class*="fill-rose-"],
+html[data-theme="retro"] [class*="fill-orange-"],
+html[data-theme="retro"] [class*="fill-amber-"],
+html[data-theme="retro"] [class*="fill-yellow-"],
+html[data-theme="retro"] [class*="fill-lime-"],
+html[data-theme="retro"] [class*="fill-green-"],
+html[data-theme="retro"] [class*="fill-emerald-"],
+html[data-theme="retro"] [class*="fill-teal-"],
+html[data-theme="retro"] [class*="fill-cyan-"],
+html[data-theme="retro"] [class*="fill-sky-"],
+html[data-theme="retro"] [class*="fill-blue-"],
+html[data-theme="retro"] [class*="fill-indigo-"],
+html[data-theme="retro"] [class*="fill-violet-"],
+html[data-theme="retro"] [class*="fill-purple-"],
+html[data-theme="retro"] [class*="fill-fuchsia-"],
+html[data-theme="retro"] [class*="fill-pink-"] {
+  fill: var(--theme-text) !important;
+}
+
+html[data-theme="retro"] [class*="stroke-red-"],
+html[data-theme="retro"] [class*="stroke-rose-"],
+html[data-theme="retro"] [class*="stroke-orange-"],
+html[data-theme="retro"] [class*="stroke-amber-"],
+html[data-theme="retro"] [class*="stroke-yellow-"],
+html[data-theme="retro"] [class*="stroke-lime-"],
+html[data-theme="retro"] [class*="stroke-green-"],
+html[data-theme="retro"] [class*="stroke-emerald-"],
+html[data-theme="retro"] [class*="stroke-teal-"],
+html[data-theme="retro"] [class*="stroke-cyan-"],
+html[data-theme="retro"] [class*="stroke-sky-"],
+html[data-theme="retro"] [class*="stroke-blue-"],
+html[data-theme="retro"] [class*="stroke-indigo-"],
+html[data-theme="retro"] [class*="stroke-violet-"],
+html[data-theme="retro"] [class*="stroke-purple-"],
+html[data-theme="retro"] [class*="stroke-fuchsia-"],
+html[data-theme="retro"] [class*="stroke-pink-"] {
+  stroke: var(--theme-text) !important;
+}
+
+html[data-theme="retro"] [class*="text-[#"] {
+  color: var(--theme-text) !important;
+}
+
+html[data-theme="retro"] [class*="bg-[#"] {
+  background-color: var(--theme-surface-strong) !important;
+  border-color: var(--theme-border) !important;
+}
+
+html[data-theme="retro"] [class*="border-[#"] {
+  border-color: var(--theme-border) !important;
+}
+
+html[data-theme="retro"] .bg-red-600,
+html[data-theme="retro"] .bg-red-700,
+html[data-theme="retro"] .bg-red-500,
+html[data-theme="retro"] .hover\:bg-red-700:hover,
+html[data-theme="retro"] .theme-important {
+  background-color: var(--theme-accent) !important;
+  border-color: var(--theme-accent) !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="retro"] .bg-black,
+html[data-theme="retro"] .bg-gray-900,
+html[data-theme="retro"] .bg-gray-800 {
+  background-color: var(--theme-accent) !important;
+  border-color: var(--theme-accent) !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="retro"] .hover\:bg-black:hover,
+html[data-theme="retro"] .hover\:bg-gray-900:hover,
+html[data-theme="retro"] .hover\:bg-gray-800:hover {
+  background-color: var(--theme-accent-hover) !important;
+}
+
+html[data-theme="retro"] .speaking-mic-core,
+html[data-theme="retro"] .speaking-mic-check-core {
+  background-color: var(--theme-accent) !important;
+  border: 2px solid var(--theme-border-soft) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.2) inset,
+    0 10px 20px -10px rgba(0, 0, 0, 0.35) !important;
+}
+
+html[data-theme="retro"] .speaking-mic-core:hover,
+html[data-theme="retro"] .speaking-mic-check-core:hover {
+  background-color: var(--theme-accent-hover) !important;
+}
+
+html[data-theme="retro"] .speaking-mic-core svg,
+html[data-theme="retro"] .speaking-mic-check-core svg {
+  color: #f5f2ea !important;
+}
+
+html[data-theme="retro"] .speaking-mic-check-core > div {
+  background-color: #f5f2ea !important;
+}
+
+html[data-theme="retro"] input,
+html[data-theme="retro"] textarea,
+html[data-theme="retro"] select {
+  background-color: var(--theme-surface) !important;
+  color: var(--theme-text) !important;
+  border-color: var(--theme-border) !important;
+}
+
+html[data-theme="retro"] select option {
+  background-color: var(--theme-surface);
+  color: var(--theme-text);
+}
+
+html[data-theme="retro"] audio {
+  background-color: var(--theme-surface-muted);
+  border: 1px solid var(--theme-border);
+  border-radius: 10px;
+  filter: grayscale(1);
+}
+
+html[data-theme="retro"] [data-state="checked"],
+html[data-theme="retro"] [aria-checked="true"],
+html[data-theme="retro"] [aria-selected="true"] {
+  background-color: #111111 !important;
+  border-color: #111111 !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="retro"] .from-gray-50,
+html[data-theme="retro"] .from-gray-100 {
+  --tw-gradient-from: var(--theme-surface-muted) var(--tw-gradient-from-position) !important;
+}
+
+html[data-theme="retro"] .to-gray-100,
+html[data-theme="retro"] .to-gray-200 {
+  --tw-gradient-to: var(--theme-surface) var(--tw-gradient-to-position) !important;
+}
+
+html[data-theme="retro"] .hover\:from-gray-100:hover,
+html[data-theme="retro"] .hover\:to-gray-200:hover {
+  --tw-gradient-from: var(--theme-surface) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: var(--theme-surface-muted) var(--tw-gradient-to-position) !important;
+}
+
+html[data-theme="retro"] .shadow-sm,
+html[data-theme="retro"] .shadow,
+html[data-theme="retro"] .shadow-md {
+  box-shadow:
+    0 1px 0 0 var(--theme-border),
+    2px 2px 0 0 var(--theme-shadow) !important;
+}
+
+html[data-theme="retro"] img[src*="logo"] {
+  filter: grayscale(1) contrast(1.1);
+}
 /* Smooth animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(20px); }
@@ -76,7 +499,7 @@ body {
 
 /* Subtle dotted paper texture for hero background */
 .hero-paper-bg {
-  background-color: #ececec;
+  background-color: var(--theme-page-bg, #ececec);
 }
 
 /* Smooth hover transitions */
@@ -91,24 +514,26 @@ button, a, .interactive {
 
 .card-hover:hover {
   transform: translateY(-2px);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow:
+    0 20px 25px -5px var(--theme-shadow, rgba(0, 0, 0, 0.1)),
+    0 10px 10px -5px var(--theme-shadow, rgba(0, 0, 0, 0.04));
 }
 
 /* Clean white backgrounds with red accents for test type cards */
 .listening-card {
-  background: white;
+  background: var(--theme-surface, white);
   position: relative;
   overflow: hidden;
 }
 
 .speaking-card {
-  background: white;
+  background: var(--theme-surface, white);
   position: relative;
   overflow: hidden;
 }
 
 .reading-card {
-  background: white;
+  background: var(--theme-surface, white);
   position: relative;
   overflow: hidden;
 }
@@ -117,17 +542,17 @@ button, a, .interactive {
 .reading-text {
   font-size: calc(clamp(15px, 1.6vw, 18px) * var(--reading-font-scale, 1));
   line-height: calc(1.7 * var(--reading-font-scale, 1));
-  color: #1f2937;
+  color: var(--theme-text, #1f2937);
 }
 
 .reading-surface {
-  background: #fbfaf6;
-  border-color: #e5e7eb;
+  background: var(--theme-surface-muted, #fbfaf6);
+  border-color: var(--theme-border, #e5e7eb);
 }
 
 .reading-surface-alt {
-  background: #fdfdfc;
-  border-color: #e5e7eb;
+  background: var(--theme-surface, #fdfdfc);
+  border-color: var(--theme-border, #e5e7eb);
 }
 
 .reading-scroll {
@@ -150,18 +575,18 @@ button, a, .interactive {
 }
 
 .reading-surface-card {
-  background: #ffffff;
-  border-color: #e5e7eb;
+  background: var(--theme-surface, #ffffff);
+  border-color: var(--theme-border, #e5e7eb);
 }
 
 .writing-card {
-  background: white;
+  background: var(--theme-surface, white);
   position: relative;
   overflow: hidden;
 }
 
 .default-card {
-  background: white;
+  background: var(--theme-surface, white);
   position: relative;
   overflow: hidden;
 }
@@ -182,25 +607,25 @@ button, a, .interactive {
 }
 
 .scrollbar-thin::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: var(--theme-surface-muted, #f1f5f9);
   border-radius: 3px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: var(--theme-border, #cbd5e1);
   border-radius: 3px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: var(--theme-border-strong, #94a3b8);
 }
 
 .scrollbar-thumb-gray-300::-webkit-scrollbar-thumb {
-  background: #d1d5db;
+  background: var(--theme-border, #d1d5db);
 }
 
 .scrollbar-track-gray-100::-webkit-scrollbar-track {
-  background: #f3f4f6;
+  background: var(--theme-surface-muted, #f3f4f6);
 }
 
 /* .no-scrollbar {

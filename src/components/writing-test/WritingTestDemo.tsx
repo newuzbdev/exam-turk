@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-// import { toast } from "sonner";
+import { toast } from "sonner";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import writingTestService, {
@@ -44,6 +44,30 @@ interface WritingTestDemoProps {
   testId: string;
 }
 
+const SUBMIT_RETRY_GUIDE = "Cevaplariniz bu tarayicida guvenle saklandi.";
+
+const buildSubmitRetryMessage = (errorLike: unknown, fallback: string) => {
+  const raw =
+    typeof errorLike === "string"
+      ? errorLike
+      : errorLike && typeof errorLike === "object" && "message" in errorLike
+      ? String((errorLike as any).message || "")
+      : "";
+
+  const base = raw.trim() || fallback;
+  const normalized = base.toLowerCase();
+  const isTokenError =
+    /(token|session|oturum)/i.test(normalized) &&
+    /(expired|not found|invalid|suresi|dol|bulunamad|gecersiz)/i.test(normalized);
+
+  if (isTokenError) {
+    return "Oturum tarafinda gecici bir hata olustu. Sistem gonderimi otomatik olarak tekrar deneyecek.";
+  }
+
+  if (base.includes(SUBMIT_RETRY_GUIDE)) return base;
+  return `${base}. ${SUBMIT_RETRY_GUIDE}`;
+};
+
 export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   const navigate = useNavigate();
   const [, setTest] = useState<WritingTestItem | null>(null);
@@ -59,6 +83,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   const [showPracticeModal, setShowPracticeModal] = useState(true);
   const [practiceText, setPracticeText] = useState("");
   const baseFontSizeRef = useRef<string | null>(null);
+  const submitAllRetryRef = useRef(0);
   const [showShortcuts] = useState(true);
 
   // Hide navbar and footer during writing test
@@ -580,55 +605,61 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
 
 
   const handleSubmit = async () => {
-    if (!testId) return;
+    if (!testId || submitting) return;
     setSubmitting(true);
     setShowSubmitModal(false);
 
-    // Store answers locally for later submission
-    const answersData = {
-      testId: testId,
-      answers: answers,
-      sections: sections,
-      timestamp: new Date().toISOString()
-    };
-    // Debug: Log the answers being stored
-    console.log("Writing answers being stored:", answers);
-    console.log("Writing answers data:", answersData);
-    // Store in sessionStorage for later submission
-    sessionStorage.setItem(`writing_answers_${testId}`, JSON.stringify(answersData));
+    try {
+      // Store answers locally for later submission
+      const answersData = {
+        testId: testId,
+        answers: answers,
+        sections: sections,
+        timestamp: new Date().toISOString()
+      };
+      // Debug: Log the answers being stored
+      console.log("Writing answers being stored:", answers);
+      console.log("Writing answers data:", answersData);
+      // Store in sessionStorage for later submission
+      sessionStorage.setItem(`writing_answers_${testId}`, JSON.stringify(answersData));
 
-    // Just navigate to next test without submitting
-    const nextPath = overallTestFlowStore.onTestCompleted("WRITING", testId);
-    if (nextPath) {
-      // Ensure exam mode and fullscreen stay active for next test
-      if (typeof document !== "undefined") {
-        document.body.classList.add("exam-mode");
-        // Immediately re-enter fullscreen before navigation
-        const enterFullscreen = async () => {
-          try {
-            const el: any = document.documentElement as any;
-            if (el.requestFullscreen) await el.requestFullscreen();
-            else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
-            else if (el.msRequestFullscreen) await el.msRequestFullscreen();
-          } catch {}
-        };
-        await enterFullscreen();
+      // Just navigate to next test without submitting
+      const nextPath = overallTestFlowStore.onTestCompleted("WRITING", testId);
+      if (nextPath) {
+        // Ensure exam mode and fullscreen stay active for next test
+        if (typeof document !== "undefined") {
+          document.body.classList.add("exam-mode");
+          // Immediately re-enter fullscreen before navigation
+          const enterFullscreen = async () => {
+            try {
+              const el: any = document.documentElement as any;
+              if (el.requestFullscreen) await el.requestFullscreen();
+              else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
+              else if (el.msRequestFullscreen) await el.msRequestFullscreen();
+            } catch {}
+          };
+          await enterFullscreen();
+        }
+        navigate(nextPath);
+        return;
       }
-      navigate(nextPath);
-      return;
+      
+      // If no next test, we're at the end - submit all tests
+      const overallId = overallTestFlowStore.getOverallId();
+      if (overallId && overallTestFlowStore.isAllDone()) {
+        // Submit all tests at once
+        await submitAllTests(overallId);
+        return;
+      }
+      
+      // Fallback to single test results
+      navigate(`/writing-test/results/temp`, { state: { summary: { testId: testId } } });
+      setSubmitting(false);
+    } catch (error) {
+      console.error("Writing navigation error:", error);
+      toast.error(buildSubmitRetryMessage(error, "Test gecisinde hata olustu"));
+      setSubmitting(false);
     }
-    
-    // If no next test, we're at the end - submit all tests
-    const overallId = overallTestFlowStore.getOverallId();
-    if (overallId && overallTestFlowStore.isAllDone()) {
-      // Submit all tests at once
-      await submitAllTests(overallId);
-      return;
-    }
-    
-    // Fallback to single test results
-    navigate(`/writing-test/results/temp`, { state: { summary: { testId: testId } } });
-    setSubmitting(false);
   };
 
   const submitAllTests = async (overallId: string) => {
@@ -639,7 +670,8 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
       const { readingSubmissionService } = await import("@/services/readingTest.service");
       const { listeningSubmissionService } = await import("@/services/listeningTest.service");
       const { writingSubmissionService } = await import("@/services/writingSubmission.service");
-      const axiosPrivate = (await import("@/config/api")).default;
+      const { speakingSubmissionService } = await import("@/services/speakingSubmission.service");
+      const { overallTestTokenStore } = await import("@/services/overallTest.service");
       
       // Submit reading test - look for reading answers from any test
       const readingAnswersKeys = Object.keys(sessionStorage).filter(key => key.startsWith('reading_answers_'));
@@ -647,22 +679,31 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
         const readingAnswers = sessionStorage.getItem(key);
         if (readingAnswers) {
           const readingData = JSON.parse(readingAnswers);
-          console.log("Okuma testi gönderiliyor:", readingData.testId, "cevaplarla:", readingData.answers);
+          const rawReadingAnswers = readingData.answers;
+          const payload = Array.isArray(rawReadingAnswers)
+            ? rawReadingAnswers.map((item: any) => ({
+                questionId: String(item?.questionId ?? ""),
+                userAnswer: String(item?.userAnswer ?? ""),
+              }))
+            : Object.entries(rawReadingAnswers || {}).map(([questionId, userAnswer]) => ({
+                questionId,
+                userAnswer: String(userAnswer),
+              }));
+          const sanitizedPayload = payload.filter((item) => item.questionId);
           
           // Bu testin genel test akışının parçası olup olmadığını kontrol et
           const { overallTestTokenStore } = await import("@/services/overallTest.service");
           const overallToken = overallTestTokenStore.getByTestId(readingData.testId);
           
-          if (overallToken) {
-            console.log("✅ Okuma testi genel token'a sahip, gönderiliyor...");
-            const payload = Object.entries(readingData.answers).map(([questionId, userAnswer]) => ({ 
-              questionId, 
-              userAnswer: String(userAnswer) 
-            }));
-            await readingSubmissionService.submitAnswers(readingData.testId, payload, overallToken);
-          } else {
-            console.log("⚠️ Okuma testi genel akışın parçası değil, gönderim atlanıyor");
+          if (!overallToken) {
+            console.log("⚠️ Okuma testi genel token'siz, standart auth ile devam ediliyor");
           }
+          await readingSubmissionService.submitAnswers(
+            readingData.testId,
+            sanitizedPayload,
+            overallToken || undefined
+          );
+          try { sessionStorage.removeItem(key); } catch {}
         }
       }
       
@@ -672,140 +713,191 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
         const listeningAnswers = sessionStorage.getItem(key);
         if (listeningAnswers) {
           const listeningData = JSON.parse(listeningAnswers);
-          console.log("Dinleme testi gönderiliyor:", listeningData.testId, "cevaplarla:", listeningData.answers, "audioUrl:", listeningData.audioUrl, "imageUrls:", listeningData.imageUrls);
+          const rawListeningAnswers = listeningData.answers;
+          const payload = Array.isArray(rawListeningAnswers)
+            ? rawListeningAnswers.map((item: any) => ({
+                questionId: String(item?.questionId ?? ""),
+                userAnswer: String(item?.userAnswer ?? ""),
+              }))
+            : Object.entries(rawListeningAnswers || {}).map(([questionId, userAnswer]) => ({
+                questionId,
+                userAnswer: String(userAnswer),
+              }));
+          const sanitizedPayload = payload.filter((item) => item.questionId);
           
           // Bu testin genel test akışının parçası olup olmadığını kontrol et
           const { overallTestTokenStore } = await import("@/services/overallTest.service");
           const overallToken = overallTestTokenStore.getByTestId(listeningData.testId);
           
-          if (overallToken) {
-            console.log("✅ Dinleme testi genel token'a sahip, gönderiliyor...");
-            await listeningSubmissionService.submitAnswers(
-              listeningData.testId, 
-              listeningData.answers,
-              overallToken,
-              listeningData.audioUrl,
-              listeningData.imageUrls
-            );
-          } else {
-            console.log("⚠️ Dinleme testi genel akışın parçası değil, gönderim atlanıyor");
-            // Atlayabilir veya oturum token'ını yedek olarak kullanabilirsiniz
-            // await listeningSubmissionService.submitAnswers(listeningData.testId, listeningData.answers);
+          if (!overallToken) {
+            console.log("⚠️ Dinleme testi genel token'siz, standart auth ile devam ediliyor");
           }
+          await listeningSubmissionService.submitAnswers(
+            listeningData.testId, 
+            sanitizedPayload,
+            overallToken || undefined,
+            listeningData.audioUrl,
+            listeningData.imageUrls
+          );
+          try { sessionStorage.removeItem(key); } catch {}
         }
       }
       
-      // Yazma testini gönder
-      const writingAnswers = sessionStorage.getItem(`writing_answers_${testId}`);
-      console.log("SessionStorage'dan yazma cevapları alındı:", writingAnswers);
-      if (writingAnswers) {
+      // Yazma testlerini gönder
+      const writingAnswersKeys = Object.keys(sessionStorage).filter((key) => key.startsWith("writing_answers_"));
+      for (const key of writingAnswersKeys) {
+        const writingAnswers = sessionStorage.getItem(key);
+        if (!writingAnswers) continue;
+
         const writingData = JSON.parse(writingAnswers);
-        console.log("Ayrıştırılmış yazma verisi:", writingData);
-        console.log("Verideki yazma cevapları:", writingData.answers);
+        const overallToken = overallTestTokenStore.getByTestId(writingData.testId);
+        const getWritingAnswer = (
+          questionId: string,
+          sectionIndex: number,
+          fallbackId?: string,
+          itemIndex?: number
+        ) => {
+          const direct = writingData.answers?.[questionId];
+          if (typeof direct === "string") return direct;
+          const fallback = typeof fallbackId === "string" ? fallbackId : "";
+          const idx = typeof itemIndex === "number" ? String(itemIndex) : "";
+          const keys = [
+            `${sectionIndex}-${questionId}`,
+            `${sectionIndex}-${fallback}`,
+            fallback,
+            idx && fallback ? `${sectionIndex}-${idx}-${fallback}` : "",
+            idx ? `${sectionIndex}-${idx}-${questionId}` : "",
+          ].filter(Boolean);
+          for (const k of keys) {
+            const v = writingData.answers?.[k];
+            if (typeof v === "string") return v;
+          }
+          return "";
+        };
+
         const payload = {
           writingTestId: writingData.testId,
-          sections: writingData.sections.map((section: any, sectionIndex: number) => {
-            const sectionData = {
-              description: section.title || section.description || `Bölüm ${section.order || 1}`,
-              answers: [] as any[],
-              subParts: [] as any[],
+          sections: (writingData.sections || []).map((section: any, sectionIndex: number) => {
+            const sectionDescription =
+              (typeof section?.title === "string" && section.title.trim()) ||
+              (typeof section?.description === "string" && section.description.trim()) ||
+              `Section ${section?.order || sectionIndex + 1}`;
+            const sectionData: any = {
+              description: sectionDescription,
             };
-            if (section.subParts && section.subParts.length > 0) {
+
+            if (Array.isArray(section.subParts) && section.subParts.length > 0) {
               sectionData.subParts = section.subParts.map((subPart: any, subPartIndex: number) => {
-                const questionId = subPart.questions?.[0]?.id || subPart.id;
-                const userAnswer = writingData.answers[`${sectionIndex}-${subPartIndex}-${subPart.id}`] || "";
+                const questions = Array.isArray(subPart.questions) ? subPart.questions : [];
+                const subPartDescription =
+                  (typeof subPart?.label === "string" && subPart.label.trim()) ||
+                  (typeof subPart?.description === "string" && subPart.description.trim()) ||
+                  `Sub Part ${subPart?.order || subPartIndex + 1}`;
+                const answersArr = questions
+                  .map((q: any) => {
+                    const rawQuestionId = q?.id || q?.questionId;
+                    const qid =
+                      typeof rawQuestionId === "string"
+                        ? rawQuestionId
+                        : String(rawQuestionId || "").trim();
+                    if (!qid) return null;
+                    return { questionId: qid, userAnswer: getWritingAnswer(qid, sectionIndex, subPart?.id, subPartIndex) };
+                  })
+                  .filter(Boolean);
                 return {
-                  description: subPart.label || subPart.description,
-                  answers: [{ questionId, userAnswer }],
+                  description: subPartDescription,
+                  answers: answersArr,
                 };
               });
             }
-            if (section.questions && section.questions.length > 0) {
-              let questionAnswer = "";
-              const possibleKeys = [
-                `${sectionIndex}-0-${section.questions[0].id}`,
-                `${sectionIndex}-${section.questions[0].id}`,
-                `${sectionIndex}-${section.id}`,
-                section.questions[0].id,
-                section.id,
-              ];
-              for (const key of possibleKeys) {
-                if (writingData.answers[key]) {
-                  questionAnswer = writingData.answers[key];
-                  break;
-                }
-              }
-              sectionData.answers = [{ questionId: section.questions[0].id, userAnswer: questionAnswer }];
+
+            if (Array.isArray(section.questions) && section.questions.length > 0) {
+              sectionData.answers = section.questions
+                .map((q: any, questionIndex: number) => {
+                  const rawQuestionId = q?.id || q?.questionId;
+                  const qid =
+                    typeof rawQuestionId === "string"
+                      ? rawQuestionId
+                      : String(rawQuestionId || "").trim();
+                  if (!qid) return null;
+                  return { questionId: qid, userAnswer: getWritingAnswer(qid, sectionIndex, section?.id, questionIndex) };
+                })
+                .filter(Boolean);
             }
+
             return sectionData;
           }),
         };
-        await writingSubmissionService.create(payload);
+        if (overallToken) {
+          (payload as any).sessionToken = overallToken;
+        }
+        const writingResult = await writingSubmissionService.create(payload as any);
+        if (!writingResult) {
+          throw new Error(`Writing submit-all failed: ${writingData.testId}`);
+        }
+        try { sessionStorage.removeItem(key); } catch {}
       }
       
       // Submit speaking test - look for speaking answers from any test
-      const speakingAnswersKeys = Object.keys(sessionStorage).filter(key => key.startsWith('speaking_answers_'));
+      const speakingAnswersKeys = Object.keys(sessionStorage).filter((key) => key.startsWith("speaking_answers_"));
       for (const key of speakingAnswersKeys) {
         const speakingAnswers = sessionStorage.getItem(key);
-        if (speakingAnswers) {
-          const speakingData = JSON.parse(speakingAnswers);
-          console.log("Submitting speaking test:", speakingData.testId, "with recordings:", speakingData.recordings?.length || 0);
-          const answerMap = new Map();
-          for (const [qid, rec] of speakingData.recordings) {
-            try {
-              const fd = new FormData();
-              fd.append("audio", rec.blob, "recording.webm");
-              const res = await axiosPrivate.post("/api/speaking-submission/speech-to-text", fd, {
-                headers: { "Content-Type": "multipart/form-data" },
-                timeout: 30000,
-              });
-              const text = res.data?.text || "[Ses metne dönüştürülemedi]";
-              answerMap.set(qid, { text, duration: rec.duration });
-            } catch (e) {
-              answerMap.set(qid, { text: "[Ses metne dönüştürülemedi]", duration: rec.duration || 0 });
+        if (!speakingAnswers) continue;
+
+        const speakingData = JSON.parse(speakingAnswers);
+        const answerTextRecord: Record<string, string> = {};
+        const isMeaningfulText = (value: unknown) => {
+          if (typeof value !== "string") return false;
+          const trimmed = value.trim();
+          return (
+            trimmed.length > 0 &&
+            trimmed !== "[Cevap bulunamadı]" &&
+            trimmed !== "[Ses metne dönüştürülemedi]"
+          );
+        };
+
+        if (speakingData.transcripts && typeof speakingData.transcripts === "object") {
+          for (const [qid, t] of Object.entries(speakingData.transcripts)) {
+            if (isMeaningfulText(t)) answerTextRecord[qid] = String(t).trim();
+          }
+        }
+
+        if (speakingData.answers && typeof speakingData.answers === "object") {
+          for (const [qid, val] of Object.entries(speakingData.answers)) {
+            const maybeObj: any = val;
+            const text = typeof val === "string" ? val : maybeObj?.text;
+            if (isMeaningfulText(text)) {
+              answerTextRecord[qid] = String(text).trim();
             }
           }
-          
-          const parts = speakingData.sections.map((s: any) => {
-            const p: any = { description: s.description, image: "" };
-            if (s.subParts?.length) {
-              const subParts = s.subParts.map((sp: any) => {
-                const questions = sp.questions.map((q: any) => {
-                  const a = answerMap.get(q.id);
-                  return {
-                    questionId: q.id,
-                    userAnswer: a?.text ?? "[Cevap bulunamadı]",
-                    duration: a?.duration ?? 0,
-                  };
-                });
-                const duration = questions.reduce((acc: number, q: any) => acc + (q.duration || 0), 0);
-                return { image: sp.images?.[0] || "", duration, questions };
-              });
-              const duration = subParts.reduce((acc: number, sp: any) => acc + (sp.duration || 0), 0);
-              p.subParts = subParts;
-              p.duration = duration;
-            } else {
-              const questions = s.questions.map((q: any) => {
-                const a = answerMap.get(q.id);
-                return {
-                  questionId: q.id,
-                  userAnswer: a?.text ?? "[Cevap bulunamadı]",
-                  duration: a?.duration ?? 0,
-                };
-              });
-              const duration = questions.reduce((acc: number, q: any) => acc + (q.duration || 0), 0);
-              p.questions = questions;
-              p.duration = duration;
-              if (s.type === "PART3") p.type = "DISADVANTAGE";
-            }
-            return p;
-          });
-          
-          await axiosPrivate.post("/api/speaking-submission", {
-            speakingTestId: speakingData.testId,
-            parts,
-          });
         }
+
+        const formattedSubmission = speakingSubmissionService.formatSubmissionData(
+          speakingData,
+          answerTextRecord
+        );
+        const overallToken = overallTestTokenStore.getByTestId(speakingData.testId);
+        if (overallToken) {
+          formattedSubmission.sessionToken = overallToken;
+        } else {
+          console.warn(
+            "Speaking submit-all without overall token; falling back to standard auth:",
+            speakingData.testId
+          );
+        }
+
+        if (!speakingSubmissionService.validateSubmissionData(formattedSubmission)) {
+          throw new Error(`Speaking submit-all invalid payload: ${speakingData.testId}`);
+        }
+
+        const submissionResult = await speakingSubmissionService.submitSpeakingTest(formattedSubmission);
+        if (!submissionResult.success) {
+          throw new Error(`Speaking submit-all failed: ${String(submissionResult.error || "unknown error")}`);
+        }
+
+        try {
+          sessionStorage.removeItem(key);
+        } catch {}
       }
       
       // Now complete the overall test
@@ -821,11 +913,20 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
           document.exitFullscreen().catch(() => {});
         } catch {}
       }
+      submitAllRetryRef.current = 0;
       navigate(`/overall-results/${overallId}`);
     } catch (error) {
       console.error("Error submitting all tests:", error);
-      // toast.error("Error submitting tests, but continuing to results...");
-      navigate(`/overall-results/${overallId}`);
+      if (submitAllRetryRef.current < 1) {
+        submitAllRetryRef.current += 1;
+        toast.message("Gonderim tekrar deneniyor. Cevaplariniz saklandi.");
+        await new Promise((resolve) => setTimeout(resolve, 1400));
+        return await submitAllTests(overallId);
+      }
+      submitAllRetryRef.current = 0;
+      toast.error(buildSubmitRetryMessage(error, "Testler gonderilirken hata olustu"));
+      setSubmitting(false);
+      return;
     }
   };
 

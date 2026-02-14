@@ -109,6 +109,41 @@ function extractData<T = any>(res: any): T {
   );
 }
 
+const readClientAccessToken = (): string | null => {
+  const keys = ["accessToken", "token", "authToken"];
+  for (const key of keys) {
+    const fromSession = SecureStorage.getSessionItem?.(key);
+    if (fromSession) return fromSession;
+    const fromSecure = SecureStorage.getItem?.(key);
+    if (fromSecure) return fromSecure;
+    try {
+      const fromLocal = localStorage.getItem(key);
+      if (fromLocal) return fromLocal;
+    } catch {}
+  }
+  return null;
+};
+
+const normalizeExamAnswers = (
+  rawAnswers: { questionId: string; userAnswer: string }[] | Record<string, unknown>
+): { questionId: string; userAnswer: string }[] => {
+  const uuidLike =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const mapped = Array.isArray(rawAnswers)
+    ? rawAnswers.map((item: any) => ({
+        questionId: String(item?.questionId ?? "").trim(),
+        userAnswer: String(item?.userAnswer ?? ""),
+      }))
+    : Object.entries(rawAnswers || {}).map(([questionId, userAnswer]) => ({
+        questionId: String(questionId).trim(),
+        userAnswer: String(userAnswer ?? ""),
+      }));
+
+  return mapped.filter(
+    (item) => item.questionId.length > 0 && uuidLike.test(item.questionId)
+  );
+};
+
 export const readingTestService = {
   getAllReadingTests: async (
     page = 1,
@@ -147,34 +182,35 @@ export const readingTestService = {
 export const readingSubmissionService = {
   submitAnswers: async (
     testId: string,
-    answers: { questionId: string; userAnswer: string }[],
+    answers: { questionId: string; userAnswer: string }[] | Record<string, unknown>,
     token?: string | null
   ) => {
     try {
       const { overallTestTokenStore } = await import("./overallTest.service");
-      const sessionToken =
-        overallTestTokenStore.getByTestId(testId) ||
-        SecureStorage.getSessionItem?.("accessToken") ||
-        localStorage.getItem("accessToken") ||
-        token;
+      const authToken = readClientAccessToken();
+      const overallSessionToken =
+        overallTestTokenStore.getByTestId(testId) || token || null;
+      const normalizedAnswers = normalizeExamAnswers(answers);
 
-      if (!sessionToken) {
+      if (!authToken) {
         toast.error("Javoblarni yuborish uchun tizimga kirishingiz kerak.");
         throw new Error("Authentication required to submit exam results.");
       }
 
-      const payload = { testId, sessionToken, answers };
-      const opts = { headers: { Authorization: `Bearer ${sessionToken}` } };
+      const payload: {
+        testId: string;
+        answers: { questionId: string; userAnswer: string }[];
+        sessionToken?: string;
+      } = { testId, answers: normalizedAnswers };
+      if (overallSessionToken) {
+        payload.sessionToken = overallSessionToken;
+      }
 
-      const res = await axiosPrivate.post(
-        "/api/exam/submit-all",
-        payload,
-        opts
-      );
+      const res = await axiosPrivate.post("/api/exam/submit-all", payload);
       const data = extractData<any>(res);
 
       // toast.success("Javoblar muvaffaqiyatli jo'natildi");
-      try { overallTestTokenStore.clearByTestId(testId); } catch {}
+      try { if (overallSessionToken) overallTestTokenStore.clearByTestId(testId); } catch {}
       return data ?? res.data ?? res;
     } catch (error: any) {
       const status = error?.response?.status;

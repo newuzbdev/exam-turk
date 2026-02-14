@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Download } from "lucide-react";
 import { overallTestService } from "@/services/overallTest.service";
 import { ConfettiSideCannons } from "@/components/ui/confetti-side-cannons";
+import { normalizeDisplayText, normalizeFeedbackText } from "@/utils/text";
 
 interface Question {
   questionId: string;
@@ -120,9 +121,60 @@ export default function OverallResults() {
     fetchOverallResults();
   }, [params.overallId, navigate]);
 
+  const normalizeLevelLabel = (value?: string) => {
+    if (!value) return value;
+    const normalized = value.trim().replace(/\s+/g, " ");
+    const upper = normalized.toUpperCase();
+    if (
+      upper === "A0" ||
+      upper === "B1_ALTI" ||
+      upper === "B1 ALTI" ||
+      /^B1[\s_-]*alt[ıi]$/i.test(normalized) ||
+      /^B1\s*alt[ıi](?:\s+alt[ıi])+$/i.test(normalized)
+    ) {
+      return "B1 altı";
+    }
+    return normalized;
+  };
+  const removeLowValueStrengthSentences = (text: string) => {
+    const source = String(text || "").replace(/\s+/g, " ").trim();
+    if (!source) return "";
+    const sentences = source
+      .split(/(?<=[.!?])\s+/)
+      .map((sentence) => sentence.trim())
+      .filter(Boolean);
+    const noisyPatterns = [
+      /en az bir (?:karakter|kelime)/i,
+      /boş bırakmam(?:ış|is)/i,
+      /bos birakmam(?:is|ış)/i,
+      /motivasyonunuzun olduğunu göstermektedir/i,
+      /motivasyonunuzun oldugunu gostermektedir/i,
+      /yazma sürecine başlama motivasyonu/i,
+      /yazma surecine baslama motivasyonu/i,
+      /tamamen boş bırakmamanız açısından olumlu/i,
+      /tamamen bos birakmamaniz acisindan olumlu/i,
+    ];
+    return sentences
+      .filter((sentence) => !noisyPatterns.some((pattern) => pattern.test(sentence)))
+      .join(" ")
+      .trim();
+  };
+  const sanitizeNarrativeArtifacts = (text: string) => {
+    return removeLowValueStrengthSentences(
+      String(text || "")
+        .replace(/\bB1\s*alt[ıi]\s+alt[ıi]\b/gi, "B1 altı")
+        .replace(/\bB1\s*alti\b/gi, "B1 altı")
+        .replace(/\b(A1|A2|B1|B2|C1|C2)\s+\1\b/gi, "$1")
+        .replace(/güçlü yönler(?:\s+olarak)?[^.?!]*(?:[.?!]|$)/gi, " ")
+        .replace(/guclu yonler(?:\s+olarak)?[^.?!]*(?:[.?!]|$)/gi, " ")
+        .replace(/her bir bölüme en az bir (?:karakter|kelime)[^.?!]*(?:[.?!]|$)/gi, " ")
+        .replace(/en az bir kelimeyle de olsa[^.?!]*(?:[.?!]|$)/gi, " ")
+        .replace(/\s{2,}/g, " ")
+        .trim()
+    );
+  };
   const displayLevel = (level?: string) => {
-    if (!level) return level;
-    return level === "A0" || level === "B1_ALTI" ? "B1 altı" : level;
+    return normalizeLevelLabel(level);
   };
   const levelFrom75 = (score?: number | null) => {
     if (typeof score !== "number" || Number.isNaN(score)) return undefined;
@@ -130,6 +182,45 @@ export default function OverallResults() {
     if (score >= 51) return "B2";
     if (score >= 38) return "B1";
     return "B1 altı";
+  };
+  const wholeScore = (value: unknown): number => {
+    const parsed =
+      typeof value === "number"
+        ? value
+        : typeof value === "string"
+          ? Number(value)
+          : NaN;
+    return Number.isFinite(parsed) ? Math.round(parsed) : 0;
+  };
+  const parseUserAnswerList = (value?: string): string[] => {
+    if (typeof value !== "string") return [];
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+
+    if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          return parsed
+            .map((item) => String(item ?? "").trim())
+            .filter(Boolean);
+        }
+        if (typeof parsed === "string" && parsed.trim()) {
+          return [parsed.trim()];
+        }
+      } catch {
+        // Fallback to raw string handling below.
+      }
+    }
+
+    return [trimmed];
+  };
+  const normalizeAnswerList = (values: string[]): string[] =>
+    values.map((item) => item.trim().toLowerCase()).filter(Boolean);
+  const isExactAnswerSetMatch = (correct: string[], user: string[]) => {
+    if (!correct.length || !user.length) return false;
+    if (correct.length !== user.length) return false;
+    return correct.every((answer) => user.includes(answer)) && user.every((answer) => correct.includes(answer));
   };
   const isMultiTest =
     (data?.listening ? 1 : 0) +
@@ -173,12 +264,14 @@ export default function OverallResults() {
     const examData = data.listening.questions.map((q, index: number) => {
       const correctTexts = (q.correctAnswers || []).map(a => a.text).filter(Boolean);
       const correctAnswer = correctTexts.join(" / ");
-      const isCorrect = correctTexts.length > 0
-        ? correctTexts.includes(q.userAnswer)
-        : false;
+      const correctNormalized = normalizeAnswerList(correctTexts);
+      const userAnswers = parseUserAnswerList(q.userAnswer);
+      const userNormalized = normalizeAnswerList(userAnswers);
+      const isCorrect = isExactAnswerSetMatch(correctNormalized, userNormalized);
+      const userAnswerDisplay = userAnswers.length > 0 ? userAnswers.join(" / ") : "Seçilmedi";
       return {
         no: q.questionNumber || index + 1,
-        userAnswer: q.userAnswer || "Seçilmedi",
+        userAnswer: userAnswerDisplay,
         correctAnswer,
         result: isCorrect ? "Doğru" : "Yanlış"
       };
@@ -194,37 +287,15 @@ export default function OverallResults() {
           <div className="space-y-6">
 
           {/* Report Info */}
+          {!isMultiTest && (
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-muted-foreground ml-2">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
-              <span className="break-all">Report ID: {data.id}</span>
-              <span>İsim: {data.user.name}</span>
+              <span>Katılımcı: {data.user.name}</span>
+              <span className="text-xs sm:text-sm">Tarih: {new Date(data.listening.completedAt || data.startedAt).toISOString().replace('T', ' ').substring(0, 19) + " "}</span>
             </div>
-            <span className="text-xs sm:text-sm">Tarih: {new Date(data.listening.completedAt || data.startedAt).toISOString().replace('T', ' ').substring(0, 19) + " "}</span>
-          </div>
+          )}
 
           {/* Listening Score with Level */}
-          {isMultiTest && displayLevel(data.level) ? (
-                <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_145px] items-stretch gap-4 mb-6">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-3 sm:px-6 sm:py-4 h-full">
-                <div className="h-full flex items-center justify-between gap-4">
-                  <div>
-                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Dinleme Puanı</h2>
-                    <p className="text-sm text-gray-600 mt-1">
-                      ({examData.filter(r => r.result === "Doğru").length} / {examData.length} doğru)
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm text-gray-500 mb-1">Puan</div>
-                    <div className="text-3xl sm:text-4xl font-bold text-red-600">{data.listening.score}</div>
-                  </div>
-                </div>
-              </div>
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-3 sm:px-6 sm:py-4 h-full flex flex-col items-center justify-center">
-                <div className="text-sm text-gray-500 mb-1">Genel Seviye</div>
-                <div className="text-2xl sm:text-3xl font-semibold text-gray-900">{displayLevel(data.level)}</div>
-              </div>
-            </div>
-          ) : (
+          {!isMultiTest && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-3 sm:px-6 sm:py-4 h-full mb-6">
               <div className="h-full flex items-center justify-between gap-4">
                 <div>
@@ -336,12 +407,14 @@ export default function OverallResults() {
     const examData = data.reading.questions.map((q, index: number) => {
       const correctTexts = (q.correctAnswers || []).map(a => a.text).filter(Boolean);
       const correctAnswer = correctTexts.join(" / ");
-      const isCorrect = correctTexts.length > 0
-        ? correctTexts.includes(q.userAnswer)
-        : false;
+      const correctNormalized = normalizeAnswerList(correctTexts);
+      const userAnswers = parseUserAnswerList(q.userAnswer);
+      const userNormalized = normalizeAnswerList(userAnswers);
+      const isCorrect = isExactAnswerSetMatch(correctNormalized, userNormalized);
+      const userAnswerDisplay = userAnswers.length > 0 ? userAnswers.join(" / ") : "Seçilmedi";
       return {
         no: q.questionNumber || index + 1,
-        userAnswer: q.userAnswer || "Seçilmedi",
+        userAnswer: userAnswerDisplay,
         correctAnswer,
         result: isCorrect ? "Doğru" : "Yanlış"
       };
@@ -350,37 +423,15 @@ export default function OverallResults() {
     return (
       <div className="space-y-6">
         {/* Report Info */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-muted-foreground ml-2">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
-            <span className="break-all">Report ID: {data.id}</span>
-            <span>İsim: {data.user.name}</span>
+        {!isMultiTest && (
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-muted-foreground ml-2">
+            <span>Katılımcı: {data.user.name}</span>
+            <span className="text-xs sm:text-sm">Tarih: {new Date(data.reading.completedAt || data.startedAt).toISOString().replace('T', ' ').substring(0, 19) + " "}</span>
           </div>
-          <span className="text-xs sm:text-sm">Tarih: {new Date(data.reading.completedAt || data.startedAt).toISOString().replace('T', ' ').substring(0, 19) + " "}</span>
-        </div>
+        )}
 
         {/* Reading Score with Level */}
-        {isMultiTest && displayLevel(data.level) ? (
-            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_145px] items-stretch gap-4 mb-6">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-3 sm:px-6 sm:py-4 h-full">
-              <div className="h-full flex items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Okuma Puanı</h2>
-                  <p className="text-sm text-gray-600 mt-1">
-                    ({examData.filter(r => r.result === "Doğru").length} / {examData.length} doğru)
-                  </p>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm text-gray-500 mb-1">Puan</div>
-                  <div className="text-3xl sm:text-4xl font-bold text-red-600">{data.reading.score}</div>
-                </div>
-              </div>
-            </div>
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-3 sm:px-6 sm:py-4 h-full flex flex-col items-center justify-center">
-              <div className="text-sm text-gray-500 mb-1">Genel Seviye</div>
-              <div className="text-2xl sm:text-3xl font-semibold text-gray-900">{displayLevel(data.level)}</div>
-            </div>
-          </div>
-        ) : (
+        {!isMultiTest && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-3 sm:px-6 sm:py-4 h-full mb-6">
             <div className="h-full flex items-center justify-between gap-4">
               <div>
@@ -504,45 +555,34 @@ export default function OverallResults() {
           rawAiFeedback
         : rawAiFeedback;
     
-    // Local helper to remove bullet / box symbols from text for writing feedback
+    // Bullet cleanup + Turkish text normalization + repeated sentence dedupe
     const cleanBullets = (text: string): string => {
-      if (!text) return text;
-
-      // Remove common bullet-like characters ANYWHERE in the text first (ensures the specific "" never shows)
-      const stripAnywhere = text.replace(/[•●▪■□▢◦‣∙⋅·\u2022\u25CF\u2219\u2023\u25E6\u00B7\uF0B7]/g, "");
-
-      // Split by lines and also remove bullets from the start of each line
-      return stripAnywhere
-        .split('\n')
-        .map(line => {
-          // Remove any bullet-like character at the start of the line (including the specific  character)
-          return line
-            .replace(/^[\s\u2000-\u206F\u2E00-\u2E7F\u3000-\u303F\uFE00-\uFE0F\uFE30-\uFE4F\uFE50-\uFE6F\uFF00-\uFFEF\uF000-\uF8FF•●■▪□▢\u2022\u25CF\u25E6\u25A0\u25A1\u25A2\u25AA\u25AB\u2610\uF0B7\u2023\u25CB\u25CC\u25CD\u25CE\u25CF\u25D0\u25D1\u25D2\u25D3\u25D4\u25D5\u25D6\u25D7\u25D8\u25D9\u25DA\u25DB\u25DC\u25DD\u25DE\u25DF\u25E6\u25E7\u25E8\u25E9\u25EA\u25EB\u25EC\u25ED\u25EE\u25EF]+/g, "") // Remove any bullet/box/special chars at start
-            .trim();
-        })
-        .filter(line => line.length > 0) // Remove empty lines
-        .join('\n')
-        .replace(/\s+/g, " ") // Normalize multiple spaces to single space
-        .trim();
+      if (!text) return "";
+      return normalizeFeedbackText(
+        text
+          .replace(/[•\u2022\u25CF\u25E6\u25A0\u25AA\uF0B7]/g, " ")
+          .replace(/\s+/g, " ")
+          .trim()
+      );
     };
 
     // Remove raw AI metadata blocks from general feedback text
     const sanitizeGeneralFeedback = (text: string): string => {
       if (!text) return text;
-      return cleanBullets(
+      return sanitizeNarrativeArtifacts(cleanBullets(
         text
           .replace(/\[[^\]]+\]/g, " ")
           .replace(/GENEL PUAN\s*:[^\n\r]*/gi, " ")
           .replace(/BELİRLENEN SEVİYE\s*:[^\n\r]*/gi, " ")
           .replace(/AI GERİ BİLDİRİMİ\s*\(EĞİTMEN NOTU\)\s*:/gi, " ")
           .replace(/GENEL DEĞERLENDİRME\s*:/gi, " ")
-      );
+      ));
     };
 
     const pickFirstText = (...values: any[]): string | undefined => {
       for (const value of values) {
         if (typeof value === "string" && value.trim()) {
-          return value.trim();
+          return normalizeFeedbackText(value.trim());
         }
       }
       return undefined;
@@ -566,7 +606,7 @@ export default function OverallResults() {
         for (const key of keys) {
           const candidate = source[key];
           if (typeof candidate === "string" && candidate.trim()) {
-            return candidate.trim();
+            return normalizeFeedbackText(candidate.trim());
           }
         }
       }
@@ -860,7 +900,7 @@ export default function OverallResults() {
     const pickMeaningfulText = (...values: any[]): string | undefined => {
       for (const value of values) {
         if (typeof value === "string" && value.trim() && !isPlaceholderText(value)) {
-          return value.trim();
+          return normalizeFeedbackText(value.trim());
         }
       }
       return undefined;
@@ -970,21 +1010,15 @@ export default function OverallResults() {
     const criteriaFromGeneral = extractCriteriaFromGeneralFeedback(
       pickMeaningfulText(parsedFeedback?.general, extractFeedbackSection(aiFeedback, "general"))
     );
-    const fallbackGlobalCriteria = {
-      coherence: pickMeaningfulText(parsedFeedback?.coherenceAndCohesion, getFeedbackText("coherenceAndCohesion")),
-      grammar: pickMeaningfulText(parsedFeedback?.grammaticalRangeAndAccuracy, getFeedbackText("grammaticalRangeAndAccuracy")),
-      lexical: pickMeaningfulText(parsedFeedback?.lexicalResource, getFeedbackText("lexicalResource")),
-      achievement: pickMeaningfulText(parsedFeedback?.taskAchievement, getFeedbackText("taskAchievement")),
-    };
     const activeCriteria = {
-      coherence: criteriaFromObject.coherence || criteriaFromNarrative.coherence || fallbackGlobalCriteria.coherence || criteriaFromGeneral.coherence || "Kısa değerlendirme yok",
-      grammar: criteriaFromObject.grammar || criteriaFromNarrative.grammar || fallbackGlobalCriteria.grammar || criteriaFromGeneral.grammar || "Kısa değerlendirme yok",
-      lexical: criteriaFromObject.lexical || criteriaFromNarrative.lexical || fallbackGlobalCriteria.lexical || criteriaFromGeneral.lexical || "Kısa değerlendirme yok",
-      achievement: criteriaFromObject.achievement || criteriaFromNarrative.achievement || fallbackGlobalCriteria.achievement || criteriaFromGeneral.achievement || "Kısa değerlendirme yok",
+      coherence: criteriaFromObject.coherence || criteriaFromNarrative.coherence || criteriaFromGeneral.coherence || "Kısa değerlendirme yok",
+      grammar: criteriaFromObject.grammar || criteriaFromNarrative.grammar || criteriaFromGeneral.grammar || "Kısa değerlendirme yok",
+      lexical: criteriaFromObject.lexical || criteriaFromNarrative.lexical || criteriaFromGeneral.lexical || "Kısa değerlendirme yok",
+      achievement: criteriaFromObject.achievement || criteriaFromNarrative.achievement || criteriaFromGeneral.achievement || "Kısa değerlendirme yok",
     };
 
     const scores = {
-      overall: writing?.score || 0,
+      overall: wholeScore(writing?.score),
       part1: 0,
       part2: 0,
       coherence: extractScoreFromFeedback(getFeedbackText('coherenceAndCohesion')) || 0,
@@ -994,7 +1028,7 @@ export default function OverallResults() {
     };
 
     // Prefer score-derived writing level to avoid mixed/overall-level mismatches in this tab
-    const level = levelFrom75(writing?.score) || displayLevel(data?.level);
+    const level = levelFrom75(scores.overall) || displayLevel(data?.level);
     console.log('Using level from data:', level);
 
     // Extract answers from either answers array or sections structure
@@ -1063,16 +1097,98 @@ export default function OverallResults() {
     console.log("OverallResults - Writing data:", writing);
     console.log("OverallResults - All answers:", answers);
     
-    // Separate Task 1 and Task 2 answers
-    // Task 1 typically has 2 subparts (1.1 and 1.2), Task 2 has 1 answer
-    const task1Answers = answers.filter((_: any, index: number) => index < 2);
-    const task2Answers = answers.filter((_: any, index: number) => index >= 2);
+    type WritingTaskKey = "bolum_1_1" | "bolum_1_2" | "bolum_2";
+    const toTaskHint = (value: unknown) =>
+      String(value ?? "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+
+    const getTaskKeyFromAnswer = (answer: any): WritingTaskKey | null => {
+      const hints = [
+        answer?.questionText,
+        answer?.question,
+        answer?.description,
+        answer?.subPart?.label,
+        answer?.subPart?.description,
+        answer?.section?.title,
+        answer?.section?.description,
+      ]
+        .map(toTaskHint)
+        .join(" ");
+
+      if (/(^|\s)(1[.,]?\s*1|gorev\s*1[.,]?\s*1|bolum\s*1[.,]?\s*1)(\s|$)/.test(hints)) {
+        return "bolum_1_1";
+      }
+      if (/(^|\s)(1[.,]?\s*2|gorev\s*1[.,]?\s*2|bolum\s*1[.,]?\s*2)(\s|$)/.test(hints)) {
+        return "bolum_1_2";
+      }
+      if (
+        /(gorev\s*2|bolum\s*2|tez|antitez|sentez|kompozisyon|blog|essay)/.test(hints)
+      ) {
+        return "bolum_2";
+      }
+
+      return null;
+    };
+
+    const getAnswerLength = (answer: any) =>
+      typeof answer?.userAnswer === "string" ? answer.userAnswer.trim().length : 0;
 
     const hasMeaningfulAnswer = (answer?: any) => {
       if (!answer || typeof answer !== "object") return false;
       const value = typeof answer.userAnswer === "string" ? answer.userAnswer.trim() : "";
       return value.length > 0 && value !== "Cevap verilmedi";
     };
+
+    const pickBestAnswer = (group: any[]) =>
+      group.find((ans: any) => hasMeaningfulAnswer(ans)) || group[0];
+
+    const groupedAnswers = (() => {
+      const groups: Record<WritingTaskKey, any[]> = {
+        bolum_1_1: [],
+        bolum_1_2: [],
+        bolum_2: [],
+      };
+      const unresolved: any[] = [];
+
+      answers.forEach((answer: any) => {
+        const taskKey = getTaskKeyFromAnswer(answer);
+        if (taskKey) groups[taskKey].push(answer);
+        else unresolved.push(answer);
+      });
+
+      if (unresolved.length > 0 && groups.bolum_2.length === 0) {
+        const longest = [...unresolved].sort(
+          (a, b) => getAnswerLength(b) - getAnswerLength(a)
+        )[0];
+        if (longest) {
+          groups.bolum_2.push(longest);
+          unresolved.splice(unresolved.indexOf(longest), 1);
+        }
+      }
+
+      if (unresolved.length > 0) {
+        const sortedByLen = [...unresolved].sort(
+          (a, b) => getAnswerLength(a) - getAnswerLength(b)
+        );
+
+        if (groups.bolum_1_1.length === 0 && sortedByLen.length > 0) {
+          const shortest = sortedByLen.shift();
+          if (shortest) groups.bolum_1_1.push(shortest);
+        }
+        if (groups.bolum_1_2.length === 0 && sortedByLen.length > 0) {
+          groups.bolum_1_2.push(sortedByLen[sortedByLen.length - 1]);
+        }
+      }
+
+      return groups;
+    })();
+
+    const task11Answers = groupedAnswers.bolum_1_1;
+    const task12Answers = groupedAnswers.bolum_1_2;
+    const task1Answers = [pickBestAnswer(task11Answers), pickBestAnswer(task12Answers)];
+    const task2Answers = groupedAnswers.bolum_2;
 
     const answeredTask11 = hasMeaningfulAnswer(task1Answers[0]);
     const answeredTask12 = hasMeaningfulAnswer(task1Answers[1]);
@@ -1081,7 +1197,17 @@ export default function OverallResults() {
 
     const sanitizeWritingGeneralFeedback = (rawText: string) => {
       if (!rawText || typeof rawText !== "string") return "";
-      let text = cleanBullets(rawText);
+      let text = sanitizeNarrativeArtifacts(cleanBullets(rawText));
+
+      if (answeredTask11) {
+        text = text.replace(/(?:bölüm|görev)\s*1[.,]?\s*1(?:'de|'da|de|da)?[^.?!]*(?:yanıt\s*yok|cevap\s*yok|hiç\s*yanıt\s*vermemi\w*|boş\s*bırak\w*|hiç\s*yaz\w*)[^.?!]*[.?!]?\s*/gi, " ");
+      }
+      if (answeredTask12) {
+        text = text.replace(/(?:bölüm|görev)\s*1[.,]?\s*2(?:'de|'da|de|da)?[^.?!]*(?:yanıt\s*yok|cevap\s*yok|hiç\s*yanıt\s*vermemi\w*|boş\s*bırak\w*|hiç\s*yaz\w*)[^.?!]*[.?!]?\s*/gi, " ");
+      }
+      if (answeredTask2) {
+        text = text.replace(/(?:bölüm|görev)\s*2(?:'de|'da|de|da)?[^.?!]*(?:yanıt\s*yok|cevap\s*yok|hiç\s*yanıt\s*vermemi\w*|boş\s*bırak\w*|hiç\s*yaz\w*)[^.?!]*[.?!]?\s*/gi, " ");
+      }
 
       if (answeredTaskCount >= 3) {
         text = text
@@ -1108,7 +1234,7 @@ export default function OverallResults() {
         }
       }
 
-      return text.replace(/\s{2,}/g, " ").trim();
+      return sanitizeNarrativeArtifacts(text.replace(/\s{2,}/g, " ").trim());
     };
     
     console.log("OverallResults - Task 1 answers:", task1Answers);
@@ -1133,7 +1259,6 @@ export default function OverallResults() {
           feedback = extractFeedbackSection(aiFeedback, feedbackKey);
         } else if (aiFeedback && typeof aiFeedback === 'object') {
           feedback = aiFeedback[feedbackKey] ||
-                    aiFeedback?.taskAchievement ||
                     `Görev 1 ${activeTask1Part === "part1" ? "Bölüm 1.1" : "Bölüm 1.2"} geri bildirimi burada gösterilecek`;
         } else {
           feedback = `Görev 1 ${activeTask1Part === "part1" ? "Bölüm 1.1" : "Bölüm 1.2"} geri bildirimi burada gösterilecek`;
@@ -1167,9 +1292,7 @@ export default function OverallResults() {
         } else if (typeof aiFeedback === 'string') {
           feedback = extractFeedbackSection(aiFeedback, 'part2');
         } else if (aiFeedback && typeof aiFeedback === 'object') {
-          feedback = aiFeedback?.part2 || 
-                    aiFeedback?.taskAchievement || 
-                    "Görev 2 geri bildirimi burada gösterilecek";
+          feedback = aiFeedback?.part2 || "Görev 2 geri bildirimi burada gösterilecek";
         } else {
           feedback = "Görev 2 geri bildirimi burada gösterilecek";
         }
@@ -1194,27 +1317,7 @@ export default function OverallResults() {
         <div className="w-full">
           {/* Header Section */}
           <div className="mb-8">
-            {/* Overall Score Card */}
-            {isMultiTest && level ? (
-              <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_145px] items-stretch gap-4 mb-8">
-                <div className="bg-white rounded-lg border border-gray-200 px-6 py-4 h-full">
-                  <div className="h-full flex items-center justify-between gap-4">
-                    <div>
-                      <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Genel Puan</h2>
-                      <p className="text-sm sm:text-base text-gray-600">Yazma testi performansınız</p>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm text-gray-500 mb-1">Puan</div>
-                      <div className="text-3xl sm:text-4xl font-bold text-red-600">{scores.overall}</div>
-                    </div>
-                  </div>
-                </div>
-                  <div className="bg-white rounded-lg border border-gray-200 px-6 py-4 h-full flex flex-col items-center justify-center">
-                  <div className="text-sm text-gray-500 mb-1">Genel Seviye</div>
-                  <div className="text-2xl sm:text-3xl font-semibold text-gray-900">{level}</div>
-                </div>
-              </div>
-            ) : (
+            {!isMultiTest && (
               <div className="bg-white rounded-lg border border-gray-200 px-6 py-4 h-full mb-8">
                 <div className="h-full flex items-center justify-between gap-4">
                   <div>
@@ -1345,7 +1448,7 @@ export default function OverallResults() {
                   </div>
                 )}
                 <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-gray-700 leading-relaxed">{currentData.question}</p>
+                  <p className="text-gray-700 leading-relaxed">{normalizeDisplayText(currentData.question)}</p>
                 </div>
               </div>
             </div>
@@ -1354,7 +1457,7 @@ export default function OverallResults() {
             <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
               <h2 className="text-base sm:text-lg font-semibold tracking-tight text-gray-900 mb-4">Cevabınız</h2>
               <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{currentData.answer}</p>
+                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{normalizeDisplayText(currentData.answer)}</p>
               </div>
             </div>
 
@@ -1368,7 +1471,7 @@ export default function OverallResults() {
                 <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-base sm:text-lg font-semibold tracking-tight text-gray-900 mb-4">Genel Değerlendirme</h2>
                   <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{generalFeedback}</p>
+                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{normalizeFeedbackText(generalFeedback)}</p>
                   </div>
                 </div>
               );
@@ -1409,23 +1512,23 @@ export default function OverallResults() {
     const removeBullets = (text: string): string => {
       if (!text) return text;
       // Remove bullet symbols (•, , etc.) and clean up whitespace
-      return text
+      return normalizeFeedbackText(text
         .replace(/[•\u2022\u25E6\uF0B7]/g, '') // Remove various bullet symbols
         .replace(/\s+/g, ' ') // Replace multiple spaces with single space
-        .trim();
+        .trim());
     };
 
     // Remove raw AI metadata blocks from general feedback text
     const sanitizeGeneralFeedback = (text: string): string => {
       if (!text) return text;
-      return removeBullets(
+      return sanitizeNarrativeArtifacts(removeBullets(
         text
           .replace(/\[[^\]]+\]/g, " ")
           .replace(/GENEL PUAN\s*:[^\n\r]*/gi, " ")
           .replace(/BELİRLENEN SEVİYE\s*:[^\n\r]*/gi, " ")
           .replace(/AI GERİ BİLDİRİMİ\s*\(EĞİTMEN NOTU\)\s*:/gi, " ")
           .replace(/GENEL DEĞERLENDİRME\s*:/gi, " ")
-      );
+      ));
     };
     
     // Helper function to extract feedback sections from string format
@@ -1471,7 +1574,7 @@ export default function OverallResults() {
     };
 
     const scores = {
-      overall: speaking?.score || 0,
+      overall: wholeScore(speaking?.score),
       coherence: extractScoreFromFeedback(aiFeedback?.coherenceAndCohesion) || 0,
       grammar: extractScoreFromFeedback(aiFeedback?.grammaticalRangeAndAccuracy) || 0,
       lexical: extractScoreFromFeedback(aiFeedback?.lexicalResource) || 0,
@@ -1481,131 +1584,121 @@ export default function OverallResults() {
     // Use level from overall data
     const level = displayLevel(data?.level);
 
-    // Extract answers from either answers array or parts structure
-    const extractAnswers = () => {
-      // First try to use the answers array if it exists
-      if (speaking?.answers && Array.isArray(speaking.answers) && speaking.answers.length > 0) {
-        console.log("Using answers array from speaking data:", speaking.answers);
-        return speaking.answers;
-      }
-      
-      const extractedAnswers: Array<{ questionId: string; questionText: string; userAnswer: string }> = [];
-      
-      // Helper function to extract from a part structure
-      const extractFromPart = (part: any) => {
-        if (!part) return;
-        
-        // Handle parts with sections that have subParts (like Part 1)
-        if (part.sections && Array.isArray(part.sections)) {
-          part.sections.forEach((section: any) => {
-            if (section.subParts && Array.isArray(section.subParts)) {
-              section.subParts.forEach((subPart: any) => {
-                if (subPart.questions && Array.isArray(subPart.questions)) {
-                  subPart.questions.forEach((q: any) => {
-                    if (q.userAnswer && typeof q.userAnswer === 'string' && q.userAnswer.trim() !== '') {
-                      extractedAnswers.push({
-                        questionId: q.questionId || q.id || '',
-                        questionText: q.questionText || q.question || `Soru ${extractedAnswers.length + 1}`,
-                        userAnswer: q.userAnswer
-                      });
-                    }
-                  });
-                }
-              });
-            }
-            // Handle sections with direct questions (no subParts)
-            else if (section.questions && Array.isArray(section.questions)) {
-              section.questions.forEach((q: any) => {
-                if (q.userAnswer && typeof q.userAnswer === 'string' && q.userAnswer.trim() !== '') {
-                  extractedAnswers.push({
-                    questionId: q.questionId || q.id || '',
-                    questionText: q.questionText || q.question || `Soru ${extractedAnswers.length + 1}`,
-                    userAnswer: q.userAnswer
-                  });
-                }
-              });
-            }
-          });
-        }
-        // Handle parts with direct subParts (no sections wrapper)
-        else if (part.subParts && Array.isArray(part.subParts)) {
-          part.subParts.forEach((subPart: any) => {
-            if (subPart.questions && Array.isArray(subPart.questions)) {
-              subPart.questions.forEach((q: any) => {
-                if (q.userAnswer && typeof q.userAnswer === 'string' && q.userAnswer.trim() !== '') {
-                  extractedAnswers.push({
-                    questionId: q.questionId || q.id || '',
-                    questionText: q.questionText || q.question || `Soru ${extractedAnswers.length + 1}`,
-                    userAnswer: q.userAnswer
-                  });
-                }
-              });
-            }
-          });
-        }
-        // Handle parts with direct questions (no subParts, no sections)
-        else if (part.questions && Array.isArray(part.questions)) {
-          part.questions.forEach((q: any) => {
-            if (q.userAnswer && typeof q.userAnswer === 'string' && q.userAnswer.trim() !== '') {
-              extractedAnswers.push({
-                questionId: q.questionId || q.id || '',
-                questionText: q.questionText || q.question || `Soru ${extractedAnswers.length + 1}`,
-                userAnswer: q.userAnswer
-              });
-            }
-          });
-        }
-      };
-      
-      // Try to extract from part1, part2, part3 structure (new format)
-      if (speaking?.part1 || speaking?.part2 || speaking?.part3) {
-        console.log("Extracting answers from part1/part2/part3 structure");
-        extractFromPart(speaking.part1);
-        extractFromPart(speaking.part2);
-        extractFromPart(speaking.part3);
-        console.log("Extracted answers from part1/part2/part3:", extractedAnswers);
-        if (extractedAnswers.length > 0) return extractedAnswers;
-      }
-      
-      // If not, try to extract from parts array structure (old format)
-      if (speaking?.parts && Array.isArray(speaking.parts)) {
-        console.log("Extracting answers from parts array structure:", speaking.parts);
-        speaking.parts.forEach((part: any) => {
-          extractFromPart(part);
+    type SpeakingAnswerItem = {
+      questionId: string | null;
+      questionText: string;
+      userAnswer: string;
+    };
+
+    const toAnswerItem = (
+      question: any,
+      fallbackText: string
+    ): SpeakingAnswerItem => ({
+      questionId:
+        (typeof question?.questionId === "string" && question.questionId) ||
+        (typeof question?.id === "string" && question.id) ||
+        null,
+      questionText:
+        (typeof question?.questionText === "string" && question.questionText) ||
+        (typeof question?.question === "string" && question.question) ||
+        fallbackText,
+      userAnswer:
+        typeof question?.userAnswer === "string" ? question.userAnswer : "",
+    });
+
+    const extractQuestionsFromPart = (part: any): SpeakingAnswerItem[] => {
+      const collected: SpeakingAnswerItem[] = [];
+      if (!part || typeof part !== "object") return collected;
+
+      const sections = Array.isArray(part.sections) ? part.sections : [];
+      sections.forEach((section: any) => {
+        const directQuestions = Array.isArray(section?.questions)
+          ? section.questions
+          : [];
+        directQuestions.forEach((q: any) => {
+          collected.push(toAnswerItem(q, `Soru ${collected.length + 1}`));
         });
-        console.log("Extracted answers from parts array:", extractedAnswers);
-        if (extractedAnswers.length > 0) return extractedAnswers;
-      }
-      
-      console.log("No answers found in speaking data");
-      return [];
-    };
-    
-    const answers = extractAnswers();
-    
-    // Organize answers by parts: Part 1.1, Part 1.2, Part 2, Part 3
-    const organizeAnswersByParts = () => {
-      if (answers.length === 0) return [[], [], [], []];
 
-      const totalQuestions = answers.length;
-      const part1_1Count = 3; // Fixed 3 questions for Part 1.1
-      const part1_2Count = 3; // Fixed 3 questions for Part 1.2
-      const part1TotalCount = part1_1Count + part1_2Count; // 6 for Part 1
-      const part2Count = Math.ceil(Math.max(0, totalQuestions - part1TotalCount) * 0.6); // Remaining for Part 2
-      // Rest goes to Part 3
-
-      const part1_1 = answers.slice(0, part1_1Count);
-      const part1_2 = Array(part1_2Count).fill({}).map((_, i) => {
-        const index = part1_1Count + i;
-        return answers[index] || { questionText: `Soru ${i + 1}`, userAnswer: "Cevap verilmedi", questionId: `dummy-${i}` };
+        const subParts = Array.isArray(section?.subParts) ? section.subParts : [];
+        subParts.forEach((subPart: any) => {
+          const subQuestions = Array.isArray(subPart?.questions)
+            ? subPart.questions
+            : [];
+          subQuestions.forEach((q: any) => {
+            collected.push(toAnswerItem(q, `Soru ${collected.length + 1}`));
+          });
+        });
       });
-      const part2 = answers.slice(part1TotalCount, part1TotalCount + part2Count);
-      const part3 = answers.slice(part1TotalCount + part2Count);
 
-      return [part1_1, part1_2, part2, part3].filter(part => part.length > 0);
+      const partQuestions = Array.isArray(part.questions) ? part.questions : [];
+      partQuestions.forEach((q: any) => {
+        collected.push(toAnswerItem(q, `Soru ${collected.length + 1}`));
+      });
+
+      return collected;
     };
 
-    const parts = organizeAnswersByParts();
+    const buildPartsFromBackend = () => {
+      const part11: SpeakingAnswerItem[] = [];
+      const part12: SpeakingAnswerItem[] = [];
+
+      const part1Sections = Array.isArray(speaking?.part1?.sections)
+        ? speaking.part1.sections
+        : [];
+      part1Sections.forEach((section: any) => {
+        const subParts = Array.isArray(section?.subParts) ? section.subParts : [];
+        if (subParts.length > 0) {
+          const firstSubPartQuestions = Array.isArray(subParts[0]?.questions)
+            ? subParts[0].questions
+            : [];
+          firstSubPartQuestions.forEach((q: any) => {
+            part11.push(toAnswerItem(q, `Soru ${part11.length + 1}`));
+          });
+
+          const secondSubPartQuestions = Array.isArray(subParts[1]?.questions)
+            ? subParts[1].questions
+            : [];
+          secondSubPartQuestions.forEach((q: any) => {
+            part12.push(toAnswerItem(q, `Soru ${part12.length + 1}`));
+          });
+        } else {
+          const directQuestions = Array.isArray(section?.questions)
+            ? section.questions
+            : [];
+          directQuestions.forEach((q: any) => {
+            part11.push(toAnswerItem(q, `Soru ${part11.length + 1}`));
+          });
+        }
+      });
+
+      const part2 = extractQuestionsFromPart(speaking?.part2);
+      const part3 = extractQuestionsFromPart(speaking?.part3);
+
+      return [part11, part12, part2, part3];
+    };
+
+    const buildLegacyParts = () => {
+      const legacyAnswers = Array.isArray(speaking?.answers) ? speaking.answers : [];
+      const legacyPart = legacyAnswers.map((answer: any, index: number) =>
+        toAnswerItem(answer, `Soru ${index + 1}`)
+      );
+      return [legacyPart, [], [], []];
+    };
+
+    const parts = (() => {
+      const structured = buildPartsFromBackend();
+      const hasStructuredData = structured.some((part) => part.length > 0);
+      return hasStructuredData ? structured : buildLegacyParts();
+    })();
+
+    const visiblePartEntries = parts
+      .map((questions, index) => ({ index, questions }))
+      .filter((entry) => entry.questions.length > 0);
+
+    const effectiveActiveSpeakingPart =
+      parts[activeSpeakingPart]?.length > 0
+        ? activeSpeakingPart
+        : (visiblePartEntries[0]?.index ?? 0);
     
     // Get part label based on index
     const getPartLabel = (index: number) => {
@@ -1615,14 +1708,198 @@ export default function OverallResults() {
       if (index === 3) return { main: "Bölüm 3", sub: "Part 3" };
       return { main: `Bölüm ${index + 1}`, sub: `Part ${index + 1}` };
     };
+
+    type SpeakingSectionKey = "bolum_1_1" | "bolum_1_2" | "bolum_2" | "bolum_3";
+
+    const getSpeakingSectionKey = (partIndex: number): SpeakingSectionKey => {
+      if (partIndex === 0) return "bolum_1_1";
+      if (partIndex === 1) return "bolum_1_2";
+      if (partIndex === 2) return "bolum_2";
+      return "bolum_3";
+    };
+
+    const getSpeakingFeedbackKey = (partIndex: number): "part1" | "part2" | "part3" => {
+      if (partIndex === 0 || partIndex === 1) return "part1";
+      if (partIndex === 2) return "part2";
+      return "part3";
+    };
+
+    const isPlaceholderText = (value?: string) => {
+      if (!value || typeof value !== "string") return true;
+      const normalized = value.trim().toLowerCase().replace(/\./g, "");
+      return (
+        normalized === "yanit yok" ||
+        normalized === "yanıt yok" ||
+        normalized.startsWith("yanit yok ") ||
+        normalized.startsWith("yanıt yok ") ||
+        normalized === "degerlendirme yok" ||
+        normalized === "değerlendirme yok" ||
+        normalized === "yok" ||
+        normalized === "-"
+      );
+    };
+
+    const pickMeaningfulText = (...values: any[]): string | undefined => {
+      for (const value of values) {
+        if (typeof value === "string" && value.trim() && !isPlaceholderText(value)) {
+          return normalizeFeedbackText(value.trim());
+        }
+      }
+      return undefined;
+    };
+
+    const getSectionFromFeedbackObject = (sectionKey: SpeakingSectionKey) => {
+      if (!aiFeedback || typeof aiFeedback !== "object") return undefined;
+      const bolumler = (aiFeedback as any)?.bolumler || (aiFeedback as any)?.["bölümler"];
+      const turkishKey = sectionKey.replace("bolum", "bölüm");
+      return (
+        bolumler?.[sectionKey] ||
+        bolumler?.[turkishKey] ||
+        (aiFeedback as any)?.[sectionKey] ||
+        (aiFeedback as any)?.[turkishKey]
+      );
+    };
+
+    const getSpeakingSectionCriteriaFromObject = (sectionKey: SpeakingSectionKey) => {
+      const section = getSectionFromFeedbackObject(sectionKey);
+      const criteria = section?.kriterler || section?.criteria || section;
+      return {
+        coherence: pickMeaningfulText(
+          criteria?.coherenceAndCohesion,
+          criteria?.coherence_and_cohesion,
+          criteria?.tutarlilikVeBaglilik,
+          criteria?.tutarlilik_ve_baglilik,
+          criteria?.["Akıcılık ve Bağlılık"],
+          criteria?.["Tutarlılık ve Bağlılık"]
+        ),
+        grammar: pickMeaningfulText(
+          criteria?.grammaticalRangeAndAccuracy,
+          criteria?.grammatical_range_and_accuracy,
+          criteria?.dilBilgisi,
+          criteria?.dil_bilgisi,
+          criteria?.["Dil Bilgisi"]
+        ),
+        lexical: pickMeaningfulText(
+          criteria?.lexicalResource,
+          criteria?.lexical_resource,
+          criteria?.kelimeKaynagi,
+          criteria?.kelime_kaynagi,
+          criteria?.["Kelime Kaynağı"]
+        ),
+        achievement: pickMeaningfulText(
+          criteria?.taskAchievement,
+          criteria?.task_achievement,
+          criteria?.gorevBasarisi,
+          criteria?.gorev_basarisi,
+          criteria?.gorevYaniti,
+          criteria?.gorev_yaniti,
+          criteria?.["Görev Başarısı"],
+          criteria?.["Görev Yanıtı"]
+        ),
+      };
+    };
+
+    const extractSpeakingCriteriaFromNarrative = (text?: string) => {
+      if (!text || typeof text !== "string") return {};
+      const source = removeBullets(text);
+      const sentences = source
+        .split(/(?<=[.!?])\s+/)
+        .map((sentence) => sentence.trim())
+        .filter(Boolean);
+      const pickSentence = (patterns: RegExp[]) =>
+        pickMeaningfulText(
+          ...sentences.filter((sentence) => patterns.some((pattern) => pattern.test(sentence)))
+        );
+      return {
+        coherence: pickMeaningfulText(
+          source.match(/(?:Akıcılık|Akicilik|Tutarlılık|Tutarlilik)(?:\s*ve\s*(?:Bağlılık|Baglilik))?[:\s-]*([^\n\r]+)/i)?.[1],
+          pickSentence([/akıcılık/i, /akicilik/i, /tutarl/i, /bağlılık/i, /baglilik/i, /akış/i, /akis/i])
+        ),
+        grammar: pickMeaningfulText(
+          source.match(/Dil Bilgisi[:\s-]*([^\n\r]+)/i)?.[1],
+          pickSentence([/dil\s*bilg/i, /gramer/i, /cümle/i, /cumle/i])
+        ),
+        lexical: pickMeaningfulText(
+          source.match(/Kelime Kaynağı[:\s-]*([^\n\r]+)/i)?.[1],
+          source.match(/Kelime Kaynagi[:\s-]*([^\n\r]+)/i)?.[1],
+          pickSentence([/kelime/i, /söz varlığı/i, /soz varligi/i, /vocabulary/i])
+        ),
+        achievement: pickMeaningfulText(
+          source.match(/(?:Görev Başarısı|Görev Yanıtı)[:\s-]*([^\n\r]+)/i)?.[1],
+          source.match(/(?:Gorev Basarisi|Gorev Yaniti)[:\s-]*([^\n\r]+)/i)?.[1],
+          pickSentence([/görev/i, /gorev/i, /yanıt/i, /yanit/i, /talimat/i, /konu/i, /başarı/i, /basari/i])
+        ),
+      };
+    };
+
+    const getSpeakingSectionNarrative = (partIndex: number) => {
+      const sectionKey = getSpeakingSectionKey(partIndex);
+      const section = getSectionFromFeedbackObject(sectionKey);
+      const feedbackKey = getSpeakingFeedbackKey(partIndex);
+      return pickMeaningfulText(
+        section?.degerlendirme,
+        section?.["değerlendirme"],
+        section?.feedback,
+        section?.yorum,
+        section?.analysis,
+        typeof aiFeedback === "string" ? extractFeedbackSection(aiFeedback, feedbackKey) : undefined,
+        typeof aiFeedback === "object" ? (aiFeedback as any)?.[feedbackKey] : undefined
+      );
+    };
+
+    const activeSpeakingSectionKey = getSpeakingSectionKey(effectiveActiveSpeakingPart);
+    const criteriaFromSectionObject = getSpeakingSectionCriteriaFromObject(activeSpeakingSectionKey);
+    const criteriaFromSectionNarrative = extractSpeakingCriteriaFromNarrative(
+      getSpeakingSectionNarrative(effectiveActiveSpeakingPart)
+    );
+    const fallbackGlobalSpeakingCriteria = {
+      coherence: pickMeaningfulText(
+        typeof aiFeedback === "object" ? (aiFeedback as any)?.coherenceAndCohesion : undefined
+      ),
+      grammar: pickMeaningfulText(
+        typeof aiFeedback === "object" ? (aiFeedback as any)?.grammaticalRangeAndAccuracy : undefined
+      ),
+      lexical: pickMeaningfulText(
+        typeof aiFeedback === "object" ? (aiFeedback as any)?.lexicalResource : undefined
+      ),
+      achievement: pickMeaningfulText(
+        typeof aiFeedback === "object" ? (aiFeedback as any)?.taskAchievement : undefined
+      ),
+    };
+    const activeSpeakingCriteria = {
+      coherence:
+        criteriaFromSectionObject.coherence ||
+        criteriaFromSectionNarrative.coherence ||
+        fallbackGlobalSpeakingCriteria.coherence ||
+        "Kısa değerlendirme yok",
+      grammar:
+        criteriaFromSectionObject.grammar ||
+        criteriaFromSectionNarrative.grammar ||
+        fallbackGlobalSpeakingCriteria.grammar ||
+        "Kısa değerlendirme yok",
+      lexical:
+        criteriaFromSectionObject.lexical ||
+        criteriaFromSectionNarrative.lexical ||
+        fallbackGlobalSpeakingCriteria.lexical ||
+        "Kısa değerlendirme yok",
+      achievement:
+        criteriaFromSectionObject.achievement ||
+        criteriaFromSectionNarrative.achievement ||
+        fallbackGlobalSpeakingCriteria.achievement ||
+        "Kısa değerlendirme yok",
+    };
     
     // Get current question and answer based on active part
     const getCurrentQuestionAndAnswer = () => {
-      if (parts.length > 0 && parts[activeSpeakingPart] && parts[activeSpeakingPart].length > 0) {
-        const partQuestions = parts[activeSpeakingPart];
+      if (
+        visiblePartEntries.length > 0 &&
+        parts[effectiveActiveSpeakingPart] &&
+        parts[effectiveActiveSpeakingPart].length > 0
+      ) {
+        const partQuestions = parts[effectiveActiveSpeakingPart];
         const currentQuestionIndex = Math.min(activeSpeakingQuestion, partQuestions.length - 1);
         const currentAnswer = partQuestions[currentQuestionIndex];
-        const partLabel = getPartLabel(activeSpeakingPart);
+        const partLabel = getPartLabel(effectiveActiveSpeakingPart);
         
         // Map part index to feedback key
         // Code organizes into: part1_1 (index 0), part1_2 (index 1), part2 (index 2), part3 (index 3)
@@ -1630,15 +1907,15 @@ export default function OverallResults() {
         // Map: part1_1 (index 0) -> part1, part1_2 (index 1) -> part1 (both use BÖLÜM 1), 
         //      part2 (index 2) -> part2, part3 (index 3) -> part3
         let feedbackKey: string;
-        if (activeSpeakingPart === 0 || activeSpeakingPart === 1) {
+        if (effectiveActiveSpeakingPart === 0 || effectiveActiveSpeakingPart === 1) {
           // Both Part 1.1 and Part 1.2 use BÖLÜM 1 feedback
           feedbackKey = 'part1';
-        } else if (activeSpeakingPart === 2) {
+        } else if (effectiveActiveSpeakingPart === 2) {
           feedbackKey = 'part2';
-        } else if (activeSpeakingPart === 3) {
+        } else if (effectiveActiveSpeakingPart === 3) {
           feedbackKey = 'part3';
         } else {
-          feedbackKey = `part${activeSpeakingPart + 1}`;
+          feedbackKey = `part${effectiveActiveSpeakingPart + 1}`;
         }
         
         // Get feedback for the specific part
@@ -1691,27 +1968,7 @@ export default function OverallResults() {
         <div className="w-full">
           {/* Header Section */}
           <div className="mb-8">
-            {/* Overall Score Card */}
-            {isMultiTest && level ? (
-              <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_145px] items-stretch gap-4 mb-8">
-                <div className="bg-white rounded-lg border border-gray-200 px-6 py-4 h-full">
-                  <div className="h-full flex items-center justify-between gap-4">
-                    <div>
-                      <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Genel Puan</h2>
-                      <p className="text-sm sm:text-base text-gray-600">Konuşma testi performansınız</p>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm text-gray-500 mb-1">Puan</div>
-                      <div className="text-3xl sm:text-4xl font-bold text-red-600">{scores.overall}</div>
-                    </div>
-                  </div>
-                </div>
-                  <div className="bg-white rounded-lg border border-gray-200 px-6 py-4 h-full flex flex-col items-center justify-center">
-                  <div className="text-sm text-gray-500 mb-1">Genel Seviye</div>
-                  <div className="text-2xl sm:text-3xl font-semibold text-gray-900">{level}</div>
-                </div>
-              </div>
-            ) : (
+            {!isMultiTest && (
               <div className="bg-white rounded-lg border border-gray-200 px-6 py-4 h-full mb-8">
                 <div className="h-full flex items-center justify-between gap-4">
                   <div>
@@ -1730,7 +1987,7 @@ export default function OverallResults() {
           </div>
 
           {/* Part Navigation - Simplified Design */}
-          {parts.length > 0 && (
+          {visiblePartEntries.length > 0 && (
             <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6 mb-6 sm:mb-8">
               <h3 className="text-base sm:text-lg font-semibold tracking-tight text-gray-900 mb-4 sm:mb-6">
                 Konuşma Bölümleri
@@ -1738,7 +1995,7 @@ export default function OverallResults() {
 
               {/* All Parts - 2x2 on mobile, 4 columns on tablet+ */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
-                {parts.map((_part, index: number) => {
+                {visiblePartEntries.map(({ index }) => {
                   const partLabel = getPartLabel(index);
                   return (
                     <Button
@@ -1749,7 +2006,7 @@ export default function OverallResults() {
                       }}
                       variant="outline"
                       className={`h-14 sm:h-16 rounded-lg font-medium transition-all text-xs sm:text-sm ${
-                        activeSpeakingPart === index
+                        effectiveActiveSpeakingPart === index
                           ? "bg-red-600 text-white hover:bg-red-700 border-red-600"
                           : "bg-white text-gray-700 hover:bg-gray-50 border-gray-300"
                       }`}
@@ -1763,11 +2020,11 @@ export default function OverallResults() {
               </div>
 
               {/* Question Navigation within Part - Only for Part 1.1 and Part 1.2 */}
-              {parts[activeSpeakingPart] && 
-               parts[activeSpeakingPart].length > 1 && 
-               (activeSpeakingPart === 0 || activeSpeakingPart === 1) && (
+              {parts[effectiveActiveSpeakingPart] && 
+               parts[effectiveActiveSpeakingPart].length > 1 && 
+               (effectiveActiveSpeakingPart === 0 || effectiveActiveSpeakingPart === 1) && (
                 <div className="flex flex-wrap gap-2">
-                  {parts[activeSpeakingPart].map((_, index: number) => (
+                  {parts[effectiveActiveSpeakingPart].map((_, index: number) => (
                     <Button
                       key={index}
                       onClick={() => setActiveSpeakingQuestion(index)}
@@ -1791,32 +2048,32 @@ export default function OverallResults() {
           <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6 mb-6 sm:mb-8">
             <div className="mb-4">
               <h3 className="text-base sm:text-lg font-semibold tracking-tight text-gray-900">
-                {getPartLabel(activeSpeakingPart).main}
+                {getPartLabel(effectiveActiveSpeakingPart).main}
               </h3>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="w-full rounded-lg border border-gray-200 bg-white p-3 sm:p-4">
                 <div className="text-sm font-semibold text-gray-700 mb-2">Akıcılık ve Bağlılık</div>
                 <div className="min-h-[92px] rounded-lg bg-gray-50 p-3 text-sm text-gray-700 whitespace-pre-wrap break-words leading-relaxed">
-                  {typeof aiFeedback === "object" ? (aiFeedback?.coherenceAndCohesion || "Kısa değerlendirme yok") : "Kısa değerlendirme yok"}
+                  {removeBullets(activeSpeakingCriteria.coherence)}
                 </div>
               </div>
               <div className="w-full rounded-lg border border-gray-200 bg-white p-3 sm:p-4">
                 <div className="text-sm font-semibold text-gray-700 mb-2">Dil Bilgisi</div>
                 <div className="min-h-[92px] rounded-lg bg-gray-50 p-3 text-sm text-gray-700 whitespace-pre-wrap break-words leading-relaxed">
-                  {typeof aiFeedback === "object" ? (aiFeedback?.grammaticalRangeAndAccuracy || "Kısa değerlendirme yok") : "Kısa değerlendirme yok"}
+                  {removeBullets(activeSpeakingCriteria.grammar)}
                 </div>
               </div>
               <div className="w-full rounded-lg border border-gray-200 bg-white p-3 sm:p-4">
                 <div className="text-sm font-semibold text-gray-700 mb-2">Kelime Kaynağı</div>
                 <div className="min-h-[92px] rounded-lg bg-gray-50 p-3 text-sm text-gray-700 whitespace-pre-wrap break-words leading-relaxed">
-                  {typeof aiFeedback === "object" ? (aiFeedback?.lexicalResource || "Kısa değerlendirme yok") : "Kısa değerlendirme yok"}
+                  {removeBullets(activeSpeakingCriteria.lexical)}
                 </div>
               </div>
               <div className="w-full rounded-lg border border-gray-200 bg-white p-3 sm:p-4">
                 <div className="text-sm font-semibold text-gray-700 mb-2">Görev Yanıtı</div>
                 <div className="min-h-[92px] rounded-lg bg-gray-50 p-3 text-sm text-gray-700 whitespace-pre-wrap break-words leading-relaxed">
-                  {typeof aiFeedback === "object" ? (aiFeedback?.taskAchievement || "Kısa değerlendirme yok") : "Kısa değerlendirme yok"}
+                  {removeBullets(activeSpeakingCriteria.achievement)}
                 </div>
               </div>
             </div>
@@ -1838,7 +2095,7 @@ export default function OverallResults() {
 
               return (
                 <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
-                  <h2 className="text-base sm:text-lg font-semibold tracking-tight text-gray-900 mb-4">Eğitmen Notu</h2>
+                  <h2 className="text-base sm:text-lg font-semibold tracking-tight text-gray-900 mb-4">Performans Özeti</h2>
                   <div className="bg-gray-50 rounded-lg p-4">
                     <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{removeBullets(generalFeedback)}</p>
                   </div>
@@ -1852,11 +2109,42 @@ export default function OverallResults() {
   };
 
   // Check which test types are available
-  const availableTests = [];
+  const availableTests: Array<"listening" | "reading" | "writing" | "speaking"> = [];
   if (data?.listening) availableTests.push('listening');
   if (data?.reading) availableTests.push('reading');
   if (data?.writing) availableTests.push('writing');
   if (data?.speaking) availableTests.push('speaking');
+
+  const testInfoByType = {
+    listening: { label: "Dinleme", score: wholeScore(data?.listening?.score) },
+    reading: { label: "Okuma", score: wholeScore(data?.reading?.score) },
+    writing: { label: "Yazma", score: wholeScore(data?.writing?.score) },
+    speaking: { label: "Konuşma", score: wholeScore(data?.speaking?.score) },
+  } as const;
+
+  const safeActiveTab = availableTests.includes(activeTab as any) ? activeTab : (availableTests[0] || "listening");
+  const tabGridClass =
+    availableTests.length === 2 ? "grid-cols-2" :
+    availableTests.length === 3 ? "grid-cols-3" :
+    "grid-cols-4";
+
+  const scoreList = availableTests
+    .map((type) => testInfoByType[type].score)
+    .filter((score): score is number => typeof score === "number" && !Number.isNaN(score));
+  const rawOverallScore = (data as any)?.overallScore ?? (data as any)?.score ?? (data as any)?.totalScore;
+  const parsedOverallScore =
+    typeof rawOverallScore === "number"
+      ? rawOverallScore
+      : typeof rawOverallScore === "string"
+        ? Number(rawOverallScore)
+        : NaN;
+  const overallScore =
+    !Number.isNaN(parsedOverallScore)
+      ? wholeScore(parsedOverallScore)
+      : scoreList.length > 0
+        ? Math.round(scoreList.reduce((sum, score) => sum + score, 0) / scoreList.length)
+        : 0;
+  const overallLevel = levelFrom75(overallScore) || displayLevel(data?.level) || "B1 altı";
 
   // If only one test type is available, show it directly without tabs
   if (availableTests.length === 1) {
@@ -1887,7 +2175,7 @@ export default function OverallResults() {
             <Button
               onClick={handleDownloadPDF}
               disabled={downloadingPDF}
-              className="bg-red-600 hover:bg-red-700 text-white w-full sm:w-auto"
+              className="theme-important bg-red-600 hover:bg-red-700 text-white w-full sm:w-auto"
             >
               <Download className="w-4 h-4 mr-2" />
               {downloadingPDF ? "İndiriliyor..." : "PDF İndir"}
@@ -1925,53 +2213,49 @@ export default function OverallResults() {
           <Button
             onClick={handleDownloadPDF}
             disabled={downloadingPDF}
-            className="bg-red-600 hover:bg-red-700 text-white w-full sm:w-auto"
+            className="theme-important bg-red-600 hover:bg-red-700 text-white w-full sm:w-auto"
           >
             <Download className="w-4 h-4 mr-2" />
             {downloadingPDF ? "İndiriliyor..." : "PDF İndir"}
           </Button>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs value={safeActiveTab} onValueChange={setActiveTab} className="w-full">
           <div className="sticky top-0 z-40 bg-gray-50 pb-4">
-            <TabsList className="grid w-full grid-cols-4 bg-white shadow-sm">
-            <TabsTrigger value="listening" className="flex items-center gap-2">
-              <span className="hidden sm:inline">Dinleme</span>
-              <span className="sm:hidden">D</span>
-              {data?.listening && (
-                <span className="ml-1 text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full">
-                  {data.listening.score || 0}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="reading" className="flex items-center gap-2">
-              <span className="hidden sm:inline">Okuma</span>
-              <span className="sm:hidden">O</span>
-              {data?.reading && (
-                <span className="ml-1 text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full">
-                  {data.reading.score || 0}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="writing" className="flex items-center gap-2">
-              <span className="hidden sm:inline">Yazma</span>
-              <span className="sm:hidden">Y</span>
-              {data?.writing && (
-                <span className="ml-1 text-xs bg-red-100 text-red-800 px-1.5 py-0.5 rounded-full">
-                  {data.writing.score || 0}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="speaking" className="flex items-center gap-2">
-              <span className="hidden sm:inline">Konuşma</span>
-              <span className="sm:hidden">K</span>
-              {data?.speaking && (
-                <span className="ml-1 text-xs bg-red-100 text-red-800 px-1.5 py-0.5 rounded-full">
-                  {data.speaking.score || 0}
-                </span>
-              )}
-            </TabsTrigger>
-          </TabsList>
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3 sm:p-4 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm text-muted-foreground">
+                <span>Katılımcı: {data.user.name}</span>
+                <span>Tarih: {new Date(data.completedAt || data.startedAt).toISOString().replace('T', ' ').substring(0, 19) + " "}</span>
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_168px] items-center gap-3">
+                <TabsList className={`grid h-auto w-full ${tabGridClass} items-start justify-start gap-1 bg-gray-50/80 border border-gray-200 rounded-lg p-1`}>
+                  {availableTests.map((testType) => {
+                    const score = testInfoByType[testType].score;
+                    return (
+                      <TabsTrigger
+                        key={testType}
+                        value={testType}
+                        className="h-12 sm:h-14 flex flex-col items-center justify-center gap-0.5 px-2 sm:px-3 rounded-md data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm"
+                      >
+                        <span className="text-xs sm:text-sm font-semibold text-gray-800">{testInfoByType[testType].label}</span>
+                        <span className="text-xs sm:text-sm font-bold text-red-600 leading-none">
+                          {score}
+                        </span>
+                      </TabsTrigger>
+                    );
+                  })}
+                </TabsList>
+                <div className="flex items-center justify-center">
+                  <div className="h-24 w-24 sm:h-28 sm:w-28 rounded-full border-2 border-gray-200 bg-gray-50 shadow-sm flex flex-col items-center justify-center text-center px-2">
+                    <div className="text-[10px] text-gray-500 leading-none">Toplam</div>
+                    <div className="mt-1 flex flex-col items-center leading-tight">
+                      <span className="text-2xl sm:text-[28px] font-bold text-red-600">{overallScore}</span>
+                      <span className="text-[11px] sm:text-xs font-semibold text-black">{overallLevel}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <TabsContent value="listening" className="mt-6">

@@ -4,7 +4,7 @@ import { Instagram, Quote, Send } from "lucide-react";
 const experts = [
   {
     name: "Muattar Mamatkarimova",
-    role: "Turkce Egitmeni",
+    role: "Türkçe Eğitmeni",
     image: "/mattuqiz.jpg",
     text: "Sınav öncesi öğrencilere gerçek seviyesini gösterecek böyle platforma uzun zamandır ihtiyaç vardı. Artık sınava katılmak isteyenler bu yapıda rahat çalışabilirler!",
     telegram: "https://t.me/+HWz8P0XvqHNkMDUy",
@@ -12,19 +12,19 @@ const experts = [
   },
   {
     name: "Mehmet Arslan",
-    role: "Sinav Hazirlik Uzmani",
+    role: "Sınav Hazırlık Uzmanı",
     image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=320&q=80",
-    text: "Konusma ve yazma geri bildirimleri pratik ve uygulanabilir. Ogrencinin eksik yonlerini bir calisma planina donusturmek icin guclu bir temel sunuyor.",
+    text: "Konuşma ve yazma geri bildirimleri pratik ve uygulanabilir. Öğrencinin eksik yönlerini bir çalışma planına dönüştürmek için güçlü bir temel sunuyor.",
     telegram: "",
     instagram: "",
   },
   {
     name: "Timur Makarov",
-    role: "Platform Kurucusu ve Gelistiricisi",
+    role: "Platform Kurucusu ve Geliştiricisi",
     image: "/tim%202.png",
-    text: "Bu platform, gercek sinav deneyimini yasamaniz, seviyenizi ve gelisime acik yonlerinizi net sekilde gormeniz amaciyla hazirlanmistir. Boylece sinava daha bilincli ve etkili bir sekilde hazirlanabilirsiniz.",
+    text: "Bu platform, gerçek sınav deneyimini yaşamanız, seviyenizi ve gelişime açık yönlerinizi net şekilde görmeniz amacıyla hazırlanmıştır. Böylece sınava daha bilinçli ve etkili bir şekilde hazırlanabilirsiniz.",
     telegram: "https://t.me/timur_makarov",
-    instagram: "",
+    instagram: "https://www.instagram.com/bigby.wolf/?utm_source=ig_web_button_share_sheet",
   },
 ];
 
@@ -82,7 +82,7 @@ const HomeExpertOpinions = () => {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl mb-4 sm:mb-5 text-center md:text-left">
           <h2 className="text-xl sm:text-3xl font-medium text-gray-900 tracking-tight">
-            Uzmanlar Hakkimizda Ne Diyor?
+            Uzmanlar Hakkımızda Ne Diyor?
           </h2>
         </div>
 
@@ -140,7 +140,7 @@ const HomeExpertOpinions = () => {
                         ) : (
                           <span
                             className="w-8 h-8 rounded-full border border-gray-300/70 text-gray-400 inline-flex items-center justify-center"
-                            aria-label="Instagram yakinda"
+                            aria-label="Instagram yakında"
                           >
                             <Instagram className="w-4 h-4" />
                           </span>
@@ -159,7 +159,7 @@ const HomeExpertOpinions = () => {
                         ) : (
                           <span
                             className="w-8 h-8 rounded-full border border-gray-300/70 text-gray-400 inline-flex items-center justify-center"
-                            aria-label="Telegram yakinda"
+                            aria-label="Telegram yakında"
                           >
                             <Send className="w-4 h-4" />
                           </span>

@@ -63,12 +63,20 @@ export default function ReadingPart1({ testData, answers, onAnswerChange, partNu
       const qNum = Number(match[1]);
       const q = questionByNumber.get(qNum);
       if (q) {
-        const selectedVariant = answers[q.id] || "";
-        const selectedOption = optionMap.get(selectedVariant);
+        const selectedVariantRaw = String(answers[q.id] || "").trim();
+        const normalizedSelectedVariant = selectedVariantRaw.replace(/\.$/, "");
+        const selectedOption = optionMap.get(normalizedSelectedVariant);
+        const currentSelectValue = selectedOption ? selectedOption.variantText : "__none__";
+        const mobileSelectedText = selectedOption
+          ? `${selectedOption.variantText}. ${selectedOption.answer}`
+          : "Se\u00e7iniz";
+        const desktopSelectedText = selectedOption
+          ? selectedOption.variantText
+          : normalizedSelectedVariant || "Se\u00e7iniz";
         parts.push(
           <span key={`${keyPrefix}-b-${qNum}`} className="inline-block align-middle mx-1">
             <Select
-              value={selectedVariant || "__none__"}
+              value={currentSelectValue}
               onValueChange={(value) => onAnswerChange(q.id, value === "__none__" ? "" : value)}
             >
               <SelectTrigger
@@ -80,11 +88,11 @@ export default function ReadingPart1({ testData, answers, onAnswerChange, partNu
               >
                 {isMobile ? (
                   <SelectValue placeholder={`Se\u00e7iniz`}>
-                    {selectedOption ? `${selectedOption.variantText}. ${selectedOption.answer}` : undefined}
+                    {mobileSelectedText}
                   </SelectValue>
                 ) : (
                   <SelectValue placeholder={`Se\u00e7iniz`}>
-                    {selectedVariant || "Se\u00e7iniz"}
+                    {desktopSelectedText}
                   </SelectValue>
                 )}
               </SelectTrigger>
@@ -171,7 +179,7 @@ export default function ReadingPart1({ testData, answers, onAnswerChange, partNu
 
           <ResizableHandle withHandle={true} className="bg-gray-200/40 hover:bg-gray-300/60 transition-colors w-px" />
 
-          <ResizablePanel defaultSize={45} minSize={20} className="reading-surface-alt min-h-0">
+          <ResizablePanel defaultSize={40} minSize={20} className="reading-surface-alt min-h-0">
             <div className="h-full max-h-full p-6 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent pb-40 reading-scroll">
               <div className="reading-surface-card border border-gray-200 bg-gray-50 rounded-lg p-4">
                 <div className="text-sm font-semibold text-slate-700 mb-3">{`Se\u00e7enekler`}</div>

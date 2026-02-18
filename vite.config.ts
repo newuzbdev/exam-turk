@@ -14,5 +14,13 @@ export default defineConfig({
   server: {
     port: 3001,
     host: true,
+    watch: {
+      // Ignore local backup folders so Vite doesn't treat them as extra projects.
+      ignored: [
+        "**/backups/**",
+        "**/backup-*/**",
+        "**/*.zip",
+      ],
+    },
   },
 });

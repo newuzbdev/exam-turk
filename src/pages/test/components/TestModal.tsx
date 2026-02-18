@@ -312,9 +312,20 @@ const TestModal = ({
     // Set queue and ensure initial count is correct
     overallTestFlowStore.setQueue(queue);
 
-    // Navigate to the first in queue
+    // Always show section-ready screen before first selected section
     const first = queue[0];
-    if (first?.path) navigate(first.path);
+    if (first?.path) {
+      overallTestFlowStore.setPendingNextSection({
+        fromTestType: first.testType,
+        next: first,
+        totalCount: queue.length,
+        completedCount: 0,
+      });
+      navigate("/overall-section-ready");
+      return;
+    }
+
+    navigate("/test");
   };
 
   const handleCancelConfirmation = () => {

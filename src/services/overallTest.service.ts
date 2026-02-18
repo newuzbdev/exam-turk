@@ -34,6 +34,7 @@ const flowQueueKey = "overall.flow.queue";
 const flowQueueCountKey = "overall.flow.queue.count";
 const overallIdKey = "overall.flow.id";
 const overallCompletedKey = "overall.flow.completed";
+const pendingNextSectionKey = "overall.flow.pendingNextSection";
 
 export const overallTestTokenStore = {
   set: (type: TestType, testId: string, token: string) => {
@@ -49,6 +50,12 @@ export const overallTestTokenStore = {
 };
 
 type FlowItem = { testType: TestType; testId: string; path: string };
+type PendingNextSection = {
+  fromTestType: TestType;
+  next: FlowItem;
+  totalCount: number;
+  completedCount: number;
+};
 
 export const overallTestFlowStore = {
   setQueue: (items: FlowItem[]) => {
@@ -99,6 +106,29 @@ export const overallTestFlowStore = {
       sessionStorage.removeItem(flowQueueCountKey);
       sessionStorage.removeItem(overallIdKey);
       sessionStorage.removeItem(overallCompletedKey);
+      sessionStorage.removeItem(pendingNextSectionKey);
+    } catch {}
+  },
+  setPendingNextSection: (item: PendingNextSection | null) => {
+    try {
+      if (!item) {
+        sessionStorage.removeItem(pendingNextSectionKey);
+        return;
+      }
+      sessionStorage.setItem(pendingNextSectionKey, JSON.stringify(item));
+    } catch {}
+  },
+  getPendingNextSection: (): PendingNextSection | null => {
+    try {
+      const raw = sessionStorage.getItem(pendingNextSectionKey);
+      return raw ? (JSON.parse(raw) as PendingNextSection) : null;
+    } catch {
+      return null;
+    }
+  },
+  clearPendingNextSection: () => {
+    try {
+      sessionStorage.removeItem(pendingNextSectionKey);
     } catch {}
   },
   onTestCompleted: (_testType: TestType, testId: string): string | null => {
@@ -112,18 +142,18 @@ export const overallTestFlowStore = {
     try { sessionStorage.setItem(flowQueueKey, JSON.stringify(remaining || [])); } catch {}
     // Ensure exam mode stays active for next test
     if (next && typeof document !== "undefined") {
+      const totalCount = Math.max(overallTestFlowStore.getInitialCount(), queue.length);
+      const completedCount = Math.max(0, totalCount - remaining.length);
+      overallTestFlowStore.setPendingNextSection({
+        fromTestType: _testType,
+        next,
+        totalCount,
+        completedCount,
+      });
       document.body.classList.add("exam-mode");
-      // Also ensure fullscreen stays active
-      const enterFullscreen = async () => {
-        try {
-          const el: any = document.documentElement as any;
-          if (el.requestFullscreen) await el.requestFullscreen();
-          else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
-          else if (el.msRequestFullscreen) await el.msRequestFullscreen();
-        } catch {}
-      };
-      enterFullscreen();
+      return "/overall-section-ready";
     }
+    overallTestFlowStore.clearPendingNextSection();
     return next?.path || null;
   },
   hasActive: (): boolean => {

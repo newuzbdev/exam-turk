@@ -4,21 +4,21 @@ import { Quote, Star } from "lucide-react";
 const HomeTestimonials = () => {
   const testimonials = [
     {
-      name: "Ahmet Yılmaz",
-      role: "Öğretmen",
+      name: "Aziza Karimova",
+      role: "Öğrenci",
       level: "B2",
       text: "TURKISHMOCK sayesinde Türkçe seviyemi doğru şekilde belirledim. Test sonuçları çok detaylı ve profesyonel.",
     },
     {
-      name: "Fatma Demir",
-      role: "Mühendis",
+      name: "Dinara Masharipova",
+      role: "Öğretmen",
       level: "C1",
       text: "Konuşma testi özellikle çok başarılı. Telaffuzumu geliştirmek için aldığım geri bildirimler eksiklerimi görmemi sağladı.",
     },
     {
-      name: "Mehmet Özkan",
-      role: "Öğrenci",
-      level: "A2",
+      name: "Farhod Rustamov",
+      role: "Mühendis",
+      level: "B2",
       text: "Kullanıcı dostu arayüz ve kapsamlı test içeriği. Sınava hazırlanırken en büyük yardımcım oldu.",
     },
   ];

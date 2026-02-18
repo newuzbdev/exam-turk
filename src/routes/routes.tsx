@@ -22,6 +22,7 @@ import UnifiedTestResults from "@/pages/test/UnifiedTestResults";
 import TestUnifiedResults from "@/pages/test/TestUnifiedResults";
 import OverallResults from "@/pages/test/components/OverallResults";
 import HowItWorksPage from "@/pages/how-it-works/HowItWorksPage";
+import OverallSectionReadyPage from "@/pages/test/OverallSectionReadyPage";
 import { createBrowserRouter } from "react-router";
 
 export const router = createBrowserRouter([
@@ -108,6 +109,10 @@ export const router = createBrowserRouter([
       {
         path: "/overall-results/:overallId",
         element: <OverallResults />,
+      },
+      {
+        path: "/overall-section-ready",
+        element: <OverallSectionReadyPage />,
       },
       {
         path: "/unified-results/:overallId",

@@ -73,7 +73,12 @@ const removeMixedFallbackBlocks = (input: string) => {
     out = out.replace(genericBlock, ' ');
   }
 
-  return out.replace(/\s+/g, ' ').trim();
+  return out
+    .replace(/\r\n?/g, '\n')
+    .replace(/[ \t\f\v]+/g, ' ')
+    .replace(/ *\n */g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 };
 
 export const fixMojibake = (input: string) => {

@@ -563,6 +563,12 @@ button, a, .interactive {
   height: calc(100dvh - 200px);
 }
 
+@media (max-width: 1023px) {
+  .reading-body-part1-mobile {
+    height: auto;
+  }
+}
+
 @media (min-width: 1024px) {
   .reading-body {
     height: calc(100vh - 220px);

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type TouchEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent, type TouchEvent } from "react";
 import { Instagram, Quote, Send } from "lucide-react";
 
 const experts = [
@@ -8,7 +8,7 @@ const experts = [
     image: "/mattuqiz.jpg",
     text: "Sınav öncesi öğrencilere gerçek seviyelerini gösterecek böyle bir platforma uzun zamandır ihtiyaç vardı. Artık sınava katılmak isteyenler bu yapıda rahatça çalışabilirler.",
     telegram: "https://t.me/+HWz8P0XvqHNkMDUy",
-    instagram: "https://www.instagram.com/mattu_turkish?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==",
+    instagram: "https://www.instagram.com/mattu_turkish/",
   },
   {
     name: "Mehmet Arslan",
@@ -24,7 +24,7 @@ const experts = [
     image: "/tim%202.png",
     text: "Bu platform, gerçek sınav deneyimini yaşamanız, seviyenizi ve gelişime açık yönlerinizi net şekilde görmeniz amacıyla hazırlanmıştır. Böylece sınava daha bilinçli ve etkili bir şekilde hazırlanabilirsiniz.",
     telegram: "https://t.me/timur_makarov",
-    instagram: "https://www.instagram.com/bigby.wolf/?utm_source=ig_web_button_share_sheet",
+    instagram: "https://www.instagram.com/bigby.wolf/",
   },
 ];
 
@@ -74,6 +74,24 @@ const HomeExpertOpinions = () => {
       setActiveIndex((prev) => (prev + 1) % experts.length);
     } else {
       setActiveIndex((prev) => (prev - 1 + experts.length) % experts.length);
+    }
+  };
+
+  const stopLinkTouchPropagation = (event: TouchEvent<HTMLElement>) => {
+    event.stopPropagation();
+  };
+
+  const handleExternalLinkClick = (
+    event: MouseEvent<HTMLAnchorElement>,
+    url: string,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const openedWindow = window.open(url, "_blank", "noopener,noreferrer");
+    if (!openedWindow) {
+      // Fallback for mobile webviews/pop-up blockers.
+      window.location.assign(url);
     }
   };
 
@@ -131,9 +149,12 @@ const HomeExpertOpinions = () => {
                           <a
                             href={expert.instagram}
                             target="_blank"
-                            rel="noreferrer"
+                            rel="noopener noreferrer"
                             className="w-8 h-8 rounded-full border border-gray-400/50 text-gray-700 hover:bg-gray-200 transition-colors duration-300 inline-flex items-center justify-center"
                             aria-label={`${expert.name} Instagram`}
+                            onClick={(event) => handleExternalLinkClick(event, expert.instagram)}
+                            onTouchStart={stopLinkTouchPropagation}
+                            onTouchEnd={stopLinkTouchPropagation}
                           >
                             <Instagram className="w-4 h-4" />
                           </a>
@@ -150,9 +171,12 @@ const HomeExpertOpinions = () => {
                           <a
                             href={expert.telegram}
                             target="_blank"
-                            rel="noreferrer"
+                            rel="noopener noreferrer"
                             className="w-8 h-8 rounded-full border border-gray-400/50 text-gray-700 hover:bg-gray-200 transition-colors duration-300 inline-flex items-center justify-center"
                             aria-label={`${expert.name} Telegram`}
+                            onClick={(event) => handleExternalLinkClick(event, expert.telegram)}
+                            onTouchStart={stopLinkTouchPropagation}
+                            onTouchEnd={stopLinkTouchPropagation}
                           >
                             <Send className="w-4 h-4" />
                           </a>

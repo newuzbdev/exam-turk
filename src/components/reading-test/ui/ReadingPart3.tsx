@@ -103,7 +103,7 @@ export default function ReadingPart3({ testData, answers, onAnswerChange, partNu
       {/* Desktop Layout - Resizable */}
       <div className="hidden lg:block h-full">
         <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border border-gray-200 shadow-lg">
-          {/* Left: Paragraphs 15â€“20, select above text with green bg */}
+          {/* Left: Paragraphs 15–20, select above text with green bg */}
           <ResizablePanel defaultSize={60} minSize={30} className="reading-surface">
             <div className="h-full p-6 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent pb-24 reading-scroll">
               <div className="space-y-6">

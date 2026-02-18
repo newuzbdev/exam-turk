@@ -1,6 +1,7 @@
 ﻿import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { useState } from "react";
 import HighlightableText from "@/pages/reading-test/components/HighlightableText";
+import { fixMojibake } from "@/utils/text";
 
 interface ReadingPart4Props {
   testData: any;
@@ -13,7 +14,7 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
   const [showPassage, setShowPassage] = useState(true);
   const part4 = (testData.parts || []).find((p: any) => (p.number || 0) === 4) || (testData.parts || [])[3];
   const section4 = part4?.sections && part4.sections[0];
-  const content = section4?.content || "";
+  const content = fixMojibake(section4?.content || "");
   const [titleLine, ...bodyLines] = String(content).split(/\r?\n/);
   const contentTitle = (titleLine || "").trim();
   const contentBody = bodyLines.join("\n").trim();
@@ -27,8 +28,8 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
   // Build options for each question individually
   const getQuestionOptions = (question: any) => {
     const options = (question.answers || []).map((a: any) => ({
-      variantText: a.variantText,
-      answer: a.answer,
+      variantText: fixMojibake(String(a.variantText || "")).trim(),
+      answer: fixMojibake(String(a.answer || "")).trim(),
       correct: a.correct
     }));
     return options.sort((a: any, b: any) => a.variantText.localeCompare(b.variantText));
@@ -100,7 +101,7 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
                       <span className="font-bold">S{questionNumber}.</span>{" "}
                       <span className="font-normal">
                         <HighlightableText
-                          text={q.text || q.question || ""}
+                          text={fixMojibake(q.text || q.question || "")}
                           partNumber={partNumber}
                           as="span"
                           wrapperAs="span"
@@ -192,7 +193,7 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
                           <span className="font-bold">S{questionNumber}.</span>{" "}
                           <span className="font-normal">
                             <HighlightableText
-                              text={q.text || q.question || ""}
+                              text={fixMojibake(q.text || q.question || "")}
                               partNumber={partNumber}
                               as="span"
                               wrapperAs="span"

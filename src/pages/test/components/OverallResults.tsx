@@ -566,6 +566,14 @@ export default function OverallResults() {
       );
     };
 
+    type StructuredGeneralFeedback = {
+      ozet: string;
+      tekrar_eden_eksikler: string[];
+      alinti_duzeltme: Array<{ alinti: string; duzeltilmis: string; neden: string }>;
+      egzersizler: Array<{ baslik: string; uygulama: string }>;
+      kapanis: string;
+    };
+
     // Remove raw AI metadata blocks from general feedback text
     const sanitizeGeneralFeedback = (text: string): string => {
       if (!text) return text;
@@ -738,6 +746,10 @@ export default function OverallResults() {
 
         return {
           ...feedbackObj,
+          generalStructured:
+            feedbackObj?.general_structured ??
+            feedbackObj?.generalStructured ??
+            feedbackObj?.genel_degerlendirme_yapilandirilmis,
           part1_1: pickFirstText(
             feedbackObj?.part1_1,
             feedbackObj?.part1,
@@ -880,6 +892,56 @@ export default function OverallResults() {
     };
 
     const parsedFeedback = parseAIFeedback();
+    const extractStructuredGeneralFeedback = (): StructuredGeneralFeedback | null => {
+      const raw =
+        (parsedFeedback as any)?.generalStructured ??
+        (parsedFeedback as any)?.general_structured ??
+        (parsedFeedback as any)?.genel_degerlendirme_yapilandirilmis ??
+        (aiFeedback as any)?.generalStructured ??
+        (aiFeedback as any)?.general_structured ??
+        (aiFeedback as any)?.genel_degerlendirme_yapilandirilmis;
+
+      if (!raw || typeof raw !== "object") return null;
+      const src: any = raw;
+      const clean = (value: any) => cleanBullets(typeof value === "string" ? value : "");
+
+      const structured: StructuredGeneralFeedback = {
+        ozet: clean(src?.ozet),
+        tekrar_eden_eksikler: Array.isArray(src?.tekrar_eden_eksikler)
+          ? src.tekrar_eden_eksikler.map((v: any) => clean(v)).filter(Boolean).slice(0, 6)
+          : [],
+        alinti_duzeltme: Array.isArray(src?.alinti_duzeltme)
+          ? src.alinti_duzeltme
+              .map((item: any) => ({
+                alinti: clean(item?.alinti),
+                duzeltilmis: clean(item?.duzeltilmis),
+                neden: clean(item?.neden),
+              }))
+              .filter((item: any) => item.alinti || item.duzeltilmis || item.neden)
+              .slice(0, 6)
+          : [],
+        egzersizler: Array.isArray(src?.egzersizler)
+          ? src.egzersizler
+              .map((item: any) => ({
+                baslik: clean(item?.baslik),
+                uygulama: clean(item?.uygulama),
+              }))
+              .filter((item: any) => item.baslik || item.uygulama)
+              .slice(0, 4)
+          : [],
+        kapanis: clean(src?.kapanis),
+      };
+
+      const hasContent =
+        structured.ozet ||
+        structured.kapanis ||
+        structured.tekrar_eden_eksikler.length > 0 ||
+        structured.alinti_duzeltme.length > 0 ||
+        structured.egzersizler.length > 0;
+
+      return hasContent ? structured : null;
+    };
+    const structuredGeneralFeedback = extractStructuredGeneralFeedback();
 
     const isPlaceholderText = (value?: string) => {
       if (!value || typeof value !== "string") return true;
@@ -1105,6 +1167,17 @@ export default function OverallResults() {
         .replace(/[\u0300-\u036f]/g, "");
 
     const getTaskKeyFromAnswer = (answer: any): WritingTaskKey | null => {
+      const explicitKey = String(
+        answer?.taskKey ?? answer?.task_key ?? answer?.sectionKey ?? "",
+      ).trim() as WritingTaskKey | "";
+      if (
+        explicitKey === "bolum_1_1" ||
+        explicitKey === "bolum_1_2" ||
+        explicitKey === "bolum_2"
+      ) {
+        return explicitKey;
+      }
+
       const hints = [
         answer?.questionText,
         answer?.question,
@@ -1465,14 +1538,111 @@ export default function OverallResults() {
             {(() => {
               const rawGeneralFeedback = parsedFeedback?.general || extractFeedbackSection(aiFeedback, "general");
               const generalFeedback = sanitizeWritingGeneralFeedback(rawGeneralFeedback);
-              if (!generalFeedback) return null;
+              if (!generalFeedback && !structuredGeneralFeedback) return null;
 
               return (
                 <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-base sm:text-lg font-semibold tracking-tight text-gray-900 mb-4">Genel Değerlendirme</h2>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{normalizeFeedbackText(generalFeedback)}</p>
-                  </div>
+                  {structuredGeneralFeedback ? (
+                    <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+                      {structuredGeneralFeedback.ozet && (
+                        <div>
+                          <h4 className="font-bold text-black mb-1">Özet</h4>
+                          <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                            {normalizeDisplayText(structuredGeneralFeedback.ozet)}
+                          </p>
+                        </div>
+                      )}
+
+                      {structuredGeneralFeedback.tekrar_eden_eksikler.length > 0 && (
+                        <div>
+                          <h4 className="font-bold text-black mb-1">Tekrar Eden Eksikler</h4>
+                          <ul className="list-disc pl-5 space-y-1 text-gray-700">
+                            {structuredGeneralFeedback.tekrar_eden_eksikler.map((item, idx) => (
+                              <li key={`overall-eksik-${idx}`}>{normalizeDisplayText(item)}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {structuredGeneralFeedback.alinti_duzeltme.length > 0 && (
+                        <div>
+                          <h4 className="font-bold text-black mb-2">İyileştirmeler</h4>
+                          <div className="space-y-3">
+                            {structuredGeneralFeedback.alinti_duzeltme.map((item, idx) => (
+                              <div
+                                key={`overall-rewrite-${idx}`}
+                                className="rounded-lg border border-gray-200 bg-gray-100 p-3"
+                              >
+                                {item.alinti && (
+                                  <>
+                                    <p className="text-xs font-semibold text-black mb-1">Alıntı</p>
+                                    <p className="text-red-600 font-medium whitespace-pre-wrap mb-2">
+                                      "{normalizeDisplayText(item.alinti)}"
+                                    </p>
+                                  </>
+                                )}
+                                {item.duzeltilmis && (
+                                  <>
+                                    <p className="text-xs font-semibold text-black mb-1">Düzeltilmiş Versiyon</p>
+                                    <p className="text-green-700 whitespace-pre-wrap mb-2">
+                                      {normalizeDisplayText(item.duzeltilmis)}
+                                    </p>
+                                  </>
+                                )}
+                                {item.neden && (
+                                  <>
+                                    <p className="text-xs font-semibold text-black mb-1">Neden Düzelttik?</p>
+                                    <p className="text-gray-700 whitespace-pre-wrap">
+                                      {normalizeDisplayText(item.neden)}
+                                    </p>
+                                  </>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {structuredGeneralFeedback.egzersizler.length > 0 && (
+                        <div>
+                          <h4 className="font-bold text-black mb-1">Önerilen Egzersizler</h4>
+                          <div className="space-y-2">
+                            {structuredGeneralFeedback.egzersizler.map((item, idx) => (
+                              <div
+                                key={`overall-exercise-${idx}`}
+                                className="rounded-md border border-gray-200 bg-white p-3"
+                              >
+                                <p className="font-semibold text-black">
+                                  {idx + 1}. {normalizeDisplayText(item.baslik || "Egzersiz")}
+                                </p>
+                                {item.uygulama && (
+                                  <p className="text-gray-700 mt-1 whitespace-pre-wrap">
+                                    {normalizeDisplayText(item.uygulama)}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {structuredGeneralFeedback.kapanis && (
+                        <div>
+                          <h4 className="font-bold text-black mb-1">Son Not</h4>
+                          <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                            {normalizeDisplayText(structuredGeneralFeedback.kapanis)}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                        {normalizeFeedbackText(generalFeedback)}
+                      </p>
+                    </div>
+                  )}
                 </div>
               );
             })()}
@@ -1492,7 +1662,43 @@ export default function OverallResults() {
     }
 
     const { speaking } = data;
-    const aiFeedback = speaking.aiFeedback;
+    const rawSpeakingAiFeedback =
+      (speaking as any)?.aiFeedback ??
+      (speaking as any)?.ai_feedback ??
+      (speaking as any)?.feedback ??
+      (speaking as any)?.assessment ??
+      null;
+
+    const parseJsonCandidate = (value: unknown): unknown => {
+      if (typeof value !== "string") return value;
+      const trimmed = value.trim();
+      if (!trimmed) return value;
+
+      const cleaned = trimmed.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
+      if (!(cleaned.startsWith("{") || cleaned.startsWith("["))) return value;
+      try {
+        return JSON.parse(cleaned);
+      } catch {
+        return value;
+      }
+    };
+
+    const unwrapAiFeedback = (value: unknown): unknown => {
+      let current: any = parseJsonCandidate(value);
+      for (let i = 0; i < 3; i += 1) {
+        if (!current || typeof current !== "object") break;
+        const next =
+          current?.aiFeedback ??
+          current?.ai_feedback ??
+          current?.feedback ??
+          current?.assessment;
+        if (!next || next === current) break;
+        current = parseJsonCandidate(next);
+      }
+      return current;
+    };
+
+    const aiFeedback: any = unwrapAiFeedback(rawSpeakingAiFeedback);
     
     // Debug: Log the speaking data structure
     console.log("Speaking data structure:", {
@@ -1509,13 +1715,22 @@ export default function OverallResults() {
     });
     
     // Helper function to remove bullet symbols from text
+    const normalizeQuestionRefs = (text: string): string =>
+      text
+        .replace(/\bQ\s*([0-9]{1,2})\s*['’`]?\s*(de|da|te|ta)\b/gi, (_m, n) => `${n}. soruda`)
+        .replace(/\bQ\s*([0-9]{1,2})\b/gi, (_m, n) => `${n}. soru`);
+
     const removeBullets = (text: string): string => {
       if (!text) return text;
       // Remove bullet symbols (•, , etc.) and clean up whitespace
-      return normalizeFeedbackText(text
-        .replace(/[•\u2022\u25E6\uF0B7]/g, '') // Remove various bullet symbols
-        .replace(/\s+/g, ' ') // Replace multiple spaces with single space
-        .trim());
+      return normalizeFeedbackText(
+        normalizeQuestionRefs(
+          text
+            .replace(/[•\u2022\u25E6\uF0B7]/g, '') // Remove various bullet symbols
+            .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+            .trim(),
+        ),
+      );
     };
 
     // Remove raw AI metadata blocks from general feedback text
@@ -1530,21 +1745,137 @@ export default function OverallResults() {
           .replace(/GENEL DEĞERLENDİRME\s*:/gi, " ")
       ));
     };
+
+    type StructuredGeneralFeedback = {
+      ozet: string;
+      tekrar_eden_eksikler: string[];
+      alinti_duzeltme: Array<{ alinti: string; duzeltilmis: string; neden: string }>;
+      egzersizler: Array<{ baslik: string; uygulama: string }>;
+      kapanis: string;
+    };
+
+    const extractStructuredGeneralFeedback = (): StructuredGeneralFeedback | null => {
+      const raw =
+        (aiFeedback as any)?.generalStructured ??
+        (aiFeedback as any)?.general_structured ??
+        (aiFeedback as any)?.genel_degerlendirme_yapilandirilmis;
+
+      if (!raw || typeof raw !== "object") return null;
+      const src: any = raw;
+      const clean = (value: any) => removeBullets(typeof value === "string" ? value : "");
+
+      const structured: StructuredGeneralFeedback = {
+        ozet: clean(src?.ozet),
+        tekrar_eden_eksikler: Array.isArray(src?.tekrar_eden_eksikler)
+          ? src.tekrar_eden_eksikler.map((v: any) => clean(v)).filter(Boolean).slice(0, 6)
+          : [],
+        alinti_duzeltme: Array.isArray(src?.alinti_duzeltme)
+          ? src.alinti_duzeltme
+              .map((item: any) => ({
+                alinti: clean(item?.alinti),
+                duzeltilmis: clean(item?.duzeltilmis),
+                neden: clean(item?.neden),
+              }))
+              .filter((item: any) => item.alinti || item.duzeltilmis || item.neden)
+              .slice(0, 6)
+          : [],
+        egzersizler: Array.isArray(src?.egzersizler)
+          ? src.egzersizler
+              .map((item: any) => ({
+                baslik: clean(item?.baslik),
+                uygulama: clean(item?.uygulama),
+              }))
+              .filter((item: any) => item.baslik || item.uygulama)
+              .slice(0, 4)
+          : [],
+        kapanis: clean(src?.kapanis),
+      };
+
+      const hasContent =
+        structured.ozet ||
+        structured.kapanis ||
+        structured.tekrar_eden_eksikler.length > 0 ||
+        structured.alinti_duzeltme.length > 0 ||
+        structured.egzersizler.length > 0;
+
+      return hasContent ? structured : null;
+    };
+
+    const structuredGeneralFeedback = extractStructuredGeneralFeedback();
     
     // Helper function to extract feedback sections from string format
-    const extractFeedbackSection = (feedbackText: string | undefined, sectionName: string): string => {
-      if (!feedbackText || typeof feedbackText !== 'string') {
+    const extractFeedbackSection = (feedbackSource: any, sectionName: string): string => {
+      if (!feedbackSource) {
         return `Geri bildirim mevcut değil`;
       }
-      
-      // Try to extract specific section from the feedback string
+
+      if (typeof feedbackSource === "object") {
+        const feedbackObj: any = feedbackSource;
+        const bolumler =
+          feedbackObj?.bolumler ??
+          feedbackObj?.["bölümler"] ??
+          feedbackObj?.sections ??
+          feedbackObj?.parts ??
+          {};
+
+        const getSectionNarrative = (section: any): string | undefined => {
+          if (!section || typeof section !== "object") return undefined;
+          const candidate =
+            section?.degerlendirme ??
+            section?.["değerlendirme"] ??
+            section?.feedback ??
+            section?.yorum ??
+            section?.analysis;
+          return typeof candidate === "string" && candidate.trim() ? candidate.trim() : undefined;
+        };
+
+        if (sectionName === "general") {
+          const directGeneral =
+            feedbackObj?.genel_degerlendirme ??
+            feedbackObj?.genelDegerlendirme ??
+            feedbackObj?.general ??
+            feedbackObj?.generalFeedback ??
+            feedbackObj?.summary ??
+            feedbackObj?.teacherNote ??
+            feedbackObj?.teacher_note;
+          if (typeof directGeneral === "string" && directGeneral.trim()) {
+            return sanitizeGeneralFeedback(directGeneral.trim());
+          }
+          return `Geri bildirim mevcut değil`;
+        }
+
+        if (sectionName === "part1") {
+          const part1_1 = getSectionNarrative(bolumler?.bolum_1_1 ?? bolumler?.["bölüm_1_1"]);
+          const part1_2 = getSectionNarrative(bolumler?.bolum_1_2 ?? bolumler?.["bölüm_1_2"]);
+          const merged = [part1_1, part1_2].filter(Boolean).join(" ");
+          if (merged) return removeBullets(merged);
+        }
+
+        const objectFallback =
+          sectionName === "part2"
+            ? getSectionNarrative(bolumler?.bolum_2 ?? bolumler?.["bölüm_2"])
+            : sectionName === "part3"
+              ? getSectionNarrative(bolumler?.bolum_3 ?? bolumler?.["bölüm_3"])
+              : feedbackObj?.[sectionName];
+
+        if (typeof objectFallback === "string" && objectFallback.trim()) {
+          return removeBullets(objectFallback.trim());
+        }
+      }
+
+      if (typeof feedbackSource !== "string") {
+        return `Geri bildirim mevcut değil`;
+      }
+
+      // Try to extract specific section from string format
+      const feedbackText = feedbackSource;
       const sectionPatterns: Record<string, RegExp> = {
-        'part1': /\[BÖLÜM 1 ANALİZİ\]([\s\S]*?)(?=\[BÖLÜM 2|\[BÖLÜM 3|AI GERİ BİLDİRİMİ|GENEL DEĞERLENDİRME|$)/i,
-        'part2': /\[BÖLÜM 2 ANALİZİ\]([\s\S]*?)(?=\[BÖLÜM 3|AI GERİ BİLDİRİMİ|GENEL DEĞERLENDİRME|$)/i,
-        'part3': /\[BÖLÜM 3 ANALİZİ\]([\s\S]*?)(?=AI GERİ BİLDİRİMİ|GENEL DEĞERLENDİRME|$)/i,
-        'general': /GENEL DEĞERLENDİRME:([\s\S]*?)(?=$)/i
+        part1: /\[BÖLÜM 1 ANALİZİ\]([\s\S]*?)(?=\[BÖLÜM 2|\[BÖLÜM 3|AI GERİ BİLDİRİMİ|GENEL DEĞERLENDİRME|$)/i,
+        part2: /\[BÖLÜM 2 ANALİZİ\]([\s\S]*?)(?=\[BÖLÜM 3|AI GERİ BİLDİRİMİ|GENEL DEĞERLENDİRME|$)/i,
+        part3: /\[BÖLÜM 3 ANALİZİ\]([\s\S]*?)(?=AI GERİ BİLDİRİMİ|GENEL DEĞERLENDİRME|$)/i,
+        general: /GENEL DEĞERLENDİRME:([\s\S]*?)(?=$)/i,
       };
-      
+
       const pattern = sectionPatterns[sectionName];
       if (pattern) {
         const match = feedbackText.match(pattern);
@@ -1555,15 +1886,14 @@ export default function OverallResults() {
           return removeBullets(match[1].trim());
         }
       }
-      
-      // If no specific section found, return the full feedback for general or fallback
-      if (sectionName === 'general') {
+
+      if (sectionName === "general") {
         return sanitizeGeneralFeedback(feedbackText);
       }
-      if (sectionName === 'taskAchievement') {
+      if (sectionName === "taskAchievement") {
         return removeBullets(feedbackText);
       }
-      
+
       return `Geri bildirim mevcut değil`;
     };
 
@@ -1588,27 +1918,299 @@ export default function OverallResults() {
       questionId: string | null;
       questionText: string;
       userAnswer: string;
+      questionOrder?: number;
+    };
+
+    const extractNumericOrder = (value: unknown): number | undefined => {
+      if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+        return Math.floor(value);
+      }
+      if (typeof value === "string") {
+        const trimmed = value.trim();
+        if (!trimmed) return undefined;
+        const direct = Number(trimmed);
+        if (Number.isFinite(direct) && direct > 0) return Math.floor(direct);
+        const fromText = trimmed.match(/(?:Soru|Question|Q)\s*#?\s*(\d{1,2})/i)?.[1];
+        if (fromText) {
+          const parsed = Number(fromText);
+          if (Number.isFinite(parsed) && parsed > 0) return Math.floor(parsed);
+        }
+      }
+      return undefined;
+    };
+
+    const pickFirstNonEmptyText = (...values: unknown[]): string => {
+      for (const value of values) {
+        if (typeof value === "string") {
+          const trimmed = value.trim();
+          if (trimmed) return trimmed;
+          continue;
+        }
+        if (value && typeof value === "object") {
+          const nested = value as any;
+          const nestedText = [
+            nested?.text,
+            nested?.userAnswer,
+            nested?.answer,
+            nested?.transcript,
+            nested?.content,
+            nested?.response,
+          ].find((candidate) => typeof candidate === "string" && candidate.trim().length > 0);
+          if (typeof nestedText === "string") return nestedText.trim();
+        }
+      }
+      return "";
     };
 
     const toAnswerItem = (
       question: any,
-      fallbackText: string
+      fallbackText: string,
+      fallbackOrder?: number
     ): SpeakingAnswerItem => ({
       questionId:
         (typeof question?.questionId === "string" && question.questionId) ||
+        (typeof question?.questionId === "number" && String(question.questionId)) ||
         (typeof question?.id === "string" && question.id) ||
+        (typeof question?.id === "number" && String(question.id)) ||
+        (typeof question?.question?.id === "string" && question.question.id) ||
+        (typeof question?.question?.id === "number" && String(question.question.id)) ||
         null,
-      questionText:
-        (typeof question?.questionText === "string" && question.questionText) ||
-        (typeof question?.question === "string" && question.question) ||
-        fallbackText,
-      userAnswer:
-        typeof question?.userAnswer === "string" ? question.userAnswer : "",
+      questionText: pickFirstNonEmptyText(
+        question?.questionText,
+        question?.question?.questionText,
+        question?.question?.text,
+        question?.prompt,
+        typeof question?.question === "string" ? question.question : "",
+        typeof question?.text === "string" ? question.text : "",
+        fallbackText
+      ),
+      userAnswer: pickFirstNonEmptyText(
+        question?.userAnswer,
+        question?.answer,
+        question?.text,
+        question?.transcript,
+        question?.content,
+        question?.response,
+        question?.answerText
+      ),
+      questionOrder:
+        extractNumericOrder(question?.questionOrder) ??
+        extractNumericOrder(question?.order) ??
+        extractNumericOrder(question?.question?.order) ??
+        extractNumericOrder(question?.questionNumber) ??
+        extractNumericOrder(question?.questionText) ??
+        extractNumericOrder(question?.question) ??
+        fallbackOrder,
     });
+
+    const splitAnswersByOrder = (items: SpeakingAnswerItem[]) => {
+      const groups: [SpeakingAnswerItem[], SpeakingAnswerItem[], SpeakingAnswerItem[], SpeakingAnswerItem[]] = [
+        [],
+        [],
+        [],
+        [],
+      ];
+      const unresolved: SpeakingAnswerItem[] = [];
+
+      items.forEach((item) => {
+        const order = extractNumericOrder(item.questionOrder);
+        if (!order) {
+          unresolved.push(item);
+          return;
+        }
+        if (order <= 3) groups[0].push(item);
+        else if (order <= 6) groups[1].push(item);
+        else if (order === 7) groups[2].push(item);
+        else groups[3].push(item);
+      });
+
+      unresolved.forEach((item) => {
+        if (groups[0].length < 3) groups[0].push(item);
+        else if (groups[1].length < 3) groups[1].push(item);
+        else if (groups[2].length < 1) groups[2].push(item);
+        else groups[3].push(item);
+      });
+
+      return groups;
+    };
+
+    const isMeaningfulSpeakingAnswer = (value?: string) => {
+      const text = String(value || "").trim();
+      if (!text) return false;
+      const normalized = text
+        .toLocaleLowerCase("tr-TR")
+        .replace(/\s+/g, " ")
+        .replace(/[^\p{L}\p{N}\s[\]]/gu, "")
+        .trim();
+      if (!normalized) return false;
+      if (normalized.includes("cevap bulunamad")) return false;
+      if (normalized === "yanit yok" || normalized === "yanıt yok") return false;
+      if (normalized === "[cevap bulunamadi]" || normalized === "[cevap bulunamadı]") return false;
+      return true;
+    };
+
+    const countMeaningfulAnswers = (groups: SpeakingAnswerItem[][]) =>
+      groups
+        .flat()
+        .filter((item) => isMeaningfulSpeakingAnswer(item.userAnswer)).length;
+
+    const emptySpeakingParts = (): [SpeakingAnswerItem[], SpeakingAnswerItem[], SpeakingAnswerItem[], SpeakingAnswerItem[]] => [
+      [],
+      [],
+      [],
+      [],
+    ];
+
+    const collectQuestionCatalog = () => {
+      const byId = new Map<string, { questionText: string; questionOrder?: number }>();
+      const seen = new WeakSet<object>();
+
+      const remember = (candidate: any) => {
+        const normalized = toAnswerItem(candidate, "");
+        if (!normalized.questionId) return;
+        const existing = byId.get(normalized.questionId);
+        const nextText = pickFirstNonEmptyText(
+          normalized.questionText,
+          existing?.questionText,
+          `Soru ${byId.size + 1}`
+        );
+        byId.set(normalized.questionId, {
+          questionText: nextText,
+          questionOrder: normalized.questionOrder ?? existing?.questionOrder,
+        });
+      };
+
+      const walk = (node: any) => {
+        if (!node) return;
+        if (Array.isArray(node)) {
+          node.forEach(walk);
+          return;
+        }
+        if (typeof node !== "object") return;
+        if (seen.has(node)) return;
+        seen.add(node);
+
+        remember(node);
+        walk((node as any).questions);
+        walk((node as any).subParts);
+        walk((node as any).sections);
+        walk((node as any).parts);
+        walk((node as any).answers);
+      };
+
+      walk(speaking);
+      return byId;
+    };
+
+    const extractSessionSpeakingAnswers = (): SpeakingAnswerItem[] => {
+      try {
+        const questionCatalog = collectQuestionCatalog();
+        const speakingTestId = pickFirstNonEmptyText(
+          (speaking as any)?.speakingTestId,
+          (speaking as any)?.test?.id,
+          (speaking as any)?.testId
+        );
+
+        const prioritizedKeys = [
+          speakingTestId ? `speaking_answers_${speakingTestId}` : "",
+          params.overallId ? `speaking_answers_${params.overallId}` : "",
+        ].filter(Boolean);
+        const allSpeakingKeys = speakingTestId
+          ? []
+          : Object.keys(sessionStorage).filter((key) => key.startsWith("speaking_answers_"));
+        const candidateKeys = Array.from(new Set([...prioritizedKeys, ...allSpeakingKeys]));
+        if (candidateKeys.length === 0) return [];
+
+        const byQuestionId = new Map<string, SpeakingAnswerItem>();
+        const upsert = (questionIdRaw: unknown, rawValue: unknown) => {
+          const questionId = String(questionIdRaw ?? "").trim();
+          if (!questionId) return;
+
+          const answerText = pickFirstNonEmptyText(
+            rawValue,
+            (rawValue as any)?.userAnswer,
+            (rawValue as any)?.answer,
+            (rawValue as any)?.text,
+            (rawValue as any)?.transcript,
+            (rawValue as any)?.content,
+            (rawValue as any)?.response
+          );
+          if (!isMeaningfulSpeakingAnswer(answerText)) return;
+
+          const fromCatalog = questionCatalog.get(questionId);
+          const normalized = toAnswerItem(
+            {
+              questionId,
+              questionText: fromCatalog?.questionText || "",
+              userAnswer: answerText,
+              questionOrder: fromCatalog?.questionOrder,
+            },
+            fromCatalog?.questionText || `Soru ${byQuestionId.size + 1}`,
+            fromCatalog?.questionOrder
+          );
+
+          const existing = byQuestionId.get(questionId);
+          if (!existing || normalized.userAnswer.length >= existing.userAnswer.length) {
+            byQuestionId.set(questionId, normalized);
+          }
+        };
+
+        candidateKeys.forEach((key) => {
+          const raw = sessionStorage.getItem(key);
+          if (!raw) return;
+
+          try {
+            const parsed = JSON.parse(raw);
+            const parsedTestId = pickFirstNonEmptyText(parsed?.testId);
+            if (speakingTestId && parsedTestId && parsedTestId !== speakingTestId) {
+              return;
+            }
+
+            if (parsed?.transcripts && typeof parsed.transcripts === "object") {
+              Object.entries(parsed.transcripts).forEach(([qid, value]) => {
+                upsert(qid, value);
+              });
+            }
+
+            if (Array.isArray(parsed?.answers)) {
+              parsed.answers.forEach((item: any) => {
+                upsert(item?.questionId ?? item?.id, item);
+              });
+            } else if (parsed?.answers && typeof parsed.answers === "object") {
+              Object.entries(parsed.answers).forEach(([qid, value]) => {
+                upsert(qid, value);
+              });
+            }
+          } catch {
+            // Ignore corrupted session data and continue with other keys.
+          }
+        });
+
+        return Array.from(byQuestionId.values()).sort(
+          (a, b) => (a.questionOrder || 0) - (b.questionOrder || 0)
+        );
+      } catch {
+        return [];
+      }
+    };
+
+    const buildSessionParts = (): [SpeakingAnswerItem[], SpeakingAnswerItem[], SpeakingAnswerItem[], SpeakingAnswerItem[]] => {
+      const sessionAnswers = extractSessionSpeakingAnswers();
+      if (sessionAnswers.length === 0) return emptySpeakingParts();
+      const grouped = splitAnswersByOrder(sessionAnswers);
+      const hasAny = grouped.some((group) => group.length > 0);
+      return hasAny ? grouped : [sessionAnswers, [], [], []];
+    };
 
     const extractQuestionsFromPart = (part: any): SpeakingAnswerItem[] => {
       const collected: SpeakingAnswerItem[] = [];
       if (!part || typeof part !== "object") return collected;
+
+      let sequence = 1;
+      const pushWithOrder = (question: any) => {
+        collected.push(toAnswerItem(question, `Soru ${collected.length + 1}`, sequence));
+        sequence += 1;
+      };
 
       const sections = Array.isArray(part.sections) ? part.sections : [];
       sections.forEach((section: any) => {
@@ -1616,7 +2218,7 @@ export default function OverallResults() {
           ? section.questions
           : [];
         directQuestions.forEach((q: any) => {
-          collected.push(toAnswerItem(q, `Soru ${collected.length + 1}`));
+          pushWithOrder(q);
         });
 
         const subParts = Array.isArray(section?.subParts) ? section.subParts : [];
@@ -1625,78 +2227,353 @@ export default function OverallResults() {
             ? subPart.questions
             : [];
           subQuestions.forEach((q: any) => {
-            collected.push(toAnswerItem(q, `Soru ${collected.length + 1}`));
+            pushWithOrder(q);
           });
+        });
+      });
+
+      const topLevelSubParts = Array.isArray(part.subParts) ? part.subParts : [];
+      topLevelSubParts.forEach((subPart: any) => {
+        const subQuestions = Array.isArray(subPart?.questions) ? subPart.questions : [];
+        subQuestions.forEach((q: any) => {
+          pushWithOrder(q);
         });
       });
 
       const partQuestions = Array.isArray(part.questions) ? part.questions : [];
       partQuestions.forEach((q: any) => {
-        collected.push(toAnswerItem(q, `Soru ${collected.length + 1}`));
+        pushWithOrder(q);
       });
 
       return collected;
     };
 
-    const buildPartsFromBackend = () => {
+    const buildPartsFromBackend = (): [SpeakingAnswerItem[], SpeakingAnswerItem[], SpeakingAnswerItem[], SpeakingAnswerItem[]] => {
       const part11: SpeakingAnswerItem[] = [];
       const part12: SpeakingAnswerItem[] = [];
+      const dedupeByQuestionId = (items: SpeakingAnswerItem[]) => {
+        const byId = new Map<string, SpeakingAnswerItem>();
+        const withoutId: SpeakingAnswerItem[] = [];
+
+        items.forEach((item) => {
+          const qid = String(item?.questionId || "").trim();
+          if (!qid) {
+            withoutId.push(item);
+            return;
+          }
+
+          const existing = byId.get(qid);
+          if (!existing) {
+            byId.set(qid, item);
+            return;
+          }
+
+          const existingAnswer = String(existing.userAnswer || "").trim();
+          const nextAnswer = String(item.userAnswer || "").trim();
+          const shouldReplace =
+            isMeaningfulSpeakingAnswer(nextAnswer) &&
+            (!isMeaningfulSpeakingAnswer(existingAnswer) || nextAnswer.length >= existingAnswer.length);
+          if (shouldReplace) {
+            byId.set(qid, item);
+          }
+        });
+
+        return [...Array.from(byId.values()), ...withoutId];
+      };
+      const resolvePart1BucketFromHint = (node: any): 0 | 1 | undefined => {
+        const hint = String(
+          [node?.label, node?.title, node?.description].filter(Boolean).join(" ")
+        )
+          .toLocaleLowerCase("tr-TR")
+          .replace(/\s+/g, " ")
+          .trim();
+
+        if (!hint) return undefined;
+        const isPart12 = /(?:^|[^0-9])1[.\s_-]?2(?:[^0-9]|$)/.test(hint);
+        const isPart11 = /(?:^|[^0-9])1[.\s_-]?1(?:[^0-9]|$)/.test(hint);
+        if (isPart12 && !isPart11) return 1;
+        if (isPart11 && !isPart12) return 0;
+        return undefined;
+      };
+
+      const appendSplitPart1 = (items: SpeakingAnswerItem[]) => {
+        if (!items || items.length === 0) return;
+        const [group11, group12] = splitAnswersByOrder(items);
+        part11.push(...group11);
+        part12.push(...group12);
+      };
+
+      const addPart1FromSubParts = (subParts: any[]) => {
+        if (!Array.isArray(subParts) || subParts.length === 0) return;
+
+        if (subParts.length >= 2) {
+          subParts.forEach((subPart: any, index: number) => {
+            const hintedBucket = resolvePart1BucketFromHint(subPart);
+            const bucket = hintedBucket ?? (index === 0 ? 0 : 1);
+            const collected = extractQuestionsFromPart(subPart);
+            if (bucket === 0) part11.push(...collected);
+            else part12.push(...collected);
+          });
+          return;
+        }
+
+        const singleSubPart = subParts[0];
+        const singleCollected = extractQuestionsFromPart(singleSubPart);
+        const hintedBucket = resolvePart1BucketFromHint(singleSubPart);
+        if (hintedBucket === 0) {
+          part11.push(...singleCollected);
+          return;
+        }
+        if (hintedBucket === 1) {
+          part12.push(...singleCollected);
+          return;
+        }
+
+        // Unknown hint: keep 1.1/1.2 balanced instead of sending all to 1.1.
+        if (part11.length <= part12.length) {
+          part11.push(...singleCollected);
+        } else {
+          part12.push(...singleCollected);
+        }
+      };
 
       const part1Sections = Array.isArray(speaking?.part1?.sections)
         ? speaking.part1.sections
         : [];
       part1Sections.forEach((section: any) => {
         const subParts = Array.isArray(section?.subParts) ? section.subParts : [];
-        if (subParts.length > 0) {
-          const firstSubPartQuestions = Array.isArray(subParts[0]?.questions)
-            ? subParts[0].questions
-            : [];
-          firstSubPartQuestions.forEach((q: any) => {
-            part11.push(toAnswerItem(q, `Soru ${part11.length + 1}`));
-          });
+        addPart1FromSubParts(subParts);
 
-          const secondSubPartQuestions = Array.isArray(subParts[1]?.questions)
-            ? subParts[1].questions
-            : [];
-          secondSubPartQuestions.forEach((q: any) => {
-            part12.push(toAnswerItem(q, `Soru ${part12.length + 1}`));
-          });
-        } else {
-          const directQuestions = Array.isArray(section?.questions)
-            ? section.questions
-            : [];
-          directQuestions.forEach((q: any) => {
-            part11.push(toAnswerItem(q, `Soru ${part11.length + 1}`));
-          });
+        const directQuestions = Array.isArray(section?.questions)
+          ? section.questions
+          : [];
+        if (subParts.length === 0 && directQuestions.length > 0) {
+          appendSplitPart1(
+            directQuestions.map((q: any, index: number) =>
+              toAnswerItem(q, `Soru ${part11.length + part12.length + index + 1}`)
+            )
+          );
         }
       });
+
+      if (part11.length === 0 && part12.length === 0 && speaking?.part1) {
+        const topLevelSubParts = Array.isArray((speaking as any)?.part1?.subParts)
+          ? (speaking as any).part1.subParts
+          : [];
+        addPart1FromSubParts(topLevelSubParts);
+
+        const topLevelQuestions = Array.isArray((speaking as any)?.part1?.questions)
+          ? (speaking as any).part1.questions
+          : [];
+        if (topLevelSubParts.length === 0 && topLevelQuestions.length > 0) {
+          appendSplitPart1(
+            topLevelQuestions.map((q: any, index: number) =>
+              toAnswerItem(q, `Soru ${part11.length + part12.length + index + 1}`)
+            )
+          );
+        }
+      }
 
       const part2 = extractQuestionsFromPart(speaking?.part2);
       const part3 = extractQuestionsFromPart(speaking?.part3);
 
-      return [part11, part12, part2, part3];
+      if (
+        part11.length === 0 &&
+        part12.length === 0 &&
+        part2.length === 0 &&
+        part3.length === 0
+      ) {
+        const structuredParts = Array.isArray((speaking as any)?.parts)
+          ? (speaking as any).parts
+          : Array.isArray((speaking as any)?.sections)
+            ? (speaking as any).sections
+            : [];
+
+        if (structuredParts.length > 0) {
+          const firstPart =
+            structuredParts.find((part: any) =>
+              String(part?.type || "").toUpperCase().includes("PART1")
+            ) || structuredParts[0];
+          const secondPart =
+            structuredParts.find((part: any) =>
+              String(part?.type || "").toUpperCase().includes("PART2")
+            ) || structuredParts[1];
+          const thirdPart =
+            structuredParts.find((part: any) =>
+              String(part?.type || "").toUpperCase().includes("PART3")
+            ) || structuredParts[2];
+
+          const firstSubParts = Array.isArray(firstPart?.subParts) ? firstPart.subParts : [];
+          if (firstSubParts.length > 0) {
+            addPart1FromSubParts(firstSubParts);
+          } else {
+            const firstCollected = extractQuestionsFromPart(firstPart);
+            appendSplitPart1(firstCollected);
+          }
+
+          part2.push(...extractQuestionsFromPart(secondPart));
+          part3.push(...extractQuestionsFromPart(thirdPart));
+
+          const trailingParts = structuredParts.filter(
+            (part: any) => part !== firstPart && part !== secondPart && part !== thirdPart
+          );
+          trailingParts.forEach((part: any) => {
+            part3.push(...extractQuestionsFromPart(part));
+          });
+        }
+      }
+
+      let normalizedPart11 = dedupeByQuestionId(part11);
+      let normalizedPart12 = dedupeByQuestionId(part12);
+      if (normalizedPart12.length === 0 && normalizedPart11.length > 3) {
+        normalizedPart12 = normalizedPart11.slice(3);
+        normalizedPart11 = normalizedPart11.slice(0, 3);
+      } else {
+        if (normalizedPart11.length > 3 && normalizedPart12.length < 3) {
+          const needed = 3 - normalizedPart12.length;
+          const overflow = normalizedPart11.slice(3, 3 + needed);
+          normalizedPart12 = [...normalizedPart12, ...overflow];
+        }
+        normalizedPart11 = normalizedPart11.slice(0, 3);
+        normalizedPart12 = normalizedPart12.slice(0, 3);
+      }
+
+      return [
+        normalizedPart11,
+        normalizedPart12,
+        dedupeByQuestionId(part2),
+        dedupeByQuestionId(part3),
+      ];
     };
 
-    const buildLegacyParts = () => {
-      const legacyAnswers = Array.isArray(speaking?.answers) ? speaking.answers : [];
-      const legacyPart = legacyAnswers.map((answer: any, index: number) =>
-        toAnswerItem(answer, `Soru ${index + 1}`)
+    const buildLegacyParts = (): [SpeakingAnswerItem[], SpeakingAnswerItem[], SpeakingAnswerItem[], SpeakingAnswerItem[]] => {
+      const legacyAnswers = Array.isArray((speaking as any)?.answers)
+        ? (speaking as any).answers
+        : Array.isArray((speaking as any)?.questions)
+          ? (speaking as any).questions
+          : [];
+      const normalizedLegacy = legacyAnswers.map((answer: any, index: number) =>
+        toAnswerItem(answer, `Soru ${index + 1}`, index + 1)
       );
-      return [legacyPart, [], [], []];
+      const grouped = splitAnswersByOrder(normalizedLegacy);
+      const hasGroupedContent = grouped.some((group) => group.length > 0);
+      return hasGroupedContent
+        ? grouped
+        : ([normalizedLegacy, [], [], []] as [SpeakingAnswerItem[], SpeakingAnswerItem[], SpeakingAnswerItem[], SpeakingAnswerItem[]]);
+    };
+
+    const collectStructuredAnswerSources = (): SpeakingAnswerItem[] => {
+      const collected: SpeakingAnswerItem[] = [];
+      const seen = new WeakSet<object>();
+
+      const walk = (node: any) => {
+        if (!node) return;
+        if (Array.isArray(node)) {
+          node.forEach(walk);
+          return;
+        }
+        if (typeof node !== "object") return;
+        if (seen.has(node)) return;
+        seen.add(node);
+
+        const questions = Array.isArray((node as any).questions) ? (node as any).questions : [];
+        questions.forEach((question: any, index: number) => {
+          collected.push(toAnswerItem(question, `Soru ${collected.length + index + 1}`));
+        });
+
+        walk((node as any).subParts);
+        walk((node as any).sections);
+        walk((node as any).parts);
+      };
+
+      walk((speaking as any)?.part1);
+      walk((speaking as any)?.part2);
+      walk((speaking as any)?.part3);
+      walk((speaking as any)?.parts);
+      walk((speaking as any)?.sections);
+      return collected;
     };
 
     const parts = (() => {
       const structured = buildPartsFromBackend();
-      const hasStructuredData = structured.some((part) => part.length > 0);
-      return hasStructuredData ? structured : buildLegacyParts();
+      const legacy = buildLegacyParts();
+      const sessionBased = buildSessionParts();
+
+      const structuredTotal = structured.reduce((sum, group) => sum + group.length, 0);
+      const legacyTotal = legacy.reduce((sum, group) => sum + group.length, 0);
+      const sessionTotal = sessionBased.reduce((sum, group) => sum + group.length, 0);
+      const legacyMeaningful = countMeaningfulAnswers(legacy);
+      const sessionMeaningful = countMeaningfulAnswers(sessionBased);
+
+      // Keep section mapping stable: prefer backend structured layout whenever present.
+      let selected: [SpeakingAnswerItem[], SpeakingAnswerItem[], SpeakingAnswerItem[], SpeakingAnswerItem[]] =
+        structuredTotal > 0 ? structured : legacy;
+
+      if (structuredTotal === 0) {
+        if (sessionMeaningful > legacyMeaningful) {
+          selected = sessionBased;
+        } else if (legacyTotal > 0) {
+          selected = legacy;
+        } else if (sessionTotal > 0) {
+          selected = sessionBased;
+        }
+      }
+
+      return selected;
     })();
 
-    const visiblePartEntries = parts
+    const repairSpeakingPartAnswers = (
+      baseParts: [SpeakingAnswerItem[], SpeakingAnswerItem[], SpeakingAnswerItem[], SpeakingAnswerItem[]]
+    ): [SpeakingAnswerItem[], SpeakingAnswerItem[], SpeakingAnswerItem[], SpeakingAnswerItem[]] => {
+      const sources = [
+        ...baseParts.flat(),
+        ...collectStructuredAnswerSources(),
+        ...buildSessionParts().flat(),
+        ...buildLegacyParts().flat(),
+        ...buildPartsFromBackend().flat(),
+      ];
+
+      const byQuestionId = new Map<string, string>();
+
+      const setIfBetter = (target: Map<string, string>, key: string, value: string) => {
+        const existing = target.get(key);
+        if (!existing || value.length >= existing.length) {
+          target.set(key, value);
+        }
+      };
+
+      sources.forEach((item) => {
+        const text = String(item?.userAnswer ?? "").trim();
+        if (!isMeaningfulSpeakingAnswer(text)) return;
+
+        const qid = String(item?.questionId || "").trim();
+        if (qid) setIfBetter(byQuestionId, qid, text);
+      });
+
+      const repaired = baseParts.map((group) =>
+        group.map((item) => {
+          const existing = String(item?.userAnswer || "").trim();
+          if (isMeaningfulSpeakingAnswer(existing)) return item;
+
+          const qid = String(item?.questionId || "").trim();
+          if (!qid || !byQuestionId.has(qid)) return item;
+          const replacement = String(byQuestionId.get(qid) || "").trim();
+          if (!isMeaningfulSpeakingAnswer(replacement)) return item;
+          return { ...item, userAnswer: replacement };
+        })
+      ) as [SpeakingAnswerItem[], SpeakingAnswerItem[], SpeakingAnswerItem[], SpeakingAnswerItem[]];
+
+      return repaired;
+    };
+
+    const displayParts = repairSpeakingPartAnswers(parts);
+
+    const visiblePartEntries = displayParts
       .map((questions, index) => ({ index, questions }))
       .filter((entry) => entry.questions.length > 0);
 
     const effectiveActiveSpeakingPart =
-      parts[activeSpeakingPart]?.length > 0
+      displayParts[activeSpeakingPart]?.length > 0
         ? activeSpeakingPart
         : (visiblePartEntries[0]?.index ?? 0);
     
@@ -1893,10 +2770,10 @@ export default function OverallResults() {
     const getCurrentQuestionAndAnswer = () => {
       if (
         visiblePartEntries.length > 0 &&
-        parts[effectiveActiveSpeakingPart] &&
-        parts[effectiveActiveSpeakingPart].length > 0
+        displayParts[effectiveActiveSpeakingPart] &&
+        displayParts[effectiveActiveSpeakingPart].length > 0
       ) {
-        const partQuestions = parts[effectiveActiveSpeakingPart];
+        const partQuestions = displayParts[effectiveActiveSpeakingPart];
         const currentQuestionIndex = Math.min(activeSpeakingQuestion, partQuestions.length - 1);
         const currentAnswer = partQuestions[currentQuestionIndex];
         const partLabel = getPartLabel(effectiveActiveSpeakingPart);
@@ -1920,15 +2797,18 @@ export default function OverallResults() {
         
         // Get feedback for the specific part
         let partFeedback: string;
+        const sectionNarrative = getSpeakingSectionNarrative(effectiveActiveSpeakingPart);
         
         // Handle both string and object formats for aiFeedback
         if (typeof aiFeedback === 'string') {
           const extracted = extractFeedbackSection(aiFeedback, feedbackKey);
           partFeedback = extracted;
         } else if (aiFeedback && typeof aiFeedback === 'object') {
-          const rawFeedback = (aiFeedback as any)?.[feedbackKey] || 
-                        aiFeedback?.taskAchievement || 
-                        `${partLabel.main} geri bildirimi burada gösterilecek`;
+          const rawFeedback =
+            sectionNarrative ||
+            (aiFeedback as any)?.[feedbackKey] ||
+            (aiFeedback as any)?.taskAchievement ||
+            `${partLabel.main} geri bildirimi burada gösterilecek`;
           partFeedback = typeof rawFeedback === 'string' ? removeBullets(rawFeedback) : rawFeedback;
         } else {
           partFeedback = `${partLabel.main} geri bildirimi burada gösterilecek`;
@@ -1936,8 +2816,8 @@ export default function OverallResults() {
         
         return {
           question: currentAnswer?.questionText || `${partLabel.main} Sorusu ${currentQuestionIndex + 1}`,
-          answer: (currentAnswer?.userAnswer && typeof currentAnswer.userAnswer === 'string' && currentAnswer.userAnswer.trim() !== "") 
-            ? currentAnswer.userAnswer 
+          answer: isMeaningfulSpeakingAnswer(currentAnswer?.userAnswer)
+            ? currentAnswer.userAnswer
             : "Cevap verilmedi",
           comment: partFeedback
         };
@@ -1948,7 +2828,11 @@ export default function OverallResults() {
       if (typeof aiFeedback === 'string') {
         defaultFeedback = extractFeedbackSection(aiFeedback, 'general');
       } else if (aiFeedback && typeof aiFeedback === 'object') {
-        const rawFeedback = (aiFeedback as any)?.part1 || aiFeedback?.taskAchievement || "Geri bildirim mevcut değil";
+        const rawFeedback =
+          extractFeedbackSection(aiFeedback, "general") ||
+          (aiFeedback as any)?.part1 ||
+          (aiFeedback as any)?.taskAchievement ||
+          "Geri bildirim mevcut değil";
         defaultFeedback = typeof rawFeedback === 'string' ? removeBullets(rawFeedback) : rawFeedback;
       } else {
         defaultFeedback = "Geri bildirim mevcut değil";
@@ -2020,11 +2904,14 @@ export default function OverallResults() {
               </div>
 
               {/* Question Navigation within Part - Only for Part 1.1 and Part 1.2 */}
-              {parts[effectiveActiveSpeakingPart] && 
-               parts[effectiveActiveSpeakingPart].length > 1 && 
+              {displayParts[effectiveActiveSpeakingPart] && 
+               displayParts[effectiveActiveSpeakingPart].length > 1 && 
                (effectiveActiveSpeakingPart === 0 || effectiveActiveSpeakingPart === 1) && (
                 <div className="flex flex-wrap gap-2">
-                  {parts[effectiveActiveSpeakingPart].map((_, index: number) => (
+                  {displayParts[effectiveActiveSpeakingPart].map((question: SpeakingAnswerItem, index: number) => {
+                    const orderLabel =
+                      extractNumericOrder(question?.questionOrder) || index + 1;
+                    return (
                     <Button
                       key={index}
                       onClick={() => setActiveSpeakingQuestion(index)}
@@ -2036,9 +2923,10 @@ export default function OverallResults() {
                           : "bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-300"
                       }`}
                     >
-                      Soru {index + 1}
+                      Soru {orderLabel}
                     </Button>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -2090,15 +2978,108 @@ export default function OverallResults() {
 
             {/* GENEL DEĞERLENDİRME Section - Shows general feedback */}
             {(() => {
-              const generalFeedback = extractFeedbackSection(aiFeedback, 'general');
-              if (!generalFeedback) return null;
+              const rawGeneralFeedback = extractFeedbackSection(aiFeedback, "general");
+              const generalFeedback =
+                rawGeneralFeedback && !isPlaceholderText(rawGeneralFeedback)
+                  ? sanitizeGeneralFeedback(rawGeneralFeedback)
+                  : "";
+              if (!generalFeedback && !structuredGeneralFeedback) return null;
 
               return (
                 <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
                   <h2 className="text-base sm:text-lg font-semibold tracking-tight text-gray-900 mb-4">Performans Özeti</h2>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{removeBullets(generalFeedback)}</p>
-                  </div>
+                  {structuredGeneralFeedback ? (
+                    <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+                      {structuredGeneralFeedback.ozet && (
+                        <div>
+                          <h4 className="font-bold text-black mb-1">Özet</h4>
+                          <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                            {structuredGeneralFeedback.ozet}
+                          </p>
+                        </div>
+                      )}
+
+                      {structuredGeneralFeedback.tekrar_eden_eksikler.length > 0 && (
+                        <div>
+                          <h4 className="font-bold text-black mb-1">Tekrar Eden Eksikler</h4>
+                          <ul className="list-disc pl-5 space-y-1 text-gray-700">
+                            {structuredGeneralFeedback.tekrar_eden_eksikler.map((item, idx) => (
+                              <li key={`overall-speaking-eksik-${idx}`}>{item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {structuredGeneralFeedback.alinti_duzeltme.length > 0 && (
+                        <div>
+                          <h4 className="font-bold text-black mb-2">İyileştirmeler</h4>
+                          <div className="space-y-3">
+                            {structuredGeneralFeedback.alinti_duzeltme.map((item, idx) => (
+                              <div
+                                key={`overall-speaking-rewrite-${idx}`}
+                                className="rounded-lg border border-gray-200 bg-gray-100 p-3"
+                              >
+                                {item.alinti && (
+                                  <>
+                                    <p className="text-xs font-semibold text-black mb-1">Alıntı</p>
+                                    <p className="text-red-600 font-medium whitespace-pre-wrap mb-2">
+                                      "{item.alinti}"
+                                    </p>
+                                  </>
+                                )}
+                                {item.duzeltilmis && (
+                                  <>
+                                    <p className="text-xs font-semibold text-black mb-1">Düzeltilmiş Versiyon</p>
+                                    <p className="text-green-700 whitespace-pre-wrap mb-2">
+                                      {item.duzeltilmis}
+                                    </p>
+                                  </>
+                                )}
+                                {item.neden && (
+                                  <>
+                                    <p className="text-xs font-semibold text-black mb-1">Neden Düzelttik?</p>
+                                    <p className="text-gray-700 whitespace-pre-wrap">{item.neden}</p>
+                                  </>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {structuredGeneralFeedback.egzersizler.length > 0 && (
+                        <div>
+                          <h4 className="font-bold text-black mb-1">Önerilen Egzersizler</h4>
+                          <div className="space-y-2">
+                            {structuredGeneralFeedback.egzersizler.map((item, idx) => (
+                              <div
+                                key={`overall-speaking-exercise-${idx}`}
+                                className="rounded-md border border-gray-200 bg-white p-3"
+                              >
+                                <p className="font-semibold text-black">{idx + 1}. {item.baslik || "Egzersiz"}</p>
+                                {item.uygulama && (
+                                  <p className="text-gray-700 mt-1 whitespace-pre-wrap">{item.uygulama}</p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {structuredGeneralFeedback.kapanis && (
+                        <div>
+                          <h4 className="font-bold text-black mb-1">Son Not</h4>
+                          <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                            {structuredGeneralFeedback.kapanis}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{removeBullets(generalFeedback)}</p>
+                    </div>
+                  )}
                 </div>
               );
             })()}

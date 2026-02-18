@@ -13,7 +13,10 @@ export default function WritingTest() {
     // Genel (overall) test akışı aktif DEĞİLSE, bu test için saklanan cevapları temizliyoruz.
     if (testId && !overallTestFlowStore.hasActive()) {
       try {
-        sessionStorage.removeItem(`writing_answers_${testId}`);
+        const hasSavedProgress = !!sessionStorage.getItem(`writing_progress_${testId}`);
+        if (!hasSavedProgress) {
+          sessionStorage.removeItem(`writing_answers_${testId}`);
+        }
       } catch {}
     }
   }, [testId]);

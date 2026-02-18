@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { overallTestFlowStore, overallTestTokenStore } from "@/services/overallTest.service"
 import { motion, AnimatePresence } from "framer-motion"
@@ -10,6 +10,7 @@ import { MicrophoneCheck } from "./components/MicrophoneCheck"
 import { getInstructionForSection } from "@/config/speakingInstructions"
 import { speechToTextService } from "@/services/speechToText.service"
 import SimpleTextDisplay from "@/components/speaking-test/SimpleTextDisplay"
+import { normalizeDisplayText } from "@/utils/text"
 // import ResultModal from "./components/ResultModal"
 // import DisableKeys from "./components/DisableKeys"
 
@@ -48,6 +49,20 @@ interface Recording {
   blob: Blob
   duration: number
   questionId: string
+}
+
+interface SpeakingProgressSnapshot {
+  micChecked: boolean
+  showSectionDescription: boolean
+  currentSectionIndex: number
+  currentSubPartIndex: number
+  currentQuestionIndex: number
+  timeLeft: number
+  prepSeconds: number
+  isPrepRunning: boolean
+  isExamMode: boolean
+  answersEntries: Array<[string, { text: string; duration: number }]>
+  updatedAt: number
 }
 
 const RECORD_SECONDS_PER_QUESTION = 30
@@ -189,6 +204,7 @@ export default function ImprovedSpeakingTest() {
   const questionSoundRef = useRef<HTMLAudioElement | null>(null)
   const ttsAudioRef = useRef<HTMLAudioElement | null>(null)
   const prepIntervalRef = useRef<number | null>(null)
+  const prepAfterActionRef = useRef<(() => void) | null>(null)
   const autoAdvanceRef = useRef<string | null>(null)
   const autoStartKeyRef = useRef<string | null>(null)
   const prepStartedKeyRef = useRef<string | null>(null)
@@ -199,6 +215,15 @@ export default function ImprovedSpeakingTest() {
   const instructionPlayStartedRef = useRef<boolean>(false)
   const lastInstructionSectionRef = useRef<string | null>(null)
   const submitAllRetryRef = useRef<number>(0)
+  const hasRestoredProgressRef = useRef(false)
+  const progressStorageKey = testId ? `speaking_progress_${testId}` : null
+  const micReadyStorageKey = testId ? `speaking_mic_checked_${testId}` : null
+
+  useLayoutEffect(() => {
+    if (typeof document !== "undefined") {
+      document.body.classList.add("exam-mode")
+    }
+  }, [])
 
   useEffect(() => {
     // Activate exam mode immediately when entering speaking test
@@ -209,6 +234,16 @@ export default function ImprovedSpeakingTest() {
         document.body.classList.add("exam-mode")
       }
     }
+
+    if (micReadyStorageKey) {
+      try {
+        if (sessionStorage.getItem(micReadyStorageKey) === "1") {
+          setMicChecked(true)
+        }
+      } catch {}
+    }
+
+    addNavigationLock()
 
     // Enter fullscreen immediately for speaking test
     enterFullscreen().catch(() => {})
@@ -260,7 +295,88 @@ export default function ImprovedSpeakingTest() {
         removeExamBodyClass()
       }
     }
-  }, [testId])
+  }, [testId, micReadyStorageKey])
+
+  useEffect(() => {
+    hasRestoredProgressRef.current = false
+    if (!progressStorageKey) {
+      hasRestoredProgressRef.current = true
+      return
+    }
+
+    let parsed: Partial<SpeakingProgressSnapshot> | null = null
+    try {
+      const raw = sessionStorage.getItem(progressStorageKey)
+      if (raw) parsed = JSON.parse(raw) as Partial<SpeakingProgressSnapshot>
+    } catch {}
+
+    if (parsed && typeof parsed === "object") {
+      if (typeof parsed.micChecked === "boolean") {
+        setMicChecked(parsed.micChecked)
+      }
+      if (typeof parsed.showSectionDescription === "boolean") {
+        setShowSectionDescription(parsed.showSectionDescription)
+      }
+
+      const restoredSectionIndex = Number(parsed.currentSectionIndex)
+      if (Number.isFinite(restoredSectionIndex)) {
+        setCurrentSectionIndex(Math.max(0, Math.round(restoredSectionIndex)))
+      }
+
+      const restoredSubPartIndex = Number(parsed.currentSubPartIndex)
+      if (Number.isFinite(restoredSubPartIndex)) {
+        setCurrentSubPartIndex(Math.max(0, Math.round(restoredSubPartIndex)))
+      }
+
+      const restoredQuestionIndex = Number(parsed.currentQuestionIndex)
+      if (Number.isFinite(restoredQuestionIndex)) {
+        setCurrentQuestionIndex(Math.max(0, Math.round(restoredQuestionIndex)))
+      }
+
+      const restoredTimeLeft = Number(parsed.timeLeft)
+      if (Number.isFinite(restoredTimeLeft)) {
+        setTimeLeft(Math.max(0, Math.round(restoredTimeLeft)))
+      }
+
+      const restoredPrepSeconds = Number(parsed.prepSeconds)
+      if (Number.isFinite(restoredPrepSeconds)) {
+        setPrepSeconds(Math.max(0, Math.round(restoredPrepSeconds)))
+      }
+      // Do not restore running timers directly; they will be started by flow effects.
+      setIsPrepRunning(false)
+
+      const restoredAnswers = new Map<string, { text: string; duration: number }>()
+      if (Array.isArray(parsed.answersEntries)) {
+        for (const entry of parsed.answersEntries) {
+          if (!Array.isArray(entry) || entry.length < 2) continue
+          const [rawQuestionId, rawAnswer] = entry
+          if (typeof rawQuestionId !== "string" || !rawQuestionId.trim()) continue
+          const answerObj = rawAnswer as any
+          const text = typeof answerObj?.text === "string"
+            ? answerObj.text
+            : typeof rawAnswer === "string"
+            ? rawAnswer
+            : ""
+          const durationRaw = Number(answerObj?.duration)
+          restoredAnswers.set(rawQuestionId, {
+            text,
+            duration: Number.isFinite(durationRaw) ? durationRaw : 0,
+          })
+        }
+      }
+      if (restoredAnswers.size > 0) {
+        setAnswers(restoredAnswers)
+      }
+
+      if (typeof parsed.isExamMode === "boolean") {
+        setIsExamMode(parsed.isExamMode)
+      } else if (typeof parsed.micChecked === "boolean" && parsed.micChecked) {
+        setIsExamMode(true)
+      }
+    }
+
+    hasRestoredProgressRef.current = true
+  }, [progressStorageKey])
 
 
   // utils
@@ -312,6 +428,13 @@ export default function ImprovedSpeakingTest() {
       ttsAudioRef.current = null
     }
     setIsPlayingTTS(false)
+  }
+
+  const clearSpeakingProgress = () => {
+    if (!progressStorageKey) return
+    try {
+      sessionStorage.removeItem(progressStorageKey)
+    } catch {}
   }
 
   const cleanupMedia = () => {
@@ -395,6 +518,112 @@ export default function ImprovedSpeakingTest() {
     return sec.questions?.[currentQuestionIndex] ?? null
   })()
 
+  useEffect(() => {
+    if (!testData?.sections?.length) return
+
+    const maxSectionIndex = Math.max(0, testData.sections.length - 1)
+    const safeSectionIndex = Math.min(Math.max(currentSectionIndex, 0), maxSectionIndex)
+    if (safeSectionIndex !== currentSectionIndex) {
+      setCurrentSectionIndex(safeSectionIndex)
+      return
+    }
+
+    const section = testData.sections[safeSectionIndex]
+    const subParts = Array.isArray(section?.subParts) ? section.subParts : []
+    const maxSubPartIndex = subParts.length > 0 ? Math.max(0, subParts.length - 1) : 0
+    const safeSubPartIndex = Math.min(Math.max(currentSubPartIndex, 0), maxSubPartIndex)
+    if (safeSubPartIndex !== currentSubPartIndex) {
+      setCurrentSubPartIndex(safeSubPartIndex)
+      return
+    }
+
+    const sortedQuestions = subParts.length > 0
+      ? [...(subParts[safeSubPartIndex]?.questions || [])].sort((a, b) => a.order - b.order)
+      : (section?.questions || [])
+    const maxQuestionIndex = sortedQuestions.length > 0 ? sortedQuestions.length - 1 : 0
+    const safeQuestionIndex = Math.min(Math.max(currentQuestionIndex, 0), maxQuestionIndex)
+    if (safeQuestionIndex !== currentQuestionIndex) {
+      setCurrentQuestionIndex(safeQuestionIndex)
+    }
+  }, [testData, currentSectionIndex, currentSubPartIndex, currentQuestionIndex])
+
+  useEffect(() => {
+    if (!progressStorageKey || !hasRestoredProgressRef.current) return
+    if (isTestComplete || isSubmitting) return
+
+    const answersEntries: SpeakingProgressSnapshot["answersEntries"] = Array.from(answers.entries()).map(
+      ([questionId, value]): [string, { text: string; duration: number }] => [
+        questionId,
+        {
+          text: typeof value?.text === "string" ? value.text : "",
+          duration: Number.isFinite(Number(value?.duration)) ? Number(value.duration) : 0,
+        },
+      ]
+    )
+
+    const snapshot: SpeakingProgressSnapshot = {
+      micChecked,
+      showSectionDescription,
+      currentSectionIndex,
+      currentSubPartIndex,
+      currentQuestionIndex,
+      timeLeft,
+      prepSeconds,
+      isPrepRunning,
+      isExamMode,
+      answersEntries,
+      updatedAt: Date.now(),
+    }
+
+    try {
+      sessionStorage.setItem(progressStorageKey, JSON.stringify(snapshot))
+    } catch {}
+  }, [
+    progressStorageKey,
+    micChecked,
+    showSectionDescription,
+    currentSectionIndex,
+    currentSubPartIndex,
+    currentQuestionIndex,
+    timeLeft,
+    prepSeconds,
+    isPrepRunning,
+    isExamMode,
+    answers,
+    isTestComplete,
+    isSubmitting,
+  ])
+
+  const getQuestionTextById = (questionId: string): string => {
+    if (!testData?.sections?.length) return ""
+    for (const section of testData.sections) {
+      if (Array.isArray(section.questions)) {
+        for (const question of section.questions) {
+          if (question.id === questionId) return String(question.questionText || "")
+        }
+      }
+      if (Array.isArray(section.subParts)) {
+        for (const subPart of section.subParts) {
+          for (const question of subPart.questions || []) {
+            if (question.id === questionId) return String(question.questionText || "")
+          }
+        }
+      }
+    }
+    return ""
+  }
+
+  const buildSpeechToTextOptions = (questionId: string) => {
+    const questionText = getQuestionTextById(questionId).trim()
+    return {
+      language: "tr",
+      prompt: "Bu bir Turkce yeterlik sinavi konusma transkriptidir. Metni oldugu gibi yaz ve gereksiz ceviri yapma.",
+      context: questionText ? `Soru: ${questionText}` : "",
+      timeoutMs: 45000,
+      retryCount: 1,
+    }
+  }
+
   // Auto-advance guard: avoid showing empty question frames in PART1 transitions
   useEffect(() => {
     if (currentSection?.type === "PART1" && !currentQuestion && !showSectionDescription) {
@@ -456,6 +685,8 @@ export default function ImprovedSpeakingTest() {
           setIsPlayingInstructions(false)
           instructionPlayStartedRef.current = false
           toast.error("Audio yüklenemedi: " + (audio.error?.message || "Unknown error"))
+          // Do not block test flow if instruction audio fails.
+          startIntroCountdown()
         }
         
         audio.onended = () => {
@@ -470,6 +701,8 @@ export default function ImprovedSpeakingTest() {
           console.error("Error name:", error.name)
           console.error("Error message:", error.message)
           setIsPlayingInstructions(false)
+          // Continue flow even if browser blocks or fails audio playback.
+          startIntroCountdown()
         })
       } else {
         // No instruction needed, proceed with old flow
@@ -502,8 +735,14 @@ export default function ImprovedSpeakingTest() {
             setIsPlayingInstructions(false)
             instructionPlayStartedRef.current = false
             toast.error("Audio yüklenemedi")
+            // Do not block test flow if instruction audio fails.
+            startIntroCountdown()
           }
-          audio.play().catch(() => setIsPlayingInstructions(false))
+          audio.play().catch(() => {
+            setIsPlayingInstructions(false)
+            // Continue flow even if browser blocks or fails audio playback.
+            startIntroCountdown()
+          })
         }
       }
     }
@@ -542,29 +781,31 @@ export default function ImprovedSpeakingTest() {
       
       // Play TTS audio only for PART1 (skip TTS for PART2 and PART3)
       if (currentSection.type === "PART1" && questionToUse?.textToSpeechUrl) {
-        console.log(`🔊 Playing TTS for ${currentSection.type}, question: ${questionToUse.id}`)
-        const fullUrl = questionToUse.textToSpeechUrl.startsWith('./')
+        console.log(`?? Playing TTS for ${currentSection.type}, question: ${questionToUse.id}`)
+        const rawUrl = questionToUse.textToSpeechUrl.startsWith('./')
           ? `${baseURL}${questionToUse.textToSpeechUrl.substring(1)}`
           : questionToUse.textToSpeechUrl
+        const cacheSep = rawUrl.includes('?') ? '&' : '?'
+        const fullUrl = `${rawUrl}${cacheSep}v=${Date.now()}`
         const ttsAudio = new Audio(fullUrl)
         ttsAudioRef.current = ttsAudio
         setIsPlayingTTS(true)
         ttsAudio.onended = () => {
-          console.log(`✅ TTS ended for ${currentSection.type}, starting preparation timer`)
+          console.log(`? TTS ended for ${currentSection.type}, starting preparation timer`)
           setIsPlayingTTS(false)
           ttsAudioRef.current = null
           // After question TTS ends, ALWAYS start preparation for all sections
           startPreparationAfterTTS()
         }
         ttsAudio.onerror = (e) => {
-          console.error(`❌ TTS error for ${currentSection.type}:`, e)
+          console.error(`? TTS error for ${currentSection.type}:`, e)
           setIsPlayingTTS(false)
           ttsAudioRef.current = null
           // If TTS fails, start preparation immediately
           startPreparationAfterTTS()
         }
         ttsAudio.play().catch((error) => {
-          console.error(`❌ TTS play failed for ${currentSection.type}:`, error)
+          console.error(`? TTS play failed for ${currentSection.type}:`, error)
           setIsPlayingTTS(false)
           ttsAudioRef.current = null
           // If TTS play fails, start preparation immediately
@@ -573,7 +814,7 @@ export default function ImprovedSpeakingTest() {
       } else {
         // For PART2 and PART3, skip TTS and start preparation immediately
         // For PART1 without TTS, also start preparation immediately
-        console.log(`⏭️ Skipping TTS for ${currentSection.type}, starting preparation immediately`)
+        console.log(`?? Skipping TTS for ${currentSection.type}, starting preparation immediately`)
         startPreparationAfterTTS()
       }
     }
@@ -593,22 +834,22 @@ export default function ImprovedSpeakingTest() {
     
     // Prevent duplicate preparation starts
     if (prepStartedKeyRef.current === key) {
-      console.log(`⚠️ Preparation already started for key: ${key}`)
+      console.log(`?? Preparation already started for key: ${key}`)
       return
     }
     
-    console.log(`🎯 Starting preparation for ${currentSection.type}, key: ${key}`)
+    console.log(`?? Starting preparation for ${currentSection.type}, key: ${key}`)
     prepStartedKeyRef.current = key
     
     if (currentSection.type === "PART1") {
-      // Section 1.2 (subPartIndex === 1) gets 5 seconds, others get 5 seconds
-      const prepTime = currentSubPartIndex === 1 ? 5 : 5
-      console.log(`⏱️ PART1 preparation time: ${prepTime} seconds (subPart: ${currentSubPartIndex})`)
+      // Both Section 1.1 and 1.2 use a short preparation window.
+      const prepTime = 3
+      console.log(`?? PART1 preparation time: ${prepTime} seconds (subPart: ${currentSubPartIndex})`)
       beginPreparation(prepTime, () => {
         startRecording(30, true)
       })
     } else if (currentSection.type === "PART2" || currentSection.type === "PART3") {
-      console.log(`⏱️ ${currentSection.type} preparation time: 60 seconds`)
+      console.log(`?? ${currentSection.type} preparation time: 60 seconds`)
       beginPreparation(60, () => {
         startRecording(120, true)
       })
@@ -738,6 +979,14 @@ export default function ImprovedSpeakingTest() {
 
   const addNavigationLock = () => {
     try {
+      if (popHandlerRef.current) {
+        window.removeEventListener("popstate", popHandlerRef.current)
+        popHandlerRef.current = null
+      }
+      if (beforeUnloadRef.current) {
+        window.removeEventListener("beforeunload", beforeUnloadRef.current)
+        beforeUnloadRef.current = null
+      }
       window.history.pushState(null, "", window.location.href)
       const popHandler = () => {
         // whenever user tries to go back, push them forward again
@@ -808,26 +1057,47 @@ export default function ImprovedSpeakingTest() {
       setIsPaused(false)
 
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 44100 },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
+          sampleRate: 44100,
+        },
       })
       streamRef.current = stream
       chunksRef.current = []
 
-      const supported = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-      const mr = new MediaRecorder(stream, supported ? { mimeType: "audio/webm;codecs=opus" } : undefined)
+      const preferredMimeTypes = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/mp4",
+      ]
+      const selectedMimeType = preferredMimeTypes.find((mimeType) =>
+        MediaRecorder.isTypeSupported(mimeType),
+      )
+      const mr = selectedMimeType
+        ? new MediaRecorder(stream, { mimeType: selectedMimeType })
+        : new MediaRecorder(stream)
       mediaRecorderRef.current = mr
 
       mr.ondataavailable = (e) => e.data?.size && chunksRef.current.push(e.data)
       mr.onstop = async () => {
-        console.log(`🔔 Recording stopped for question ${currentQuestionIndex + 1}`)
+        console.log(`?? Recording stopped for question ${currentQuestionIndex + 1}`)
         // bell to indicate answer end
         playSound("end")
         clearTimers()
-        const blob = new Blob(chunksRef.current, { type: supported ? "audio/webm;codecs=opus" : "audio/webm" })
+        const chunkMimeType = chunksRef.current[0]?.type
+        const recorderMimeType =
+          mr.mimeType ||
+          chunkMimeType ||
+          selectedMimeType ||
+          "audio/webm"
+        const blob = new Blob(chunksRef.current, { type: recorderMimeType })
         chunksRef.current = []
         const duration = await getBlobDuration(blob)
         const key = getCurrentAnswerKey()
-        console.log(`🎤 Recording saved with key: ${key} for question:`, currentQuestion?.id || "unknown")
+        console.log(`?? Recording saved with key: ${key} for question:`, currentQuestion?.id || "unknown")
         const rec: Recording = { blob, duration, questionId: key }
         setRecordings((prev) => new Map(prev).set(key, rec))
 
@@ -838,7 +1108,10 @@ export default function ImprovedSpeakingTest() {
           // Transcribe immediately and store text answer
           setIsProcessingSpeechToText(true)
           try {
-            const stt = await speechToTextService.convertAudioToText(blob)
+            const stt = await speechToTextService.convertAudioToText(
+              blob,
+              buildSpeechToTextOptions(key),
+            )
             let text = ""
             if (stt.success && stt.text) {
               text = stt.text.trim()
@@ -847,7 +1120,7 @@ export default function ImprovedSpeakingTest() {
             if (!text) {
               text = "[Ses metne dönüştürülemedi]"
             }
-            console.log(`💾 Saving answer for question ${key}:`, text.substring(0, 50))
+            console.log(`?? Saving answer for question ${key}:`, text.substring(0, 50))
             setAnswers(prev => new Map(prev).set(key, { text, duration }))
           } catch (error) {
             console.error("Error converting speech to text:", error)
@@ -871,17 +1144,17 @@ export default function ImprovedSpeakingTest() {
         } else {
           // Automatically advance to next question after recording completes
           if (currentSection?.type === "PART1") {
-            console.log(`🎯 PART1: Recording finished for question ${currentQuestionIndex + 1}, auto-advancing in 800ms...`)
+            console.log(`?? PART1: Recording finished for question ${currentQuestionIndex + 1}, auto-advancing in 800ms...`)
             setTimeout(() => {
-              console.log(`🚀 Calling nextQuestion(true) for auto-advance`)
+              console.log(`?? Calling nextQuestion(true) for auto-advance`)
               nextQuestion(true)
             }, 800) // Slightly longer delay to ensure bell sound finishes
           } else {
             // For other parts, use shorter delay
-            console.log(`🎯 Other part: Recording finished, auto-advancing in 600ms...`)
-            console.log(`🎯 Current section type: ${currentSection?.type}`)
+            console.log(`?? Other part: Recording finished, auto-advancing in 600ms...`)
+            console.log(`?? Current section type: ${currentSection?.type}`)
             setTimeout(() => {
-              console.log(`🚀 About to call nextQuestion(true) for section ${currentSection?.type}`)
+              console.log(`?? About to call nextQuestion(true) for section ${currentSection?.type}`)
               nextQuestion(true)
             }, 600)
           }
@@ -926,6 +1199,7 @@ export default function ImprovedSpeakingTest() {
       window.clearInterval(prepIntervalRef.current)
       prepIntervalRef.current = null
     }
+    prepAfterActionRef.current = null
     setIsPrepRunning(false)
     setPrepSeconds(0)
     // Clear TTS state to allow next question's TTS to play
@@ -942,7 +1216,7 @@ export default function ImprovedSpeakingTest() {
   const advanceToNextSection = () => {
     if (!testData || !currentSection) return
     if (currentSectionIndex < (testData.sections?.length ?? 0) - 1) {
-      console.log(`➡️ Skipping to next section ${currentSectionIndex + 2}`)
+      console.log(`?? Skipping to next section ${currentSectionIndex + 2}`)
       setCurrentSectionIndex((i) => i + 1)
       setCurrentSubPartIndex(0)
       setCurrentQuestionIndex(0)
@@ -972,6 +1246,7 @@ export default function ImprovedSpeakingTest() {
       window.clearInterval(prepIntervalRef.current)
       prepIntervalRef.current = null
     }
+    prepAfterActionRef.current = null
     setIsPrepRunning(false)
 
     if (isRecording) {
@@ -1000,7 +1275,7 @@ export default function ImprovedSpeakingTest() {
   }
 
   const nextQuestion = (force: boolean = false) => {
-    console.log(`🔄 nextQuestion called with force: ${force}`)
+    console.log(`?? nextQuestion called with force: ${force}`)
     console.log(`Current state:`, {
       isPlayingInstructions,
       isRecording,
@@ -1011,24 +1286,24 @@ export default function ImprovedSpeakingTest() {
     })
     
     if (!force && audioRef.current && !audioRef.current.paused) {
-      console.log('❌ Audio still playing, skipping nextQuestion')
+      console.log('? Audio still playing, skipping nextQuestion')
       return
     }
     if (!force && isPlayingInstructions) {
-      console.log('❌ Instructions playing, skipping nextQuestion')
+      console.log('? Instructions playing, skipping nextQuestion')
       return
     }
     if (!force && isPlayingTTS) {
-      console.log('❌ TTS playing, skipping nextQuestion')
+      console.log('? TTS playing, skipping nextQuestion')
       return
     }
     if (!force && isRecording) {
-      console.log('❌ Recording in progress, skipping nextQuestion')
+      console.log('? Recording in progress, skipping nextQuestion')
       return
     }
 
     if (force) {
-      console.log('🛑 Force mode: stopping all ongoing processes')
+      console.log('?? Force mode: stopping all ongoing processes')
       // stop any ongoing audio/instructions/prep/recording before skipping
       stopAllAudio()
       setIsPlayingInstructions(false)
@@ -1041,7 +1316,7 @@ export default function ImprovedSpeakingTest() {
     }
 
     if (!testData || !currentSection) {
-      console.log('❌ No test data or current section')
+      console.log('? No test data or current section')
       return
     }
 
@@ -1056,14 +1331,14 @@ export default function ImprovedSpeakingTest() {
         // Next question within same subpart
         if (currentQuestionIndex < qLen - 1) {
           const nextIdx = currentQuestionIndex + 1
-          console.log(`🎯 Advancing to question ${nextIdx + 1} in PART1.${currentSubPartIndex + 1}`)
+          console.log(`?? Advancing to question ${nextIdx + 1} in PART1.${currentSubPartIndex + 1}`)
           setCurrentQuestionIndex(nextIdx)
           resetPerQuestionState()
           
           // For PART1, let the auto-advance effect handle the preparation
           // This ensures proper state management and prevents conflicts
           if (currentSection.type === "PART1") {
-            console.log(`🔄 Question advanced, TTS will play then preparation will start for question ${nextIdx + 1}`)
+            console.log(`?? Question advanced, TTS will play then preparation will start for question ${nextIdx + 1}`)
           }
           return
         }
@@ -1086,11 +1361,11 @@ export default function ImprovedSpeakingTest() {
       // For sections without subParts (like PART2 and PART3)
       // These sections have only one "question" (the speaking period)
       // So we should move to the next section immediately
-      console.log(`🎯 Section ${currentSection.type} completed, moving to next section`)
+      console.log(`?? Section ${currentSection.type} completed, moving to next section`)
     }
 
       if (currentSectionIndex < (testData.sections?.length ?? 0) - 1) {
-        console.log(`🚀 Moving from section ${currentSectionIndex + 1} to section ${currentSectionIndex + 2}`)
+        console.log(`?? Moving from section ${currentSectionIndex + 1} to section ${currentSectionIndex + 2}`)
         setCurrentSectionIndex((i) => i + 1)
         setCurrentSubPartIndex(0)
         setCurrentQuestionIndex(0)
@@ -1099,10 +1374,10 @@ export default function ImprovedSpeakingTest() {
         // clear any prep-start guards for new section
         prepStartedKeyRef.current = null
         autoStartKeyRef.current = null
-        console.log(`✅ Section transition completed`)
+        console.log(`? Section transition completed`)
       } else {
         // test finished: clean up locks & fullscreen
-        console.log(`🏁 Test completed, finishing...`)
+        console.log(`?? Test completed, finishing...`)
         setIsTestComplete(true)
       }
   }
@@ -1122,7 +1397,8 @@ export default function ImprovedSpeakingTest() {
 
   // preparation helper
   const beginPreparation = (seconds: number, after?: () => void) => {
-    console.log(`⏱️ beginPreparation called with ${seconds} seconds`)
+    console.log(`?? beginPreparation called with ${seconds} seconds`)
+    prepAfterActionRef.current = after || null
     
     // Clear any existing preparation timer
     if (prepIntervalRef.current) {
@@ -1136,7 +1412,7 @@ export default function ImprovedSpeakingTest() {
     
     // Small delay to ensure state is reset, then start preparation
     setTimeout(() => {
-      console.log(`✅ Starting preparation timer: ${seconds} seconds`)
+      console.log(`? Starting preparation timer: ${seconds} seconds`)
       setPrepSeconds(seconds)
       setIsPrepRunning(true)
       
@@ -1144,7 +1420,7 @@ export default function ImprovedSpeakingTest() {
       prepIntervalRef.current = window.setInterval(() => {
         setPrepSeconds((prev) => {
           if (prev <= 1) {
-            console.log(`⏰ Preparation time ended`)
+            console.log(`? Preparation time ended`)
             if (prepIntervalRef.current) {
               window.clearInterval(prepIntervalRef.current)
               prepIntervalRef.current = null
@@ -1154,13 +1430,40 @@ export default function ImprovedSpeakingTest() {
             setIsPlayingInstructions(false)
             // bell to indicate prep end (start speaking)
             playSound("start")
-            after && after()
+            const nextAction = prepAfterActionRef.current
+            prepAfterActionRef.current = null
+            nextAction && nextAction()
             return 0
           }
           return prev - 1
         })
       }, 1000)
     }, 50)
+  }
+
+  const skipPreparationAndStart = () => {
+    if (!(currentSection?.type === "PART2" || currentSection?.type === "PART3")) return
+    if (!isPrepRunning || isRecording) return
+
+    if (prepIntervalRef.current) {
+      window.clearInterval(prepIntervalRef.current)
+      prepIntervalRef.current = null
+    }
+    setIsPrepRunning(false)
+    setPrepSeconds(0)
+    setIsPlayingInstructions(false)
+
+    // Keep the same start path as timer completion to avoid behavior drift.
+    playSound("start")
+    const nextAction = prepAfterActionRef.current
+    prepAfterActionRef.current = null
+    if (nextAction) {
+      nextAction()
+      return
+    }
+
+    // Safety fallback: if callback is missing, start section recording directly.
+    startRecording(120, true)
   }
 
   // const startAfterInstructionsForCurrentSection = () => {
@@ -1266,8 +1569,11 @@ export default function ImprovedSpeakingTest() {
           if (transcriptByQid[qid]) continue
           try {
             const stt = await withTimeout(
-              speechToTextService.convertAudioToText(rec.blob),
-              15000,
+              speechToTextService.convertAudioToText(
+                rec.blob,
+                buildSpeechToTextOptions(qid),
+              ),
+              30000,
               `speech-to-text ${qid}`
             )
             if (isMeaningfulText(stt.text)) {
@@ -1289,7 +1595,7 @@ export default function ImprovedSpeakingTest() {
       }
 
       const answersEntries = Array.from(answers.entries())
-      console.log("📝 Submitting test with answers:", answersEntries.map(([qid, v]) => ({ qid, text: v.text?.substring(0, 50) })))
+      console.log("?? Submitting test with answers:", answersEntries.map(([qid, v]) => ({ qid, text: v.text?.substring(0, 50) })))
 
       // Persist detailed answers (with duration) for potential overall submission
       const answersObj = Object.fromEntries(
@@ -1310,7 +1616,7 @@ export default function ImprovedSpeakingTest() {
             for (const question of subPart.questions || []) {
               fallbackAnswers.push({
                 questionId: question.id,
-                questionText: question.questionText || "Soru metni mevcut değil",
+                questionText: normalizeDisplayText(question.questionText) || "Soru metni mevcut değil",
                 userAnswer: answerTextRecord[question.id] || "",
               })
             }
@@ -1319,7 +1625,7 @@ export default function ImprovedSpeakingTest() {
           for (const question of section.questions || []) {
             fallbackAnswers.push({
               questionId: question.id,
-              questionText: question.questionText || "Soru metni mevcut değil",
+              questionText: normalizeDisplayText(question.questionText) || "Soru metni mevcut değil",
               userAnswer: answerTextRecord[question.id] || "",
             })
           }
@@ -1344,7 +1650,7 @@ export default function ImprovedSpeakingTest() {
         timestamp: new Date().toISOString()
       }
 
-      console.log("💾 Saving to sessionStorage:", {
+      console.log("?? Saving to sessionStorage:", {
         testId: testData.id,
         answerCount: Object.keys(answersObj).length,
         answerKeys: Object.keys(answersObj)
@@ -1355,7 +1661,7 @@ export default function ImprovedSpeakingTest() {
       const nextPath = overallTestFlowStore.onTestCompleted("SPEAKING", testData.id)
 
       if (nextPath) {
-        if (typeof document !== "undefined") {
+        if (nextPath !== "/overall-section-ready" && typeof document !== "undefined") {
           document.body.classList.add("exam-mode")
           const enterFullscreen = async () => {
             try {
@@ -1367,6 +1673,7 @@ export default function ImprovedSpeakingTest() {
           }
           await enterFullscreen()
         }
+        clearSpeakingProgress()
         navigate(nextPath)
         return
       }
@@ -1375,6 +1682,7 @@ export default function ImprovedSpeakingTest() {
       if (overallId && overallTestFlowStore.isAllDone()) {
         const submitAllOk = await submitAllTests(overallId)
         if (!submitAllOk) {
+          clearSpeakingProgress()
           navigate(`/speaking-test/results/temp`, {
             state: {
               summary: {
@@ -1391,6 +1699,7 @@ export default function ImprovedSpeakingTest() {
       if (!wasOverallFlowActive) {
         const formattedSubmission = speakingSubmissionService.formatSubmissionData(testData, answerTextRecord)
         if (!speakingSubmissionService.validateSubmissionData(formattedSubmission)) {
+          clearSpeakingProgress()
           navigate(`/speaking-test/results/temp`, {
             state: {
               summary: {
@@ -1415,6 +1724,7 @@ export default function ImprovedSpeakingTest() {
 
         if (!submissionResult.success) {
           const submitError = String(submissionResult.error || "").trim()
+          clearSpeakingProgress()
           navigate(`/speaking-test/results/temp`, {
             state: {
               summary: {
@@ -1432,19 +1742,22 @@ export default function ImprovedSpeakingTest() {
         }
 
         if (submissionResult.submissionId) {
+          clearSpeakingProgress()
           navigate(`/speaking-test/results/${submissionResult.submissionId}`)
         } else {
+          clearSpeakingProgress()
           navigate(`/speaking-test/results/temp`, { state: { summary: fallbackSummary } })
         }
         return
       }
 
+      clearSpeakingProgress()
       navigate(`/speaking-test/results/temp`, { state: { summary: fallbackSummary } })
     } catch (e) {
       console.error("speaking navigation error", e)
       const emergencyAnswers = Array.from(answers.entries()).map(([questionId, answer]) => ({
         questionId,
-        questionText: "Soru metni mevcut degil",
+        questionText: "Soru metni mevcut değil",
         userAnswer: typeof answer?.text === "string" ? answer.text : "",
       }))
       const emergencySummary = {
@@ -1753,7 +2066,10 @@ export default function ImprovedSpeakingTest() {
         ) {
           for (const [qid, rec] of _recordings.entries()) {
             try {
-              const stt = await speechToTextService.convertAudioToText(rec.blob);
+              const stt = await speechToTextService.convertAudioToText(
+                rec.blob,
+                buildSpeechToTextOptions(qid),
+              );
               const rawText = stt.text ?? "";
               if (isMeaningfulText(rawText)) {
                 answerTextRecord[qid] = String(rawText).trim();
@@ -1846,6 +2162,7 @@ export default function ImprovedSpeakingTest() {
           document.exitFullscreen().catch(() => {});
         } catch {}
       }
+      clearSpeakingProgress()
       navigate(`/overall-results/${overallId}`);
       return true;
     } catch (error) {
@@ -1962,12 +2279,19 @@ export default function ImprovedSpeakingTest() {
   if (showSectionDescription && currentSection) {
     return (
       <motion.div
-        className="min-h-screen overflow-hidden"
+        className="h-[100dvh] overflow-y-auto overscroll-contain touch-pan-y bg-white"
         initial="initial"
         animate="animate"
       >
         {!micChecked ? (
-      <MicrophoneCheck onSuccess={() => setMicChecked(true)} />
+      <MicrophoneCheck
+        onSuccess={() => {
+          setMicChecked(true)
+          if (micReadyStorageKey) {
+            try { sessionStorage.setItem(micReadyStorageKey, "1") } catch {}
+          }
+        }}
+      />
     ) : (
       <>
         {introCountdown !== null ? (
@@ -2243,13 +2567,13 @@ export default function ImprovedSpeakingTest() {
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.2 }}
               >
-                <h1 className="text-xl sm:text-2xl font-black text-gray-900">{testData.title}</h1>
+                <h1 className="text-xl sm:text-2xl font-black text-gray-900">{normalizeDisplayText(testData.title)}</h1>
                 <div className="flex items-center justify-center gap-2 sm:gap-3 mt-2">
                   <motion.div
                     className="px-3 py-1 sm:px-4 sm:py-1.5 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-full text-xs sm:text-sm font-bold shadow-md"
                     whileHover={{ scale: 1.05 }}
                   >
-                    {currentSection?.title}
+                    {normalizeDisplayText(currentSection?.title)}
                   </motion.div>
                   <span className="text-xs sm:text-sm text-gray-400">•</span>
                   <span className="text-xs sm:text-sm text-gray-600 font-semibold">Soru {currentQuestionIndex + 1}</span>
@@ -2378,7 +2702,7 @@ export default function ImprovedSpeakingTest() {
                       <ul className="list-disc list-inside space-y-2 sm:space-y-3 text-black">
                         {questions.map((q) => (
                           <li key={q.id} className="text-base sm:text-lg md:text-xl leading-relaxed break-words">
-                            {q.questionText}
+                            {normalizeDisplayText(q.questionText)}
                           </li>
                         ))}
                       </ul>
@@ -2391,7 +2715,7 @@ export default function ImprovedSpeakingTest() {
                   <ul className="list-disc list-inside space-y-2 sm:space-y-3 text-black">
                     {questions.map((q) => (
                       <li key={q.id} className="text-base sm:text-lg md:text-xl leading-relaxed break-words">
-                        {q.questionText}
+                        {normalizeDisplayText(q.questionText)}
                       </li>
                     ))}
                   </ul>
@@ -2403,7 +2727,7 @@ export default function ImprovedSpeakingTest() {
               {(() => {
                 const sp = currentSection?.subParts?.[currentSubPartIndex]
                 const questions = sp?.questions ? [...sp.questions].sort((a, b) => a.order - b.order) : []
-                const text = questions?.[0]?.questionText || currentSection?.description || ""
+                const text = normalizeDisplayText(questions?.[0]?.questionText || currentSection?.description || "")
                 return text ? (
                   <div className="border-b border-gray-300 px-3 sm:px-4 md:px-6 py-3 sm:py-4">
                     <h3 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-gray-900 text-center whitespace-pre-line leading-relaxed break-words">
@@ -2417,7 +2741,7 @@ export default function ImprovedSpeakingTest() {
                   <h4 className="text-xs sm:text-sm md:text-base lg:text-lg font-bold mb-2 sm:mb-3 text-gray-900">Lehine</h4>
                   <ul className="list-disc list-inside space-y-2 sm:space-y-2.5 md:space-y-3 text-gray-800 text-xs sm:text-sm md:text-base lg:text-lg leading-relaxed">
                     {(currentSection as any)?.points?.filter((p: any) => p.type === 'ADVANTAGE')?.flatMap((p: any) => p.example || []).sort((a: any, b: any) => (a.order||0)-(b.order||0)).map((ex: any, idx: number) => (
-                      <li key={`adv-${idx}`} className="pl-1 break-words">{ex.text}</li>
+                      <li key={`adv-${idx}`} className="pl-1 break-words">{normalizeDisplayText(ex.text)}</li>
                     ))}
                   </ul>
                 </div>
@@ -2425,7 +2749,7 @@ export default function ImprovedSpeakingTest() {
                   <h4 className="text-xs sm:text-sm md:text-base lg:text-lg font-bold mb-2 sm:mb-3 text-gray-900">Aleyhine</h4>
                   <ul className="list-disc list-inside space-y-2 sm:space-y-2.5 md:space-y-3 text-gray-800 text-xs sm:text-sm md:text-base lg:text-lg leading-relaxed">
                     {(currentSection as any)?.points?.filter((p: any) => p.type === 'DISADVANTAGE')?.flatMap((p: any) => p.example || []).sort((a: any, b: any) => (a.order||0)-(b.order||0)).map((ex: any, idx: number) => (
-                      <li key={`dis-${idx}`} className="pl-1 break-words">{ex.text}</li>
+                      <li key={`dis-${idx}`} className="pl-1 break-words">{normalizeDisplayText(ex.text)}</li>
                     ))}
                   </ul>
                 </div>
@@ -2433,7 +2757,7 @@ export default function ImprovedSpeakingTest() {
             </div>
               ) : (
                 <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl font-medium text-gray-800 text-center leading-relaxed max-w-4xl mx-auto px-2 sm:px-4 break-words">
-                  {currentQuestion?.questionText}
+                  {normalizeDisplayText(currentQuestion?.questionText)}
                 </h2>
               )}
             </motion.div>
@@ -2486,6 +2810,15 @@ export default function ImprovedSpeakingTest() {
                   <p className="text-2xl sm:text-3xl font-bold text-red-600 mt-2">
                     {formatTime(prepSeconds)}
                   </p>
+                  {(currentSection?.type === "PART2" || currentSection?.type === "PART3") && (
+                    <button
+                      type="button"
+                      onClick={skipPreparationAndStart}
+                      className="mt-6 px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs sm:text-sm font-semibold hover:bg-red-700 transition-colors"
+                    >
+                      Hazırlığı Geç ve Başla
+                    </button>
+                  )}
                 </>
               )}
             </motion.div>
@@ -2579,7 +2912,7 @@ export default function ImprovedSpeakingTest() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6 }}
           >
-            Sonraki →
+            Sonraki ›
           </motion.button> */}
         </div>
       </main>

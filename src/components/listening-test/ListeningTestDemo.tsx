@@ -1,8 +1,8 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { listeningTestService } from "@/services/listeningTest.service";
 import type { ListeningTestItem } from "@/services/listeningTest.service";
 import { Button } from "../ui/button";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock3 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { overallTestFlowStore } from "@/services/overallTest.service";
 import { AudioPlayer } from "@/pages/listening-test/components/AudioPlayer";
@@ -15,6 +15,15 @@ import { toast } from "sonner";
 
 interface UserAnswers {
   [questionId: string]: string;
+}
+
+interface ListeningProgressSnapshot {
+  currentPartNumber: number;
+  userAnswers: UserAnswers;
+  timeLeft: number;
+  timerActive: boolean;
+  showReviewNotice: boolean;
+  updatedAt: number;
 }
 
 export default function ListeningTestDemo({ testId }: { testId: string }) {
@@ -33,19 +42,28 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
   const [mobilePart4MapZoomed, setMobilePart4MapZoomed] = useState(false);
   const [part4DrawEnabled, setPart4DrawEnabled] = useState(false);
   const [part4ClearToken, setPart4ClearToken] = useState(0);
+  const [isProgressReady, setIsProgressReady] = useState(false);
+  const contentScrollRef = useRef<HTMLDivElement>(null);
+  const hasRestoredProgressRef = useRef(false);
+  const fullscreenRetryBoundRef = useRef(false);
+  const fullscreenRetryHandlerRef = useRef<(() => void) | null>(null);
+  const progressStorageKey = `listening_progress_${testId}`;
+  const audioProgressStorageKey = `listening_audio_progress_${testId}`;
   // Removed exam-mode body lock for listening; keep state local if needed later
   
   const navigate = useNavigate();
 
-  const stopAllMediaPlayback = () => {
+  const stopAllMediaPlayback = (hardReset: boolean = false) => {
     if (typeof document === "undefined") return;
     const mediaElements = Array.from(document.querySelectorAll("audio, video")) as HTMLMediaElement[];
     mediaElements.forEach((media) => {
       try {
         media.pause();
-        media.currentTime = 0;
-        media.removeAttribute("src");
-        media.load();
+        if (hardReset) {
+          media.currentTime = 0;
+          media.removeAttribute("src");
+          media.load();
+        }
       } catch {}
     });
   };
@@ -76,6 +94,39 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
       loadTestData();
     }
   }, [testId]);
+
+  useEffect(() => {
+    hasRestoredProgressRef.current = false;
+    setIsProgressReady(false);
+    let parsed: Partial<ListeningProgressSnapshot> | null = null;
+    try {
+      const raw = sessionStorage.getItem(progressStorageKey);
+      if (raw) parsed = JSON.parse(raw) as Partial<ListeningProgressSnapshot>;
+    } catch {}
+
+    if (parsed && typeof parsed === "object") {
+      const restoredPart = Number(parsed.currentPartNumber);
+      if (Number.isFinite(restoredPart)) {
+        setCurrentPartNumber(Math.min(6, Math.max(1, Math.round(restoredPart))));
+      }
+
+      if (parsed.userAnswers && typeof parsed.userAnswers === "object") {
+        setUserAnswers(parsed.userAnswers as UserAnswers);
+      }
+
+      const restoredTimeLeft = Number(parsed.timeLeft);
+      if (Number.isFinite(restoredTimeLeft)) {
+        setTimeLeft(Math.max(0, Math.min(600, Math.round(restoredTimeLeft))));
+      }
+
+      const restoredTimerActive = Boolean(parsed.timerActive) && Number(parsed.timeLeft) > 0;
+      setTimerActive(restoredTimerActive);
+      setShowReviewNotice(Boolean(parsed.showReviewNotice) || restoredTimerActive);
+    }
+
+    hasRestoredProgressRef.current = true;
+    setIsProgressReady(true);
+  }, [progressStorageKey]);
 
   // Track screen size (lg breakpoint: 1024px)
   useEffect(() => {
@@ -113,8 +164,51 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
   }, [currentPartNumber]);
 
   useEffect(() => {
+    const content = contentScrollRef.current;
+    if (content) content.scrollTop = 0;
+  }, [currentPartNumber]);
+
+  useEffect(() => {
     return () => {
       stopAllMediaPlayback();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hasRestoredProgressRef.current) return;
+    const snapshot: ListeningProgressSnapshot = {
+      currentPartNumber,
+      userAnswers,
+      timeLeft,
+      timerActive,
+      showReviewNotice,
+      updatedAt: Date.now(),
+    };
+    try {
+      sessionStorage.setItem(progressStorageKey, JSON.stringify(snapshot));
+    } catch {}
+  }, [progressStorageKey, currentPartNumber, userAnswers, timeLeft, timerActive, showReviewNotice]);
+
+  // Keep scrolling inside the test content only (prevents page-level white gap on mobile).
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    const prevHtmlOverscroll = html.style.overscrollBehaviorY;
+    const prevBodyOverscroll = body.style.overscrollBehaviorY;
+
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    html.style.overscrollBehaviorY = "none";
+    body.style.overscrollBehaviorY = "none";
+
+    return () => {
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
+      html.style.overscrollBehaviorY = prevHtmlOverscroll;
+      body.style.overscrollBehaviorY = prevBodyOverscroll;
     };
   }, []);
   
@@ -146,14 +240,38 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
     const enterFullscreen = async () => {
       try {
         const el: any = document.documentElement as any;
+        if (document.fullscreenElement) return true;
         if (el.requestFullscreen) await el.requestFullscreen();
         else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
         else if (el.msRequestFullscreen) await el.msRequestFullscreen();
-      } catch {}
+        return true;
+      } catch {
+        return false;
+      }
     };
 
     const cleanupNav = addNavigationLock();
-    enterFullscreen();
+    const tryEnterFullscreenWithGestureFallback = async () => {
+      const ok = await enterFullscreen();
+      if (ok || fullscreenRetryBoundRef.current) return;
+      fullscreenRetryBoundRef.current = true;
+      const tryAgain = () => {
+        enterFullscreen().finally(() => {
+          if (document.fullscreenElement) {
+            document.removeEventListener("pointerdown", tryAgain);
+            document.removeEventListener("touchstart", tryAgain);
+            document.removeEventListener("keydown", tryAgain);
+            fullscreenRetryBoundRef.current = false;
+            fullscreenRetryHandlerRef.current = null;
+          }
+        });
+      };
+      fullscreenRetryHandlerRef.current = tryAgain;
+      document.addEventListener("pointerdown", tryAgain, { once: true });
+      document.addEventListener("touchstart", tryAgain, { once: true });
+      document.addEventListener("keydown", tryAgain, { once: true });
+    };
+    tryEnterFullscreenWithGestureFallback();
 
     return () => {
       // Only exit fullscreen if not in overall test flow
@@ -163,6 +281,13 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
           document.exitFullscreen().catch(() => {});
         } catch {}
       }
+      if (fullscreenRetryHandlerRef.current) {
+        document.removeEventListener("pointerdown", fullscreenRetryHandlerRef.current);
+        document.removeEventListener("touchstart", fullscreenRetryHandlerRef.current);
+        document.removeEventListener("keydown", fullscreenRetryHandlerRef.current);
+        fullscreenRetryHandlerRef.current = null;
+      }
+      fullscreenRetryBoundRef.current = false;
       cleanupNav?.();
     };
   }, []);
@@ -212,11 +337,22 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
     }));
   };
 
+  const scrollContentToTop = (behavior: ScrollBehavior = "auto") => {
+    const content = contentScrollRef.current;
+    if (content) {
+      content.scrollTo({ top: 0, behavior });
+      return;
+    }
+    window.scrollTo({ top: 0, behavior });
+  };
+
   const goToNextBolum = () => {
     setCurrentPartNumber((prev) => Math.min(6, prev + 1));
+    scrollContentToTop("smooth");
   };
   const goToPrevBolum = () => {
     setCurrentPartNumber((prev) => Math.max(1, prev - 1));
+    scrollContentToTop("smooth");
   };
 
   const getTotalQuestions = () => {
@@ -577,11 +713,12 @@ const renderPart = (bolum: number) => {
       const imageUrl = part4Section?.imageUrl || questions.find(q => q.imageUrl)?.imageUrl;
       
       return (
-        <div key={`bolum-${bolum}`} className="w-full mx-auto bg-white border border-gray-200 rounded-lg overflow-hidden pb-28 md:pb-36 lg:pb-40">
+        <div key={`bolum-${bolum}`} className="w-full mx-auto bg-white border border-gray-200 rounded-lg overflow-hidden pb-0 md:pb-8 lg:pb-40">
           {/* Mobile Layout - Stacked */}
           <div className="block lg:hidden">
+            <div className="flex h-[min(68dvh,640px)] min-h-[420px] flex-col bg-white">
             {/* Image Section */}
-            <div className="p-3 border-b border-gray-200 bg-white">
+            <div className="shrink-0 p-3 border-b border-gray-200 bg-white">
               <div className="flex items-center justify-between">
                 <h4 className="text-sm font-semibold text-[#333333]">Harita</h4>
                 <div className="flex items-center gap-2">
@@ -613,7 +750,7 @@ const renderPart = (bolum: number) => {
                 </div>
               </div>
               <div
-                className={`flex justify-center mt-2 ${mobilePart4MapZoomed ? "max-h-[60vh] overflow-auto rounded-lg border border-gray-200 p-2" : ""}`}
+                className={`flex justify-center mt-2 ${mobilePart4MapZoomed ? "max-h-[42dvh] overflow-auto rounded-lg border border-gray-200 p-2" : ""}`}
                 onClick={() => {
                   if (!part4DrawEnabled) setMobilePart4MapZoomed((v) => !v);
                 }}
@@ -647,7 +784,7 @@ const renderPart = (bolum: number) => {
             </div>
 
             {/* Questions Section */}
-            <div className="p-3 pb-52 bg-white max-h-[36vh] overflow-y-auto overscroll-contain scrollbar-thin scrollbar-thumb-gray-300/60 scrollbar-track-transparent">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 pb-24 bg-white scrollbar-thin scrollbar-thumb-gray-300/60 scrollbar-track-transparent">
               <h4 className="text-base font-bold text-[#333333] mb-3">Sorular</h4>
                 {questions.length === 0 && (
                 <div className="text-center text-[#333333] py-4">Bu bölüm için soru bulunamadı.</div>
@@ -685,6 +822,7 @@ const renderPart = (bolum: number) => {
                   );
                 })}
               </div>
+            </div>
             </div>
 
           </div>
@@ -812,7 +950,7 @@ const renderPart = (bolum: number) => {
       return (
         <div key={`bolum-${bolum}`} className="w-full mx-auto bg-white border border-gray-200 rounded-lg overflow-hidden">
           {/* Questions grouped by dialogs */}
-          <div className="p-5">
+          <div className="p-5 pb-3 sm:pb-5">
             {questions.length === 0 && (
               <div className="text-center text-[#333333] py-6">Bu bölüm için soru bulunamadı.</div>
             )}
@@ -831,7 +969,7 @@ const renderPart = (bolum: number) => {
                   )}
                   
                   {/* Question */}
-                  <div className="mb-8">
+                  <div className={index < questions.length - 1 ? "mb-8" : ""}>
                     {renderQuestion(question, questionNumber + index, bolum)}
                   </div>
                   
@@ -854,7 +992,7 @@ const renderPart = (bolum: number) => {
       const right = questions.slice(half);
       return (
         <div key={`bolum-${bolum}`} className="w-full mx-auto bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <div className="p-5">
+          <div className="p-5 pb-3 sm:pb-5">
             {questions.length === 0 ? (
               <div className="text-center text-[#333333] py-6">Bu bölüm için soru bulunamadı.</div>
             ) : (
@@ -1041,7 +1179,7 @@ const renderPart = (bolum: number) => {
     return (
       <div key={`bolum-${bolum}`} className="w-full mx-auto bg-white border border-gray-200 rounded-lg overflow-hidden">
         {/* Questions */}
-          <div className="p-5">
+          <div className={bolum === 6 ? "p-5 pb-3 sm:pb-5" : "p-5"}>
           <div className={bolum === 6 ? "grid grid-cols-1 gap-6" : "grid grid-cols-1 md:grid-cols-2 gap-6"}>
             {questions.length === 0 && (
               <div className={bolum === 6 ? "col-span-1 text-center text-[#333333] py-6" : "col-span-2 text-center text-[#333333] py-6"}>
@@ -1087,7 +1225,7 @@ const renderPart = (bolum: number) => {
                   )}
                   
                   {/* Question */}
-                  <div className="mb-8">
+                  <div className={index < questions.length - 1 ? "mb-8" : ""}>
                     {renderQuestion(question, questionNumber + index, bolum)}
                   </div>
                 </div>
@@ -1147,7 +1285,7 @@ const renderPart = (bolum: number) => {
                     onClick={() => {
                       setCurrentPartNumber(section.number);
                       // Smooth scroll to top of content
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                      scrollContentToTop("smooth");
                     }}
                   >
                     <div className="flex gap-1 mb-1 justify-center flex-wrap">
@@ -1205,7 +1343,7 @@ const renderPart = (bolum: number) => {
                       onClick={() => {
                         setCurrentPartNumber(section.number);
                         // Smooth scroll to top of content
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        scrollContentToTop("smooth");
                       }}
                     >
                       <div className="flex gap-1 mb-1 justify-center flex-wrap">
@@ -1258,6 +1396,11 @@ const renderPart = (bolum: number) => {
     );
   };
 
+  const clearListeningProgress = () => {
+    try { sessionStorage.removeItem(progressStorageKey); } catch {}
+    try { sessionStorage.removeItem(audioProgressStorageKey); } catch {}
+  };
+
   const handleSubmit = async () => {
     if (isSubmitting) return;
     try {
@@ -1297,7 +1440,7 @@ const renderPart = (bolum: number) => {
       const nextPath = overallTestFlowStore.onTestCompleted("LISTENING", testData?.id || "");
         if (nextPath) {
         // Ensure exam mode and fullscreen stay active for next test
-        if (typeof document !== "undefined") {
+        if (nextPath !== "/overall-section-ready" && typeof document !== "undefined") {
           document.body.classList.add("exam-mode");
           // Immediately re-enter fullscreen before navigation
           const enterFullscreen = async () => {
@@ -1311,6 +1454,7 @@ const renderPart = (bolum: number) => {
           await enterFullscreen();
         }
           stopAllMediaPlayback();
+          clearListeningProgress();
           navigate(nextPath);
           return;
         }
@@ -1320,11 +1464,13 @@ const renderPart = (bolum: number) => {
         if (overallId && overallTestFlowStore.isAllDone()) {
         const submitAllOk = await submitAllTests(overallId);
         if (!submitAllOk) return;
+        clearListeningProgress();
         return;
       }
       
       // Fallback to single test results
       stopAllMediaPlayback();
+      clearListeningProgress();
       navigate(`/listening-test/results/temp`, { state: { summary: { testId: testData?.id } } });
     } catch (error) {
       console.error("Listening navigation error", error);
@@ -1705,54 +1851,60 @@ const renderPart = (bolum: number) => {
   const bolum = currentPartNumber;
 
   return (
-    <div className="h-screen bg-white flex flex-col overflow-hidden font-sans text-[#333333] text-sm sm:text-base">
+    <div className="h-screen-mobile bg-white flex flex-col overflow-hidden font-sans text-[#333333] text-sm sm:text-base">
         <div className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50 shadow-sm w-full">
           {/* Match horizontal padding with description block below */}
           <div className="px-2 sm:px-4">
-            <div className="flex justify-between items-center h-20 sm:h-24">
+            <div className="flex justify-between items-center h-auto py-2 lg:h-24 lg:py-0">
               {/* Mobile Header - Single Line Layout */}
               <div className="block lg:hidden w-full">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center shrink-0">
                     <img 
                       src="/logo11.svg" 
                       alt="TURKISHMOCK" 
-                      className="h-10 sm:h-11 md:h-12 w-auto object-contain"
+                      className="h-9 sm:h-10 w-auto object-contain shrink-0"
                       onError={(e) => {
                         console.error("Logo failed to load");
                         (e.target as HTMLImageElement).style.display = 'none';
                       }}
                     />
                   </div>
-                  <div className="font-semibold text-sm sm:text-base">DİNLEME</div>
-                  <div className="flex items-center gap-1 sm:gap-2">
-                    {!isLg && testData?.audioUrl && !isSubmitting && (
-                      <div className="block">
-                        <AudioPlayer
-                          src={
-                            testData.audioUrl.startsWith('http://') || testData.audioUrl.startsWith('https://')
-                              ? testData.audioUrl
-                              : `https://api.turkishmock.uz/${testData.audioUrl}`
-                          }
-                          onAudioEnded={handleAudioEnded}
-                        />
-                      </div>
-                    )}
-                    <div
-                      className={`flex items-center gap-2 px-2.5 py-1.5 rounded-full border text-xs font-bold ${
-                        timerActive && timeLeft <= 300
-                          ? "bg-red-50 border-red-200 text-red-700"
-                          : timerActive && timeLeft <= 600
-                          ? "bg-amber-50 border-amber-200 text-amber-700"
-                          : "bg-gray-50 border-gray-200 text-slate-700"
-                      }`}
-                    >
-                      <span className="text-[10px]">⏱</span>
-                      <span className="tabular-nums">{timerActive ? formatTime(timeLeft) : "10:00"}</span>
+                  <div className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] font-semibold text-gray-700 sm:text-xs whitespace-nowrap">
+                    DİNLEME
+                  </div>
+                  <Button onClick={handleSubmitClick} className="shrink-0 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-3 py-2 text-xs font-bold min-h-[44px] touch-manipulation">
+                    GÖNDER
+                  </Button>
+                </div>
+
+                <div className="mt-2 flex items-center gap-2">
+                  {!isLg && testData?.audioUrl && !isSubmitting && (
+                    <div className="min-w-0 flex-1 overflow-hidden rounded-lg">
+                      <AudioPlayer
+                        src={
+                          testData.audioUrl.startsWith('http://') || testData.audioUrl.startsWith('https://')
+                            ? testData.audioUrl
+                            : `https://api.turkishmock.uz/${testData.audioUrl}`
+                        }
+                        onAudioEnded={handleAudioEnded}
+                        autoPlay={isProgressReady ? !timerActive : false}
+                        persistKey={audioProgressStorageKey}
+                        compact
+                      />
                     </div>
-                    <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold min-h-[44px] touch-manipulation">
-                      GÖNDER
-                    </Button>
+                  )}
+                  <div
+                    className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-[11px] font-bold leading-none ${
+                      timerActive && timeLeft <= 300
+                        ? "bg-red-50 border-red-200 text-red-700"
+                        : timerActive && timeLeft <= 600
+                        ? "bg-amber-50 border-amber-200 text-amber-700"
+                        : "bg-gray-50 border-gray-200 text-slate-700"
+                    }`}
+                  >
+                    <Clock3 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    <span className="tabular-nums">{timerActive ? formatTime(timeLeft) : "10:00"}</span>
                   </div>
                 </div>
               </div>
@@ -1780,6 +1932,8 @@ const renderPart = (bolum: number) => {
                           : `https://api.turkishmock.uz/${testData.audioUrl}`
                       }
                       onAudioEnded={handleAudioEnded}
+                      autoPlay={isProgressReady ? !timerActive : false}
+                      persistKey={audioProgressStorageKey}
                     />
                   )}
                   <div
@@ -1791,7 +1945,7 @@ const renderPart = (bolum: number) => {
                         : "bg-gray-50 border-gray-200 text-slate-700"
                     }`}
                   >
-                    <span className="text-sm">⏱</span>
+                    <Clock3 className="h-4 w-4 shrink-0" aria-hidden="true" />
                     <span className="tabular-nums">{timerActive ? formatTime(timeLeft) : "10:00"}</span>
                   </div>
                   <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 text-sm font-bold">
@@ -1848,7 +2002,7 @@ const renderPart = (bolum: number) => {
         </div>
         
         {/* Internal scroll to keep content accessible while exam-mode locks body scroll */}
-        <div className="flex-1 overflow-y-auto p-6 pb-36 scrollbar-thin scrollbar-thumb-gray-300/60 scrollbar-track-transparent scroll-smooth listening-test-container">
+        <div ref={contentScrollRef} className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-6 pb-20 sm:pb-36 scrollbar-thin scrollbar-thumb-gray-300/60 scrollbar-track-transparent scroll-smooth listening-test-container">
           {renderPart(bolum)}
         </div>
       

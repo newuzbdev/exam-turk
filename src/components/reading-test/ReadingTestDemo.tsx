@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { overallTestFlowStore } from "@/services/overallTest.service";
 import { Button } from "../ui/button";
@@ -12,6 +12,16 @@ import ReadingPart4 from "./ui/ReadingPart4";
 import ReadingPart5 from "./ui/ReadingPart5";
 import NotesPanel from "./NotesPanel";
 import { toast } from "sonner";
+import { Clock3 } from "lucide-react";
+
+interface ReadingProgressSnapshot {
+  currentPartNumber: number;
+  answers: Record<string, string>;
+  timeLeft: number;
+  showDescription: boolean;
+  fontScale: number;
+  updatedAt: number;
+}
 
 export default function ReadingPage({ testId }: { testId: string }) {
   const navigate = useNavigate();
@@ -26,6 +36,8 @@ export default function ReadingPage({ testId }: { testId: string }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDescription, setShowDescription] = useState(true);
   const [fontScale, setFontScale] = useState(1);
+  const hasRestoredProgressRef = useRef(false);
+  const progressStorageKey = `reading_progress_${testId}`;
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -111,10 +123,65 @@ export default function ReadingPage({ testId }: { testId: string }) {
     };
   }, [testId]);
 
+  useEffect(() => {
+    hasRestoredProgressRef.current = false;
+    let parsed: Partial<ReadingProgressSnapshot> | null = null;
+    try {
+      const raw = sessionStorage.getItem(progressStorageKey);
+      if (raw) parsed = JSON.parse(raw) as Partial<ReadingProgressSnapshot>;
+    } catch {}
+
+    if (parsed && typeof parsed === "object") {
+      const restoredPart = Number(parsed.currentPartNumber);
+      if (Number.isFinite(restoredPart)) {
+        setCurrentPartNumber(Math.min(5, Math.max(1, Math.round(restoredPart))));
+      }
+
+      if (parsed.answers && typeof parsed.answers === "object") {
+        setAnswers(parsed.answers as Record<string, string>);
+      }
+
+      const restoredTimeLeft = Number(parsed.timeLeft);
+      if (Number.isFinite(restoredTimeLeft)) {
+        setTimeLeft(Math.max(0, Math.min(TOTAL_TIME, Math.round(restoredTimeLeft))));
+      }
+
+      if (typeof parsed.showDescription === "boolean") {
+        setShowDescription(parsed.showDescription);
+      }
+
+      const restoredFontScale = Number(parsed.fontScale);
+      if (Number.isFinite(restoredFontScale)) {
+        setFontScale(Math.min(1.2, Math.max(0.9, Math.round(restoredFontScale * 100) / 100)));
+      }
+    }
+
+    hasRestoredProgressRef.current = true;
+  }, [progressStorageKey, TOTAL_TIME]);
+
+  useEffect(() => {
+    if (!hasRestoredProgressRef.current) return;
+    const snapshot: ReadingProgressSnapshot = {
+      currentPartNumber,
+      answers,
+      timeLeft,
+      showDescription,
+      fontScale,
+      updatedAt: Date.now(),
+    };
+    try {
+      sessionStorage.setItem(progressStorageKey, JSON.stringify(snapshot));
+    } catch {}
+  }, [progressStorageKey, currentPartNumber, answers, timeLeft, showDescription, fontScale]);
+
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const clearReadingProgress = () => {
+    try { sessionStorage.removeItem(progressStorageKey); } catch {}
   };
 
   const handleSubmit = async () => {
@@ -137,7 +204,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
       const nextPath = overallTestFlowStore.onTestCompleted("READING", testData?.id || "");
       if (nextPath) {
         // Ensure exam mode and fullscreen stay active for next test
-        if (typeof document !== "undefined") {
+        if (nextPath !== "/overall-section-ready" && typeof document !== "undefined") {
           document.body.classList.add("exam-mode");
           // Immediately re-enter fullscreen before navigation
           const enterFullscreen = async () => {
@@ -150,6 +217,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
           };
           await enterFullscreen();
         }
+        clearReadingProgress();
         navigate(nextPath);
         return;
       }
@@ -159,10 +227,12 @@ export default function ReadingPage({ testId }: { testId: string }) {
       if (overallId && overallTestFlowStore.isAllDone()) {
         const submitAllOk = await submitAllTests(overallId);
         if (!submitAllOk) return;
+        clearReadingProgress();
         return;
       }
       
       // Fallback to single test results
+      clearReadingProgress();
       navigate(`/reading-test/results/temp`, { state: { summary: { testId: testData?.id } } });
     } catch (error) {
       console.error("Reading navigation error", error);
@@ -503,6 +573,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
           document.exitFullscreen().catch(() => {});
         } catch {}
       }
+      clearReadingProgress();
       navigate(`/overall-results/${overallId}`);
       return true;
     } catch (error) {
@@ -619,7 +690,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
                     </button>
                   </div>
                   <div
-                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded-full border text-xs font-bold ${
+                  className={`flex items-center gap-2 px-2.5 py-1.5 rounded-full border text-xs font-bold ${
                       timeLeft <= 300
                         ? "bg-red-50 border-red-200 text-red-700"
                         : timeLeft <= 600
@@ -627,7 +698,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
                         : "bg-gray-50 border-gray-200 text-slate-700"
                     }`}
                   >
-                    <span className="text-[10px]">⏱</span>
+                    <Clock3 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                     <span className="tabular-nums">{formatTime(timeLeft)}</span>
                   </div>
                 <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold min-h-[44px] touch-manipulation">
@@ -672,7 +743,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
                     </button>
                   </div>
                   <div
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-bold ${
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-bold ${
                       timeLeft <= 300
                         ? "bg-red-50 border-red-200 text-red-700"
                         : timeLeft <= 600
@@ -680,7 +751,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
                         : "bg-gray-50 border-gray-200 text-slate-700"
                     }`}
                   >
-                    <span className="text-sm">⏱</span>
+                    <Clock3 className="h-4 w-4 shrink-0" aria-hidden="true" />
                     <span className="tabular-nums">{formatTime(timeLeft)}</span>
                   </div>
                   <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 text-sm font-bold">

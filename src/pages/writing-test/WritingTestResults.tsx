@@ -74,7 +74,7 @@ export default function WritingTestResults() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">SonuÃ§lar yÃ¼kleniyor...</p>
+          <p className="mt-4 text-gray-600">Sonuçlar yükleniyor...</p>
         </div>
       </div>
     );
@@ -84,9 +84,9 @@ export default function WritingTestResults() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600">SonuÃ§ bulunamadÄ±</p>
+          <p className="text-gray-600">Sonuç bulunamadı</p>
           <Button onClick={() => navigate("/test")} className="mt-4">
-            Testlere DÃ¶n
+            Testlere Dön
           </Button>
         </div>
       </div>
@@ -119,6 +119,14 @@ export default function WritingTestResults() {
     return normalizeFeedbackText(stripped);
   };
 
+  type StructuredGeneralFeedback = {
+    ozet: string;
+    tekrar_eden_eksikler: string[];
+    alinti_duzeltme: Array<{ alinti: string; duzeltilmis: string; neden: string }>;
+    egzersizler: Array<{ baslik: string; uygulama: string }>;
+    kapanis: string;
+  };
+
   const pickFirstText = (...values: any[]): string | undefined => {
     for (const value of values) {
       if (typeof value === "string" && value.trim()) {
@@ -132,7 +140,7 @@ export default function WritingTestResults() {
     if (!section || typeof section !== "object") return undefined;
     return pickFirstText(
       section.degerlendirme,
-      section["deÄŸerlendirme"],
+      section["değerlendirme"],
       section.feedback,
       section.yorum,
       section.text,
@@ -163,26 +171,26 @@ export default function WritingTestResults() {
       const feedbackObj: any = feedback;
       const bolumler =
         feedbackObj?.bolumler ??
-        feedbackObj?.["bÃ¶lÃ¼mler"] ??
+        feedbackObj?.["bölümler"] ??
         feedbackObj?.sections ??
         feedbackObj?.parts ??
         {};
 
       const bolum11 =
         bolumler?.bolum_1_1 ??
-        bolumler?.["bÃ¶lÃ¼m_1_1"] ??
+        bolumler?.["bölüm_1_1"] ??
         feedbackObj?.bolum_1_1 ??
-        feedbackObj?.["bÃ¶lÃ¼m_1_1"];
+        feedbackObj?.["bölüm_1_1"];
       const bolum12 =
         bolumler?.bolum_1_2 ??
-        bolumler?.["bÃ¶lÃ¼m_1_2"] ??
+        bolumler?.["bölüm_1_2"] ??
         feedbackObj?.bolum_1_2 ??
-        feedbackObj?.["bÃ¶lÃ¼m_1_2"];
+        feedbackObj?.["bölüm_1_2"];
       const bolum2 =
         bolumler?.bolum_2 ??
-        bolumler?.["bÃ¶lÃ¼m_2"] ??
+        bolumler?.["bölüm_2"] ??
         feedbackObj?.bolum_2 ??
-        feedbackObj?.["bÃ¶lÃ¼m_2"];
+        feedbackObj?.["bölüm_2"];
 
       const criteriaSources = [
         feedbackObj?.kriterler,
@@ -197,6 +205,10 @@ export default function WritingTestResults() {
 
       return {
         ...feedbackObj,
+        generalStructured:
+          feedbackObj?.general_structured ??
+          feedbackObj?.generalStructured ??
+          feedbackObj?.genel_degerlendirme_yapilandirilmis,
         part1_1: pickFirstText(
           feedbackObj?.part1_1,
           feedbackObj?.part1,
@@ -229,8 +241,8 @@ export default function WritingTestResults() {
             "coherence_and_cohesion",
             "tutarlilikVeBaglilik",
             "tutarlilik_ve_baglilik",
-            "TutarlÄ±lÄ±k ve BaÄŸlÄ±lÄ±k",
-            "TutarlÄ±lÄ±k"
+            "Tutarlılık ve Bağlılık",
+            "Tutarlılık"
           ])
         ),
         grammaticalRangeAndAccuracy: pickFirstText(
@@ -250,7 +262,7 @@ export default function WritingTestResults() {
             "lexical_resource",
             "kelimeKaynagi",
             "kelime_kaynagi",
-            "Kelime KaynaÄŸÄ±"
+            "Kelime Kaynağı"
           ])
         ),
         taskAchievement: pickFirstText(
@@ -262,8 +274,8 @@ export default function WritingTestResults() {
             "gorev_basarisi",
             "gorevYaniti",
             "gorev_yaniti",
-            "GÃ¶rev BaÅŸarÄ±sÄ±",
-            "GÃ¶rev YanÄ±tÄ±"
+            "Görev Başarısı",
+            "Görev Yanıtı"
           ])
         ),
       };
@@ -273,26 +285,26 @@ export default function WritingTestResults() {
     if (typeof feedback === 'string') {
       const parsed: any = {};
 
-      // Extract GÃ–REV 1.1 section
-      const task1_1Match = feedback.match(/\[GÃ–REV 1\.1 DEÄERLENDÄ°RMESÄ°\]([\s\S]*?)(?=\[GÃ–REV 1\.2|\[BÃ–LÃœM 2|AI GERÄ° BÄ°LDÄ°RÄ°MÄ°|$)/i);
+      // Extract GÖREV 1.1 section
+      const task1_1Match = feedback.match(/\[GÖREV 1\.1 DEĞERLENDİRMESİ\]([\s\S]*?)(?=\[GÖREV 1\.2|\[BÖLÜM 2|AI GERİ BİLDİRİMİ|$)/i);
       if (task1_1Match) {
         parsed.part1_1 = removeBullets(task1_1Match[1].trim());
       }
 
-      // Extract GÃ–REV 1.2 section
-      const task1_2Match = feedback.match(/\[GÃ–REV 1\.2 DEÄERLENDÄ°RMESÄ°\]([\s\S]*?)(?=\[BÃ–LÃœM 2|AI GERÄ° BÄ°LDÄ°RÄ°MÄ°|$)/i);
+      // Extract GÖREV 1.2 section
+      const task1_2Match = feedback.match(/\[GÖREV 1\.2 DEĞERLENDİRMESİ\]([\s\S]*?)(?=\[BÖLÜM 2|AI GERİ BİLDİRİMİ|$)/i);
       if (task1_2Match) {
         parsed.part1_2 = removeBullets(task1_2Match[1].trim());
       }
 
-      // Extract BÃ–LÃœM 2 section
-      const part2Match = feedback.match(/\[BÃ–LÃœM 2 DEÄERLENDÄ°RMESÄ°\]([\s\S]*?)(?=AI GERÄ° BÄ°LDÄ°RÄ°MÄ°|$)/i);
+      // Extract BÖLÜM 2 section
+      const part2Match = feedback.match(/\[BÖLÜM 2 DEĞERLENDİRMESİ\]([\s\S]*?)(?=AI GERİ BİLDİRİMİ|$)/i);
       if (part2Match) {
         parsed.part2 = removeBullets(part2Match[1].trim());
       }
 
-      // Extract AI GERÄ° BÄ°LDÄ°RÄ°MÄ° (EÄÄ°TMEN NOTU) section
-      const generalMatch = feedback.match(/AI GERÄ° BÄ°LDÄ°RÄ°MÄ° \(EÄÄ°TMEN NOTU\):([\s\S]*?)(?=$)/i);
+      // Extract AI GERİ BİLDİRİMİ (EĞİTMEN NOTU) section
+      const generalMatch = feedback.match(/AI GERİ BİLDİRİMİ \(EĞİTMEN NOTU\):([\s\S]*?)(?=$)/i);
       if (generalMatch) {
         parsed.general = removeBullets(generalMatch[1].trim());
       }
@@ -301,26 +313,26 @@ export default function WritingTestResults() {
       const extractCriteria = (text: string) => {
         const criteria: any = {};
         
-        // Extract TutarlÄ±lÄ±k
-        const coherenceMatch = text.match(/TutarlÄ±lÄ±k[:\s]*([^\nâ€¢]*)/i);
+        // Extract Tutarlılık
+        const coherenceMatch = text.match(/Tutarlılık[:\s]*([^\n•]*)/i);
         if (coherenceMatch) {
           criteria.coherenceAndCohesion = coherenceMatch[1].trim();
         }
         
         // Extract Dil Bilgisi
-        const grammarMatch = text.match(/Dil Bilgisi[:\s]*([^\nâ€¢]*)/i);
+        const grammarMatch = text.match(/Dil Bilgisi[:\s]*([^\n•]*)/i);
         if (grammarMatch) {
           criteria.grammaticalRangeAndAccuracy = grammarMatch[1].trim();
         }
         
-        // Extract Kelime KaynaÄŸÄ±
-        const lexicalMatch = text.match(/Kelime KaynaÄŸÄ±[:\s]*([^\nâ€¢]*)/i);
+        // Extract Kelime Kaynağı
+        const lexicalMatch = text.match(/Kelime Kaynağı[:\s]*([^\n•]*)/i);
         if (lexicalMatch) {
           criteria.lexicalResource = lexicalMatch[1].trim();
         }
         
-        // Extract GÃ¶rev BaÅŸarÄ±sÄ±
-        const taskMatch = text.match(/GÃ¶rev BaÅŸarÄ±sÄ±[:\s]*([^\nâ€¢]*)/i);
+        // Extract Görev Başarısı
+        const taskMatch = text.match(/Görev Başarısı[:\s]*([^\n•]*)/i);
         if (taskMatch) {
           criteria.taskAchievement = taskMatch[1].trim();
         }
@@ -339,6 +351,56 @@ export default function WritingTestResults() {
   };
 
   const parsedFeedback = parseAIFeedback();
+  const extractStructuredGeneralFeedback = (): StructuredGeneralFeedback | null => {
+    const raw =
+      (parsedFeedback as any)?.generalStructured ??
+      (parsedFeedback as any)?.general_structured ??
+      (parsedFeedback as any)?.genel_degerlendirme_yapilandirilmis ??
+      (aiFeedback as any)?.generalStructured ??
+      (aiFeedback as any)?.general_structured ??
+      (aiFeedback as any)?.genel_degerlendirme_yapilandirilmis;
+
+    if (!raw || typeof raw !== "object") return null;
+    const src: any = raw;
+    const clean = (value: any) => removeBullets(typeof value === "string" ? value : "");
+
+    const structured: StructuredGeneralFeedback = {
+      ozet: clean(src?.ozet),
+      tekrar_eden_eksikler: Array.isArray(src?.tekrar_eden_eksikler)
+        ? src.tekrar_eden_eksikler.map((v: any) => clean(v)).filter(Boolean).slice(0, 6)
+        : [],
+      alinti_duzeltme: Array.isArray(src?.alinti_duzeltme)
+        ? src.alinti_duzeltme
+            .map((item: any) => ({
+              alinti: clean(item?.alinti),
+              duzeltilmis: clean(item?.duzeltilmis),
+              neden: clean(item?.neden),
+            }))
+            .filter((item: any) => item.alinti || item.duzeltilmis || item.neden)
+            .slice(0, 6)
+        : [],
+      egzersizler: Array.isArray(src?.egzersizler)
+        ? src.egzersizler
+            .map((item: any) => ({
+              baslik: clean(item?.baslik),
+              uygulama: clean(item?.uygulama),
+            }))
+            .filter((item: any) => item.baslik || item.uygulama)
+            .slice(0, 4)
+        : [],
+      kapanis: clean(src?.kapanis),
+    };
+
+    const hasContent =
+      structured.ozet ||
+      structured.kapanis ||
+      structured.tekrar_eden_eksikler.length > 0 ||
+      structured.alinti_duzeltme.length > 0 ||
+      structured.egzersizler.length > 0;
+
+    return hasContent ? structured : null;
+  };
+  const structuredGeneralFeedback = extractStructuredGeneralFeedback();
   const scoreRaw =
     (writingData as any)?.score ??
     (result as any)?.score ??
@@ -349,14 +411,14 @@ export default function WritingTestResults() {
   const normalizeLevel = (raw?: string | null) => {
     if (!raw) return undefined;
     const value = String(raw).trim().toUpperCase();
-    if (value === "A0" || value === "B1_ALTI" || value === "B1 ALTI") return "B1 altÄ±";
+    if (value === "A0" || value === "B1_ALTI" || value === "B1 ALTI") return "B1 altı";
     return value;
   };
   const levelFromScore = (value: number) => {
     if (value >= 65) return "C1";
     if (value >= 51) return "B2";
     if (value >= 38) return "B1";
-    return "B1 altÄ±";
+    return "B1 altı";
   };
   const resolvedLevel =
     normalizeLevel(
@@ -387,10 +449,10 @@ export default function WritingTestResults() {
       };
     }
     return {
-      coherence: "KÄ±sa deÄŸerlendirme yok",
-      grammar: "KÄ±sa deÄŸerlendirme yok",
-      lexical: "KÄ±sa deÄŸerlendirme yok",
-      achievement: "KÄ±sa deÄŸerlendirme yok",
+      coherence: "Kısa değerlendirme yok",
+      grammar: "Kısa değerlendirme yok",
+      lexical: "Kısa değerlendirme yok",
+      achievement: "Kısa değerlendirme yok",
     };
   };
 
@@ -428,7 +490,7 @@ export default function WritingTestResults() {
                 ans.question ||
                 subPart.description ||
                 section.description ||
-                `GÃ¶rev 1.${subPartIndex + 1}`,
+                `Görev 1.${subPartIndex + 1}`,
             });
           });
         });
@@ -442,7 +504,7 @@ export default function WritingTestResults() {
                 ans.questionText ||
                 ans.question ||
                 section.description ||
-                `GÃ¶rev ${sectionIndex + 1} ${answerIndex + 1}`,
+                `Görev ${sectionIndex + 1} ${answerIndex + 1}`,
             });
           });
         }
@@ -477,6 +539,17 @@ export default function WritingTestResults() {
       .replace(/[\u0300-\u036f]/g, "");
 
   const getTaskKeyFromAnswer = (answer: any): WritingTaskKey | null => {
+    const explicitKey = String(
+      answer?.taskKey ?? answer?.task_key ?? answer?.sectionKey ?? ""
+    ).trim() as WritingTaskKey | "";
+    if (
+      explicitKey === "bolum_1_1" ||
+      explicitKey === "bolum_1_2" ||
+      explicitKey === "bolum_2"
+    ) {
+      return explicitKey;
+    }
+
     const hints = [
       answer?.questionText,
       answer?.question,
@@ -596,10 +669,10 @@ export default function WritingTestResults() {
       const feedbackKey = activeTask1Part === "part1" ? "part1_1" : "part1_2";
       const feedback = parsedFeedback?.[feedbackKey] || 
                       aiFeedback?.[feedbackKey] || 
-                      `GÃ¶rev 1 ${activeTask1Part === "part1" ? "BÃ¶lÃ¼m 1" : "BÃ¶lÃ¼m 2"} geri bildirimi burada gÃ¶sterilecek`;
+                      `Görev 1 ${activeTask1Part === "part1" ? "Bölüm 1" : "Bölüm 2"} geri bildirimi burada gösterilecek`;
       
       return {
-        question: currentAnswer?.questionText || `GÃ¶rev 1 ${activeTask1Part === "part1" ? "BÃ¶lÃ¼m 1" : "BÃ¶lÃ¼m 2"} Sorusu`,
+        question: currentAnswer?.questionText || `Görev 1 ${activeTask1Part === "part1" ? "Bölüm 1" : "Bölüm 2"} Sorusu`,
         answer: userAnswer && userAnswer.trim() ? userAnswer : "Cevap verilmedi",
         comment: removeBullets(feedback)
       };
@@ -614,10 +687,10 @@ export default function WritingTestResults() {
       // Get feedback for Task 2
       const feedback = parsedFeedback?.part2 || 
                       aiFeedback?.part2 || 
-                      "GÃ¶rev 2 geri bildirimi burada gÃ¶sterilecek";
+                      "Görev 2 geri bildirimi burada gösterilecek";
       
       return {
-        question: task2AnswerWithContent?.questionText || "GÃ¶rev 2 Sorusu",
+        question: task2AnswerWithContent?.questionText || "Görev 2 Sorusu",
         answer: userAnswer && userAnswer.trim() ? userAnswer : "Cevap verilmedi",
         comment: removeBullets(feedback)
       };
@@ -640,8 +713,8 @@ export default function WritingTestResults() {
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Yazma Testi SonuÃ§larÄ±</h1>
-              <p className="text-gray-600 mt-1 text-sm">PerformansÄ±nÄ±zÄ± ve geri bildirimi inceleyin</p>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Yazma Testi Sonuçları</h1>
+              <p className="text-gray-600 mt-1 text-sm">Performansınızı ve geri bildirimi inceleyin</p>
             </div>
           </div>
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -656,12 +729,12 @@ export default function WritingTestResults() {
           </div>
         </div>
 
-        {/* BÃ¶lÃ¼m BazlÄ± Ã–zet - Ham Puan + 4 Kriter */}
+        {/* Bölüm Bazlı Özet - Ham Puan + 4 Kriter */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {[
-            { key: "bolum_1_1", title: "GÃ¶rev 1.1" },
-            { key: "bolum_1_2", title: "GÃ¶rev 1.2" },
-            { key: "bolum_2", title: "BÃ¶lÃ¼m 2" },
+            { key: "bolum_1_1", title: "Görev 1.1" },
+            { key: "bolum_1_2", title: "Görev 1.2" },
+            { key: "bolum_2", title: "Bölüm 2" },
           ].map((section) => {
             const score = getSectionScore(section.key as any);
             const criteria = getSectionCriteria(section.key as any);
@@ -674,10 +747,10 @@ export default function WritingTestResults() {
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-700">
-                  <div><span className="font-semibold">TutarlÄ±lÄ±k:</span> {removeBullets(criteria.coherence)}</div>
+                  <div><span className="font-semibold">Tutarlılık:</span> {removeBullets(criteria.coherence)}</div>
                   <div><span className="font-semibold">Dil Bilgisi:</span> {removeBullets(criteria.grammar)}</div>
-                  <div><span className="font-semibold">Kelime KaynaÄŸÄ±:</span> {removeBullets(criteria.lexical)}</div>
-                  <div><span className="font-semibold">GÃ¶rev BaÅŸarÄ±sÄ±:</span> {removeBullets(criteria.achievement)}</div>
+                  <div><span className="font-semibold">Kelime Kaynağı:</span> {removeBullets(criteria.lexical)}</div>
+                  <div><span className="font-semibold">Görev Başarısı:</span> {removeBullets(criteria.achievement)}</div>
                 </div>
               </div>
             );
@@ -686,7 +759,7 @@ export default function WritingTestResults() {
 
         {/* Task Navigation - Redesigned */}
         <div className="mb-5">
-          <div className="text-sm font-semibold text-gray-700 mb-2">Yazma GÃ¶revleri</div>
+          <div className="text-sm font-semibold text-gray-700 mb-2">Yazma Görevleri</div>
           <div className="flex flex-wrap gap-2">
             {/* Task 1.1 */}
             <Button
@@ -701,7 +774,7 @@ export default function WritingTestResults() {
                   : "bg-white text-gray-700 hover:bg-gray-100 border-gray-300"
               }`}
             >
-              BÃ¶lÃ¼m 1.1
+              Bölüm 1.1
             </Button>
 
             {/* Task 1.2 */}
@@ -717,7 +790,7 @@ export default function WritingTestResults() {
                   : "bg-white text-gray-700 hover:bg-gray-100 border-gray-300"
               }`}
             >
-              BÃ¶lÃ¼m 1.2
+              Bölüm 1.2
             </Button>
 
             {/* Task 2 */}
@@ -730,7 +803,7 @@ export default function WritingTestResults() {
                   : "bg-white text-gray-700 hover:bg-gray-100 border-gray-300"
               }`}
             >
-              BÃ¶lÃ¼m 2
+              Bölüm 2
             </Button>
           </div>
         </div>
@@ -745,17 +818,106 @@ export default function WritingTestResults() {
 
           {/* Answer Section */}
           <div className="border border-gray-300 rounded-lg p-4">
-            <div className="text-sm font-semibold text-gray-700 mb-2">CevabÄ±nÄ±z</div>
+            <div className="text-sm font-semibold text-gray-700 mb-2">Cevabınız</div>
             <div className="text-gray-800 whitespace-pre-wrap">{normalizeDisplayText(currentData.answer)}</div>
           </div>
 
-          {/* EÄŸitmen Notu Section - Shows general feedback like speaking results */}
-          {sanitizeWritingGeneralFeedback(parsedFeedback?.general) && (
+          {/* Eğitmen Notu Section - Shows general feedback like speaking results */}
+          {(sanitizeWritingGeneralFeedback(parsedFeedback?.general) || structuredGeneralFeedback) && (
             <div className="border border-gray-300 rounded-lg p-4">
-              <div className="text-sm font-semibold text-gray-700 mb-2">EÄŸitmen Notu</div>
-              <div className="text-gray-800 whitespace-pre-wrap">
-                {sanitizeWritingGeneralFeedback(parsedFeedback?.general)}
-              </div>
+              <div className="text-sm font-semibold text-gray-700 mb-2">Eğitmen Notu</div>
+              {structuredGeneralFeedback ? (
+                <div className="space-y-4">
+                  {structuredGeneralFeedback.ozet && (
+                    <div>
+                      <div className="text-sm font-bold text-black mb-1">Özet</div>
+                      <p className="text-gray-800 whitespace-pre-wrap leading-relaxed">
+                        {normalizeDisplayText(structuredGeneralFeedback.ozet)}
+                      </p>
+                    </div>
+                  )}
+
+                  {structuredGeneralFeedback.tekrar_eden_eksikler.length > 0 && (
+                    <div>
+                      <div className="text-sm font-bold text-black mb-1">Tekrar Eden Eksikler</div>
+                      <ul className="list-disc pl-5 space-y-1 text-gray-800">
+                        {structuredGeneralFeedback.tekrar_eden_eksikler.map((item, idx) => (
+                          <li key={`eksik-${idx}`}>{normalizeDisplayText(item)}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {structuredGeneralFeedback.alinti_duzeltme.length > 0 && (
+                    <div>
+                      <div className="text-sm font-bold text-black mb-2">İyileştirmeler</div>
+                      <div className="space-y-3">
+                        {structuredGeneralFeedback.alinti_duzeltme.map((item, idx) => (
+                          <div key={`rewrite-${idx}`} className="rounded-lg border border-gray-200 bg-gray-100 p-3">
+                            {item.alinti && (
+                              <>
+                                <div className="text-xs font-semibold text-black mb-1">Alıntı</div>
+                                <p className="text-red-600 font-medium whitespace-pre-wrap mb-2">
+                                  "{normalizeDisplayText(item.alinti)}"
+                                </p>
+                              </>
+                            )}
+                            {item.duzeltilmis && (
+                              <>
+                                <div className="text-xs font-semibold text-black mb-1">Düzeltilmiş Versiyon</div>
+                                <p className="text-green-700 whitespace-pre-wrap mb-2">
+                                  {normalizeDisplayText(item.duzeltilmis)}
+                                </p>
+                              </>
+                            )}
+                            {item.neden && (
+                              <>
+                                <div className="text-xs font-semibold text-black mb-1">Neden Düzelttik?</div>
+                                <p className="text-gray-800 whitespace-pre-wrap">
+                                  {normalizeDisplayText(item.neden)}
+                                </p>
+                              </>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {structuredGeneralFeedback.egzersizler.length > 0 && (
+                    <div>
+                      <div className="text-sm font-bold text-black mb-1">Önerilen Egzersizler</div>
+                      <div className="space-y-2">
+                        {structuredGeneralFeedback.egzersizler.map((item, idx) => (
+                          <div key={`exercise-${idx}`} className="rounded-md border border-gray-200 bg-white p-3">
+                            <p className="font-semibold text-black">
+                              {idx + 1}. {normalizeDisplayText(item.baslik || "Egzersiz")}
+                            </p>
+                            {item.uygulama && (
+                              <p className="text-gray-800 mt-1 whitespace-pre-wrap">
+                                {normalizeDisplayText(item.uygulama)}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {structuredGeneralFeedback.kapanis && (
+                    <div>
+                      <div className="text-sm font-bold text-black mb-1">Son Not</div>
+                      <p className="text-gray-800 whitespace-pre-wrap leading-relaxed">
+                        {normalizeDisplayText(structuredGeneralFeedback.kapanis)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-gray-800 whitespace-pre-wrap">
+                  {sanitizeWritingGeneralFeedback(parsedFeedback?.general)}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -768,14 +930,14 @@ export default function WritingTestResults() {
             className="bg-red-600 hover:bg-red-700 text-white h-9 px-4 text-sm"
           >
             <Download className="w-4 h-4 mr-2" />
-            {downloadingPDF ? "Ä°ndiriliyor..." : "SertifikayÄ± Ä°ndir (PDF)"}
+            {downloadingPDF ? "İndiriliyor..." : "Sertifikayı İndir (PDF)"}
           </Button>
           <Button
             onClick={() => navigate("/test")}
             variant="outline"
             className="h-9 px-4 text-sm"
           >
-            BaÅŸka Test Al
+            Başka Test Al
           </Button>
         </div>
       </div>

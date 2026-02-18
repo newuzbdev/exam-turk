@@ -1,4 +1,4 @@
-import axios from "axios";
+﻿import axios from "axios";
 import { SecureStorage } from "@/utils/secureStorage";
 
 const baseURL = import.meta.env.VITE_API_URL || "https://api.turkishmock.uz";
@@ -39,81 +39,89 @@ const extractAccessTokenFromPayload = (payload: any): string | null => {
 axiosPrivate.interceptors.request.use(
   (config) => {
     console.log(
-      `🚀 Making request to: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`
+      `[API] Request: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`,
     );
     const token = readAccessToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log("🔑 Token attached to request:", token.substring(0, 20) + "...");
-      
+      console.log("[API] Access token attached:", token.substring(0, 20) + "...");
+
       // Debug: Check if token is expired
       try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
+        const payload = JSON.parse(atob(token.split(".")[1]));
         const currentTime = Math.floor(Date.now() / 1000);
         const isExpired = payload.exp < currentTime;
-        console.log("🔍 Token expiration check:", {
+        console.log("[API] Token expiration check:", {
           exp: payload.exp,
           currentTime,
           isExpired,
-          expiresIn: payload.exp - currentTime
+          expiresIn: payload.exp - currentTime,
         });
       } catch (e) {
-        console.error("❌ Error parsing token:", e);
+        console.error("[API] Error parsing token:", e);
       }
     } else {
-      console.log("❌ No token found");
+      console.log("[API] No access token found");
     }
     return config;
   },
   (error) => {
-    console.error("❌ Request interceptor error:", error);
+    console.error("[API] Request interceptor error:", error);
     return Promise.reject(error);
-  }
+  },
 );
 
 // Response interceptor
 axiosPrivate.interceptors.response.use(
   (response) => {
     console.log(
-      `✅ Response received from: ${response.config.method?.toUpperCase()} ${response.config.url} - Status: ${response.status}`
+      `[API] Response: ${response.config.method?.toUpperCase()} ${response.config.url} - Status: ${response.status}`,
     );
     return response;
   },
 
   async (error) => {
+    if (!error.response) {
+      console.error(
+        `[API] Network error: ${error.config?.method?.toUpperCase()} ${error.config?.url}`,
+        error.message,
+      );
+      return Promise.reject(error);
+    }
+
     console.error(
-      `❌ Request failed: ${error.config?.method?.toUpperCase()} ${error.config?.url} - Status: ${error.response?.status}`,
-      error.message
+      `[API] Request failed: ${error.config?.method?.toUpperCase()} ${error.config?.url} - Status: ${error.response?.status}`,
+      error.message,
     );
-    
+
     // Debug: Log the full error response
-    console.log("🔍 Full error response:", {
+    console.log("[API] Error response payload:", {
       status: error.response?.status,
       data: error.response?.data,
-      headers: error.response?.headers
+      headers: error.response?.headers,
     });
-    
+
     // Debug: Check if this is the specific error we're seeing
     if (error.response?.data?.error === "Token not found or expired") {
-      console.log("🚨 Detected 'Token not found or expired' error");
-      console.log("🔍 Request details:", {
+      console.log("[API] Detected token expiration error");
+      console.log("[API] Request details:", {
         url: error.config?.url,
         method: error.config?.method,
         headers: error.config?.headers,
-        hasAuthHeader: !!error.config?.headers?.Authorization
+        hasAuthHeader: !!error.config?.headers?.Authorization,
       });
     }
 
     const originalRequest = error.config;
 
-    // 👉 Handle token expiration - check for various error formats
-    const isTokenError = error.response?.status === 401 && (
-      error.response?.data?.error === "JWT_EXPIRED" ||
-      error.response?.data?.error === "Token not found or expired" ||
-      error.response?.data?.message === "Token not found or expired" ||
-      error.response?.data?.success === false
-    );
-    
+    // Handle token expiration - check for various error formats
+    const isTokenError =
+      error.response?.status === 401 &&
+      (error.response?.data?.error === "JWT_EXPIRED" ||
+        error.response?.data?.error === "Token not found or expired" ||
+        error.response?.data?.message === "Token not found or expired" ||
+        error.response?.data?.success === false);
+
     if (isTokenError && !originalRequest._retry) {
       originalRequest._retry = true;
 
@@ -123,9 +131,9 @@ axiosPrivate.interceptors.response.use(
         const refreshResponse = await axios.post(
           `${baseURL}/api/user/refresh`,
           refreshPayload,
-          { withCredentials: true }
+          { withCredentials: true },
         );
-        console.log("🔄 refreshResponse:", refreshResponse.data);
+        console.log("[API] Refresh response:", refreshResponse.data);
 
         const newAccessToken = extractAccessTokenFromPayload(refreshResponse?.data);
         if (newAccessToken) {
@@ -137,7 +145,7 @@ axiosPrivate.interceptors.response.use(
           return axiosPrivate(originalRequest);
         }
       } catch (err) {
-        console.error("❌ Error refreshing token:", err);
+        console.error("[API] Error refreshing token:", err);
         // Keep the user on the current page so in-progress test answers are not interrupted.
         // Caller layers handle retry messaging and safe re-submit guidance.
         return Promise.reject(error);
@@ -154,7 +162,7 @@ axiosPrivate.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 export default axiosPrivate;

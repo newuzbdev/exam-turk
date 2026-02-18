@@ -1,6 +1,7 @@
 ﻿import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import HighlightableText from "@/pages/reading-test/components/HighlightableText";
+import { fixMojibake } from "@/utils/text";
 
 interface ReadingPart2Props {
   testData: any;
@@ -16,8 +17,10 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
   // Build options list across part 2 sections (A..J)
   const optionMap = new Map<string, { variantText: string; answer: string }>();
   sections.forEach((s: any) => (s.questions || []).forEach((q: any) => (q.answers || []).forEach((a: any) => {
-    if (a.variantText && !optionMap.has(a.variantText)) {
-      optionMap.set(a.variantText, { variantText: a.variantText, answer: a.answer });
+    const variantText = fixMojibake(String(a.variantText || "")).trim();
+    const answer = fixMojibake(String(a.answer || "")).trim();
+    if (variantText && !optionMap.has(variantText)) {
+      optionMap.set(variantText, { variantText, answer });
     }
   })));
   const optionList = Array.from(optionMap.values()).sort((a, b) => a.variantText.localeCompare(b.variantText));
@@ -44,15 +47,16 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
   };
 
   const renderContent = (raw: string, qNum: number) => {
-    if (!raw) return null;
+    const normalizedRaw = fixMojibake(raw);
+    if (!normalizedRaw) return null;
     const nodes: any[] = [];
     const pattern = /!\[[^\]]*\]\(([^)]+)\)|@?(https?:\/\/[^\s)]+?\.(?:png|jpg|jpeg|gif|webp)(?:\?[^\s)]*)?)|@?(?:^|\s)(\/??uploads\/[\w\-./]+?\.(?:png|jpg|jpeg|gif|webp)(?:\?[^\s)]*)?)/gi;
     let lastIndex = 0;
     let match: RegExpExecArray | null;
-    while ((match = pattern.exec(raw)) !== null) {
+    while ((match = pattern.exec(normalizedRaw)) !== null) {
       const start = match.index;
       if (start > lastIndex) {
-        const textChunk = raw.slice(lastIndex, start).trim();
+        const textChunk = normalizedRaw.slice(lastIndex, start).trim();
         if (textChunk) nodes.push(
           <div key={`t-${lastIndex}`} className="mb-2">
             <HighlightableText text={textChunk} partNumber={partNumber} />
@@ -83,8 +87,8 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
       }
       lastIndex = pattern.lastIndex;
     }
-    if (lastIndex < raw.length) {
-      const tail = raw.slice(lastIndex).trim();
+    if (lastIndex < normalizedRaw.length) {
+      const tail = normalizedRaw.slice(lastIndex).trim();
       if (tail) nodes.push(
         <div key={`t-tail`} className="mb-2">
           <HighlightableText text={tail} partNumber={partNumber} />
@@ -125,12 +129,19 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                             {answers[q.id] ? `${answers[q.id]}.` : `Se\u00e7iniz`}
                           </SelectValue>
                         </SelectTrigger>
-                        <SelectContent className="bg-white reading-select-content reading-select-content max-h-[60vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50">
-                          <SelectItem value="__none__" className="cursor-pointer text-xs py-1">
+                        <SelectContent
+                          position="item-aligned"
+                          className="bg-white reading-select-content max-h-[62dvh] w-[min(92vw,28rem)] max-w-[92vw] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-[60]"
+                        >
+                          <SelectItem value="__none__" className="cursor-pointer text-xs py-1 whitespace-normal break-words leading-snug">
                             {`Se\u00e7iniz`}
                           </SelectItem>
                           {optionList.map((opt) => (
-                            <SelectItem key={opt.variantText} value={opt.variantText} className="cursor-pointer text-xs py-1">
+                            <SelectItem
+                              key={opt.variantText}
+                              value={opt.variantText}
+                              className="cursor-pointer text-xs py-1 whitespace-normal break-words leading-snug"
+                            >
                               {opt.variantText}. {opt.answer}
                             </SelectItem>
                           ))}
@@ -153,7 +164,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                         </div>
                         {q.text && (
                           <p className="reading-text italic bg-gray-50 px-2 py-1 rounded text-center">
-                            <HighlightableText text={q.text} partNumber={partNumber} />
+                            <HighlightableText text={fixMojibake(q.text || "")} partNumber={partNumber} />
                           </p>
                         )}
                       </div>
@@ -161,7 +172,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                       <div className="space-y-2">
                         {q.text && (
                           <h3 className="font-semibold leading-snug italic">
-                            <HighlightableText text={q.text} partNumber={partNumber} />
+                            <HighlightableText text={fixMojibake(q.text || "")} partNumber={partNumber} />
                           </h3>
                         )}
                         <div className="reading-text">
@@ -180,7 +191,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
       {/* Desktop Layout - Resizable */}
       <div className="hidden lg:block h-full">
         <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border border-gray-200 shadow-lg">
-          {/* Left: Questions 7â€“14 with selects */}
+          {/* Left: Questions 7–14 with selects */}
           <ResizablePanel defaultSize={50} minSize={30} className="reading-surface">
             <div className="h-full p-6 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent pb-44 reading-scroll">
               <div className="grid grid-cols-[repeat(auto-fit,minmax(360px,1fr))] gap-4">
@@ -233,7 +244,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                               </div>
                               {q.text && (
                                 <p className="text-sm text-[#333333] italic bg-gray-50/70 px-3 py-2 rounded-md">
-                                  <HighlightableText text={q.text} partNumber={partNumber} />
+                                  <HighlightableText text={fixMojibake(q.text || "")} partNumber={partNumber} />
                                 </p>
                               )}
                             </div>
@@ -266,7 +277,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                             </div>
                             {q.text && (
                               <h3 className="font-semibold mb-2 leading-snug italic">
-                                <HighlightableText text={q.text} partNumber={partNumber} />
+                                <HighlightableText text={fixMojibake(q.text || "")} partNumber={partNumber} />
                               </h3>
                             )}
                             {renderContent(q.content || "", qNum)}

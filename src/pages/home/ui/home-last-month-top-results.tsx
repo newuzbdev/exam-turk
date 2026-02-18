@@ -3,6 +3,9 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Calendar, Zap } from "lucide-react";
 import { overallTestService } from "@/services/overallTest.service";
 
+const LEVEL_OPTIONS = ["B1", "B2", "C1"] as const;
+type LevelOption = (typeof LEVEL_OPTIONS)[number];
+
 interface UserResult {
   id: string;
   name: string;
@@ -65,12 +68,18 @@ const formatScore = (score: number | null | undefined): number => {
 const HomeLastMonthTopResults = () => {
   const [users, setUsers] = useState<UserResult[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedLevels, setSelectedLevels] = useState<LevelOption[]>(["B1", "B2", "C1"]);
 
   useEffect(() => {
     const fetchRecentResults = async () => {
       try {
         setLoading(true);
-        const data = await overallTestService.getRecentQualifiedOverallTests(15);
+        // Show latest results even when user completed only 1/2/3 sections.
+        const data = await overallTestService.getRecentQualifiedOverallTests(
+          20,
+          selectedLevels,
+          false
+        );
 
         const mappedUsers: UserResult[] = data.map((item: ApiResult) => {
           const user: ApiUser = item.user || { id: "", name: "Anonim" };
@@ -96,7 +105,7 @@ const HomeLastMonthTopResults = () => {
           };
         });
 
-        setUsers(mappedUsers.slice(0, 15));
+        setUsers(mappedUsers.slice(0, 20));
       } catch (error) {
         console.error("Error fetching recent results:", error);
         setUsers([]);
@@ -106,7 +115,17 @@ const HomeLastMonthTopResults = () => {
     };
 
     fetchRecentResults();
-  }, []);
+  }, [selectedLevels]);
+
+  const toggleLevel = (level: LevelOption) => {
+    setSelectedLevels((prev) => {
+      if (prev.includes(level)) {
+        if (prev.length === 1) return prev;
+        return prev.filter((item) => item !== level);
+      }
+      return [...prev, level];
+    });
+  };
 
   const getRankStyle = (index: number) => {
     switch (index) {
@@ -133,7 +152,28 @@ const HomeLastMonthTopResults = () => {
           <h2 className="text-xl sm:text-3xl font-semibold text-gray-900 mb-2 tracking-tight">
             Son Sınav Sonuçları
           </h2>
-          <p className="text-gray-500 text-sm">B1, B2 ve C1 seviyesindeki son 15 kullanıcı</p>
+          <div className="mt-4 flex items-center justify-center gap-3">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Seviye Filtresi</span>
+            {LEVEL_OPTIONS.map((level) => {
+              const isActive = selectedLevels.includes(level);
+              return (
+                <button
+                  key={level}
+                  type="button"
+                  onClick={() => toggleLevel(level)}
+                  aria-pressed={isActive}
+                  title={`${level} filtresini ${isActive ? "kapat" : "aç"}`}
+                  className={`h-9 rounded-full border px-4 text-xs font-bold cursor-pointer select-none shadow-sm transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/60 ${
+                    isActive
+                      ? "bg-red-600 border-red-600 text-white hover:bg-red-700 hover:border-red-700"
+                      : "bg-white border-gray-300 text-gray-800 hover:bg-gray-100 hover:border-gray-400"
+                  }`}
+                >
+                  {isActive ? `✓ ${level}` : level}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
@@ -144,7 +184,7 @@ const HomeLastMonthTopResults = () => {
             </div>
           ) : users.length === 0 ? (
             <div className="text-center py-10">
-              <p className="text-gray-500 text-sm">B1 ve üzeri seviyede sonuç bulunamadı.</p>
+              <p className="text-gray-500 text-sm">Seçili seviyelerde sonuç bulunamadı.</p>
             </div>
           ) : (
             <div className="divide-y divide-gray-100">

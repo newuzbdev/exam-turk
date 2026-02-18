@@ -4,11 +4,13 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import { Clock3 } from "lucide-react";
 import writingTestService, {
   type WritingTestItem,
 } from "@/services/writingTest.service";
 // import writingSubmissionService from "@/services/writingSubmission.service";
 import { overallTestFlowStore } from "@/services/overallTest.service";
+import { normalizeDisplayText } from "@/utils/text";
 
 interface WritingSubPart {
   id: string;
@@ -42,6 +44,17 @@ interface WritingSection {
 
 interface WritingTestDemoProps {
   testId: string;
+}
+
+interface WritingProgressSnapshot {
+  currentSectionIndex: number;
+  currentSubPartIndex: number;
+  timeLeft: number;
+  fontScale: number;
+  showPracticeModal: boolean;
+  practiceText: string;
+  answers: Record<string, string>;
+  updatedAt: number;
 }
 
 const SUBMIT_RETRY_GUIDE = "Cevaplariniz bu tarayicida guvenle saklandi.";
@@ -85,6 +98,9 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   const baseFontSizeRef = useRef<string | null>(null);
   const submitAllRetryRef = useRef(0);
   const [showShortcuts] = useState(true);
+  const hasRestoredProgressRef = useRef(false);
+  const restoredProgressRef = useRef<Partial<WritingProgressSnapshot> | null>(null);
+  const progressStorageKey = `writing_progress_${testId}`;
 
   // Hide navbar and footer during writing test
   useEffect(() => {
@@ -109,6 +125,59 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
     }
   }, []);
 
+  useEffect(() => {
+    hasRestoredProgressRef.current = false;
+    restoredProgressRef.current = null;
+    if (!testId) {
+      hasRestoredProgressRef.current = true;
+      return;
+    }
+
+    let parsed: Partial<WritingProgressSnapshot> | null = null;
+    try {
+      const raw = sessionStorage.getItem(progressStorageKey);
+      if (raw) parsed = JSON.parse(raw) as Partial<WritingProgressSnapshot>;
+    } catch {}
+
+    if (parsed && typeof parsed === "object") {
+      restoredProgressRef.current = parsed;
+
+      const restoredSectionIndex = Number(parsed.currentSectionIndex);
+      if (Number.isFinite(restoredSectionIndex)) {
+        setCurrentSectionIndex(Math.max(0, Math.round(restoredSectionIndex)));
+      }
+
+      const restoredSubPartIndex = Number(parsed.currentSubPartIndex);
+      if (Number.isFinite(restoredSubPartIndex)) {
+        setCurrentSubPartIndex(Math.max(0, Math.round(restoredSubPartIndex)));
+      }
+
+      const restoredTimeLeft = Number(parsed.timeLeft);
+      if (Number.isFinite(restoredTimeLeft)) {
+        setTimeLeft(Math.max(0, Math.round(restoredTimeLeft)));
+      }
+
+      const restoredFontScale = Number(parsed.fontScale);
+      if (Number.isFinite(restoredFontScale)) {
+        setFontScale(Math.min(1.2, Math.max(0.9, Math.round(restoredFontScale * 100) / 100)));
+      }
+
+      if (typeof parsed.showPracticeModal === "boolean") {
+        setShowPracticeModal(parsed.showPracticeModal);
+      }
+
+      if (typeof parsed.practiceText === "string") {
+        setPracticeText(parsed.practiceText);
+      }
+
+      if (parsed.answers && typeof parsed.answers === "object") {
+        setAnswers(parsed.answers as Record<string, string>);
+      }
+    }
+
+    hasRestoredProgressRef.current = true;
+  }, [testId, progressStorageKey]);
+
   // Fetch test data on component mount
   useEffect(() => {
     const load = async () => {
@@ -131,7 +200,10 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
         const s: WritingSection[] = (t as any)?.sections || [];
         setSections(Array.isArray(s) ? s : []);
         // Set initial timer if instruction contains time info
-        if (t?.instruction) {
+        const hasRestoredTime =
+          restoredProgressRef.current &&
+          Number.isFinite(Number(restoredProgressRef.current.timeLeft));
+        if (t?.instruction && !hasRestoredTime) {
           const timeMatch = t.instruction.match(/(\d+)\s*minutes?/i);
           if (timeMatch) {
             setTimeLeft(parseInt(timeMatch[1]) * 60);
@@ -140,7 +212,10 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
         
         // Load existing answers from sessionStorage
         const savedAnswers = sessionStorage.getItem(`writing_answers_${testId}`);
-        if (savedAnswers) {
+        const restoredAnswers = restoredProgressRef.current?.answers;
+        const hasRestoredAnswers =
+          !!restoredAnswers && typeof restoredAnswers === "object" && Object.keys(restoredAnswers).length > 0;
+        if (savedAnswers && !hasRestoredAnswers) {
           try {
             const savedData = JSON.parse(savedAnswers);
             if (savedData.answers && typeof savedData.answers === 'object') {
@@ -150,7 +225,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
           } catch (e) {
             console.error("Error loading saved answers:", e);
           }
-        } else {
+        } else if (!hasRestoredAnswers) {
           // Try to load from API if we have a submission result
           // This handles the case where answers come from API response
           // We'll map questionId-based answers to our key format
@@ -231,6 +306,33 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
     return () => clearTimeout(t);
   }, [answers, sections, testId]);
 
+  useEffect(() => {
+    if (!testId || !hasRestoredProgressRef.current) return;
+    const snapshot: WritingProgressSnapshot = {
+      currentSectionIndex,
+      currentSubPartIndex,
+      timeLeft,
+      fontScale,
+      showPracticeModal,
+      practiceText,
+      answers,
+      updatedAt: Date.now(),
+    };
+    try {
+      sessionStorage.setItem(progressStorageKey, JSON.stringify(snapshot));
+    } catch {}
+  }, [
+    testId,
+    progressStorageKey,
+    currentSectionIndex,
+    currentSubPartIndex,
+    timeLeft,
+    fontScale,
+    showPracticeModal,
+    practiceText,
+    answers,
+  ]);
+
   // Scale fonts for the entire writing page (rem-based sizes)
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -248,6 +350,28 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
 
   const selectedSection = sections[currentSectionIndex];
   const subParts = selectedSection?.subParts || [];
+
+  useEffect(() => {
+    if (!sections.length) return;
+
+    const safeSectionIndex = Math.min(Math.max(currentSectionIndex, 0), sections.length - 1);
+    if (safeSectionIndex !== currentSectionIndex) {
+      setCurrentSectionIndex(safeSectionIndex);
+      return;
+    }
+
+    const section = sections[safeSectionIndex];
+    const sectionSubParts = Array.isArray(section?.subParts) ? section.subParts : [];
+    const sectionQuestions = Array.isArray(section?.questions) ? section.questions : [];
+    const maxSubPartIndex =
+      sectionSubParts.length > 0
+        ? sectionSubParts.length - 1
+        : Math.max(0, sectionQuestions.length - 1);
+    const safeSubPartIndex = Math.min(Math.max(currentSubPartIndex, 0), maxSubPartIndex);
+    if (safeSubPartIndex !== currentSubPartIndex) {
+      setCurrentSubPartIndex(safeSubPartIndex);
+    }
+  }, [sections, currentSectionIndex, currentSubPartIndex]);
   
   // Extract questions - check both section level and subPart level
   const questions = useMemo(() => {
@@ -559,8 +683,31 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
     text: string,
     baseClass: string
   ) => {
-    if (!text) return null;
-    const paragraphs = text.split(/\n\s*\n/);
+    const normalizedText = normalizeDisplayText(text);
+    if (!normalizedText) return null;
+    let paragraphs = normalizedText
+      .split(/\r?\n\s*\r?\n/)
+      .map((p) => p.trim())
+      .filter(Boolean);
+
+    if (paragraphs.length <= 1) {
+      const lineParagraphs = normalizedText
+        .split(/\r?\n+/)
+        .map((p) => p.trim())
+        .filter(Boolean);
+      if (lineParagraphs.length > 1) paragraphs = lineParagraphs;
+    }
+
+    if (paragraphs.length === 1) {
+      const firstText = paragraphs[0];
+      const firstColonIdx = firstText.indexOf(":");
+      if (firstColonIdx > 0 && firstColonIdx < 220) {
+        const intro = firstText.slice(0, firstColonIdx + 1).trim();
+        const tail = firstText.slice(firstColonIdx + 1).trim();
+        if (tail) paragraphs = [intro, tail];
+      }
+    }
+
     const first = paragraphs[0] ?? "";
     const rest = paragraphs.slice(1);
     const paragraphClass = `${baseClass} whitespace-pre-line text-left`;
@@ -581,8 +728,19 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   };
 
   const renderPlainParagraphs = (text: string, baseClass: string) => {
-    if (!text) return null;
-    const paragraphs = text.split(/\n\s*\n/);
+    const normalizedText = normalizeDisplayText(text);
+    if (!normalizedText) return null;
+    const splitByBlank = normalizedText
+      .split(/\r?\n\s*\r?\n/)
+      .map((p) => p.trim())
+      .filter(Boolean);
+    const paragraphs =
+      splitByBlank.length > 1
+        ? splitByBlank
+        : normalizedText
+            .split(/\r?\n+/)
+            .map((p) => p.trim())
+            .filter(Boolean);
     const paragraphClass = `${baseClass} whitespace-pre-line text-left`;
     return (
       <div className="space-y-3">
@@ -603,6 +761,9 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   // const wordsRemaining = Math.max(0, wordLimit - wordCount);
   const isOverLimit = wordCount > wordLimit;
 
+  const clearWritingProgress = () => {
+    try { sessionStorage.removeItem(progressStorageKey); } catch {}
+  };
 
   const handleSubmit = async () => {
     if (!testId || submitting) return;
@@ -627,7 +788,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
       const nextPath = overallTestFlowStore.onTestCompleted("WRITING", testId);
       if (nextPath) {
         // Ensure exam mode and fullscreen stay active for next test
-        if (typeof document !== "undefined") {
+        if (nextPath !== "/overall-section-ready" && typeof document !== "undefined") {
           document.body.classList.add("exam-mode");
           // Immediately re-enter fullscreen before navigation
           const enterFullscreen = async () => {
@@ -640,6 +801,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
           };
           await enterFullscreen();
         }
+        clearWritingProgress();
         navigate(nextPath);
         return;
       }
@@ -653,6 +815,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
       }
       
       // Fallback to single test results
+      clearWritingProgress();
       navigate(`/writing-test/results/temp`, { state: { summary: { testId: testId } } });
       setSubmitting(false);
     } catch (error) {
@@ -914,6 +1077,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
         } catch {}
       }
       submitAllRetryRef.current = 0;
+      clearWritingProgress();
       navigate(`/overall-results/${overallId}`);
     } catch (error) {
       console.error("Error submitting all tests:", error);
@@ -998,7 +1162,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                     </button>
                   </div>
                   <div
-                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded-full border text-xs font-bold ${
+                  className={`flex items-center gap-2 px-2.5 py-1.5 rounded-full border text-xs font-bold ${
                       timeLeft <= 300
                         ? "bg-red-50 border-red-200 text-red-700"
                         : timeLeft <= 600
@@ -1006,7 +1170,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                         : "bg-gray-50 border-gray-200 text-slate-700"
                     }`}
                   >
-                    <span className="text-[10px]">⏱</span>
+                    <Clock3 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                     <span className="tabular-nums">{formatTime(timeLeft)}</span>
                   </div>
                   <Button onClick={() => setShowSubmitModal(true)} className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold min-h-[44px] touch-manipulation">
@@ -1058,7 +1222,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                       : "bg-gray-50 border-gray-200 text-slate-700"
                   }`}
                 >
-                  <span className="text-sm">⏱</span>
+                  <Clock3 className="h-4 w-4 shrink-0" aria-hidden="true" />
                   <span className="tabular-nums">{formatTime(timeLeft)}</span>
                 </div>
                 <Button onClick={() => setShowSubmitModal(true)} className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-4 py-2 text-sm font-bold min-h-[44px] touch-manipulation">
@@ -1119,7 +1283,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                   {hasSubParts && selectedSubPart && (
                     <div className="p-4 rounded-lg bg-[#FEFEFC] border border-gray-200">
                       <h3 className="font-medium text-gray-900 mb-2 text-base">
-                        {selectedSubPart.label ||
+                        {normalizeDisplayText(selectedSubPart.label) ||
                           `Bölüm ${currentSubPartIndex + 1}`}
                       </h3>
                       {selectedSubPart.question && (
@@ -1333,7 +1497,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                       {hasSubParts && selectedSubPart && (
                         <div className="p-4 rounded-lg bg-[#FEFEFC] border border-gray-200">
                           <h3 className="font-medium text-gray-900 mb-2 text-lg">
-                            {selectedSubPart.label || `Bölüm ${currentSubPartIndex + 1}`}
+                            {normalizeDisplayText(selectedSubPart.label) || `Bölüm ${currentSubPartIndex + 1}`}
                           </h3>
                           {selectedSubPart.question && (
                             renderPlainParagraphs(

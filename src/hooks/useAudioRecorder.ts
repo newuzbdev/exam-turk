@@ -32,7 +32,7 @@ export const useAudioRecorder = (): AudioRecorderState & AudioRecorderControls =
 
   const startTimer = useCallback(() => {
     timerRef.current = setInterval(() => {
-      setRecordingTime(prev => prev + 1);
+      setRecordingTime((prev) => prev + 1);
     }, 1000);
   }, []);
 
@@ -46,24 +46,33 @@ export const useAudioRecorder = (): AudioRecorderState & AudioRecorderControls =
   const startRecording = useCallback(async () => {
     try {
       setError(null);
-      
-      // Request microphone access
-      const stream = await navigator.mediaDevices.getUserMedia({ 
+
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
           sampleRate: 44100,
-        } 
+        },
       });
-      
+
       streamRef.current = stream;
       chunksRef.current = [];
 
-      // Create MediaRecorder
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
-      });
-      
+      const preferredMimeTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4',
+      ];
+      const selectedMimeType = preferredMimeTypes.find((mimeType) =>
+        MediaRecorder.isTypeSupported(mimeType),
+      );
+
+      const mediaRecorder = selectedMimeType
+        ? new MediaRecorder(stream, { mimeType: selectedMimeType })
+        : new MediaRecorder(stream);
+
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (event) => {
@@ -73,26 +82,30 @@ export const useAudioRecorder = (): AudioRecorderState & AudioRecorderControls =
       };
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm;codecs=opus' });
+        const chunkMimeType = chunksRef.current[0]?.type;
+        const resolvedMimeType =
+          mediaRecorder.mimeType ||
+          chunkMimeType ||
+          selectedMimeType ||
+          'audio/webm';
+        const blob = new Blob(chunksRef.current, { type: resolvedMimeType });
         setAudioBlob(blob);
         setAudioUrl(URL.createObjectURL(blob));
-        
-        // Clean up stream
+
         if (streamRef.current) {
-          streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current.getTracks().forEach((track) => track.stop());
           streamRef.current = null;
         }
       };
 
-      mediaRecorder.start(1000); // Collect data every second
+      mediaRecorder.start(1000);
       setIsRecording(true);
       setIsPaused(false);
       setRecordingTime(0);
       startTimer();
-
     } catch (err) {
       console.error('Error starting recording:', err);
-      setError('Mikrofon erişimi reddedildi veya desteklenmiyor');
+      setError('Mikrofon erisimi reddedildi veya desteklenmiyor');
     }
   }, [startTimer]);
 
@@ -125,9 +138,9 @@ export const useAudioRecorder = (): AudioRecorderState & AudioRecorderControls =
     if (mediaRecorderRef.current) {
       mediaRecorderRef.current.stop();
     }
-    
+
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
 

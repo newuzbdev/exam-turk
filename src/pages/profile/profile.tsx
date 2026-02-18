@@ -30,6 +30,14 @@ interface TestResult {
   writingScore: number | null;
 }
 
+interface ProfileStats {
+  totalTests: number;
+  completedTests: number;
+  highestScore: number;
+  latestScore: number;
+  latestTestDate: string | null;
+}
+
 const getCefrLevel = (score: number | null | undefined): string => {
   if (score == null) return "-";
   if (score >= 65) return "C1";
@@ -68,6 +76,7 @@ export default function ProfilePage() {
   const [avatarPreview, setAvatarPreview] = useState<string>("");
   const [currentPage, setCurrentPage] = useState(1);
   const [statsResults, setStatsResults] = useState<TestResult[]>([]);
+  const [profileStats, setProfileStats] = useState<ProfileStats | null>(null);
   const [sortBy, setSortBy] = useState<"date" | "score">("date");
   const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
   const LIMIT = 10;
@@ -122,6 +131,30 @@ export default function ProfilePage() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    const fetchProfileStats = async () => {
+      try {
+        const response = await axiosPrivate.get("/api/overal-test-result/profile-stats");
+        const payload = response?.data?.data || response?.data || {};
+        setProfileStats({
+          totalTests: Number(payload?.totalTests ?? 0),
+          completedTests: Number(payload?.completedTests ?? 0),
+          highestScore: Number(payload?.highestScore ?? 0),
+          latestScore: Number(payload?.latestScore ?? 0),
+          latestTestDate:
+            typeof payload?.latestTestDate === "string" && payload.latestTestDate.trim()
+              ? payload.latestTestDate
+              : null,
+        });
+      } catch (error) {
+        console.error("Error fetching profile stats:", error);
+        setProfileStats(null);
+      }
+    };
+
+    fetchProfileStats();
+  }, []);
+
   const fetchResults = async (page: number) => {
     try {
       const response = await axiosPrivate.get(`/api/overal-test-result/get-users?page=${page}&limit=${LIMIT}`);
@@ -173,20 +206,38 @@ export default function ProfilePage() {
   const statsSource = completedTests.length ? completedTests : baseResults;
 
   const sortedByDate = [...statsSource].sort((a, b) => getResultDate(b) - getResultDate(a));
-  const totalTests = baseResults.length;
-  const highestScore = statsSource.length > 0 ? Math.max(...statsSource.map((r) => r.overallScore || 0)) : 0;
-  const latestScore = sortedByDate[0]?.overallScore || 0;
-  const latestTestDate = sortedByDate[0]?.completedAt
-    ? new Date(sortedByDate[0].completedAt).toLocaleDateString("tr-TR", {
+  const totalTests =
+    profileStats && Number.isFinite(profileStats.totalTests)
+      ? profileStats.totalTests
+      : baseResults.length;
+  const highestScore =
+    profileStats && Number.isFinite(profileStats.highestScore)
+      ? profileStats.highestScore
+      : statsSource.length > 0
+        ? Math.max(...statsSource.map((r) => r.overallScore || 0))
+        : 0;
+  const latestScore =
+    profileStats && Number.isFinite(profileStats.latestScore)
+      ? profileStats.latestScore
+      : sortedByDate[0]?.overallScore || 0;
+  const latestTestDate = profileStats?.latestTestDate
+    ? new Date(profileStats.latestTestDate).toLocaleDateString("tr-TR", {
         year: "numeric",
         month: "long",
         day: "numeric",
       })
-    : (sortedByDate[0] ? new Date(sortedByDate[0].createdAt || sortedByDate[0].startedAt).toLocaleDateString("tr-TR", {
+    : sortedByDate[0]?.completedAt
+      ? new Date(sortedByDate[0].completedAt).toLocaleDateString("tr-TR", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })
+      : (sortedByDate[0] ? new Date(sortedByDate[0].createdAt || sortedByDate[0].startedAt).toLocaleDateString("tr-TR", {
         year: "numeric",
         month: "long",
         day: "numeric",
-      }) : "Henüz test tamamlanmadı");
+      })
+      : "Henüz test tamamlanmadı");
 
   const listSource = statsResults.length ? statsResults : results;
   const sortedResults = [...listSource].sort((a, b) => {

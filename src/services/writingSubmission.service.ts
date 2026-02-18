@@ -136,7 +136,11 @@ export const writingSubmissionService = {
 			console.error("Failed to submit writing answer", error);
 			let errorMessage = "Yazma cevabi gonderilemedi";
 
-			if (error?.response?.data?.message) {
+			if (!error?.response && (error?.code === "ERR_NETWORK" || error?.message === "Network Error")) {
+				errorMessage = "Backend baglantisi kesildi (localhost:3000). Backend servisini yeniden baslatin.";
+			}
+
+			else if (error?.response?.data?.message) {
 				errorMessage = error.response.data.message;
 			} else if (error?.response?.data?.error) {
 				errorMessage = error.response.data.error;

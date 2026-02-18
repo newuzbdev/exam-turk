@@ -10,16 +10,31 @@ import { toast } from '@/utils/toast';
 interface BalanceTopUpProps {
   currentBalance: number;
   onBalanceUpdate: () => Promise<void>;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
 }
 
 export const BalanceTopUp: React.FC<BalanceTopUpProps> = ({
   currentBalance,
-  onBalanceUpdate
+  onBalanceUpdate,
+  open,
+  onOpenChange,
+  hideTrigger = false,
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
   const [amount, setAmount] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingBalance, setIsCheckingBalance] = useState(false);
+  const isControlled = typeof open === 'boolean';
+  const isOpen = isControlled ? Boolean(open) : internalIsOpen;
+
+  const setIsOpen = (nextOpen: boolean) => {
+    if (!isControlled) {
+      setInternalIsOpen(nextOpen);
+    }
+    onOpenChange?.(nextOpen);
+  };
 
   const handleTopUp = async () => {
     const amountValue = parseFloat(amount);
@@ -106,16 +121,17 @@ export const BalanceTopUp: React.FC<BalanceTopUpProps> = ({
 
   return (
     <>
-      {/* Balance Display Button */}
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => setIsOpen(true)}
-        className="flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 text-gray-900 shadow-sm px-3 py-2 border border-gray-200 transition-all h-auto"
-      >
-        <Wallet className="w-4 h-4" />
-        <span className="text-sm font-semibold whitespace-nowrap">{formattedBalance}</span>
-      </Button>
+      {!hideTrigger && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setIsOpen(true)}
+          className="flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 text-gray-900 shadow-sm px-3 py-2 border border-gray-200 transition-all h-auto"
+        >
+          <Wallet className="w-4 h-4" />
+          <span className="text-sm font-semibold whitespace-nowrap">{formattedBalance}</span>
+        </Button>
+      )}
 
       {/* Top-up Dialog */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>

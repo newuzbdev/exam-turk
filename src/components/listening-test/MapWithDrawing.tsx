@@ -20,6 +20,7 @@ export default function MapWithDrawing({
   const imgRef = useRef<HTMLImageElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawingRef = useRef(false);
+  const activePointerIdRef = useRef<number | null>(null);
   const lastPointRef = useRef<{ x: number; y: number } | null>(null);
   const [isReady, setIsReady] = useState(false);
 
@@ -66,8 +67,14 @@ export default function MapWithDrawing({
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
 
+    e.preventDefault();
+    if (!e.isPrimary) return;
+
     drawingRef.current = true;
-    canvas.setPointerCapture(e.pointerId);
+    activePointerIdRef.current = e.pointerId;
+    try {
+      canvas.setPointerCapture(e.pointerId);
+    } catch {}
     const pt = getPoint(e);
     lastPointRef.current = pt;
     ctx.beginPath();
@@ -79,10 +86,12 @@ export default function MapWithDrawing({
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!drawEnabled || !drawingRef.current) return;
+    if (activePointerIdRef.current !== e.pointerId) return;
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
 
+    e.preventDefault();
     const pt = getPoint(e);
     const last = lastPointRef.current;
     if (!last) return;
@@ -91,14 +100,32 @@ export default function MapWithDrawing({
     lastPointRef.current = pt;
   };
 
-  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+  const stopDrawing = (pointerId?: number) => {
     if (!drawEnabled) return;
+    if (pointerId != null && activePointerIdRef.current != null && pointerId !== activePointerIdRef.current) return;
+
     const canvas = canvasRef.current;
-    if (canvas) {
-      canvas.releasePointerCapture(e.pointerId);
+    if (canvas && activePointerIdRef.current != null) {
+      try {
+        if (canvas.hasPointerCapture(activePointerIdRef.current)) {
+          canvas.releasePointerCapture(activePointerIdRef.current);
+        }
+      } catch {}
     }
     drawingRef.current = false;
+    activePointerIdRef.current = null;
     lastPointRef.current = null;
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    stopDrawing(e.pointerId);
+  };
+
+  const handlePointerLeave = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    // On touch devices leave can fire during normal movement; do not end stroke there.
+    if (e.pointerType === "mouse") {
+      stopDrawing(e.pointerId);
+    }
   };
 
   return (
@@ -116,10 +143,13 @@ export default function MapWithDrawing({
         className={`absolute inset-0 ${drawEnabled ? "pointer-events-auto" : "pointer-events-none"} ${
           isReady ? "opacity-100" : "opacity-0"
         }`}
+        style={{ touchAction: drawEnabled ? "none" : "auto" }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        onLostPointerCapture={handlePointerUp}
+        onPointerLeave={handlePointerLeave}
       />
     </div>
   );

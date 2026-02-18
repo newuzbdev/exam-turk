@@ -3,11 +3,17 @@ import { useEffect, useRef, useState } from "react";
 
 interface Props {
   onSuccess: () => void;
+  embedded?: boolean;
+  successButtonLabel?: string;
 }
 
 // 3. There was no cleanup of MediaRecorder or MediaStream after recording, which could cause issues on repeated recordings.
 
-export const MicrophoneCheck = ({ onSuccess }: Props) => {
+export const MicrophoneCheck = ({
+  onSuccess,
+  embedded = false,
+  successButtonLabel = "Sınava Başla",
+}: Props) => {
   const [error, setError] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -203,62 +209,76 @@ export const MicrophoneCheck = ({ onSuccess }: Props) => {
 
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 sm:p-6 pb-28 sm:pb-20 safe-area-bottom safe-area-top overflow-y-auto sm:overflow-visible">
-      <div className="max-w-5xl mx-auto">
-        <div className="flex justify-center mb-6 sm:mb-12">
-          <img
-            src="/logo11.svg"
-            alt="TURKISHMOCK"
-            className="h-9 sm:h-11 md:h-12 w-auto object-contain"
-            onError={(e) => {
-              console.error("Logo failed to load");
-              (e.target as HTMLImageElement).style.display = 'none';
-            }}
-          />
-        </div>
+    <div
+      className={
+        embedded
+          ? "bg-gray-50/60 rounded-xl p-4 sm:p-6 overflow-y-auto"
+          : "h-[100dvh] bg-gray-50 p-4 sm:p-6 pb-28 sm:pb-20 safe-area-bottom safe-area-top overflow-y-auto overscroll-contain touch-pan-y"
+      }
+    >
+      <div className={embedded ? "max-w-none" : "max-w-5xl mx-auto"}>
+        {!embedded && (
+          <div className="flex justify-center mb-6 sm:mb-12">
+            <img
+              src="/logo11.svg"
+              alt="TURKISHMOCK"
+              className="h-9 sm:h-11 md:h-12 w-auto object-contain"
+              onError={(e) => {
+                console.error("Logo failed to load");
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          </div>
+        )}
 
-        <div className="space-y-5 sm:space-y-8">
+        <div className={embedded ? "space-y-4" : "space-y-5 sm:space-y-8"}>
 
-          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
+          <div className={embedded ? "flex flex-col gap-3" : "flex flex-col sm:flex-row gap-4 sm:gap-6"}>
             <div className="flex-shrink-0 flex flex-row sm:flex-col items-center sm:items-start">
-              <div className="w-11 h-11 sm:w-16 sm:h-16 rounded-full border-2 border-rose-300 flex items-center justify-center">
-                <Mic className="w-5 h-5 sm:w-8 sm:h-8 text-rose-500" />
+              <div className={`${embedded ? "w-10 h-10" : "w-11 h-11 sm:w-16 sm:h-16"} rounded-full border-2 border-gray-300 flex items-center justify-center`}>
+                <Mic className={`${embedded ? "w-4 h-4" : "w-5 h-5 sm:w-8 sm:h-8"} text-gray-600`} />
               </div>
             </div>
             <div className="flex-1">
-              <h2 className="text-base sm:text-xl font-semibold mb-3 text-slate-700">
+              <h2 className={`${embedded ? "text-sm" : "text-base sm:text-xl"} font-semibold mb-2 text-slate-700`}>
                 Mikrofon kontrolü
               </h2>
-              <p className="mb-4 text-sm sm:text-base text-gray-600">
-                Sınava başlamadan önce mikrofonunuzun düzgün çalıştığından emin olun. Kaydı başlatmak için{" "}
-                <span className="inline-flex items-center mx-1">
-                  <span className="w-2 h-2 sm:w-3 sm:h-3 bg-rose-500 rounded-full" />
-                </span>{" "}
-                simgesine basın ve aşağıdaki metni yüksek sesle okuyun, ardından{" "}
-                <span className="inline-flex items-center mx-1">
-                  <Play className="w-3 h-3 sm:w-4 sm:h-4 text-rose-500" />
-                </span>{" "}
-                simgesine basarak kaydı dinleyin
+              <p className={`${embedded ? "mb-3 text-xs sm:text-sm" : "mb-4 text-sm sm:text-base"} text-gray-600`}>
+                {embedded
+                  ? "Kısa bir kayıt alıp dinleyin. Ses netse devam edin."
+                  : (
+                    <>
+                      Sınava başlamadan önce mikrofonunuzun düzgün çalıştığından emin olun. Kaydı başlatmak için{" "}
+                      <span className="inline-flex items-center mx-1">
+                        <span className="w-2 h-2 sm:w-3 sm:h-3 bg-rose-500 rounded-full" />
+                      </span>{" "}
+                      simgesine basın ve aşağıdaki metni yüksek sesle okuyun, ardından{" "}
+                      <span className="inline-flex items-center mx-1">
+                        <Play className="w-3 h-3 sm:w-4 sm:h-4 text-rose-500" />
+                      </span>{" "}
+                      simgesine basarak kaydı dinleyin
+                    </>
+                  )}
               </p>
 
               {(
                 <>
-                  <div className="bg-gray-50 rounded-lg p-3 sm:p-4 mb-4 text-center">
-                    <p className="text-gray-500 text-xs sm:text-sm mb-2">Lütfen yüksek sesle okuyun:</p>
-                    <p className="text-gray-700 font-medium text-base sm:text-xl">
+                  <div className={`bg-gray-50 rounded-lg ${embedded ? "p-2.5" : "p-3 sm:p-4"} mb-3 text-center`}>
+                    <p className="text-gray-500 text-xs mb-1.5">Lütfen yüksek sesle okuyun:</p>
+                    <p className={`${embedded ? "text-sm sm:text-base" : "text-base sm:text-xl"} text-gray-700 font-medium`}>
                       {"\"Bir berber bir berbere, gel beraber bir berber d\u00fckk\u00e2n\u0131 a\u00e7al\u0131m demi\u015f.\""}
                     </p>
                   </div>
 
-                  <div className="bg-white rounded-lg p-3 sm:p-4 border border-gray-200">
-                    <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
+                  <div className={`bg-white rounded-lg border border-gray-200 ${embedded ? "p-2.5" : "p-3 sm:p-4"}`}>
+                    <div className={`${embedded ? "flex items-center gap-3" : "flex flex-col sm:flex-row items-center gap-3 sm:gap-4"}`}>
                       <button
                         onClick={recording ? stopRecording : startRecording}
                         onTouchStart={(e) => {
                           // Prevent double-tap zoom on mobile
                           e.preventDefault();
                         }}
-                        className={`speaking-mic-check-core w-14 h-14 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all duration-300 touch-manipulation shadow-lg hover:shadow-xl ${
+                        className={`speaking-mic-check-core ${embedded ? "w-12 h-12" : "w-14 h-14 sm:w-14 sm:h-14"} rounded-full flex items-center justify-center transition-all duration-300 touch-manipulation shadow-lg hover:shadow-xl ${
                           recording
                             ? "bg-gray-600 hover:bg-gray-700 active:bg-gray-800 ring-2 ring-gray-400"
                             : "bg-rose-600 hover:bg-rose-700 active:bg-rose-800 ring-2 ring-rose-300"
@@ -270,7 +290,7 @@ export const MicrophoneCheck = ({ onSuccess }: Props) => {
                         }}
                       >
                         {recording ? (
-                          <Square className="w-6 h-6 sm:w-6 sm:h-6 text-white" />
+                          <Square className={`${embedded ? "w-5 h-5" : "w-6 h-6 sm:w-6 sm:h-6"} text-white`} />
                         ) : (
                           <div className="w-3 h-3 sm:w-3 sm:h-3 bg-white rounded-full"></div>
                         )}
@@ -286,23 +306,25 @@ export const MicrophoneCheck = ({ onSuccess }: Props) => {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto justify-between sm:justify-start">
-                        <span className="text-xs sm:text-sm text-rose-500 font-medium min-w-[30px]">
+                      <div className={`${embedded ? "w-auto" : "flex items-center gap-2 sm:gap-4 w-full sm:w-auto justify-between sm:justify-start"}`}>
+                        <span className={`${embedded ? "text-xs min-w-0" : "text-xs sm:text-sm min-w-[30px]"} text-rose-500 font-medium`}>
                           {recording ? "REC" : ""}
                         </span>
 
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 sm:w-4 sm:h-4 bg-gray-300 rounded"></div>
-                          <select className="text-xs sm:text-sm text-gray-600 border-none bg-transparent">
-                            <option>Varsayılan - Mikrofon</option>
-                          </select>
-                        </div>
+                        {!embedded && (
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 sm:w-4 sm:h-4 bg-gray-300 rounded"></div>
+                            <select className="text-xs sm:text-sm text-gray-600 border-none bg-transparent">
+                              <option>Varsayılan - Mikrofon</option>
+                            </select>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
 
                   {audioUrl && (
-                    <div className="mt-4">
+                    <div className={embedded ? "mt-2" : "mt-4"}>
                       <audio controls src={audioUrl} className="w-full" />
                     </div>
                   )}
@@ -310,9 +332,9 @@ export const MicrophoneCheck = ({ onSuccess }: Props) => {
                   {audioUrl && (
                     <button
                       onClick={onSuccess}
-                      className="mt-6 w-full sm:w-auto px-8 py-4 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white rounded-lg transition-all duration-300 cursor-pointer font-semibold text-base sm:text-lg shadow-lg hover:shadow-xl ring-2 ring-red-300 hover:ring-red-400"
+                      className={`${embedded ? "mt-3 py-2.5 text-sm" : "mt-6 py-4 text-base sm:text-lg"} w-full sm:w-auto px-6 sm:px-8 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white rounded-lg transition-all duration-300 cursor-pointer font-semibold shadow-lg hover:shadow-xl ring-2 ring-red-300 hover:ring-red-400`}
                     >
-                      Sınava Başla
+                      {successButtonLabel}
                     </button>
                   )}
                 </>
@@ -322,28 +344,35 @@ export const MicrophoneCheck = ({ onSuccess }: Props) => {
         </div>
 
         {error && (
-          <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-600 text-sm sm:text-base mb-3">{error}</p>
-            
-            {/* Mobile-specific help */}
-            <div className="text-xs sm:text-sm text-gray-600 space-y-2">
-              <p><strong>Mobil cihazlarda çözüm:</strong></p>
-              <ol className="list-decimal list-inside space-y-1 ml-2">
-                <li>Tarayıcı ayarlarına gidin (⋮ menü)</li>
-                <li>"Site ayarları" veya "İzinler" bölümünü bulun</li>
-                <li>"Mikrofon" iznini "İzin ver" olarak değiştirin</li>
-                <li>Sayfayı yenileyin (F5 veya ↻)</li>
-              </ol>
-              
-              <div className="mt-3">
-                <button
-                  onClick={() => window.location.reload()}
-                  className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-6 py-3 rounded-lg text-sm font-semibold shadow-md hover:shadow-lg transition-all duration-300 ring-2 ring-blue-300"
-                >
-                  Sayfayı Yenile
-                </button>
+          <div className={`${embedded ? "mt-3 p-3" : "mt-4 sm:mt-6 p-3 sm:p-4"} bg-red-50 border border-red-200 rounded-lg`}>
+            <p className={`${embedded ? "text-xs sm:text-sm mb-2" : "text-sm sm:text-base mb-3"} text-red-600`}>{error}</p>
+            {embedded ? (
+              <button
+                onClick={() => window.location.reload()}
+                className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-4 py-2 rounded-md text-xs sm:text-sm font-semibold"
+              >
+                Sayfayı Yenile
+              </button>
+            ) : (
+              <div className="text-xs sm:text-sm text-gray-600 space-y-2">
+                <p><strong>Mobil cihazlarda çözüm:</strong></p>
+                <ol className="list-decimal list-inside space-y-1 ml-2">
+                  <li>Tarayıcı ayarlarına gidin (⋮ menü)</li>
+                  <li>"Site ayarları" veya "İzinler" bölümünü bulun</li>
+                  <li>"Mikrofon" iznini "İzin ver" olarak değiştirin</li>
+                  <li>Sayfayı yenileyin (F5 veya ↻)</li>
+                </ol>
+                
+                <div className="mt-3">
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-6 py-3 rounded-lg text-sm font-semibold shadow-md hover:shadow-lg transition-all duration-300 ring-2 ring-blue-300"
+                  >
+                    Sayfayı Yenile
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
       </div>

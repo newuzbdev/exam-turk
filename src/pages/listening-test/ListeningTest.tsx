@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import ListeningTestDemo from "@/components/listening-test/ListeningTestDemo";
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
 import { overallTestFlowStore } from "@/services/overallTest.service";
 import "./components/index.css";
 
@@ -8,10 +8,10 @@ export default function ListeningTestPage() {
     const { testId } = useParams<{ testId: string }>();
     const navigate = useNavigate();
     // Re-enable exam mode to hide navbar/footer for listening
-     useEffect(() => {
-         if (typeof document !== "undefined") {
-           document.body.classList.add("exam-mode");
-           // Double-check exam mode is active if in overall test flow
+     useLayoutEffect(() => {
+          if (typeof document !== "undefined") {
+            document.body.classList.add("exam-mode");
+            // Double-check exam mode is active if in overall test flow
            if (overallTestFlowStore.hasActive()) {
              document.body.classList.add("exam-mode");
            }

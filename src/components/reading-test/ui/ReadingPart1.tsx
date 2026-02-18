@@ -1,6 +1,8 @@
-﻿import type { ReactNode } from "react";
+import type { ReactNode } from "react";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import HighlightableText from "@/pages/reading-test/components/HighlightableText";
+import { fixMojibake } from "@/utils/text";
 
 interface ReadingPart1Props {
   testData: any;
@@ -12,7 +14,7 @@ interface ReadingPart1Props {
 export default function ReadingPart1({ testData, answers, onAnswerChange, partNumber }: ReadingPart1Props) {
   const part1 = (testData.parts || []).find((p: any) => (p.number || 0) === 1) || (testData.parts || [])[0];
   const section1 = part1?.sections && part1.sections[0];
-  const content = section1?.content || "";
+  const content = fixMojibake(section1?.content || "");
   const [titleLine, ...bodyLines] = String(content).split(/\r?\n/);
   const contentTitle = (titleLine || "").trim();
   const contentBody = bodyLines.join("\n").trim();
@@ -21,8 +23,10 @@ export default function ReadingPart1({ testData, answers, onAnswerChange, partNu
   const optionMap = new Map<string, { variantText: string; answer: string }>();
   questions.forEach((q: any) => {
     (q.answers || []).forEach((a: any) => {
-      if (a.variantText && !optionMap.has(a.variantText)) {
-        optionMap.set(a.variantText, { variantText: a.variantText, answer: a.answer });
+      const variantText = fixMojibake(String(a.variantText || "")).trim();
+      const answer = fixMojibake(String(a.answer || "")).trim();
+      if (variantText && !optionMap.has(variantText)) {
+        optionMap.set(variantText, { variantText, answer });
       }
     });
   });
@@ -59,24 +63,49 @@ export default function ReadingPart1({ testData, answers, onAnswerChange, partNu
       const qNum = Number(match[1]);
       const q = questionByNumber.get(qNum);
       if (q) {
+        const selectedVariant = answers[q.id] || "";
+        const selectedOption = optionMap.get(selectedVariant);
         parts.push(
           <span key={`${keyPrefix}-b-${qNum}`} className="inline-block align-middle mx-1">
-            <select
-              className={
-                isMobile
-                  ? "bg-white border border-gray-200 rounded px-1.5 py-1 text-sm"
-                  : "bg-white border border-gray-200 rounded px-2 py-1 text-sm md:text-base"
-              }
-              value={answers[q.id] || ""}
-              onChange={(e) => onAnswerChange(q.id, e.target.value)}
+            <Select
+              value={selectedVariant || "__none__"}
+              onValueChange={(value) => onAnswerChange(q.id, value === "__none__" ? "" : value)}
             >
-              <option value="">{`Se\u00e7iniz`}</option>
-              {optionList.map((opt) => (
-                <option key={opt.variantText} value={opt.variantText}>
-                  {opt.variantText}. {opt.answer}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger
+                className={
+                  isMobile
+                    ? "h-7 min-w-[8rem] w-auto bg-white border border-gray-200 rounded-sm px-1.5 py-0 !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] leading-none focus:ring-2 focus:ring-[#438553] focus:border-[#438553] cursor-pointer"
+                    : "h-9 w-24 bg-white border border-gray-200 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-[#438553] focus:border-[#438553] cursor-pointer"
+                }
+              >
+                {isMobile ? (
+                  <SelectValue placeholder={`Se\u00e7iniz`}>
+                    {selectedOption ? `${selectedOption.variantText}. ${selectedOption.answer}` : undefined}
+                  </SelectValue>
+                ) : (
+                  <SelectValue placeholder={`Se\u00e7iniz`}>
+                    {selectedVariant || "Se\u00e7iniz"}
+                  </SelectValue>
+                )}
+              </SelectTrigger>
+              <SelectContent className="bg-white reading-select-content max-h-[60vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50">
+                <SelectItem
+                  value="__none__"
+                  className={isMobile ? "cursor-pointer py-1 !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))]" : "cursor-pointer py-1"}
+                >
+                  {`Se\u00e7iniz`}
+                </SelectItem>
+                {optionList.map((opt) => (
+                  <SelectItem
+                    key={opt.variantText}
+                    value={opt.variantText}
+                    className={isMobile ? "cursor-pointer py-1 !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))]" : "cursor-pointer py-1"}
+                  >
+                    {opt.variantText}. {opt.answer}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </span>
         );
       } else {
@@ -107,16 +136,16 @@ export default function ReadingPart1({ testData, answers, onAnswerChange, partNu
   };
 
   return (
-    <div className="mx-2 reading-body overflow-hidden pr-2 text-slate-800">
+    <div className="mx-2 reading-body reading-body-part1-mobile overflow-hidden pr-2 text-slate-800">
       {/* Mobile Layout - Stacked */}
-      <div className="block lg:hidden h-full">
-        <div className="rounded-lg border reading-surface shadow-lg overflow-hidden h-full flex flex-col">
-          <div className="reading-surface p-3 border-b border-gray-200">
+      <div className="block lg:hidden">
+        <div className="rounded-lg border reading-surface shadow-lg overflow-hidden">
+          <div className="reading-surface p-3">
             <div className="text-sm reading-strong-title text-slate-800">
               {contentTitle || "Metin"}
             </div>
-            <div className="mt-3 max-h-[38vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent reading-scroll">
-              <div className="space-y-4 reading-text pr-2">
+            <div className="mt-3">
+              <div className="space-y-4 reading-text">
                 {contentBody && renderContentWithBlanks(true)}
               </div>
             </div>

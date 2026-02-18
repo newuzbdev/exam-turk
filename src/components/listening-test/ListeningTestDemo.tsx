@@ -1859,18 +1859,7 @@ const renderPart = (bolum: number) => {
               {/* Mobile Header - Single Line Layout */}
               <div className="block lg:hidden w-full">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center shrink-0">
-                    <img 
-                      src="/logo11.svg" 
-                      alt="TURKISHMOCK" 
-                      className="h-9 sm:h-10 w-auto object-contain shrink-0"
-                      onError={(e) => {
-                        console.error("Logo failed to load");
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
-                    />
-                  </div>
-                  <div className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] font-semibold text-gray-700 sm:text-xs whitespace-nowrap">
+                  <div className="font-extrabold text-base sm:text-lg tracking-wider">
                     DİNLEME
                   </div>
                   <Button onClick={handleSubmitClick} className="shrink-0 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-3 py-2 text-xs font-bold min-h-[44px] touch-manipulation">

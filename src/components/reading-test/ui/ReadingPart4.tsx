@@ -36,10 +36,10 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
   };
 
   return (
-    <div className="mx-2 reading-body overflow-hidden pr-2 text-slate-800">
+    <div className="mx-2 reading-body pr-2 text-slate-800">
       {/* Mobile Layout - Stacked */}
-      <div className="block lg:hidden h-full">
-        <div className="rounded-lg border border-gray-200 shadow-lg overflow-hidden h-full flex flex-col">
+      <div className="block lg:hidden h-[100svh]">
+        <div className="rounded-lg border border-gray-200 shadow-lg overflow-hidden h-[100svh] flex flex-col">
           {/* Passage Section - Fixed */}
           <div className="reading-surface p-4">
             <div className="flex items-center justify-between mb-3">
@@ -67,7 +67,7 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
           </div>
           
           {/* Questions Section - More scroll space for mobile */}
-          <div className="reading-surface-alt p-4 space-y-4 flex-1 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent reading-scroll">
+          <div className="reading-surface-alt p-4 space-y-4 flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent reading-scroll pb-28">
             <h4 className="text-sm reading-strong-title text-slate-700 mb-3 tracking-wide">Sorular</h4>
             
             {/* Instructions for Questions 21-24 */}
@@ -81,22 +81,46 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
               const questionNumber = q.number || (idx + 21);
               const isTrueFalseQuestion = questionNumber >= 25;
               
+              const options = getQuestionOptions(q);
+              const trueFalseOrder = ["dogru", "yanlis", "verilmemis"];
+              const normalizeTf = (value: string) => value
+                .toLowerCase()
+                .replace(/ğ/g, "g")
+                .replace(/ü/g, "u")
+                .replace(/ş/g, "s")
+                .replace(/ı/g, "i")
+                .replace(/ö/g, "o")
+                .replace(/ç/g, "c")
+                .replace(/[^a-z]/g, "");
+              const orderedOptions = isTrueFalseQuestion
+                ? [...options].sort((a, b) => {
+                    const aText = normalizeTf(`${a.answer || ""} ${a.variantText || ""}`);
+                    const bText = normalizeTf(`${b.answer || ""} ${b.variantText || ""}`);
+                    const aKey = trueFalseOrder.findIndex((label) => aText.includes(label));
+                    const bKey = trueFalseOrder.findIndex((label) => bText.includes(label));
+                    return (aKey === -1 ? 99 : aKey) - (bKey === -1 ? 99 : bKey);
+                  })
+                : options;
+
               return (
-                <div key={q.id} className="reading-surface-card rounded-lg border p-3">
+                <div
+                  key={q.id}
+                  className="reading-surface-card rounded-lg border p-3 flex flex-col gap-3"
+                >
                   {/* Show instructions for questions 25-29 before the first True/False question */}
                   {isTrueFalseQuestion && questionNumber === 25 && (
-                    <div className="reading-surface-card border p-3 mb-3 rounded-lg">
-                      <p className="reading-text font-semibold mb-2">
+                    <div className="reading-surface-card border p-2 mb-2 rounded-lg">
+                      <p className="reading-text font-semibold mb-1">
                          Sorular 25-29. Sorulardaki cümleler metne göre DOĞRU, YANLIŞ ya da VERİLMEMİŞ olabilir. İlgili seçeneği işaretleyiniz.
                       </p>
-                      <div className="reading-text space-y-1 font-sans">
+                      <div className="reading-text space-y-0.5 font-sans text-[12px]">
                         <p><span className="font-bold">DOĞRU</span> – cümle, metindeki bilgilerle uygun ve/veya tutarlıysa,</p>
                         <p><span className="font-bold">YANLIŞ</span> – cümle, metindeki bilgilerle tutarsız ve/veya çelişkiliyse,</p>
                         <p><span className="font-bold">VERİLMEMİŞ</span> – cümle, metindeki bilgilerde yer almıyor ve/veya belirtilmemişse.</p>
                       </div>
                     </div>
                   )}
-                    <div className="space-y-2">
+                  <div className="flex flex-col gap-3">
                     <div className="font-medium font-sans reading-text text-slate-800">
                       <span className="font-bold">S{questionNumber}.</span>{" "}
                       <span className="font-normal">
@@ -108,11 +132,11 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
                         />
                       </span>
                     </div>
-                    <div className={`${isTrueFalseQuestion ? 'flex gap-2 flex-wrap' : 'space-y-1'}`}>
-                      {getQuestionOptions(q).map((opt: any) => (
+                    <div className={`${isTrueFalseQuestion ? 'flex flex-col gap-0.5' : 'flex flex-col gap-0.5'}`}>
+                      {orderedOptions.map((opt: any) => (
                         <div
                           key={opt.variantText}
-                          className={`flex items-center gap-2 p-2 rounded hover:bg-gray-50 cursor-pointer ${isTrueFalseQuestion ? 'flex-1 min-w-[140px] justify-center' : ''}`}
+                          className={`flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-50 cursor-pointer ${isTrueFalseQuestion ? 'min-w-[140px]' : ''}`}
                           onClick={() => onAnswerChange(q.id, opt.variantText)}
                         >
                           <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
@@ -122,7 +146,7 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
                               answers[q.id] === opt.variantText ? "bg-[#438553]" : "bg-transparent"
                             }`} />
                           </div>
-                          <div className="flex items-center gap-1 reading-text text-slate-600">
+                          <div className="flex items-center gap-1 reading-text text-slate-600 text-[12px]">
                             <span className="font-semibold">{opt.variantText}.</span>
                             <span className="font-normal">{opt.answer}</span>
                           </div>

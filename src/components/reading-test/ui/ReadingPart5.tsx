@@ -122,12 +122,12 @@ export default function ReadingPart5({ testData, answers, onAnswerChange, partNu
   const paragraphs = parseParagraphs(content);
 
   return (
-    <div className="mx-2 reading-body overflow-hidden pr-2 text-slate-800">
+    <div className="mx-2 reading-body pr-2 text-slate-800">
    
 
       {/* Mobile Layout - Stacked */}
-      <div className="block lg:hidden h-full">
-        <div className="rounded-lg border border-gray-200 shadow-lg overflow-hidden h-full flex flex-col">
+      <div className="block lg:hidden h-[100svh]">
+        <div className="rounded-lg border border-gray-200 shadow-lg overflow-hidden h-[100svh] flex flex-col">
           {/* Passage Section */}
           <div className="reading-surface p-4">
             <div className="flex items-center justify-between mb-3">
@@ -141,7 +141,7 @@ export default function ReadingPart5({ testData, answers, onAnswerChange, partNu
               </button>
             </div>
             {showPassage && (
-              <div className="space-y-4 leading-relaxed max-h-[38vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent reading-scroll">
+              <div className="space-y-4 leading-relaxed max-h-[38vh] overflow-y-auto overscroll-auto touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent reading-scroll pass-through-scroll">
                 <div className="space-y-4">
                   {paragraphs.map((para) => (
                     <div key={`${para.letter}.`} className="flex items-start gap-3">
@@ -159,7 +159,7 @@ export default function ReadingPart5({ testData, answers, onAnswerChange, partNu
           </div>
           
           {/* Questions Section - More scroll space for mobile */}
-          <div className="reading-surface-alt p-4 space-y-4 flex-1 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent reading-scroll">
+          <div className="reading-surface-alt p-4 space-y-4 flex-1 min-h-0 overflow-y-auto overscroll-auto touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent reading-scroll pb-28 pass-through-scroll">
             <h4 className="text-sm font-semibold text-slate-700 mb-3 tracking-wide">Sorular</h4>
             {/* Static instruction for 30-32 (always visible at top) */}
             <div className="reading-surface-card border p-3 mb-3 rounded-lg">

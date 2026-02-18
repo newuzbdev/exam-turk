@@ -2409,12 +2409,13 @@ export default function ImprovedSpeakingTest() {
         {/* Match horizontal padding with description block below */}
         <div className="px-2 sm:px-4">
           <div className="relative flex flex-wrap justify-between items-center min-h-[4.5rem] sm:min-h-[6rem] gap-2">
-            {/* Logo on left */}
+            {/* Logo on desktop, section label on mobile */}
             <div className="flex items-center flex-shrink-0">
+              <div className="block sm:hidden font-extrabold text-base tracking-wider">KONUŞMA</div>
               <img 
                 src="/logo11.svg" 
                 alt="TURKISHMOCK" 
-                className="h-9 sm:h-10 md:h-12 w-auto object-contain"
+                className="hidden sm:block h-9 sm:h-10 md:h-12 w-auto object-contain"
                 onError={(e) => {
                   console.error("Logo failed to load");
                   (e.target as HTMLImageElement).style.display = 'none';

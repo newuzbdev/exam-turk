@@ -655,17 +655,6 @@ export default function ReadingPage({ testId }: { testId: string }) {
               {/* Mobile Header - Single Line Layout */}
               <div className="block lg:hidden w-full">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <img 
-                      src="/logo11.svg" 
-                      alt="TURKISHMOCK" 
-                      className="h-10 sm:h-11 md:h-12 w-auto object-contain"
-                      onError={(e) => {
-                        console.error("Logo failed to load");
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
-                    />
-                  </div>
               <div className="font-extrabold text-base sm:text-lg tracking-wider">OKUMA</div>
               <div className="flex items-center gap-2">
                   <div className="hidden lg:block">

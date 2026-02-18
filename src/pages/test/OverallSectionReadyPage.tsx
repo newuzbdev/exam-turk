@@ -296,7 +296,7 @@ export default function OverallSectionReadyPage() {
               </div>
             )}
 
-            <div className="sticky bottom-0 z-20 mt-8 -mx-4 px-4 py-3 bg-white/95 backdrop-blur border-t border-gray-200 flex flex-col-reverse gap-3 sm:static sm:z-auto sm:mx-0 sm:px-0 sm:py-0 sm:bg-transparent sm:backdrop-blur-none sm:border-0 sm:flex-row sm:justify-end">
+            <div className="mt-8 flex flex-col-reverse gap-3 sm:mt-6 sm:flex-row sm:justify-end">
               <Button
                 variant="outline"
                 className="border-gray-300 text-gray-700 hover:bg-gray-100"

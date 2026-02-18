@@ -37,7 +37,6 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
     const bNum = typeof b.number === 'number' ? b.number : 0;
     return aNum - bNum;
   });
-
   const makeImageSrc = (u: string) => {
     let src = u.trim();
     if (/^(?:\/)?uploads\//i.test(src)) {
@@ -112,43 +111,42 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
               {numbered.map((q: any, idx: number) => {
                 const qNum = q.number || (7 + idx);
                 const hasImage = typeof q.imageUrl === 'string' && q.imageUrl.length > 0;
+                const selectedVariant = String(answers[q.id] || "").trim().replace(/\.$/, "");
+                const selectedOption = optionMap.get(selectedVariant);
 
                 return (
                   <div
                     key={q.id}
                     className="reading-surface-card rounded-lg p-3 border border-gray-200/60 bg-white/80 shadow-[0_1px_0_rgba(0,0,0,0.03)]"
                   >
-                      <div className="flex items-center gap-2 mb-3">
-                      <div className="font-semibold text-slate-800">S{qNum}</div>
-                        <Select
-                          value={answers[q.id] || ""}
-                          onValueChange={(value) => onAnswerChange(q.id, value === "__none__" ? "" : value)}
-                        >
-                        <SelectTrigger className="w-20 bg-white border border-gray-200 rounded-md px-2 py-1 h-8 text-xs focus:ring-2 focus:ring-[#438553] focus:border-[#438553] cursor-pointer">
-                          <SelectValue placeholder={`Se\u00e7iniz`}>
-                            {answers[q.id] ? `${answers[q.id]}.` : `Se\u00e7iniz`}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent
-                          position="item-aligned"
-                          className="bg-white reading-select-content max-h-[62dvh] w-[min(92vw,28rem)] max-w-[92vw] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-[60]"
-                        >
-                          <SelectItem value="__none__" className="cursor-pointer text-xs py-1 whitespace-normal break-words leading-snug">
-                            {`Se\u00e7iniz`}
+                    <div className="font-semibold text-slate-800 mb-2">S{qNum}</div>
+                    <Select
+                      value={selectedVariant || ""}
+                      onValueChange={(value) => onAnswerChange(q.id, value === "__none__" ? "" : value)}
+                    >
+                      <SelectTrigger className="w-full mb-2 bg-white border border-gray-200 rounded-md px-3 py-2 min-h-10 h-auto text-xs focus:ring-2 focus:ring-[#438553] focus:border-[#438553] cursor-pointer">
+                        <SelectValue placeholder="Seçiniz">
+                          {selectedOption
+                            ? `${selectedOption.variantText}. ${selectedOption.answer}`
+                            : "Seçiniz"}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent
+                        position="popper"
+                        sideOffset={8}
+                        collisionPadding={12}
+                        className="bg-white reading-select-content w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] max-h-[55vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50"
+                      >
+                        <SelectItem value="__none__" className="cursor-pointer text-xs py-1">
+                          {`Seçiniz`}
+                        </SelectItem>
+                        {optionList.map((opt) => (
+                          <SelectItem key={opt.variantText} value={opt.variantText} className="cursor-pointer text-xs py-1">
+                            {opt.variantText}. {opt.answer}
                           </SelectItem>
-                          {optionList.map((opt) => (
-                            <SelectItem
-                              key={opt.variantText}
-                              value={opt.variantText}
-                              className="cursor-pointer text-xs py-1 whitespace-normal break-words leading-snug"
-                            >
-                              {opt.variantText}. {opt.answer}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
+                        ))}
+                      </SelectContent>
+                    </Select>
                     {hasImage ? (
                       <div className="space-y-2">
                         <div className="flex justify-center">
@@ -184,6 +182,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                 );
               })}
             </div>
+
           </div>
         </div>
       </div>
@@ -198,6 +197,8 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                 {numbered.map((q: any, idx: number) => {
                   const qNum = q.number || (7 + idx);
                   const hasImage = typeof q.imageUrl === 'string' && q.imageUrl.length > 0;
+                  const selectedVariant = String(answers[q.id] || "").trim().replace(/\.$/, "");
+                  const selectedOption = optionMap.get(selectedVariant);
 
                   return (
                     <div
@@ -209,15 +210,19 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                           <div className="w-full">
                           <div className="flex items-center gap-3 mb-2">
                               <div className="text-lg font-semibold text-slate-800">S{qNum}</div>
-                              <Select
-                                value={answers[q.id] || ""}
-                                onValueChange={(value) => onAnswerChange(q.id, value === "__none__" ? "" : value)}
-                              >
-                                <SelectTrigger className="w-28 bg-white border border-gray-200 rounded-md px-3 py-2 h-10 text-sm focus:ring-2 focus:ring-[#438553] focus:border-[#438553] cursor-pointer">
+                                <Select
+                                  value={answers[q.id] || ""}
+                                  onValueChange={(value) => onAnswerChange(q.id, value === "__none__" ? "" : value)}
+                                >
+                                <SelectTrigger className="w-full max-w-[360px] bg-white border border-gray-200 rounded-md px-3 py-2 h-auto text-sm items-start focus:ring-2 focus:ring-[#438553] focus:border-[#438553] cursor-pointer">
                                   <SelectValue placeholder={`Se\u00e7iniz`}>
-                                    {answers[q.id] ? `${answers[q.id]}.` : `Se\u00e7iniz`}
-                                  </SelectValue>
-                                </SelectTrigger>
+                                      <span className="block text-left whitespace-normal leading-snug line-clamp-2">
+                                        {selectedOption
+                                          ? `${selectedOption.variantText}. ${selectedOption.answer}`
+                                          : `Se\u00e7iniz`}
+                                      </span>
+                                    </SelectValue>
+                                  </SelectTrigger>
                                 <SelectContent className="bg-white reading-select-content reading-select-content max-h-[60vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50">
                                   <SelectItem value="__none__" className="cursor-pointer py-1">
                                     {`Se\u00e7iniz`}
@@ -258,9 +263,13 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                                 value={answers[q.id] || ""}
                                 onValueChange={(value) => onAnswerChange(q.id, value === "__none__" ? "" : value)}
                               >
-                                <SelectTrigger className="w-28 bg-white border border-gray-200 rounded-md px-3 py-2 h-10 text-sm focus:ring-2 focus:ring-[#438553] focus:border-[#438553] cursor-pointer">
+                                <SelectTrigger className="w-full max-w-[360px] bg-white border border-gray-200 rounded-md px-3 py-2 h-auto text-sm items-start focus:ring-2 focus:ring-[#438553] focus:border-[#438553] cursor-pointer">
                                   <SelectValue placeholder={`Se\u00e7iniz`}>
-                                    {answers[q.id] ? `${answers[q.id]}.` : `Se\u00e7iniz`}
+                                    <span className="block text-left whitespace-normal leading-snug line-clamp-2">
+                                      {selectedOption
+                                        ? `${selectedOption.variantText}. ${selectedOption.answer}`
+                                        : `Se\u00e7iniz`}
+                                    </span>
                                   </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent className="bg-white reading-select-content reading-select-content max-h-[60vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50">

@@ -460,6 +460,12 @@ html[data-theme="retro"] .shadow-md {
 html[data-theme="retro"] img[src*="logo"] {
   filter: grayscale(1) contrast(1.1);
 }
+
+/* Allow nested scroll areas to hand off scroll to the page on mobile. */
+.pass-through-scroll {
+  overscroll-behavior: auto;
+  -webkit-overflow-scrolling: touch;
+}
 /* Smooth animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(20px); }
@@ -779,4 +785,9 @@ body {
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+  scroll-behavior: auto !important;
+}
+
+.reading-select-content [data-radix-select-viewport] {
+  scroll-behavior: auto !important;
 }

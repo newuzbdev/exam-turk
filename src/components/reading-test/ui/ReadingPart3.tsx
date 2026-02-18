@@ -59,21 +59,23 @@ export default function ReadingPart3({ testData, answers, onAnswerChange, partNu
                 const displayText = fixMojibake(q.text || q.content || "");
                 const romans = ["I", "II", "III", "IV", "V", "VI"];
                 const label = `S${displayNum}. ${romans[idx]}. paragraf`;
+                const selectedLetter = String(answers[q.id] || "").trim().replace(/\.$/, "");
+                const selectedOption = optionList.find((opt) => opt.letter === selectedLetter);
                 return (
                   <div
                     key={q.id}
                     className="p-3"
                   >
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="font-semibold text-slate-800">{label}</div>
+                    <div className="font-semibold text-slate-800 mb-2">{label}</div>
+                    <div className="mt-2">
                       <Select
-                        value={answers[q.id] || ""}
+                        value={selectedLetter || ""}
                         onValueChange={(value) => onAnswerChange(q.id, value === "__none__" ? "" : value)}
                       >
-                        <SelectTrigger className="w-20 bg-white border border-gray-200 rounded-md px-2 py-1 h-8 text-xs focus:ring-2 focus:ring-[#438553] focus:border-[#438553] cursor-pointer">
+                        <SelectTrigger className="w-full bg-white border border-gray-200 rounded-md px-3 py-2 min-h-10 h-auto text-xs focus:ring-2 focus:ring-[#438553] focus:border-[#438553] cursor-pointer">
                           <SelectValue placeholder="Seçiniz">
-                                {answers[q.id] ? `${answers[q.id]}.` : "Seçiniz"}
-                              </SelectValue>
+                            {selectedOption ? `${selectedOption.letter}. ${fixMojibake(selectedOption.text)}` : "Seçiniz"}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent className="bg-white reading-select-content reading-select-content max-h-[60vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50">
                           <SelectItem value="__none__" className="cursor-pointer text-xs py-1">
@@ -81,14 +83,14 @@ export default function ReadingPart3({ testData, answers, onAnswerChange, partNu
                           </SelectItem>
                           {optionList.map((opt) => (
                             <SelectItem key={opt.letter} value={opt.letter} className="cursor-pointer text-xs py-1">
-                              {opt.letter}. {opt.text}
+                              {opt.letter}. {fixMojibake(opt.text)}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
                     {displayText && (
-                      <div className="reading-text font-sans text-justify">
+                      <div className="reading-text font-sans text-justify mt-3">
                         <HighlightableText text={displayText} partNumber={partNumber} />
                       </div>
                     )}

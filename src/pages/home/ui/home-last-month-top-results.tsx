@@ -3,8 +3,15 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Calendar, Zap } from "lucide-react";
 import { overallTestService } from "@/services/overallTest.service";
 
-const LEVEL_OPTIONS = ["B1", "B2", "C1"] as const;
-type LevelOption = (typeof LEVEL_OPTIONS)[number];
+const TEST_SCOPE_OPTIONS = [
+  { key: "ALL", label: "Hepsi" },
+  { key: "LISTENING", label: "Dinleme" },
+  { key: "READING", label: "Okuma" },
+  { key: "WRITING", label: "Yazma" },
+  { key: "SPEAKING", label: "Konuşma" },
+  { key: "FULL", label: "Tam Test" },
+] as const;
+type TestScopeOption = (typeof TEST_SCOPE_OPTIONS)[number]["key"];
 
 interface UserResult {
   id: string;
@@ -65,26 +72,106 @@ const formatScore = (score: number | null | undefined): number => {
   return Math.round(score * 10) / 10;
 };
 
+const hasSectionScore = (score: number | null | undefined): boolean =>
+  score !== null && score !== undefined;
+
+const matchesTestScope = (item: ApiResult, scope: TestScopeOption): boolean => {
+  if (scope === "ALL") return true;
+
+  const hasReading = hasSectionScore(item.readingScore);
+  const hasListening = hasSectionScore(item.listeningScore);
+  const hasWriting = hasSectionScore(item.writingScore);
+  const hasSpeaking = hasSectionScore(item.speakingScore);
+
+  if (scope === "FULL") {
+    return hasReading && hasListening && hasWriting && hasSpeaking;
+  }
+
+  if (scope === "READING") {
+    return hasReading && !hasListening && !hasWriting && !hasSpeaking;
+  }
+
+  if (scope === "LISTENING") {
+    return hasListening && !hasReading && !hasWriting && !hasSpeaking;
+  }
+
+  if (scope === "WRITING") {
+    return hasWriting && !hasReading && !hasListening && !hasSpeaking;
+  }
+
+  if (scope === "SPEAKING") {
+    return hasSpeaking && !hasReading && !hasListening && !hasWriting;
+  }
+
+  return true;
+};
+
+const resultTimestamp = (item: ApiResult): number => {
+  const value = item.completedAt || item.createdAt || "";
+  const time = value ? new Date(value).getTime() : 0;
+  return Number.isNaN(time) ? 0 : time;
+};
+
 const HomeLastMonthTopResults = () => {
   const [users, setUsers] = useState<UserResult[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedLevels, setSelectedLevels] = useState<LevelOption[]>(["B1", "B2", "C1"]);
+  const [selectedTestScope, setSelectedTestScope] = useState<TestScopeOption>("ALL");
 
   useEffect(() => {
     const fetchRecentResults = async () => {
       try {
         setLoading(true);
-        // Show latest results even when user completed only 1/2/3 sections.
+        // Show latest results and choose the best score per user.
         const data = await overallTestService.getRecentQualifiedOverallTests(
-          20,
-          selectedLevels,
+          100,
+          undefined,
           false
         );
 
-        const mappedUsers: UserResult[] = data.map((item: ApiResult) => {
-          const user: ApiUser = item.user || { id: "", name: "Anonim" };
+        const scoped = (data as ApiResult[]).filter((item) =>
+          matchesTestScope(item, selectedTestScope)
+        );
+
+        const bestByUser = new Map<string, ApiResult>();
+        const noUserEntries: ApiResult[] = [];
+
+        scoped.forEach((item) => {
+          const listedUserId = String(item.user?.id || "").trim();
+          if (!listedUserId) {
+            noUserEntries.push(item);
+            return;
+          }
+
+          const existing = bestByUser.get(listedUserId);
+          if (!existing) {
+            bestByUser.set(listedUserId, item);
+            return;
+          }
+
+          const existingScore = Number(existing.overallScore || 0);
+          const nextScore = Number(item.overallScore || 0);
+          const shouldReplace =
+            nextScore > existingScore ||
+            (nextScore === existingScore &&
+              resultTimestamp(item) > resultTimestamp(existing));
+
+          if (shouldReplace) {
+            bestByUser.set(listedUserId, item);
+          }
+        });
+
+        const uniqueBestResults = [...bestByUser.values(), ...noUserEntries]
+          .sort((a, b) => {
+            const scoreDiff = Number(b.overallScore || 0) - Number(a.overallScore || 0);
+            if (scoreDiff !== 0) return scoreDiff;
+            return resultTimestamp(b) - resultTimestamp(a);
+          })
+          .slice(0, 20);
+
+        const mappedUsers: UserResult[] = uniqueBestResults.map((item: ApiResult) => {
+          const resultUser: ApiUser = item.user || { id: "", name: "Anonim" };
           const date = item.completedAt || item.createdAt || "";
-          const avatarUrl = user.avatarUrl || user.avatar;
+          const avatarUrl = resultUser.avatarUrl || resultUser.avatar;
           const formattedAvatarUrl = avatarUrl
             ? avatarUrl.startsWith("http")
               ? avatarUrl
@@ -93,7 +180,7 @@ const HomeLastMonthTopResults = () => {
 
           return {
             id: item.id,
-            name: user.name || "Anonim",
+            name: resultUser.name || "Anonim",
             avatarUrl: formattedAvatarUrl,
             date: formatDate(date),
             dinleme: formatScore(item.listeningScore),
@@ -105,7 +192,7 @@ const HomeLastMonthTopResults = () => {
           };
         });
 
-        setUsers(mappedUsers.slice(0, 20));
+        setUsers(mappedUsers);
       } catch (error) {
         console.error("Error fetching recent results:", error);
         setUsers([]);
@@ -115,17 +202,7 @@ const HomeLastMonthTopResults = () => {
     };
 
     fetchRecentResults();
-  }, [selectedLevels]);
-
-  const toggleLevel = (level: LevelOption) => {
-    setSelectedLevels((prev) => {
-      if (prev.includes(level)) {
-        if (prev.length === 1) return prev;
-        return prev.filter((item) => item !== level);
-      }
-      return [...prev, level];
-    });
-  };
+  }, [selectedTestScope]);
 
   const getRankStyle = (index: number) => {
     switch (index) {
@@ -152,31 +229,26 @@ const HomeLastMonthTopResults = () => {
           <h2 className="text-xl sm:text-3xl font-semibold text-gray-900 mb-2 tracking-tight">
             Son Sınav Sonuçları
           </h2>
-          <div className="mt-4 flex items-center justify-center gap-3">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Seviye Filtresi</span>
-            {LEVEL_OPTIONS.map((level) => {
-              const isActive = selectedLevels.includes(level);
-              return (
-                <button
-                  key={level}
-                  type="button"
-                  onClick={() => toggleLevel(level)}
-                  aria-pressed={isActive}
-                  title={`${level} filtresini ${isActive ? "kapat" : "aç"}`}
-                  className={`h-9 rounded-full border px-4 text-xs font-bold cursor-pointer select-none shadow-sm transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/60 ${
-                    isActive
-                      ? "bg-red-600 border-red-600 text-white hover:bg-red-700 hover:border-red-700"
-                      : "bg-white border-gray-300 text-gray-800 hover:bg-gray-100 hover:border-gray-400"
-                  }`}
-                >
-                  {isActive ? `✓ ${level}` : level}
-                </button>
-              );
-            })}
-          </div>
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+          <div className="px-4 sm:px-5 py-3 border-b border-gray-100 bg-gray-50 flex items-center justify-start">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Filtre</span>
+              <select
+                value={selectedTestScope}
+                onChange={(e) => setSelectedTestScope(e.target.value as TestScopeOption)}
+                className="h-9 min-w-[170px] rounded-md border border-gray-300 bg-white px-3 text-sm font-semibold text-gray-800 outline-none focus:border-black focus:ring-1 focus:ring-black/20"
+              >
+                {TEST_SCOPE_OPTIONS.map((option) => (
+                  <option key={option.key} value={option.key}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           {loading ? (
             <div className="text-center py-10">
               <div className="animate-spin w-7 h-7 border-2 border-red-600 border-t-transparent rounded-full mx-auto mb-3"></div>
@@ -184,7 +256,7 @@ const HomeLastMonthTopResults = () => {
             </div>
           ) : users.length === 0 ? (
             <div className="text-center py-10">
-              <p className="text-gray-500 text-sm">Seçili seviyelerde sonuç bulunamadı.</p>
+              <p className="text-gray-500 text-sm">Seçili filtrelerde sonuç bulunamadı.</p>
             </div>
           ) : (
             <div className="divide-y divide-gray-100">

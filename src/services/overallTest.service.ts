@@ -269,16 +269,20 @@ export const overallTestService = {
   },
   getRecentQualifiedOverallTests: async (
     limit: number = 15,
-    levels: string[] = ["B1", "B2", "C1"],
+    levels?: string[],
     uniqueUsers: boolean = true
   ): Promise<any[]> => {
     try {
+      const params: Record<string, any> = {
+        limit,
+        uniqueUsers,
+      };
+      if (levels && levels.length > 0) {
+        params.levels = levels.join(",");
+      }
+
       const res = await axiosPrivate.get("/api/overal-test-result/recent", {
-        params: {
-          limit,
-          levels: levels.join(","),
-          uniqueUsers,
-        },
+        params,
       });
       return res.data?.data || res.data || [];
     } catch (error: any) {

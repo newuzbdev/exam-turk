@@ -39,7 +39,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLg, setIsLg] = useState<boolean>(false);
-  const [mobilePart3OpenId, setMobilePart3OpenId] = useState<string | number | null>(null);
+  const [, setMobilePart3OpenId] = useState<string | number | null>(null);
   const [mobilePart4MapZoomed, setMobilePart4MapZoomed] = useState(false);
   const [part4DrawEnabled, setPart4DrawEnabled] = useState(false);
   const [part4ClearToken, setPart4ClearToken] = useState(0);

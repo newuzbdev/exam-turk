@@ -3,8 +3,8 @@
 
 /* Custom Font Families */
 @theme {
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  --font-serif: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 
   /* Custom Colors */
   --color-brand-red: #DC2626;
@@ -21,6 +21,19 @@
   --color-brand-gray-900: #111827;
 }
 
+/* Brand design tokens (used across marketing + app pages). */
+:root {
+  --tm-page-bg: #fbfaf7;
+  --tm-surface: #ffffff;
+  --tm-surface-2: #f7f6f2;
+  --tm-ink: #0b1020;
+  --tm-ink-muted: rgba(11, 16, 32, 0.68);
+  --tm-border: rgba(16, 24, 40, 0.12);
+  --tm-accent: #dc2626;
+  --tm-accent-2: #0ea5e9;
+  --tm-shadow: 0 18px 60px rgba(2, 6, 23, 0.10);
+}
+
 /* Smooth transitions globally */
 * {
   -webkit-font-smoothing: antialiased;
@@ -32,14 +45,22 @@ html {
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-family: var(--font-sans);
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   letter-spacing: -0.011em;
+  background-color: var(--tm-page-bg);
+  color: var(--tm-ink);
+  /* soft paper + grid texture */
+  background-image:
+    radial-gradient(1100px 600px at 12% 6%, rgba(220, 38, 38, 0.10), transparent 60%),
+    radial-gradient(900px 540px at 86% 16%, rgba(14, 165, 233, 0.11), transparent 56%),
+    radial-gradient(circle at 1px 1px, rgba(15, 23, 42, 0.05) 0.7px, transparent 0);
+  background-size: auto, auto, 14px 14px;
 }
 
 html[data-theme="retro"] {
-  --theme-font-sans: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  --theme-font-heading: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --theme-font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --theme-font-heading: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --theme-letter-spacing: -0.004em;
   --theme-page-bg: #e6e2d9;
   --theme-surface: #ebe6db;
@@ -791,3 +812,47 @@ body {
 .reading-select-content [data-radix-select-viewport] {
   scroll-behavior: auto !important;
 }
+
+
+
+/* Force uniform test typography */
+body.exam-mode {
+  font-size: 18px !important;
+}
+
+@keyframes radioInkSplash {
+  0% {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+  40% {
+    transform: scale(1.15);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(1.45);
+    opacity: 0;
+  }
+}
+
+.radio-ink-splash {
+  background: radial-gradient(circle, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.65) 48%, rgba(0, 0, 0, 0) 100%);
+  animation: radioInkSplash 320ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes radioInkHit {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.14);
+  }
+  100% {
+    transform: scale(1.02);
+  }
+}
+
+.radio-ink-hit {
+  animation: radioInkHit 180ms cubic-bezier(0.18, 0.9, 0.25, 1);
+}
+

@@ -12,7 +12,6 @@ const AnimatedStat = ({ value, suffix = "", className }: AnimatedStatProps) => {
   const [started, setStarted] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
 
-  // Start animation when stat is in viewport
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -26,14 +25,13 @@ const AnimatedStat = ({ value, suffix = "", className }: AnimatedStatProps) => {
           }
         });
       },
-      { threshold: 0.4 }
+      { threshold: 0.4 },
     );
 
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
 
-  // Simple count-up animation
   useEffect(() => {
     if (!started) return;
 
@@ -44,9 +42,7 @@ const AnimatedStat = ({ value, suffix = "", className }: AnimatedStatProps) => {
       const progress = Math.min((now - startTime) / duration, 1);
       const current = Math.round(progress * value);
       setCount(current);
-      if (progress < 1) {
-        requestAnimationFrame(step);
-      }
+      if (progress < 1) requestAnimationFrame(step);
     };
 
     requestAnimationFrame(step);
@@ -63,10 +59,10 @@ const AnimatedStat = ({ value, suffix = "", className }: AnimatedStatProps) => {
 const StatsSection = () => {
   const [activeUsers, setActiveUsers] = useState<number | null>(null);
   const [completedTests, setCompletedTests] = useState<number | null>(null);
-  const [_loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     let mounted = true;
+
     (async () => {
       try {
         const { data } = await axiosPrivate.get("/api/overal-test-result/stats");
@@ -74,7 +70,7 @@ const StatsSection = () => {
         if (!mounted) return;
         setActiveUsers(Number(payload?.activeUsers ?? 0));
         setCompletedTests(Number(payload?.completedTests ?? 0));
-      } catch (e) {
+      } catch {
         try {
           const { data } = await axiosPrivate.get("/api/admin/stats");
           const payload = data?.data && typeof data.data === "object" ? data.data : data;
@@ -86,43 +82,49 @@ const StatsSection = () => {
           setActiveUsers(0);
           setCompletedTests(0);
         }
-      } finally {
-        if (mounted) setLoading(false);
       }
     })();
+
     return () => {
       mounted = false;
     };
   }, []);
 
   return (
-    <div>
-      <section className="py-14 sm:py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-2 gap-8 text-center">
-            <div>
-              <AnimatedStat
-                value={activeUsers ?? 0}
-                suffix={"+"}
-                className="text-4xl font-bold text-red-600 mb-2"
-              />
-              <div className="text-gray-600 text-sm sm:text-base">Aktif Kullanıcı</div>
-            </div>
-            <div>
-              <AnimatedStat
-                value={completedTests ?? 0}
-                suffix={"+"}
-                className="text-4xl font-bold text-red-600 mb-2"
-              />
-              <div className="text-gray-600 text-sm sm:text-base">Tamamlanan Test</div>
-            </div>
+    <section className="py-14 sm:py-16 bg-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 text-center">
+          <div>
+            <AnimatedStat
+              value={activeUsers ?? 0}
+              suffix={"+"}
+              className="text-4xl font-bold text-red-600 mb-2"
+            />
+            <div className="text-gray-600 text-sm sm:text-base">Aktif Kullanıcı</div>
+          </div>
+
+          <div>
+            <AnimatedStat
+              value={completedTests ?? 0}
+              suffix={"+"}
+              className="text-4xl font-bold text-red-600 mb-2"
+            />
+            <div className="text-gray-600 text-sm sm:text-base">Tamamlanan Test</div>
+          </div>
+
+          <div>
+            <div className="text-4xl font-bold text-red-600 mb-2">100%</div>
+            <div className="text-gray-600 text-sm sm:text-base">Gerçek Sınav Arayüzü</div>
+          </div>
+
+          <div>
+            <div className="text-4xl font-bold text-red-600 mb-2">&lt;30 sn</div>
+            <div className="text-gray-600 text-sm sm:text-base">Yapay Zeka Sonuç Süresi</div>
           </div>
         </div>
-      </section>
-    </div>
+      </div>
+    </section>
   );
 };
 
 export default StatsSection;
-
-

@@ -191,14 +191,16 @@ export default function ReadingPart5({ testData, answers, onAnswerChange, partNu
                       <span className="font-semibold">S{questionNumber}.</span>
                         <div className="w-20">
                           <Select value={(answers[q.id] || "")} onValueChange={(v) => onAnswerChange(q.id, v)}>
-                            <SelectTrigger className="h-8 text-xs bg-white cursor-pointer">
+                            <SelectTrigger className={`h-8 text-xs border rounded-md cursor-pointer transition-all duration-150 ease-out data-[state=open]:scale-[1.01] ${
+                              answers[q.id] ? "border-gray-400 bg-gray-100 text-[#333333]" : "border-gray-200 bg-white text-[#333333] hover:border-gray-300"
+                            } focus:ring-1 focus:ring-black/15 focus:ring-offset-0 focus:border-gray-400`}>
                               <SelectValue placeholder="A-E">
                                   {answers[q.id] ? `${answers[q.id]}.` : "A-E"}
                                 </SelectValue>
                             </SelectTrigger>
-                            <SelectContent className="bg-white reading-select-content reading-select-content">
+                            <SelectContent className="bg-white border border-gray-200 shadow-sm rounded-md reading-select-content reading-select-content">
                               {(optionList.length ? optionList.map(o => o.variantText) : ["A","B","C","D","E"]).map((letter) => (
-                                <SelectItem key={letter} value={String(letter)}>{String(letter)}.</SelectItem>
+                                <SelectItem key={letter} value={String(letter)} className="focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">{String(letter)}.</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
@@ -217,14 +219,16 @@ export default function ReadingPart5({ testData, answers, onAnswerChange, partNu
                       {getQuestionOptions(q).map((opt: any) => (
                         <div
                           key={opt.variantText}
-                          className="flex items-center gap-2 p-2 rounded hover:bg-gray-50 cursor-pointer"
+                          className={`flex items-center gap-2 p-2 rounded transition-colors cursor-pointer ${
+                            answers[q.id] === opt.variantText ? "bg-gray-100/80" : "hover:bg-gray-50"
+                          }`}
                           onClick={() => onAnswerChange(q.id, opt.variantText)}
                         >
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                            answers[q.id] === opt.variantText ? "border-[#438553]" : "border-gray-400"
+                          <div className={`relative overflow-hidden w-5 h-5 rounded-full border-[1.75px] flex items-center justify-center flex-shrink-0 transition-all duration-150 ease-out ${
+                            answers[q.id] === opt.variantText ? "border-[#438553] scale-[1.02]" : "border-gray-400 scale-100"
                           }`}>
-                            <div className={`w-2.5 h-2.5 rounded-full ${
-                              answers[q.id] === opt.variantText ? "bg-[#438553]" : "bg-transparent"
+                            <div className={`w-4 h-4 rounded-full transition-all duration-150 ease-out ${
+                              answers[q.id] === opt.variantText ? "bg-[#438553] scale-100 opacity-100" : "bg-transparent scale-75 opacity-0"
                             }`} />
                           </div>
                           <div className="flex items-center gap-1 reading-text">
@@ -304,17 +308,19 @@ export default function ReadingPart5({ testData, answers, onAnswerChange, partNu
                                 value={(answers[q.id] || "")}
                                 onValueChange={(v) => onAnswerChange(q.id, v === "__none__" ? "" : v)}
                               >
-                                <SelectTrigger className="h-9 text-sm font-medium text-slate-700 bg-white cursor-pointer">
+                                <SelectTrigger className={`h-9 text-sm font-medium border rounded-md cursor-pointer transition-all duration-150 ease-out data-[state=open]:scale-[1.01] ${
+                                  answers[q.id] ? "border-gray-400 bg-gray-100 text-[#333333]" : "border-gray-200 bg-white text-slate-700 hover:border-gray-300"
+                                } focus:ring-1 focus:ring-black/15 focus:ring-offset-0 focus:border-gray-400`}>
                                   <SelectValue placeholder={`Se\u00e7iniz`} className="font-normal text-slate-700">
                                     {answers[q.id] ? `${answers[q.id]}.` : `Se\u00e7iniz`}
                                   </SelectValue>
                                 </SelectTrigger>
-                                <SelectContent className="bg-white reading-select-content reading-select-content">
-                                  <SelectItem value="__none__" className="font-normal">
+                                <SelectContent className="bg-white border border-gray-200 shadow-sm rounded-md reading-select-content reading-select-content">
+                                  <SelectItem value="__none__" className="font-normal focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
                                     {`Se\u00e7iniz`}
                                   </SelectItem>
                                   {(optionList.length ? optionList.map(o => o.variantText) : ["A","B","C","D","E"]).map((letter) => (
-                                    <SelectItem key={letter} value={String(letter)} className="font-normal">
+                                    <SelectItem key={letter} value={String(letter)} className="font-normal focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
                                       {String(letter)}.
                                     </SelectItem>
                                   ))}
@@ -345,16 +351,18 @@ export default function ReadingPart5({ testData, answers, onAnswerChange, partNu
                           {getQuestionOptions(q).map((opt: any) => (
                             <div
                               key={opt.variantText}
-                              className="flex items-center gap-3 p-2 rounded hover:bg-gray-50 cursor-pointer"
+                              className={`flex items-center gap-3 p-2 rounded transition-colors cursor-pointer ${
+                                answers[q.id] === opt.variantText ? "bg-gray-100/80" : "hover:bg-gray-50"
+                              }`}
                               onClick={() => onAnswerChange(q.id, opt.variantText)}
                             >
                               <div className="flex items-center gap-2 reading-text">
                                 <span className="font-semibold">{opt.variantText}.</span>
-                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                                  answers[q.id] === opt.variantText ? "border-[#438553]" : "border-gray-400"
+                                <div className={`relative overflow-hidden w-5 h-5 rounded-full border-[1.75px] flex items-center justify-center flex-shrink-0 transition-all duration-150 ease-out ${
+                                  answers[q.id] === opt.variantText ? "border-[#438553] scale-[1.02]" : "border-gray-400 scale-100"
                                 }`}>
-                                  <div className={`w-2.5 h-2.5 rounded-full ${
-                                    answers[q.id] === opt.variantText ? "bg-[#438553]" : "bg-transparent"
+                                  <div className={`w-4 h-4 rounded-full transition-all duration-150 ease-out ${
+                                    answers[q.id] === opt.variantText ? "bg-[#438553] scale-100 opacity-100" : "bg-transparent scale-75 opacity-0"
                                   }`} />
                                 </div>
                                 <span className="font-normal">{opt.answer}</span>
@@ -376,8 +384,6 @@ export default function ReadingPart5({ testData, answers, onAnswerChange, partNu
     </div>
   );
 }
-
-
 
 
 

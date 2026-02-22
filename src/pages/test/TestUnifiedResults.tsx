@@ -37,7 +37,7 @@ export default function TestUnifiedResults() {
                   type="text"
                   value={testId}
                   onChange={(e) => setTestId(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-black/15 focus:ring-offset-0 focus:border-gray-400"
                   placeholder="Test ID girin"
                 />
               </div>

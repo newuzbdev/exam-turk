@@ -1,44 +1,64 @@
 ﻿import { NavLink } from "react-router-dom";
 import { ArrowRight, Headphones, BookOpen, Pencil, Mic } from "lucide-react";
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
+type FeatureKey = "listening" | "reading" | "writing" | "speaking";
+
 const HeroSection = () => {
+  const [activeFeature, setActiveFeature] = useState<FeatureKey | null>(null);
+
   const features = [
     {
+      key: "listening" as FeatureKey,
       title: "DİNLEME",
       desc: "Konuşmaları ve duyuruları doğru anlama.",
+      image: "/dinleme.png",
       icon: Headphones,
       iconWrapClass: "border-gray-200 bg-gray-50",
       iconClass: "text-gray-700",
+      demoTitle: "Dinleme Testi Önizlemesi",
     },
     {
+      key: "reading" as FeatureKey,
       title: "OKUMA",
       desc: "Metinleri çözümleme ve çıkarım yapma.",
+      image: "/okuma.png",
       icon: BookOpen,
       iconWrapClass: "border-gray-200 bg-gray-50",
       iconClass: "text-gray-700",
+      demoTitle: "Okuma Testi Önizlemesi",
     },
     {
+      key: "writing" as FeatureKey,
       title: "YAZMA",
       desc: "Tutarlı ve amaç odaklı metin yazma.",
+      image: "/yazma.png",
       icon: Pencil,
       iconWrapClass: "border-gray-200 bg-gray-50",
       iconClass: "text-gray-700",
+      demoTitle: "Yazma Testi Önizlemesi",
     },
     {
+      key: "speaking" as FeatureKey,
       title: "KONUŞMA",
       desc: "Düşünceleri açık ve akıcı ifade etme.",
+      image: "/konusma.png",
       icon: Mic,
       iconWrapClass: "border-gray-200 bg-gray-50",
       iconClass: "text-gray-700",
+      demoTitle: "Konuşma Testi Önizlemesi",
     },
   ];
 
+  const selectedFeature = features.find((f) => f.key === activeFeature) || features[0];
+
   return (
-    <div className="antialiased font-sans">
-      {/* Hero Üst Kısım (Beyaz Arka Plan) */}
-      <section className="pt-10 sm:pt-14 pb-10 sm:pb-12">
+    <div className="relative bg-gray-100 antialiased font-sans">
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_20%_15%,rgba(75,85,99,0.03),transparent_48%),radial-gradient(circle_at_85%_70%,rgba(107,114,128,0.035),transparent_46%),linear-gradient(180deg,rgba(229,231,235,0.08)_0%,rgba(243,244,246,0.06)_100%)]" />
+
+      <section className="pt-10 sm:pt-14 pb-10 sm:pb-12 bg-white/92">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full text-center">
           <div className="mb-8 space-y-5">
             <div className="flex justify-center">
@@ -55,7 +75,7 @@ const HeroSection = () => {
                 <span className="block font-bold text-red-600 mt-2">HEMEN ÖĞREN</span>
               </h1>
               <p className="text-base sm:text-lg text-gray-500 leading-relaxed max-w-2xl mx-auto font-normal mt-4">
-                Gerçek sınav deneyimi. Yapay zekâ destekli değerlendirme.
+                Gerçek sınav deneyimi. Yapay zeka destekli değerlendirme.
               </p>
             </div>
 
@@ -84,14 +104,18 @@ const HeroSection = () => {
         </div>
       </section>
 
-      {/* Kartlar Bölümü (Gri Arka Plan) */}
-      <section className="pb-12 sm:pb-14">
+      <section className="pb-12 sm:pb-14 bg-white/90">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {features.map((item, index) => (
               <Card
-                key={index}
-                className="relative bg-white border border-gray-200 rounded-2xl shadow-sm transition-shadow duration-300 hover:shadow-md hover:border-gray-300 group cursor-pointer overflow-hidden"
+                key={item.key}
+                onClick={() =>
+                  setActiveFeature((prev) => (prev === item.key ? null : item.key))
+                }
+                className={`relative bg-white border rounded-2xl shadow-sm transition-shadow duration-300 hover:shadow-md group cursor-pointer overflow-hidden ${
+                  activeFeature === item.key ? "border-red-300 ring-1 ring-red-200" : "border-gray-200 hover:border-gray-300"
+                }`}
                 style={{
                   opacity: 0,
                   animation: "fadeInUp 0.75s ease-out forwards",
@@ -119,6 +143,35 @@ const HeroSection = () => {
           </div>
         </div>
       </section>
+
+      {activeFeature && (
+        <section className="pb-14 bg-white/95">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
+              <img
+                src={selectedFeature.image}
+                alt={`${selectedFeature.title} ekran görüntüsü`}
+                className="h-auto w-full rounded-xl border border-gray-200 bg-white shadow-sm lg:col-span-2"
+                loading="lazy"
+              />
+              <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm lg:col-span-2">
+                <iframe
+                  className="aspect-video w-full"
+                  src="https://www.youtube.com/embed/6rVFTG4dU8Q"
+                  title="Anlatıcı Video"
+                  loading="lazy"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  allowFullScreen
+                />
+                <div className="border-t border-gray-200 px-4 py-3 text-sm font-medium text-gray-700">
+                  Teste Giriş ve Bölüm Bazlı Arayüz Rehberi
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
     </div>
   );
 };

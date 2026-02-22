@@ -124,7 +124,9 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                       value={selectedVariant || ""}
                       onValueChange={(value) => onAnswerChange(q.id, value === "__none__" ? "" : value)}
                     >
-                      <SelectTrigger className="w-full mb-2 bg-white border border-gray-200 rounded-md px-3 py-2 min-h-10 h-auto text-xs focus:ring-2 focus:ring-[#438553] focus:border-[#438553] cursor-pointer">
+                      <SelectTrigger className={`w-full mb-2 border rounded-md px-3 py-2 min-h-10 h-auto text-xs cursor-pointer transition-all duration-150 ease-out data-[state=open]:scale-[1.01] ${
+                        selectedOption ? "border-gray-400 bg-gray-100 text-[#333333]" : "border-gray-200 bg-white text-[#333333] hover:border-gray-300"
+                      } focus:ring-1 focus:ring-black/15 focus:ring-offset-0 focus:border-gray-400`}>
                         <SelectValue placeholder="Seçiniz">
                           {selectedOption
                             ? `${selectedOption.variantText}. ${selectedOption.answer}`
@@ -135,13 +137,13 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                         position="popper"
                         sideOffset={8}
                         collisionPadding={12}
-                        className="bg-white reading-select-content w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] max-h-[55vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50"
+                        className="bg-white border border-gray-200 shadow-sm rounded-md reading-select-content w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] max-h-[55vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50"
                       >
-                        <SelectItem value="__none__" className="cursor-pointer text-xs py-1">
+                        <SelectItem value="__none__" className="cursor-pointer text-xs py-1 focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
                           {`Seçiniz`}
                         </SelectItem>
                         {optionList.map((opt) => (
-                          <SelectItem key={opt.variantText} value={opt.variantText} className="cursor-pointer text-xs py-1">
+                          <SelectItem key={opt.variantText} value={opt.variantText} className="cursor-pointer text-xs py-1 focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
                             {opt.variantText}. {opt.answer}
                           </SelectItem>
                         ))}
@@ -214,7 +216,9 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                                   value={answers[q.id] || ""}
                                   onValueChange={(value) => onAnswerChange(q.id, value === "__none__" ? "" : value)}
                                 >
-                                <SelectTrigger className="w-full max-w-[360px] bg-white border border-gray-200 rounded-md px-3 py-2 h-auto text-sm items-start focus:ring-2 focus:ring-[#438553] focus:border-[#438553] cursor-pointer">
+                                <SelectTrigger className={`w-full max-w-[360px] border rounded-md px-3 py-2 h-auto text-sm items-start cursor-pointer transition-all duration-150 ease-out data-[state=open]:scale-[1.01] ${
+                                  selectedOption ? "border-gray-400 bg-gray-100 text-[#333333]" : "border-gray-200 bg-white text-[#333333] hover:border-gray-300"
+                                } focus:ring-1 focus:ring-black/15 focus:ring-offset-0 focus:border-gray-400`}>
                                   <SelectValue placeholder={`Se\u00e7iniz`}>
                                       <span className="block text-left whitespace-normal leading-snug line-clamp-2">
                                         {selectedOption
@@ -223,12 +227,12 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                                       </span>
                                     </SelectValue>
                                   </SelectTrigger>
-                                <SelectContent className="bg-white reading-select-content reading-select-content max-h-[60vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50">
-                                  <SelectItem value="__none__" className="cursor-pointer py-1">
+                                <SelectContent className="bg-white border border-gray-200 shadow-sm rounded-md reading-select-content reading-select-content max-h-[60vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50">
+                                  <SelectItem value="__none__" className="cursor-pointer py-1 focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
                                     {`Se\u00e7iniz`}
                                   </SelectItem>
                                   {optionList.map((opt) => (
-                                    <SelectItem key={opt.variantText} value={opt.variantText} className="cursor-pointer py-1">
+                                    <SelectItem key={opt.variantText} value={opt.variantText} className="cursor-pointer py-1 focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
                                       {opt.variantText}. {opt.answer}
                                     </SelectItem>
                                   ))}
@@ -263,7 +267,9 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                                 value={answers[q.id] || ""}
                                 onValueChange={(value) => onAnswerChange(q.id, value === "__none__" ? "" : value)}
                               >
-                                <SelectTrigger className="w-full max-w-[360px] bg-white border border-gray-200 rounded-md px-3 py-2 h-auto text-sm items-start focus:ring-2 focus:ring-[#438553] focus:border-[#438553] cursor-pointer">
+                                <SelectTrigger className={`w-full max-w-[360px] border rounded-md px-3 py-2 h-auto text-sm items-start cursor-pointer transition-all duration-150 ease-out data-[state=open]:scale-[1.01] ${
+                                  selectedOption ? "border-gray-400 bg-gray-100 text-[#333333]" : "border-gray-200 bg-white text-[#333333] hover:border-gray-300"
+                                } focus:ring-1 focus:ring-black/15 focus:ring-offset-0 focus:border-gray-400`}>
                                   <SelectValue placeholder={`Se\u00e7iniz`}>
                                     <span className="block text-left whitespace-normal leading-snug line-clamp-2">
                                       {selectedOption
@@ -272,12 +278,12 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                                     </span>
                                   </SelectValue>
                                 </SelectTrigger>
-                                <SelectContent className="bg-white reading-select-content reading-select-content max-h-[60vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50">
-                                  <SelectItem value="__none__" className="cursor-pointer py-1">
+                                <SelectContent className="bg-white border border-gray-200 shadow-sm rounded-md reading-select-content reading-select-content max-h-[60vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50">
+                                  <SelectItem value="__none__" className="cursor-pointer py-1 focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
                                     {`Se\u00e7iniz`}
                                   </SelectItem>
                                   {optionList.map((opt) => (
-                                    <SelectItem key={opt.variantText} value={opt.variantText} className="cursor-pointer py-1">
+                                    <SelectItem key={opt.variantText} value={opt.variantText} className="cursor-pointer py-1 focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
                                       {opt.variantText}. {opt.answer}
                                     </SelectItem>
                                   ))}
@@ -306,23 +312,21 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
           <ResizablePanel defaultSize={50} minSize={25} className="reading-surface-alt">
             <div className="h-full flex flex-col">
               <div className="flex-1 p-4 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent reading-scroll">
-                <div className="reading-surface-card border border-gray-200 bg-gray-50 rounded-lg p-4">
-                  <div className="text-sm font-semibold text-slate-700 mb-3">{`Se\u00e7enekler`}</div>
-                  <div className="space-y-2">
-                    {optionList.map((opt) => {
-                      const isUsed = selectedVariants.has(opt.variantText);
-                      return (
-                        <div key={opt.variantText} className="flex items-start gap-3">
-                          <span className={`font-semibold min-w-[2rem] text-right tabular-nums mt-[3px] ${isUsed ? "text-slate-400 line-through" : "text-slate-800"}`}>
-                            {opt.variantText}.
-                          </span>
-                          <span className={`reading-text leading-tight font-normal ${isUsed ? "text-slate-400 line-through" : ""}`}>
-                            {opt.answer}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
+                <div className="text-sm font-semibold text-slate-700 mb-3">{`Se\u00e7enekler`}</div>
+                <div className="space-y-2">
+                  {optionList.map((opt) => {
+                    const isUsed = selectedVariants.has(opt.variantText);
+                    return (
+                      <div key={opt.variantText} className="flex items-start gap-3">
+                        <span className={`font-semibold min-w-[2rem] text-right tabular-nums mt-[3px] ${isUsed ? "text-slate-400 line-through" : "text-slate-800"}`}>
+                          {opt.variantText}.
+                        </span>
+                        <span className={`reading-text leading-tight font-normal ${isUsed ? "text-slate-400 line-through" : ""}`}>
+                          {opt.answer}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -332,9 +336,6 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
     </div>
   );
 }
-
-
-
 
 
 

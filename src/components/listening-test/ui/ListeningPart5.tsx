@@ -64,11 +64,11 @@ export default function ListeningPart5({ sections: apiSections }: ListeningPart5
     <div className="w-full mx-auto bg-white  border-gray-800 rounded-lg overflow-hidden">
       <div className="bg-yellow-50 border-b border-gray-300 px-6 py-4">
         <div className="text-2xl text-gray-700 leading-relaxed">
-          5. DINLEME METNÄ°
+          5. DÝNLEME METNÝ
         </div>
         <p className="text-2xl text-gray-700 leading-relaxed">
-          Sorular 24-29. AÅŸaÄŸÄ±daki sorularÄ± okuyunuz ve dinleme metinlerine gÃ¶re
-          doÄŸru seÃ§eneÄŸi (A, B ya da C) iÅŸaretleyiniz.
+          Sorular 24-29. Aþaðýdaki sorularý okuyunuz ve dinleme metinlerine göre
+          doðru seçeneði (A, B ya da C) iþaretleyiniz.
         </p>
       </div>
       <div className="p-6">
@@ -129,3 +129,4 @@ export default function ListeningPart5({ sections: apiSections }: ListeningPart5
     </div>
   );
 }
+

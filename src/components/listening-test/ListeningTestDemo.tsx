@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import { listeningTestService } from "@/services/listeningTest.service";
 import type { ListeningTestItem } from "@/services/listeningTest.service";
 import { Button } from "../ui/button";
@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import HighlightableTextSimple from "@/components/listening-test/HighlightableTextSimple";
 import MapWithDrawing from "@/components/listening-test/MapWithDrawing";
 import { toast } from "sonner";
+import { fixMojibake } from "@/utils/text";
 
 interface UserAnswers {
   [questionId: string]: string;
@@ -43,7 +44,10 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
   const [part4DrawEnabled, setPart4DrawEnabled] = useState(false);
   const [part4ClearToken, setPart4ClearToken] = useState(0);
   const [isProgressReady, setIsProgressReady] = useState(false);
+  const [isPartSwitchAnimating, setIsPartSwitchAnimating] = useState(false);
+  const [inkPulseKey, setInkPulseKey] = useState<string | null>(null);
   const contentScrollRef = useRef<HTMLDivElement>(null);
+  const inkPulseTimeoutRef = useRef<number | null>(null);
   const hasRestoredProgressRef = useRef(false);
   const fullscreenRetryBoundRef = useRef(false);
   const fullscreenRetryHandlerRef = useRef<(() => void) | null>(null);
@@ -169,8 +173,20 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
   }, [currentPartNumber]);
 
   useEffect(() => {
+    setIsPartSwitchAnimating(true);
+    const raf = window.requestAnimationFrame(() => {
+      setIsPartSwitchAnimating(false);
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [currentPartNumber]);
+
+  useEffect(() => {
     return () => {
       stopAllMediaPlayback();
+      if (inkPulseTimeoutRef.current) {
+        window.clearTimeout(inkPulseTimeoutRef.current);
+        inkPulseTimeoutRef.current = null;
+      }
     };
   }, []);
 
@@ -330,7 +346,21 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
     return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
   };
 
+  const triggerRadioInkPulse = (questionId: string, answer: string) => {
+    const key = `${questionId}::${answer}`;
+    setInkPulseKey(key);
+    if (inkPulseTimeoutRef.current) {
+      window.clearTimeout(inkPulseTimeoutRef.current);
+    }
+    inkPulseTimeoutRef.current = window.setTimeout(() => {
+      setInkPulseKey((curr) => (curr === key ? null : curr));
+    }, 220);
+  };
+
+  const isRadioInkActive = (questionId: string, answer: string) => inkPulseKey === `${questionId}::${answer}`;
+
   const handleAnswerSelect = (questionId: string, answer: string) => {
+    triggerRadioInkPulse(questionId, answer);
     setUserAnswers(prev => ({
       ...prev,
       [questionId]: answer
@@ -364,6 +394,11 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
     return total;
   };
 
+  const getAnsweredCountForPart = (partNumber: number) => {
+    const questions = getQuestionsForPartNumber(partNumber);
+    return questions.reduce((count, q: any) => (userAnswers[q.id] ? count + 1 : count), 0);
+  };
+
   const getAllSections = () => {
     const sections: any[] = [];
     if (!testData?.parts) return sections;
@@ -390,8 +425,8 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
         (section.questions || []).forEach((question: any) => {
           questions.push({
             ...question,
-            sectionTitle: section.title,
-            sectionContent: section.content,
+            sectionTitle: fixMojibake(section.title || ""),
+            sectionContent: fixMojibake(section.content || ""),
             imageUrl: section.imageUrl,
             partNumber,
             sectionIndex,
@@ -414,60 +449,67 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
           <div className="space-y-1.5">
             <p className={`text-base text-[#333333] leading-relaxed ${isSecondBolum ? "" : "font-semibold"}`}>
               <span className="font-bold">S{questionNumber}. </span>
-              <HighlightableTextSimple text={question.text || question.content || ""} />
+              <HighlightableTextSimple text={fixMojibake(question.text || question.content || "")} />
             </p>
-            
-            <div className="flex gap-4">
-              <label 
-                className="flex items-center gap-2 cursor-pointer"
+
+            <div className="grid grid-cols-2 gap-2 max-w-[280px]">
+              <label
+                className="grid grid-cols-[20px_20px_1fr] items-center gap-2 cursor-pointer"
                 onClick={(e) => {
                   e.preventDefault();
                   handleAnswerSelect(question.id, "A");
                 }}
               >
-                <span className="font-semibold text-base">A.</span>
+                <span className="text-[18px] font-semibold text-gray-700">A</span>
                 <div
-                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                    selectedAnswer === "A" ? "border-[#438553]" : "border-gray-400"
-                  }`}
+                  className={`relative overflow-hidden w-5 h-5 rounded-full border-[1.75px] flex items-center justify-center transition-all duration-150 ease-out ${
+                    selectedAnswer === "A"
+                      ? "border-[#438553] scale-[1.02]"
+                      : "border-gray-400 scale-100"
+                  } ${isRadioInkActive(question.id, "A") ? "radio-ink-hit" : ""}`}
                 >
+                  {isRadioInkActive(question.id, "A") && <span className="pointer-events-none absolute inset-0 rounded-full radio-ink-splash" />}
                   <div
-                    className={`w-2.5 h-2.5 rounded-full ${
-                      selectedAnswer === "A" ? "bg-[#438553]" : "bg-transparent"
+                    className={`w-4 h-4 rounded-full transition-all duration-150 ease-out ${
+                      selectedAnswer === "A" ? "bg-[#438553] scale-100 opacity-100" : "bg-transparent scale-75 opacity-0"
                     }`}
                   />
                 </div>
-              <input
-                type="radio"
-                name={`question-${question.id}`}
-                className="sr-only"
-                checked={selectedAnswer === "A"}
-                onChange={() => handleAnswerSelect(question.id, "A")}
-                onFocus={(e) => e.target.blur()}
-                tabIndex={-1}
-              />
-                <span className="text-base text-[#333333] ml-1">Doğru</span>
+                <span className="text-[18px] text-[#333333]">Doğru</span>
+                <input
+                  type="radio"
+                  name={`question-${question.id}`}
+                  className="sr-only"
+                  checked={selectedAnswer === "A"}
+                  onChange={() => handleAnswerSelect(question.id, "A")}
+                  onFocus={(e) => e.target.blur()}
+                  tabIndex={-1}
+                />
               </label>
 
-              <label 
-                className="flex items-center gap-2 cursor-pointer"
+              <label
+                className="grid grid-cols-[20px_20px_1fr] items-center gap-2 cursor-pointer"
                 onClick={(e) => {
                   e.preventDefault();
                   handleAnswerSelect(question.id, "B");
                 }}
               >
-                <span className="font-semibold text-base">B.</span>
+                <span className="text-[18px] font-semibold text-gray-700">B</span>
                 <div
-                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                    selectedAnswer === "B" ? "border-[#438553]" : "border-gray-400"
-                  }`}
+                  className={`relative overflow-hidden w-5 h-5 rounded-full border-[1.75px] flex items-center justify-center transition-all duration-150 ease-out ${
+                    selectedAnswer === "B"
+                      ? "border-[#438553] scale-[1.02]"
+                      : "border-gray-400 scale-100"
+                  } ${isRadioInkActive(question.id, "B") ? "radio-ink-hit" : ""}`}
                 >
+                  {isRadioInkActive(question.id, "B") && <span className="pointer-events-none absolute inset-0 rounded-full radio-ink-splash" />}
                   <div
-                    className={`w-2.5 h-2.5 rounded-full ${
-                      selectedAnswer === "B" ? "bg-[#438553]" : "bg-transparent"
+                    className={`w-4 h-4 rounded-full transition-all duration-150 ease-out ${
+                      selectedAnswer === "B" ? "bg-[#438553] scale-100 opacity-100" : "bg-transparent scale-75 opacity-0"
                     }`}
                   />
                 </div>
+                <span className="text-[18px] text-[#333333]">Yanlış</span>
                 <input
                   type="radio"
                   name={`question-${question.id}`}
@@ -477,7 +519,6 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
                   onFocus={(e) => e.target.blur()}
                   tabIndex={-1}
                 />
-                <span className="text-base text-[#333333] ml-1">Yanlış</span>
               </label>
             </div>
           </div>
@@ -491,49 +532,52 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
         <div className="space-y-1.5">
           <p className={`text-base text-[#333333] leading-relaxed ${isSecondBolum ? "" : "font-semibold"}`}>
             <span className="font-bold">S{questionNumber}. </span>
-            <HighlightableTextSimple text={question.text || question.content || ""} />
+            <HighlightableTextSimple text={fixMojibake(question.text || question.content || "")} />
           </p>
-          
-          {question.answers?.map((answer: any) => (
-            <label
-              key={answer.id}
-              className="flex items-start gap-3 p-1.5 rounded cursor-pointer hover:bg-gray-50"
-              onClick={(e) => {
-                e.preventDefault();
-                handleAnswerSelect(question.id, answer.variantText);
-              }}
-            >
-              <div className="flex items-center">
-                <span className="font-semibold mr-2">{answer.variantText}.</span>
+
+          <div className={(_partNumber === 1 || _partNumber === 5 || _partNumber === 6) ? "" : "divide-y divide-gray-200"}>
+            {question.answers?.map((answer: any) => (
+              <label
+                key={answer.id}
+                className="grid grid-cols-[22px_22px_minmax(0,1fr)] items-start gap-2 py-2 cursor-pointer"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleAnswerSelect(question.id, answer.variantText);
+                }}
+              >
+                <span className="text-[18px] font-semibold text-gray-700">{answer.variantText}</span>
                 <div
-                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                    selectedAnswer === answer.variantText ? "border-[#438553]" : "border-gray-400"
-                  }`}
+                  className={`relative overflow-hidden w-5 h-5 rounded-full border-[1.75px] flex items-center justify-center mt-0.5 transition-all duration-150 ease-out ${
+                    selectedAnswer === answer.variantText
+                      ? "border-[#438553] scale-[1.02]"
+                      : "border-gray-400 scale-100"
+                  } ${isRadioInkActive(question.id, answer.variantText) ? "radio-ink-hit" : ""}`}
                 >
+                  {isRadioInkActive(question.id, answer.variantText) && <span className="pointer-events-none absolute inset-0 rounded-full radio-ink-splash" />}
                   <div
-                    className={`w-2.5 h-2.5 rounded-full ${
-                      selectedAnswer === answer.variantText ? "bg-[#438553]" : "bg-transparent"
+                    className={`w-4 h-4 rounded-full transition-all duration-150 ease-out ${
+                      selectedAnswer === answer.variantText
+                        ? "bg-[#438553] scale-100 opacity-100"
+                        : "bg-transparent scale-75 opacity-0"
                     }`}
                   />
                 </div>
-              </div>
-              <div className="flex-1">
-                <span className="text-base text-[#333333] ml-1">
-                  <HighlightableTextSimple text={answer.answer.replace(/^[A-Z][.)]\s*/, '')} />
+                <span className="text-[18px] text-[#333333] leading-relaxed">
+                  <HighlightableTextSimple text={fixMojibake(String(answer.answer || "")).replace(/^[A-Z][.)]\s*/, '')} />
                 </span>
-              </div>
-              <input
-                type="radio"
-                name={`question-${question.id}`}
-                value={answer.variantText}
-                checked={selectedAnswer === answer.variantText}
-                onChange={() => handleAnswerSelect(question.id, answer.variantText)}
-                className="sr-only"
-                onFocus={(e) => e.target.blur()}
-                tabIndex={-1}
-              />
-            </label>
-          ))}
+                <input
+                  type="radio"
+                  name={`question-${question.id}`}
+                  value={answer.variantText}
+                  checked={selectedAnswer === answer.variantText}
+                  onChange={() => handleAnswerSelect(question.id, answer.variantText)}
+                  className="sr-only"
+                  onFocus={(e) => e.target.blur()}
+                  tabIndex={-1}
+                />
+              </label>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -562,7 +606,6 @@ const renderPart = (bolum: number) => {
 
     // Special layout for Part 3 (questions on left, answer options on right)
     if (bolum === 3) {
-      // Build options dynamically from API answers (union across questions)
       const optionMap = new Map<string, any>();
       questions.forEach((q: any) => {
         (q.answers || []).forEach((a: any) => {
@@ -571,135 +614,77 @@ const renderPart = (bolum: number) => {
           }
         });
       });
-      const answerOptions = Array.from(optionMap.values()).sort((a: any, b: any) => String(a.variantText).localeCompare(String(b.variantText)));
+      const answerOptions = Array.from(optionMap.values()).sort((a: any, b: any) =>
+        String(a.variantText).localeCompare(String(b.variantText))
+      );
 
       return (
-        <div key={`bolum-${bolum}`} className="w-full mx-auto bg-white border border-gray-200 rounded-lg overflow-visible lg:overflow-hidden pb-6 md:pb-10 lg:pb-40">
-          {/* Mobile Layout - Stacked */}
-          <div className="block lg:hidden">
-            {/* Questions Section */}
-            <div className="p-3 bg-white">
-              <h4 className="text-base font-semibold text-[#333333] mb-2">Sorular</h4>
-              <div className="space-y-2">
-                {questions.map((question, index) => {
-                  const numbered = questionNumber + index;
-                  const selected = userAnswers[question.id];
-                  const isOpen = mobilePart3OpenId === question.id;
-                  return (
-                    <div key={question.id} className="rounded-lg border border-gray-200 bg-white">
-                      <button
-                        type="button"
-                        onClick={() => setMobilePart3OpenId(isOpen ? null : question.id)}
-                        className="w-full text-left px-3 py-2 flex items-start gap-2"
-                      >
-                        <span className="font-bold text-sm">S{numbered}.</span>
-                        <span className="text-sm text-[#333333] flex-1">
-                          <HighlightableTextSimple text={question.text || question.content || ""} />
-                        </span>
-                        <span className="text-[11px] font-semibold text-gray-700 bg-gray-100 rounded px-2 py-1">
-                          {selected || "Seç"}
-                        </span>
-                      </button>
-                      {isOpen && (
-                        <div className="px-3 pb-3 pt-1 space-y-2">
-                          {answerOptions.map((option: any) => {
-                            const isSelected = selected === option.variantText;
-                            return (
-                              <button
-                                key={option.id || option.variantText}
-                                type="button"
-                                onClick={() => {
-                                  handleAnswerSelect(question.id, option.variantText);
-                                  setMobilePart3OpenId(null);
-                                }}
-                                className={`w-full flex items-start gap-2 rounded-md border px-2 py-2 text-left transition-colors ${
-                                  isSelected
-                                    ? "border-[#438553] bg-[#438553]/10"
-                                    : "border-gray-200 bg-white hover:bg-gray-50"
-                                }`}
-                              >
-                                <div
-                                  className={`mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 flex items-center justify-center ${
-                                    isSelected ? "border-[#438553]" : "border-gray-400"
-                                  }`}
-                                >
-                                  <div
-                                    className={`h-2 w-2 rounded-full ${
-                                      isSelected ? "bg-[#438553]" : "bg-transparent"
-                                    }`}
-                                  />
-                                </div>
-                                <div className="text-sm text-[#333333] leading-relaxed">
-                                  <span className="font-semibold mr-2">{option.variantText}</span>
-                                  <HighlightableTextSimple text={option.answer.replace(/^[A-Z][.)]\s*/, '')} />
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+        <div key={`bolum-${bolum}`} className="w-full mx-auto pb-6 md:pb-10 lg:pb-40">
+          <div className="p-3 sm:p-4 bg-white">
+            <div className="border border-gray-200 bg-white max-w-[1150px] mr-auto ml-0">
+              <div className="hidden lg:grid lg:grid-cols-[minmax(0,0.74fr)_560px] border-b border-gray-200 bg-gray-50/70 text-[14px] font-semibold text-gray-700">
+                <div className="px-3 py-2 text-left">Sorular / Seçim</div>
+                <div className="px-3 py-2 text-left border-l border-gray-200">Seçenekler</div>
               </div>
-            </div>
-          </div>
 
-          {/* Desktop Layout - Resizable */}
-          <div className="hidden lg:block">
-            <ResizablePanelGroup direction="horizontal" className="w-full min-h-[400px]">
-              <ResizablePanel defaultSize={50} minSize={5} maxSize={95}>
-                <div className="p-4 border-r border-gray-200 h-full overflow-y-auto bg-white scrollbar-thin scrollbar-thumb-gray-300/60 scrollbar-track-transparent">
-                  <div className="space-y-2">
-                    <h4 className="text-lg font-semibold text-[#333333] mb-2">Sorular</h4>
-          {questions.map((question, index) => {
-            const numbered = questionNumber + index;
-            return (
-              <div key={question.id} className="flex items-center gap-3 py-2">
-                <span className="text-base">
-                  <span className="font-bold">S{numbered}. </span>
-                  <HighlightableTextSimple text={question.text || question.content || ""} />
-                </span>
-                <Select
-                  value={userAnswers[question.id] || ""}
-                  onValueChange={(value) => handleAnswerSelect(question.id, value)}
-                >
-                  <SelectTrigger className="w-20 h-10 text-base bg-white border-gray-400 cursor-pointer">
+              <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.74fr)_560px]">
+                <div>
+                  {questions.map((question, index) => {
+                    const numbered = questionNumber + index;
+                    return (
+                      <div key={question.id} className="border-b border-gray-200 last:border-b-0 px-3 py-3">
+                        <div className="inline-flex flex-wrap items-center gap-1 text-left text-[18px] text-[#333333] leading-relaxed">
+                          <span className="font-bold">S{numbered}.</span>
+                          <span>
+                            <HighlightableTextSimple text={fixMojibake(question.text || question.content || "")} />
+                          </span>
+                          <Select
+                            value={userAnswers[question.id] || ""}
+                            onValueChange={(value) => handleAnswerSelect(question.id, value)}
+                          >
+                            <SelectTrigger
+                              className={`w-[116px] h-10 text-[16px] cursor-pointer rounded-md border transition-all duration-150 ease-out data-[state=open]:scale-[1.01] ${
+                                userAnswers[question.id]
+                                  ? "border-gray-400 bg-gray-100 text-[#333333]"
+                                  : "border-gray-300 bg-gray-50 text-[#333333] hover:border-gray-400 hover:bg-white"
+                              } focus-visible:ring-1 focus-visible:ring-black/15 focus-visible:ring-offset-0 focus-visible:border-gray-400`}
+                            >
                               <SelectValue placeholder="Seç" />
                             </SelectTrigger>
-                            <SelectContent className="bg-white">
+                            <SelectContent className="bg-white border border-gray-200 shadow-sm rounded-md">
                               {answerOptions.map((option: any) => (
-                                <SelectItem key={option.id || option.variantText} value={option.variantText}>
+                                <SelectItem
+                                  key={`${question.id}-${option.id || option.variantText}`}
+                                  value={option.variantText}
+                                  className="text-[15px] py-2 cursor-pointer focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]"
+                                >
                                   {option.variantText}
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         </div>
-                      );
-                    })}
-                  </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              </ResizablePanel>
-              <ResizableHandle className="bg-gray-200 w-px" />
-              <ResizablePanel defaultSize={50} minSize={5}>
-                <div className="p-4 h-full overflow-y-auto bg-white scrollbar-thin scrollbar-thumb-gray-300/60 scrollbar-track-transparent">
-                  <div className="space-y-2">
-                    <h4 className="text-base font-semibold text-[#333333] mb-2">Seçenekler</h4>
+
+                <div className="border-t lg:border-t-0 lg:border-l border-gray-200">
+                  <div className="px-2 py-2.5 grid grid-cols-1 gap-3.5">
                     {answerOptions.map((option: any) => (
-                      <div key={option.id || option.variantText} className="flex items-start gap-3 py-2">
-                        <div className="text-lg flex items-center justify-center font-bold bg-gray-100 rounded-full w-8 h-8 flex-shrink-0">
+                      <div key={option.id || option.variantText} className="grid grid-cols-[28px_minmax(0,1fr)] items-center gap-2.5 text-left">
+                        <span className="w-7 h-7 rounded-full border border-gray-300 bg-gray-100 flex items-center justify-center text-[16px] font-semibold text-gray-600">
                           {option.variantText}
-                        </div>
-                        <p className="text-lg text-[#333333] leading-relaxed flex-1">
-                          <HighlightableTextSimple text={option.answer.replace(/^[A-Z][.)]\s*/, '')} />
-                        </p>
+                        </span>
+                        <span className="text-[18px] text-[#333333] leading-[1.3] whitespace-nowrap">
+                          <HighlightableTextSimple text={fixMojibake(String(option.answer || "")).replace(/^[A-Z][.)]\s*/, "")} />
+                        </span>
                       </div>
                     ))}
                   </div>
                 </div>
-              </ResizablePanel>
-            </ResizablePanelGroup>
+              </div>
+            </div>
           </div>
         </div>
       );
@@ -713,7 +698,7 @@ const renderPart = (bolum: number) => {
       const imageUrl = part4Section?.imageUrl || questions.find(q => q.imageUrl)?.imageUrl;
       
       return (
-        <div key={`bolum-${bolum}`} className="w-full mx-auto bg-white border border-gray-200 rounded-lg overflow-hidden pb-0 md:pb-8 lg:pb-40">
+        <div key={`bolum-${bolum}`} className="w-full mx-auto overflow-hidden pb-0 md:pb-8 lg:pb-40">
           {/* Mobile Layout - Stacked */}
           <div className="block lg:hidden">
             <div className="flex h-[min(68dvh,640px)] min-h-[420px] flex-col bg-white">
@@ -793,28 +778,34 @@ const renderPart = (bolum: number) => {
                 {questions.map((question, index) => {
                   const numbered = questionNumber + index;
                   return (
-                    <div key={question.id} className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2">
+                    <div key={question.id} className="w-full border-b border-gray-200 last:border-b-0 py-2">
                       <div className="text-sm text-[#333333] leading-relaxed">
                         <span className="font-bold">S{numbered}. </span>
-                        <HighlightableTextSimple text={question.text || ""} />
+                        <HighlightableTextSimple text={fixMojibake(question.text || question.content || "")} />
                       </div>
                       <div className="mt-2">
                         <Select
                           value={userAnswers[question.id] || ""}
                           onValueChange={(value) => handleAnswerSelect(question.id, value)}
                         >
-                          <SelectTrigger className="w-20 h-10 text-sm bg-white border-gray-400 cursor-pointer">
+                          <SelectTrigger
+                            className={`w-20 h-10 text-sm cursor-pointer rounded-md border transition-all duration-150 ease-out data-[state=open]:scale-[1.01] ${
+                              userAnswers[question.id]
+                                ? "border-gray-400 bg-gray-100 text-[#333333]"
+                                : "border-gray-300 bg-gray-50 text-[#333333] hover:border-gray-400 hover:bg-white"
+                            } focus-visible:ring-1 focus-visible:ring-black/15 focus-visible:ring-offset-0 focus-visible:border-gray-400`}
+                          >
                             <SelectValue placeholder="Seç" />
                           </SelectTrigger>
-                          <SelectContent className="bg-white">
-                            <SelectItem value="A">A</SelectItem>
-                            <SelectItem value="B">B</SelectItem>
-                            <SelectItem value="C">C</SelectItem>
-                            <SelectItem value="D">D</SelectItem>
-                            <SelectItem value="E">E</SelectItem>
-                            <SelectItem value="F">F</SelectItem>
-                            <SelectItem value="G">G</SelectItem>
-                            <SelectItem value="H">H</SelectItem>
+                          <SelectContent className="bg-white border border-gray-200 shadow-sm rounded-md">
+                            <SelectItem value="A" className="text-[15px] py-2 cursor-pointer focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">A</SelectItem>
+                            <SelectItem value="B" className="text-[15px] py-2 cursor-pointer focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">B</SelectItem>
+                            <SelectItem value="C" className="text-[15px] py-2 cursor-pointer focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">C</SelectItem>
+                            <SelectItem value="D" className="text-[15px] py-2 cursor-pointer focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">D</SelectItem>
+                            <SelectItem value="E" className="text-[15px] py-2 cursor-pointer focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">E</SelectItem>
+                            <SelectItem value="F" className="text-[15px] py-2 cursor-pointer focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">F</SelectItem>
+                            <SelectItem value="G" className="text-[15px] py-2 cursor-pointer focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">G</SelectItem>
+                            <SelectItem value="H" className="text-[15px] py-2 cursor-pointer focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">H</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -910,25 +901,31 @@ const renderPart = (bolum: number) => {
                         <div key={question.id} className="flex flex-wrap items-center gap-2 w-full py-2">
                           <span className="text-lg">
                             <span className="font-bold">S{numbered}. </span>
-                            {question.text}
+                            {fixMojibake(question.text || question.content || "")}
                           </span>
                           <div className="shrink-0">
                             <Select
                               value={userAnswers[question.id] || ""}
                               onValueChange={(value) => handleAnswerSelect(question.id, value)}
                             >
-                              <SelectTrigger className="w-20 h-10 text-base bg-white border-gray-400 cursor-pointer">
+                              <SelectTrigger
+                                className={`w-20 h-10 text-base cursor-pointer rounded-md border transition-all duration-150 ease-out data-[state=open]:scale-[1.01] ${
+                                  userAnswers[question.id]
+                                    ? "border-gray-400 bg-gray-100 text-[#333333]"
+                                    : "border-gray-300 bg-gray-50 text-[#333333] hover:border-gray-400 hover:bg-white"
+                                } focus-visible:ring-1 focus-visible:ring-black/15 focus-visible:ring-offset-0 focus-visible:border-gray-400`}
+                              >
                                 <SelectValue placeholder="Seç" />
                               </SelectTrigger>
-                              <SelectContent className="bg-white">
-                                <SelectItem value="A">A</SelectItem>
-                                <SelectItem value="B">B</SelectItem>
-                                <SelectItem value="C">C</SelectItem>
-                                <SelectItem value="D">D</SelectItem>
-                                <SelectItem value="E">E</SelectItem>
-                                <SelectItem value="F">F</SelectItem>
-                                <SelectItem value="G">G</SelectItem>
-                                <SelectItem value="H">H</SelectItem>
+                              <SelectContent className="bg-white border border-gray-200 shadow-sm rounded-md">
+                                <SelectItem value="A" className="text-[15px] py-2 cursor-pointer focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">A</SelectItem>
+                                <SelectItem value="B" className="text-[15px] py-2 cursor-pointer focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">B</SelectItem>
+                                <SelectItem value="C" className="text-[15px] py-2 cursor-pointer focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">C</SelectItem>
+                                <SelectItem value="D" className="text-[15px] py-2 cursor-pointer focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">D</SelectItem>
+                                <SelectItem value="E" className="text-[15px] py-2 cursor-pointer focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">E</SelectItem>
+                                <SelectItem value="F" className="text-[15px] py-2 cursor-pointer focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">F</SelectItem>
+                                <SelectItem value="G" className="text-[15px] py-2 cursor-pointer focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">G</SelectItem>
+                                <SelectItem value="H" className="text-[15px] py-2 cursor-pointer focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">H</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
@@ -948,7 +945,7 @@ const renderPart = (bolum: number) => {
     // Special layout for Part 5 (group questions into dialogs)
     if (bolum === 5) {
       return (
-        <div key={`bolum-${bolum}`} className="w-full mx-auto bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div key={`bolum-${bolum}`} className="w-full mx-auto overflow-hidden">
           {/* Questions grouped by dialogs */}
           <div className="p-5 pb-3 sm:pb-5">
             {questions.length === 0 && (
@@ -991,7 +988,7 @@ const renderPart = (bolum: number) => {
       const left = questions.slice(0, half);
       const right = questions.slice(half);
       return (
-        <div key={`bolum-${bolum}`} className="w-full mx-auto bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div key={`bolum-${bolum}`} className="w-full mx-auto overflow-hidden">
           <div className="p-5 pb-3 sm:pb-5">
             {questions.length === 0 ? (
               <div className="text-center text-[#333333] py-6">Bu bölüm için soru bulunamadı.</div>
@@ -1024,7 +1021,7 @@ const renderPart = (bolum: number) => {
     // Bölüm 2: tablo görünümü (her soru bir satır)
     if (bolum === 2) {
       return (
-        <div key={`bolum-${bolum}`} className="w-full max-w-7xl bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div key={`bolum-${bolum}`} className="w-full max-w-7xl overflow-hidden">
           <div className="p-5">
             {questions.length === 0 ? (
               <div className="text-center text-[#333333] py-6">Bu bölüm için soru bulunamadı.</div>
@@ -1036,21 +1033,24 @@ const renderPart = (bolum: number) => {
                     const selected = userAnswers[question.id];
                     const numbered = questionNumber + index;
                     return (
-                      <div key={question.id} className="rounded-lg border border-gray-200 bg-white p-3">
+                      <div key={question.id} className="py-3 border-b border-gray-200 last:border-b-0">
                         <div className="text-sm text-[#333333]">
                           <span className="font-semibold">S{numbered}. </span>
-                          <HighlightableTextSimple text={question.text || question.content || ""} />
+                          <HighlightableTextSimple text={fixMojibake(question.text || question.content || "")} />
                         </div>
-                        <div className="mt-3 flex items-center gap-6">
+                        <div className="mt-2 grid grid-cols-2 gap-3 max-w-xs">
                           <label className="inline-flex items-center gap-2 cursor-pointer">
                             <div
-                              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                                selected === "A" ? "border-[#438553]" : "border-gray-400"
-                              }`}
+                              className={`relative overflow-hidden w-6 h-6 rounded-full border-[1.75px] flex items-center justify-center transition-all duration-150 ease-out ${
+                                selected === "A"
+                                  ? "border-[#438553] scale-[1.02]"
+                                  : "border-gray-400 scale-100"
+                              } ${isRadioInkActive(question.id, "A") ? "radio-ink-hit" : ""}`}
                             >
+                              {isRadioInkActive(question.id, "A") && <span className="pointer-events-none absolute inset-0 rounded-full radio-ink-splash" />}
                               <div
-                                className={`w-2.5 h-2.5 rounded-full ${
-                                  selected === "A" ? "bg-[#438553]" : "bg-transparent"
+                                className={`w-5 h-5 rounded-full transition-all duration-150 ease-out ${
+                                  selected === "A" ? "bg-[#438553] scale-100 opacity-100" : "bg-transparent scale-75 opacity-0"
                                 }`}
                               />
                             </div>
@@ -1065,13 +1065,16 @@ const renderPart = (bolum: number) => {
                           </label>
                           <label className="inline-flex items-center gap-2 cursor-pointer">
                             <div
-                              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                                selected === "B" ? "border-[#438553]" : "border-gray-400"
-                              }`}
+                              className={`relative overflow-hidden w-6 h-6 rounded-full border-[1.75px] flex items-center justify-center transition-all duration-150 ease-out ${
+                                selected === "B"
+                                  ? "border-[#438553] scale-[1.02]"
+                                  : "border-gray-400 scale-100"
+                              } ${isRadioInkActive(question.id, "B") ? "radio-ink-hit" : ""}`}
                             >
+                              {isRadioInkActive(question.id, "B") && <span className="pointer-events-none absolute inset-0 rounded-full radio-ink-splash" />}
                               <div
-                                className={`w-2.5 h-2.5 rounded-full ${
-                                  selected === "B" ? "bg-[#438553]" : "bg-transparent"
+                                className={`w-5 h-5 rounded-full transition-all duration-150 ease-out ${
+                                  selected === "B" ? "bg-[#438553] scale-100 opacity-100" : "bg-transparent scale-75 opacity-0"
                                 }`}
                               />
                             </div>
@@ -1091,43 +1094,46 @@ const renderPart = (bolum: number) => {
                 </div>
 
                 {/* Desktop Table */}
-                <div className="hidden md:block overflow-x-auto max-w-7xl">
-                  <table className="w-full max-w-7xl min-w-[640px] table-fixed">
+                <div className="hidden md:block overflow-x-auto max-w-7xl border border-gray-200 rounded-lg bg-white">
+                  <table className="w-full max-w-7xl min-w-[760px] table-fixed">
                     <colgroup>
                       <col />
-                      <col className="w-16" />
-                      <col className="w-16" />
+                      <col className="w-24" />
+                      <col className="w-24" />
                     </colgroup>
                     <thead>
-                      <tr className="bg-gray-50 text-left">
-                        <th className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Soru</th>
-                        <th className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide text-center">Doğru</th>
-                        <th className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide text-center">Yanlış</th>
+                      <tr className="bg-gray-50/80 text-left">
+                        <th className="px-4 py-2.5 text-xs font-semibold text-gray-600">Soru</th>
+                        <th className="px-4 py-2.5 text-xs font-semibold text-gray-600 text-center border-l border-gray-200">Doğru</th>
+                        <th className="px-4 py-2.5 text-xs font-semibold text-gray-600 text-center border-l border-gray-200">Yanlış</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-gray-200/80">
                       {questions.map((question, index) => {
                         const selected = userAnswers[question.id];
                         const numbered = questionNumber + index;
                         return (
                           <tr
                             key={question.id}
-                            className="odd:bg-white even:bg-gray-50/60 hover:bg-gray-100/70 transition-colors"
+                            className="odd:bg-white even:bg-gray-50/50 hover:bg-gray-100/60 transition-colors"
                           >
-                            <td className="px-4 py-4 pr-1 text-base text-[#333333] leading-relaxed align-top">
+                            <td className="px-4 py-3.5 pr-1 text-base text-[#333333] leading-relaxed align-top">
                               <span className="font-semibold">S{numbered}. </span>
-                              <HighlightableTextSimple text={question.text || question.content || ""} />
+                              <HighlightableTextSimple text={fixMojibake(question.text || question.content || "")} />
                             </td>
-                            <td className="px-4 py-4 text-center align-top">
+                            <td className="px-4 py-3.5 text-center align-middle border-l border-gray-200/70">
                               <label className="inline-flex items-center gap-2 cursor-pointer">
                                 <div
-                                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                                    selected === "A" ? "border-[#438553]" : "border-gray-400"
-                                  }`}
+                                  className={`relative overflow-hidden w-6 h-6 rounded-full border-[1.75px] flex items-center justify-center transition-all duration-150 ease-out ${
+                                    selected === "A"
+                                      ? "border-[#438553] scale-[1.02]"
+                                      : "border-gray-400 scale-100"
+                                  } ${isRadioInkActive(question.id, "A") ? "radio-ink-hit" : ""}`}
                                 >
+                                  {isRadioInkActive(question.id, "A") && <span className="pointer-events-none absolute inset-0 rounded-full radio-ink-splash" />}
                                   <div
-                                    className={`w-2.5 h-2.5 rounded-full ${
-                                      selected === "A" ? "bg-[#438553]" : "bg-transparent"
+                                    className={`w-5 h-5 rounded-full transition-all duration-150 ease-out ${
+                                      selected === "A" ? "bg-[#438553] scale-100 opacity-100" : "bg-transparent scale-75 opacity-0"
                                     }`}
                                   />
                                 </div>
@@ -1140,16 +1146,19 @@ const renderPart = (bolum: number) => {
                                 />
                               </label>
                             </td>
-                            <td className="px-4 py-4 text-center align-top">
+                            <td className="px-4 py-3.5 text-center align-middle border-l border-gray-200/70">
                               <label className="inline-flex items-center gap-2 cursor-pointer">
                                 <div
-                                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                                    selected === "B" ? "border-[#438553]" : "border-gray-400"
-                                  }`}
+                                  className={`relative overflow-hidden w-6 h-6 rounded-full border-[1.75px] flex items-center justify-center transition-all duration-150 ease-out ${
+                                    selected === "B"
+                                      ? "border-[#438553] scale-[1.02]"
+                                      : "border-gray-400 scale-100"
+                                  } ${isRadioInkActive(question.id, "B") ? "radio-ink-hit" : ""}`}
                                 >
+                                  {isRadioInkActive(question.id, "B") && <span className="pointer-events-none absolute inset-0 rounded-full radio-ink-splash" />}
                                   <div
-                                    className={`w-2.5 h-2.5 rounded-full ${
-                                      selected === "B" ? "bg-[#438553]" : "bg-transparent"
+                                    className={`w-5 h-5 rounded-full transition-all duration-150 ease-out ${
+                                      selected === "B" ? "bg-[#438553] scale-100 opacity-100" : "bg-transparent scale-75 opacity-0"
                                     }`}
                                   />
                                 </div>
@@ -1177,7 +1186,7 @@ const renderPart = (bolum: number) => {
 
     // Default layout for other parts
     return (
-      <div key={`bolum-${bolum}`} className="w-full mx-auto bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <div key={`bolum-${bolum}`} className="w-full mx-auto overflow-hidden">
         {/* Questions */}
           <div className={bolum === 6 ? "p-5 pb-3 sm:pb-5" : "p-5"}>
           <div className={bolum === 6 ? "grid grid-cols-1 gap-6" : "grid grid-cols-1 md:grid-cols-2 gap-6"}>
@@ -1197,7 +1206,7 @@ const renderPart = (bolum: number) => {
                   {/* Section Header for Dialog */}
                   {isDialogSection && index === 0 && (
                     <div className={bolum === 6 ? "border border-gray-200 bg-gray-100 px-4 py-2 mb-6 col-span-1" : "border border-gray-200 bg-gray-100 px-4 py-2 mb-6 col-span-2"}>
-                      <h3 className="font-semibold text-base">{question.sectionTitle || `${question.sectionIndex + 1}. diyalog`}</h3>
+                      <h3 className="font-semibold text-base">{fixMojibake(question.sectionTitle || `${question.sectionIndex + 1}. diyalog`)}</h3>
                     </div>
                   )}
                   
@@ -1298,8 +1307,8 @@ const renderPart = (bolum: number) => {
                             key={q}
                             className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-xs font-bold ${
                               isAnswered
-                                ? "bg-[#438553] border-gray-800"
-                                : "bg-white border-gray-800"
+                                ? "bg-[#438553] border-gray-800 text-white"
+                                : "bg-white border-gray-800 text-gray-800"
                             }`}
                           >
                             {q}
@@ -1311,9 +1320,6 @@ const renderPart = (bolum: number) => {
                           +{section.questions.length - 4}
                         </div>
                       )}
-                    </div>
-                    <div className="text-[9px] font-semibold text-gray-700">
-                      {section.number}. BÖLÜM
                     </div>
                   </div>
                 );
@@ -1327,6 +1333,20 @@ const renderPart = (bolum: number) => {
 
           {/* Desktop Layout */}
           <div className="hidden lg:block">
+            <div className="mb-2 flex items-center gap-3 px-1">
+              <div className="text-[11px] font-semibold text-gray-700 min-w-[84px]">
+                BÖLÜM {currentPartNumber}/6
+              </div>
+              <div className="h-1.5 flex-1 rounded-full bg-gray-200 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-[#438553] transition-all duration-200 ease-out"
+                  style={{ width: `${(currentPartNumber / 6) * 100}%` }}
+                />
+              </div>
+              <div className="text-[11px] font-semibold text-gray-700 min-w-[78px] text-right">
+                {getAnsweredCountForPart(currentPartNumber)}/{getQuestionsForPartNumber(currentPartNumber).length} cevap
+              </div>
+            </div>
             <div className="flex items-center justify-between gap-4">
               <div className="flex gap-2 flex-wrap justify-center flex-1">
                 {sections.map((section) => {
@@ -1356,8 +1376,8 @@ const renderPart = (bolum: number) => {
                             key={q}
                             className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-xs font-bold ${
                               isAnswered
-                                ? "bg-[#438553] border-gray-800"
-                                : "bg-white border-gray-800"
+                                ? "bg-[#438553] border-gray-800 text-white"
+                                : "bg-white border-gray-800 text-gray-800"
                             }`}
                           >
                             {q}
@@ -1365,9 +1385,6 @@ const renderPart = (bolum: number) => {
                         );
                       })}
                     </div>
-                      <div className="text-[9px] font-semibold text-gray-700">
-                        {section.number}. BÖLÜM
-                      </div>
                     </div>
                   );
                 })}
@@ -1855,14 +1872,14 @@ const renderPart = (bolum: number) => {
         <div className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50 shadow-sm w-full">
           {/* Match horizontal padding with description block below */}
           <div className="px-2 sm:px-4">
-            <div className="flex justify-between items-center h-auto py-2 lg:h-24 lg:py-0">
+            <div className="flex justify-between items-center h-auto py-2 lg:h-[68px] lg:py-0">
               {/* Mobile Header - Single Line Layout */}
               <div className="block lg:hidden w-full">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="font-extrabold text-base sm:text-lg tracking-wider">
+                  <div className="font-semibold text-base sm:text-lg tracking-[0.08em]">
                     DİNLEME
                   </div>
-                  <Button onClick={handleSubmitClick} className="shrink-0 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-3 py-2 text-xs font-bold min-h-[44px] touch-manipulation">
+                  <Button onClick={handleSubmitClick} className="shrink-0 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-3 py-1.5 text-[16px] font-semibold min-h-[34px] touch-manipulation">
                     GÖNDER
                   </Button>
                 </div>
@@ -1883,18 +1900,20 @@ const renderPart = (bolum: number) => {
                       />
                     </div>
                   )}
-                  <div
-                    className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-[11px] font-bold leading-none ${
-                      timerActive && timeLeft <= 300
-                        ? "bg-red-50 border-red-200 text-red-700"
-                        : timerActive && timeLeft <= 600
-                        ? "bg-amber-50 border-amber-200 text-amber-700"
-                        : "bg-gray-50 border-gray-200 text-slate-700"
-                    }`}
-                  >
-                    <Clock3 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                    <span className="tabular-nums">{timerActive ? formatTime(timeLeft) : "10:00"}</span>
-                  </div>
+                  {showReviewNotice && (
+                    <div
+                      className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-[11px] font-bold leading-none ${
+                        timerActive && timeLeft <= 300
+                          ? "bg-red-50 border-red-200 text-red-700"
+                          : timerActive && timeLeft <= 600
+                          ? "bg-amber-50 border-amber-200 text-amber-700"
+                          : "bg-gray-50 border-gray-200 text-slate-700"
+                      }`}
+                    >
+                      <Clock3 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                      <span className="tabular-nums">{timerActive ? formatTime(timeLeft) : "10:00"}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1904,14 +1923,14 @@ const renderPart = (bolum: number) => {
                   <img 
                     src="/logo11.svg" 
                     alt="TURKISHMOCK" 
-                    className="h-10 sm:h-11 md:h-12 w-auto object-contain"
+                    className="h-9 sm:h-10 md:h-11 w-auto object-contain"
                     onError={(e) => {
                       console.error("Logo failed to load");
                       (e.target as HTMLImageElement).style.display = 'none';
                     }}
                   />
                 </div>
-                <div className="font-semibold text-xl">DİNLEME</div>
+                <div className="font-semibold text-base sm:text-lg tracking-[0.08em]">DİNLEME</div>
                 <div className="flex items-center gap-4">
                   {isLg && testData?.audioUrl && !isSubmitting && (
                     <AudioPlayer
@@ -1925,19 +1944,21 @@ const renderPart = (bolum: number) => {
                       persistKey={audioProgressStorageKey}
                     />
                   )}
-                  <div
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-bold ${
-                      timerActive && timeLeft <= 300
-                        ? "bg-red-50 border-red-200 text-red-700"
-                        : timerActive && timeLeft <= 600
-                        ? "bg-amber-50 border-amber-200 text-amber-700"
-                        : "bg-gray-50 border-gray-200 text-slate-700"
-                    }`}
-                  >
-                    <Clock3 className="h-4 w-4 shrink-0" aria-hidden="true" />
-                    <span className="tabular-nums">{timerActive ? formatTime(timeLeft) : "10:00"}</span>
-                  </div>
-                  <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 text-sm font-bold">
+                  {showReviewNotice && (
+                    <div
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-bold ${
+                        timerActive && timeLeft <= 300
+                          ? "bg-red-50 border-red-200 text-red-700"
+                          : timerActive && timeLeft <= 600
+                          ? "bg-amber-50 border-amber-200 text-amber-700"
+                          : "bg-gray-50 border-gray-200 text-slate-700"
+                      }`}
+                    >
+                      <Clock3 className="h-4 w-4 shrink-0" aria-hidden="true" />
+                      <span className="tabular-nums">{timerActive ? formatTime(timeLeft) : "10:00"}</span>
+                    </div>
+                  )}
+                  <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 text-[16px] font-semibold min-h-[34px]">
                     GÖNDER
                   </Button>
                 </div>
@@ -1946,19 +1967,19 @@ const renderPart = (bolum: number) => {
           </div>
         </div>
 
-        <div className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 mt-2 sm:mt-4">
+        <div className="px-2 sm:px-4 lg:px-6 py-1 sm:py-2 mt-0">
           {/* Mobile: no volume changer per request */}
 
           {/* Description Section - Responsive */}
-          <div className="mt-2 p-3 sm:p-5 bg-gray-50 rounded-lg border border-gray-200">
+          <div className="mt-0 p-3 sm:p-4 bg-gray-50 rounded-lg border border-gray-200">
             <div className="flex items-center justify-between mb-2 sm:mb-3">
-              <h3 className="text-base sm:text-lg lg:text-xl font-semibold text-[#333333]">
+              <h3 className="text-[19px] font-semibold text-[#333333]">
                 BÖLÜM {bolum} - DİNLEME METNİ
               </h3>
               <button
                 type="button"
                 onClick={() => setShowDescription((v) => !v)}
-                className="text-xs sm:text-sm font-semibold text-gray-700 border border-gray-200 rounded-md px-2 py-1 bg-white"
+                className="text-[16px] font-semibold text-gray-700 border border-gray-200 rounded-md px-2 py-1 bg-white"
               >
                 {showDescription ? "Anlatımı Gizle" : "Anlatımı Göster"}
               </button>
@@ -1991,32 +2012,47 @@ const renderPart = (bolum: number) => {
         </div>
         
         {/* Internal scroll to keep content accessible while exam-mode locks body scroll */}
-        <div ref={contentScrollRef} className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-6 pb-20 sm:pb-36 scrollbar-thin scrollbar-thumb-gray-300/60 scrollbar-track-transparent scroll-smooth listening-test-container">
-          {renderPart(bolum)}
+         <div ref={contentScrollRef} className="flex-1 overflow-y-auto overscroll-contain px-3 sm:px-6 pt-1 sm:pt-2 pb-20 sm:pb-36 scrollbar-thin scrollbar-thumb-gray-300/60 scrollbar-track-transparent scroll-smooth listening-test-container">
+          <div
+            className={`transition-all duration-200 ease-out ${isPartSwitchAnimating ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"}`}
+          >
+            {renderPart(bolum)}
+          </div>
         </div>
       
       {/* Bottom Tabs - desktop only */}
       <div className="hidden lg:block">{renderTabs()}</div>
 
-      {/* Mobile: Prev/Next bölüm controls fixed bottom with center indicator */}
-      <div className="lg:hidden fixed bottom-2 right-2 left-2 grid grid-cols-3 items-center gap-2 px-2 py-2 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+      {/* Mobile: compact prev/next with center progress */}
+      <div className="lg:hidden fixed bottom-2 right-2 left-2 grid grid-cols-[auto_1fr_auto] items-center gap-2 px-2 py-2 bg-white/98 rounded-lg shadow-lg border border-gray-200 z-50">
         <div className="justify-self-start">
           <Button
                   onClick={goToPrevBolum}
                   disabled={currentPartNumber <= 1}
-                  className="bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-900 font-bold px-3 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed min-h-[40px] touch-manipulation"
+                  className="bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-900 font-bold px-2.5 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed min-h-[36px] touch-manipulation"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
         </div>
-        <div className="justify-self-center text-xs sm:text-sm font-semibold">
-          {currentPartNumber}. BÖLÜM
+        <div className="min-w-0 px-1">
+          <div className="text-center text-[11px] font-semibold text-gray-800">
+            BÖLÜM {currentPartNumber}/6
+          </div>
+          <div className="mt-1 h-1.5 w-full rounded-full bg-gray-200 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-[#438553] transition-all duration-200 ease-out"
+              style={{ width: `${(currentPartNumber / 6) * 100}%` }}
+            />
+          </div>
+          <div className="mt-1 text-center text-[10px] text-gray-600">
+            {getAnsweredCountForPart(currentPartNumber)}/{getQuestionsForPartNumber(currentPartNumber).length} cevap
+          </div>
         </div>
         <div className="justify-self-end">
           <Button
                   onClick={goToNextBolum}
                   disabled={currentPartNumber >= 6}
-                  className="bg-[#438553] hover:bg-[#356A44] active:bg-[#2d5a3a] text-white font-bold px-3 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed min-h-[40px] touch-manipulation"
+                  className="bg-[#438553] hover:bg-[#356A44] active:bg-[#2d5a3a] text-white font-bold px-2.5 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed min-h-[36px] touch-manipulation"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
@@ -2037,3 +2073,13 @@ const renderPart = (bolum: number) => {
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+

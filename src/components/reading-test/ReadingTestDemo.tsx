@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { overallTestFlowStore } from "@/services/overallTest.service";
 import { Button } from "../ui/button";
@@ -12,7 +12,7 @@ import ReadingPart4 from "./ui/ReadingPart4";
 import ReadingPart5 from "./ui/ReadingPart5";
 import NotesPanel from "./NotesPanel";
 import { toast } from "sonner";
-import { Clock3 } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface ReadingProgressSnapshot {
   currentPartNumber: number;
@@ -622,6 +622,26 @@ export default function ReadingPage({ testId }: { testId: string }) {
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
   };
 
+  const getOrderedPartNumbers = () =>
+    Array.from(
+      new Set(
+        (testData?.parts || [])
+          .map((p) => p.number || 0)
+          .filter((n) => n > 0)
+          .sort((a, b) => a - b)
+      )
+    );
+
+  const getPartQuestions = (partNum: number) => {
+    const part = (testData?.parts || []).find((p) => (p.number || 0) === partNum);
+    return (part?.sections || []).flatMap((s) => s.questions || []);
+  };
+
+  const getAnsweredCountForPart = (partNum: number) => {
+    const qs = getPartQuestions(partNum);
+    return qs.reduce((count, q: any) => (answers[q.id] ? count + 1 : count), 0);
+  };
+
   const getStaticHeader = (partNumber: number) => {
     if (partNumber === 1) {
       return "Sorular 1-6. Aşağıdaki metni okuyunuz ve alttaki sözcükleri (A-H) kullanarak boşlukları (1-6) doldurunuz. Her sözcük yalnızca bir defa kullanılabilir. Seçilmemesi gereken iki seçenek bulunmaktadır.";
@@ -651,72 +671,85 @@ export default function ReadingPage({ testId }: { testId: string }) {
         <div className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50 shadow-sm w-full">
           {/* Match horizontal padding with description block below */}
           <div className="px-2 sm:px-4">
-            <div className="flex justify-between items-center h-20 sm:h-24">
-              {/* Mobile Header - Single Line Layout */}
+            <div className="flex justify-between items-center h-16 sm:h-[68px]">
+              {/* Mobile Header - centered timer + title after logo */}
               <div className="block lg:hidden w-full">
-                <div className="flex items-center justify-between">
-              <div className="font-extrabold text-base sm:text-lg tracking-wider">OKUMA</div>
-              <div className="flex items-center gap-2">
-                  <div className="hidden lg:block">
-                    <NotesPanel currentPartNumber={currentPartNumber} />
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      className="h-8 w-8 rounded border border-gray-200 bg-white text-xs font-semibold text-gray-700"
-                      onClick={() => setFontScale((v) => Math.max(0.9, Math.round((v - 0.05) * 100) / 100))}
-                      aria-label="Metni küçült"
-                    >
-                      A-
-                    </button>
-                    <button
-                      type="button"
-                      className="h-8 w-8 rounded border border-gray-200 bg-white text-xs font-semibold text-gray-700"
-                      onClick={() => setFontScale((v) => Math.min(1.2, Math.round((v + 0.05) * 100) / 100))}
-                      aria-label="Metni büyült"
-                    >
-                      A+
-                    </button>
+                <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <img
+                      src="/logo11.svg"
+                      alt="TURKISHMOCK"
+                      className="h-8 w-auto object-contain"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                      }}
+                    />
                   </div>
                   <div
-                  className={`flex items-center gap-2 px-2.5 py-1.5 rounded-full border text-xs font-bold ${
+                    className={`justify-self-center text-base font-semibold tabular-nums ${
                       timeLeft <= 300
-                        ? "bg-red-50 border-red-200 text-red-700"
+                        ? "text-red-700"
                         : timeLeft <= 600
-                        ? "bg-amber-50 border-amber-200 text-amber-700"
-                        : "bg-gray-50 border-gray-200 text-slate-700"
+                        ? "text-amber-700"
+                        : "text-slate-700"
                     }`}
                   >
-                    <Clock3 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                    <span className="tabular-nums">{formatTime(timeLeft)}</span>
+                    {formatTime(timeLeft)}
                   </div>
-                <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold min-h-[44px] touch-manipulation">
-                  GÖNDER
-                </Button>
-              </div>
+                  <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-3 py-1.5 text-xs font-semibold min-h-[34px] touch-manipulation">
+                    GÖNDER
+                  </Button>
+                </div>
+                <div className="mt-2 flex items-center justify-end gap-1">
+                  <button
+                    type="button"
+                    className="h-7 w-7 rounded border border-gray-200 bg-white text-[11px] font-semibold text-gray-700"
+                    onClick={() => setFontScale((v) => Math.max(0.9, Math.round((v - 0.05) * 100) / 100))}
+                    aria-label="Metni küçült"
+                  >
+                    A-
+                  </button>
+                  <button
+                    type="button"
+                    className="h-7 w-7 rounded border border-gray-200 bg-white text-[11px] font-semibold text-gray-700"
+                    onClick={() => setFontScale((v) => Math.min(1.2, Math.round((v + 0.05) * 100) / 100))}
+                    aria-label="Metni büyült"
+                  >
+                    A+
+                  </button>
                 </div>
               </div>
 
-              {/* Desktop Header - Horizontal Layout */}
-              <div className="hidden lg:flex items-center justify-between w-full">
-                <div className="flex items-center">
+              {/* Desktop Header - centered timer + title after logo */}
+              <div className="hidden lg:grid lg:grid-cols-[auto_1fr_auto] items-center w-full gap-4">
+                <div className="flex items-center gap-2">
                   <img 
                     src="/logo11.svg" 
                     alt="TURKISHMOCK" 
-                    className="h-10 sm:h-11 md:h-12 w-auto object-contain"
+                    className="h-9 sm:h-10 md:h-11 w-auto object-contain"
                     onError={(e) => {
                       console.error("Logo failed to load");
                       (e.target as HTMLImageElement).style.display = 'none';
                     }}
                   />
                 </div>
-                <div className="font-extrabold text-3xl tracking-wider">OKUMA</div>
+                <div
+                  className={`justify-self-center text-[22px] font-semibold tabular-nums ${
+                    timeLeft <= 300
+                      ? "text-red-700"
+                      : timeLeft <= 600
+                      ? "text-amber-700"
+                      : "text-slate-700"
+                  }`}
+                >
+                  {formatTime(timeLeft)}
+                </div>
                 <div className="flex items-center gap-4">
                   <NotesPanel currentPartNumber={currentPartNumber} />
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
-                      className="h-9 w-9 rounded border border-gray-200 bg-white text-xs font-semibold text-gray-700"
+                      className="h-8 w-8 rounded border border-gray-200 bg-white text-[11px] font-semibold text-gray-700"
                       onClick={() => setFontScale((v) => Math.max(0.9, Math.round((v - 0.05) * 100) / 100))}
                       aria-label="Metni küçült"
                     >
@@ -724,26 +757,14 @@ export default function ReadingPage({ testId }: { testId: string }) {
                     </button>
                     <button
                       type="button"
-                      className="h-9 w-9 rounded border border-gray-200 bg-white text-xs font-semibold text-gray-700"
+                      className="h-8 w-8 rounded border border-gray-200 bg-white text-[11px] font-semibold text-gray-700"
                       onClick={() => setFontScale((v) => Math.min(1.2, Math.round((v + 0.05) * 100) / 100))}
                       aria-label="Metni büyült"
                     >
                       A+
                     </button>
                   </div>
-                  <div
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-bold ${
-                      timeLeft <= 300
-                        ? "bg-red-50 border-red-200 text-red-700"
-                        : timeLeft <= 600
-                        ? "bg-amber-50 border-amber-200 text-amber-700"
-                        : "bg-gray-50 border-gray-200 text-slate-700"
-                    }`}
-                  >
-                    <Clock3 className="h-4 w-4 shrink-0" aria-hidden="true" />
-                    <span className="tabular-nums">{formatTime(timeLeft)}</span>
-                  </div>
-                  <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 text-sm font-bold">
+                  <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 text-xs font-semibold min-h-[34px]">
                     GÖNDER
                   </Button>
                 </div>
@@ -756,7 +777,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
       <div className="mx-2 sm:mx-4 mt-2">
         <div className="p-3 sm:p-5 bg-gray-100 rounded-lg border border-gray-200">
           <div className="flex items-center justify-between mb-2 sm:mb-3">
-            <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-[#333333]">
+            <h3 className="text-[19px] font-semibold text-[#333333]">
               {currentPartNumber}. OKUMA METNİ
             </h3>
             <button
@@ -827,115 +848,144 @@ export default function ReadingPage({ testId }: { testId: string }) {
         />
       )}
 
-      {/* Footer navigation: Responsive like listening test */}
-      {!isLoading && !error && testData && (
-        <>
-          {/* Desktop Layout - Tabs */}
-          <div className="hidden lg:block fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-300 shadow-sm p-1.5 sm:p-2 z-50">
-            <div className="max-w-7xl mx-auto">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex justify-center gap-2 flex-nowrap overflow-x-auto flex-1">
-                {(() => {
-                  const parts = (testData.parts || []).map((p) => p.number || 0).filter((n) => n > 0).sort((a, b) => a - b);
-                  const uniqueParts = Array.from(new Set(parts));
+            {/* Footer navigation: Responsive like listening test */}
+      {!isLoading && !error && testData && (() => {
+        const partNumbers = getOrderedPartNumbers();
+        const totalParts = Math.max(1, partNumbers.length);
+        const currentPartIndex = Math.max(0, partNumbers.indexOf(currentPartNumber));
+        const currentPartProgress = ((currentPartIndex + 1) / totalParts) * 100;
+        const currentPartQuestions = getPartQuestions(currentPartNumber).length;
+        const currentPartAnswered = getAnsweredCountForPart(currentPartNumber);
 
-                  const buildPartQuestions = (partNum: number) => {
-                    const part = (testData.parts || []).find((p) => (p.number || 0) === partNum);
-                    const qs = (part?.sections || []).flatMap((s) => s.questions || []);
-                    const nums = qs
-                      .map((q) => q.number)
-                      .filter((n): n is number => typeof n === 'number')
-                      .sort((a, b) => a - b);
-                    return { qs, nums };
-                  };
+        const buildPartQuestions = (partNum: number) => {
+          const part = (testData.parts || []).find((pp) => (pp.number || 0) === partNum);
+          const qs = (part?.sections || []).flatMap((s) => s.questions || []);
+          const nums = qs
+            .map((q) => q.number)
+            .filter((n): n is number => typeof n === "number")
+            .sort((a, b) => a - b);
+          return { qs, nums };
+        };
 
-                  return uniqueParts.map((partNum) => {
-                    const { qs, nums } = buildPartQuestions(partNum);
-                    const isActive = currentPartNumber === partNum;
-                    return (
-                      <div
-                        key={partNum}
-                        className={`text-center border-2 rounded-lg p-1.5 min-w-fit cursor-pointer ${
-                          isActive ? "border-[#438553] bg-[#438553]/15" : "border-gray-300 bg-gray-50 hover:bg-[#F6F5F2]"
-                        }`}
-                        onClick={() => {
-                          setCurrentPartNumber(partNum);
-                          // Smooth scroll to top of content
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                      >
-                        <div className="flex gap-1 mb-1 justify-center flex-wrap">
-                          {(nums.length ? nums : [partNum]).map((q) => {
-                            const questionId = qs.find((qq) => qq.number === q)?.id;
-                            const isAnswered = !!(questionId && answers[questionId]);
-                            return (
-                              <div
-                                key={`${partNum}-${q}`}
-                                className={`w-5.5 h-5.5 rounded-full border-2 border-gray-800 flex items-center justify-center text-[11px] font-bold ${
-                                  isAnswered ? "bg-[#438553]" : "bg-white"
-                                }`}
-                              >
-                                {q}
-                              </div>
-                            );
-                          })}
-                        </div>
-                        <div className="text-[11px] font-bold">{partNum}. BÖLÜM</div>
-                      </div>
-                    );
-                  });
-                })()}
+        return (
+          <>
+            {/* Desktop Layout - Tabs */}
+            <div className="hidden lg:block fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-300 shadow-sm p-1.5 sm:p-2 z-50">
+              <div className="max-w-7xl mx-auto">
+                <div className="mb-2 flex items-center gap-3 px-1">
+                  <div className="text-[11px] font-semibold text-gray-700 min-w-[92px]">
+                    BÖLÜM {currentPartIndex + 1}/{totalParts}
+                  </div>
+                  <div className="h-1.5 flex-1 rounded-full bg-gray-200 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-[#438553] transition-all duration-200 ease-out"
+                      style={{ width: `${currentPartProgress}%` }}
+                    />
+                  </div>
+                  <div className="text-[11px] font-semibold text-gray-700 min-w-[88px] text-right">
+                    {currentPartAnswered}/{currentPartQuestions} cevap
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    onClick={handlePrevPart}
-                    disabled={currentPartNumber <= 1}
-                    className="bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-900 font-bold w-9 h-9 p-0 text-lg disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
-                    aria-label="Önceki"
-                  >
-                    ‹
-                  </Button>
-                  <Button
-                    onClick={handleNextPart}
-                    disabled={currentPartNumber >= 5}
-                    className="bg-[#438553] hover:bg-[#356A44] active:bg-[#2d5a3a] text-white font-bold w-9 h-9 p-0 text-lg disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
-                    aria-label="Sonraki"
-                  >
-                    ›
-                  </Button>
+
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex justify-center gap-2 flex-nowrap overflow-x-auto flex-1">
+                    {partNumbers.map((partNum) => {
+                      const { qs, nums } = buildPartQuestions(partNum);
+                      const isActive = currentPartNumber === partNum;
+                      return (
+                        <div
+                          key={partNum}
+                          className={`text-center border rounded-md p-1 min-w-fit cursor-pointer ${
+                            isActive ? "border-[#438553] bg-[#438553]/15" : "border-gray-300 bg-gray-50 hover:bg-[#F6F5F2]"
+                          }`}
+                          onClick={() => {
+                            setCurrentPartNumber(partNum);
+                            window.scrollTo({ top: 0, behavior: "smooth" });
+                          }}
+                        >
+                          <div className="flex gap-1 mb-1 justify-center flex-wrap">
+                            {(nums.length ? nums : [partNum]).map((q) => {
+                              const questionId = qs.find((qq) => qq.number === q)?.id;
+                              const isAnswered = !!(questionId && answers[questionId]);
+                              return (
+                                <div
+                                  key={`${partNum}-${q}`}
+                                  className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-xs font-bold ${
+                                    isAnswered ? "bg-[#438553] border-gray-800 text-white" : "bg-white border-gray-800 text-gray-800"
+                                  }`}
+                                >
+                                  {q}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={handlePrevPart}
+                      disabled={partNumbers.indexOf(currentPartNumber) <= 0}
+                      className="bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-900 font-bold px-3 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed min-h-[40px] touch-manipulation"
+                      aria-label="Önceki"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      onClick={handleNextPart}
+                      disabled={partNumbers.indexOf(currentPartNumber) >= partNumbers.length - 1}
+                      className="bg-[#438553] hover:bg-[#356A44] active:bg-[#2d5a3a] text-white font-bold px-3 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed min-h-[40px] touch-manipulation"
+                      aria-label="Sonraki"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-        {/* Mobile Layout - Prev/Next controls */}
-        <div className="lg:hidden fixed bottom-2 right-2 left-2 grid grid-cols-3 items-center gap-2 px-2.5 py-1.5 bg-white/95 backdrop-blur-sm rounded-lg shadow-sm border border-gray-300/80 z-50">
-            <div className="justify-self-start">
-              <Button
-                onClick={handlePrevPart}
-                disabled={currentPartNumber <= 1}
-                className="bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-900 font-bold w-10 h-9 p-0 text-lg disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
-                aria-label="Önceki"
-              >
-                ‹
-              </Button>
+            {/* Mobile Layout - compact prev/next with center progress */}
+            <div className="lg:hidden fixed bottom-2 right-2 left-2 grid grid-cols-[auto_1fr_auto] items-center gap-2 px-2 py-2 bg-white/98 backdrop-blur-sm rounded-lg shadow-sm border border-gray-300/80 z-50">
+              <div className="justify-self-start">
+                <Button
+                  onClick={handlePrevPart}
+                  disabled={partNumbers.indexOf(currentPartNumber) <= 0}
+                  className="bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-900 font-bold px-2.5 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed min-h-[36px] touch-manipulation"
+                  aria-label="Önceki"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="min-w-0 px-1">
+                <div className="text-center text-[11px] font-semibold text-gray-800">
+                  BÖLÜM {currentPartIndex + 1}/{totalParts}
+                </div>
+                <div className="mt-1 h-1.5 w-full rounded-full bg-gray-200 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-[#438553] transition-all duration-200 ease-out"
+                    style={{ width: `${currentPartProgress}%` }}
+                  />
+                </div>
+                <div className="mt-1 text-center text-[10px] text-gray-600">
+                  {currentPartAnswered}/{currentPartQuestions} cevap
+                </div>
+              </div>
+              <div className="justify-self-end">
+                <Button
+                  onClick={handleNextPart}
+                  disabled={partNumbers.indexOf(currentPartNumber) >= partNumbers.length - 1}
+                  className="bg-[#438553] hover:bg-[#356A44] active:bg-[#2d5a3a] text-white font-bold px-2.5 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed min-h-[36px] touch-manipulation"
+                  aria-label="Sonraki"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-            <div className="justify-self-center text-xs sm:text-sm font-bold">
-              {currentPartNumber}. BÖLÜM
-            </div>
-            <div className="justify-self-end">
-              <Button
-                onClick={handleNextPart}
-                disabled={currentPartNumber >= 5}
-                className="bg-[#438553] hover:bg-[#356A44] active:bg-[#2d5a3a] text-white font-bold w-10 h-9 p-0 text-lg disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
-                aria-label="Sonraki"
-              >
-                ›
-              </Button>
-            </div>
-          </div>
-        </>
-      )}
+          </>
+        );
+      })()}
 
       {/* Submit button (top-right already has one; optional dedicated handler) */}
       {/* Hook GÖNDER to submit current answers */}
@@ -957,6 +1007,8 @@ export default function ReadingPage({ testId }: { testId: string }) {
     </ReadingNotesProvider>
   );
 }
+
+
 
 
 

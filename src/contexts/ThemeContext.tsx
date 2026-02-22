@@ -9,7 +9,7 @@ type ThemeContextValue = {
   cycleTheme: () => void;
 };
 
-const THEME_STORAGE_KEY = "ui.theme";
+const THEME_STORAGE_KEY = "ui.theme.v2";
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
@@ -22,8 +22,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
     if (isThemeName(stored)) return stored;
     // Migrate old values from previous implementation.
-    if (stored === "white" || stored === "gray" || stored === "black") return "retro";
-    if (stored === "mono" || stored === "paper") return "retro";
+    if (stored === "white" || stored === "gray" || stored === "black") return "original";
+    if (stored === "mono" || stored === "paper") return "original";
     return "original";
   });
 
@@ -71,3 +71,5 @@ export function useTheme() {
   }
   return context;
 }
+
+

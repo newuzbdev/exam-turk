@@ -133,7 +133,7 @@ export default function UnifiedTestResults() {
     if (!listeningData) {
       return (
         <div className="text-center py-8">
-          <p className="text-gray-600">Dinleme testi sonuÃ§larÄ± mevcut deÄŸil</p>
+          <p className="text-gray-600">Dinleme testi sonuçlarý mevcut deðil</p>
         </div>
       );
     }
@@ -142,9 +142,9 @@ export default function UnifiedTestResults() {
       const correctAnswer = ua.question.answers.find(a => a.correct);
       return {
         no: index + 1,
-        userAnswer: ua.userAnswer || "SeÃ§ilmedi",
+        userAnswer: ua.userAnswer || "Seçilmedi",
         correctAnswer: correctAnswer?.variantText || correctAnswer?.answer || "",
-        result: ua.isCorrect ? "DoÄŸru" : "YanlÄ±ÅŸ"
+        result: ua.isCorrect ? "Doðru" : "Yanlýþ"
       };
     }) || [];
 
@@ -152,10 +152,10 @@ export default function UnifiedTestResults() {
       <div className="space-y-6">
         <div className="mb-6">
           <h2 className="text-xl font-semibold text-foreground">
-            Dinleme PuanÄ±: {listeningData.score || 0}
+            Dinleme Puaný: {listeningData.score || 0}
             {listeningData.userAnswers && (
               <span className="ml-3 text-base text-muted-foreground">
-                ({listeningData.userAnswers.filter(u => u.isCorrect).length} / {listeningData.userAnswers.length} doÄŸru)
+                ({listeningData.userAnswers.filter(u => u.isCorrect).length} / {listeningData.userAnswers.length} doðru)
               </span>
             )}
           </h2>
@@ -168,9 +168,9 @@ export default function UnifiedTestResults() {
                 <thead>
                   <tr className="bg-green-600 text-white">
                     <th className="px-4 py-3 text-left font-medium rounded-tl-lg">No.</th>
-                    <th className="px-4 py-3 text-left font-medium">KullanÄ±cÄ± CevabÄ±</th>
-                    <th className="px-4 py-3 text-left font-medium">DoÄŸru Cevap</th>
-                    <th className="px-4 py-3 text-left font-medium rounded-tr-lg">SonuÃ§</th>
+                    <th className="px-4 py-3 text-left font-medium">Kullanýcý Cevabý</th>
+                    <th className="px-4 py-3 text-left font-medium">Doðru Cevap</th>
+                    <th className="px-4 py-3 text-left font-medium rounded-tr-lg">Sonuç</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -184,9 +184,9 @@ export default function UnifiedTestResults() {
                       <td className="px-4 py-3 text-gray-800 font-medium">{item.correctAnswer}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          item.result === "DoÄŸru" 
+                          item.result === "Doðru" 
                             ? "bg-green-100 text-green-800" 
-                            : item.result === "YanlÄ±ÅŸ" 
+                            : item.result === "Yanlýþ" 
                               ? "bg-red-100 text-red-800"
                               : "bg-gray-100 text-gray-700"
                         }`}>
@@ -208,7 +208,7 @@ export default function UnifiedTestResults() {
     if (!readingData) {
       return (
         <div className="text-center py-8">
-          <p className="text-gray-600">Okuma testi sonuÃ§larÄ± mevcut deÄŸil</p>
+          <p className="text-gray-600">Okuma testi sonuçlarý mevcut deðil</p>
         </div>
       );
     }
@@ -217,9 +217,9 @@ export default function UnifiedTestResults() {
       const correctAnswer = ua.question.answers.find(a => a.correct);
       return {
         no: index + 1,
-        userAnswer: ua.userAnswer || "SeÃ§ilmedi",
+        userAnswer: ua.userAnswer || "Seçilmedi",
         correctAnswer: correctAnswer?.variantText || correctAnswer?.answer || "",
-        result: ua.isCorrect ? "DoÄŸru" : "YanlÄ±ÅŸ"
+        result: ua.isCorrect ? "Doðru" : "Yanlýþ"
       };
     }) || [];
 
@@ -227,10 +227,10 @@ export default function UnifiedTestResults() {
       <div className="space-y-6">
         <div className="mb-6">
           <h2 className="text-xl font-semibold text-foreground">
-            Okuma PuanÄ±: {readingData.score || 0}
+            Okuma Puaný: {readingData.score || 0}
             {readingData.userAnswers && (
               <span className="ml-3 text-base text-muted-foreground">
-                ({readingData.userAnswers.filter(u => u.isCorrect).length} / {readingData.userAnswers.length} doÄŸru)
+                ({readingData.userAnswers.filter(u => u.isCorrect).length} / {readingData.userAnswers.length} doðru)
               </span>
             )}
           </h2>
@@ -243,9 +243,9 @@ export default function UnifiedTestResults() {
                 <thead>
                   <tr className="bg-green-600 text-white">
                     <th className="px-4 py-3 text-left font-medium rounded-tl-lg">No.</th>
-                    <th className="px-4 py-3 text-left font-medium">KullanÄ±cÄ± CevabÄ±</th>
-                    <th className="px-4 py-3 text-left font-medium">DoÄŸru Cevap</th>
-                    <th className="px-4 py-3 text-left font-medium rounded-tr-lg">SonuÃ§</th>
+                    <th className="px-4 py-3 text-left font-medium">Kullanýcý Cevabý</th>
+                    <th className="px-4 py-3 text-left font-medium">Doðru Cevap</th>
+                    <th className="px-4 py-3 text-left font-medium rounded-tr-lg">Sonuç</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -259,9 +259,9 @@ export default function UnifiedTestResults() {
                       <td className="px-4 py-3 text-gray-800 font-medium">{item.correctAnswer}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          item.result === "DoÄŸru" 
+                          item.result === "Doðru" 
                             ? "bg-green-100 text-green-800" 
-                            : item.result === "YanlÄ±ÅŸ" 
+                            : item.result === "Yanlýþ" 
                               ? "bg-red-100 text-red-800"
                               : "bg-gray-100 text-gray-700"
                         }`}>
@@ -283,7 +283,7 @@ export default function UnifiedTestResults() {
     if (!writingData) {
       return (
         <div className="text-center py-8">
-          <p className="text-gray-600">Yazma testi sonuÃ§larÄ± mevcut deÄŸil</p>
+          <p className="text-gray-600">Yazma testi sonuçlarý mevcut deðil</p>
         </div>
       );
     }
@@ -296,13 +296,13 @@ export default function UnifiedTestResults() {
               {writingData.score ?? "0"}
             </span>
           </div>
-          <h2 className="text-3xl font-bold text-black mb-2">Yazma Testi TamamlandÄ±!</h2>
-          <p className="text-gray-600 text-lg mb-6">IELTS Yazma DeÄŸerlendirmesi SonuÃ§larÄ±nÄ±z</p>
+          <h2 className="text-3xl font-bold text-black mb-2">Yazma Testi Tamamlandý!</h2>
+          <p className="text-gray-600 text-lg mb-6">IELTS Yazma Deðerlendirmesi Sonuçlarýnýz</p>
         </div>
 
         {writingData.answers && writingData.answers.length > 0 && (
           <div className="space-y-6">
-            <h3 className="text-xl font-semibold text-foreground">CevaplarÄ±nÄ±z</h3>
+            <h3 className="text-xl font-semibold text-foreground">Cevaplarýnýz</h3>
             {writingData.answers.map((answer, index) => (
               <Card key={answer.questionId} className="p-6">
                 <div className="space-y-4">
@@ -313,7 +313,7 @@ export default function UnifiedTestResults() {
                   {/* Render description above question text for sections 1.1 and 1.2 */}
                   {(answer.section.order === 1 || answer.section.title.includes("1.1") || answer.section.title.includes("1.2")) && answer.section.description && (
                     <div className="bg-gray-50 p-4 rounded-lg border-l-4 border-blue-500">
-                      <h4 className="font-medium text-gray-800 mb-2">GÃ¶rev AÃ§Ä±klamasÄ±:</h4>
+                      <h4 className="font-medium text-gray-800 mb-2">Görev Açýklamasý:</h4>
                       <p className="text-gray-700 whitespace-pre-line">{answer.section.description}</p>
                     </div>
                   )}
@@ -324,7 +324,7 @@ export default function UnifiedTestResults() {
                   </div>
 
                   <div className="bg-green-50 p-4 rounded-lg">
-                    <h4 className="font-medium text-green-800 mb-2">CevabÄ±nÄ±z:</h4>
+                    <h4 className="font-medium text-green-800 mb-2">Cevabýnýz:</h4>
                     <p className="text-green-700 whitespace-pre-line">{answer.userAnswer || "Cevap verilmedi"}</p>
                   </div>
                 </div>
@@ -369,7 +369,7 @@ export default function UnifiedTestResults() {
     if (!speakingData) {
       return (
         <div className="text-center py-8">
-          <p className="text-gray-600">KonuÅŸma testi sonuÃ§larÄ± mevcut deÄŸil</p>
+          <p className="text-gray-600">Konuþma testi sonuçlarý mevcut deðil</p>
         </div>
       );
     }
@@ -382,8 +382,8 @@ export default function UnifiedTestResults() {
               {speakingData.score ?? "N/A"}
             </span>
           </div>
-          <h2 className="text-3xl font-bold text-black mb-2">KonuÅŸma Testi TamamlandÄ±!</h2>
-          <p className="text-gray-600 text-lg mb-6">IELTS KonuÅŸma DeÄŸerlendirmesi SonuÃ§larÄ±nÄ±z</p>
+          <h2 className="text-3xl font-bold text-black mb-2">Konuþma Testi Tamamlandý!</h2>
+          <p className="text-gray-600 text-lg mb-6">IELTS Konuþma Deðerlendirmesi Sonuçlarýnýz</p>
         </div>
 
         {speakingData.aiFeedback && (
@@ -423,7 +423,7 @@ export default function UnifiedTestResults() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
-          <p className="text-muted-foreground">SonuÃ§lar yÃ¼kleniyor...</p>
+          <p className="text-muted-foreground">Sonuçlar yükleniyor...</p>
         </div>
       </div>
     );
@@ -433,9 +433,9 @@ export default function UnifiedTestResults() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">SonuÃ§lar BulunamadÄ±</h2>
+          <h2 className="text-2xl font-bold text-red-600 mb-4">Sonuçlar Bulunamadý</h2>
           <p className="text-muted-foreground mb-4">
-            Test sonuÃ§larÄ± yÃ¼klenemedi. LÃ¼tfen sonuÃ§ ID'sini kontrol edin ve tekrar deneyin.
+            Test sonuçlarý yüklenemedi. Lütfen sonuç ID'sini kontrol edin ve tekrar deneyin.
           </p>
         </div>
       </div>
@@ -446,8 +446,8 @@ export default function UnifiedTestResults() {
     <div className="min-h-screen bg-gray-50 py-10">
       <div className="max-w-7xl mx-auto px-4">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Test SonuÃ§larÄ±</h1>
-          <p className="text-muted-foreground">IELTS test performansÄ±nÄ±zÄ±n kapsamlÄ± Ã¶zeti</p>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Test Sonuçlarý</h1>
+          <p className="text-muted-foreground">IELTS test performansýnýzýn kapsamlý özeti</p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -480,7 +480,7 @@ export default function UnifiedTestResults() {
               )}
             </TabsTrigger>
             <TabsTrigger value="speaking" className="flex items-center gap-2">
-              <span className="hidden sm:inline">KonuÅŸma</span>
+              <span className="hidden sm:inline">Konuþma</span>
               <span className="sm:hidden">S</span>
               {speakingData && (
                 <span className="ml-1 text-xs bg-red-100 text-red-800 px-1.5 py-0.5 rounded-full">
@@ -518,3 +518,4 @@ export default function UnifiedTestResults() {
     </div>
   );
 }
+

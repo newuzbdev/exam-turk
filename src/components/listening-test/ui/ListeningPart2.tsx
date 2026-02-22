@@ -10,29 +10,29 @@ export default function ListeningPart2() {
   const [questions, setQuestions] = useState<Question[]>([
     {
       id: 9,
-      text: "VÃ¼cut tipine uygun bir spor seÃ§mek, kiÅŸinin yaÅŸam boyu spor yapma alÄ±ÅŸkanlÄ±ÄŸÄ± kazanmasÄ±nÄ± kolaylaÅŸtÄ±rabilir.",
+      text: "Vücut tipine uygun bir spor seçmek, kişinin yaşam boyu spor yapma alışkanlığı kazanmasını kolaylaştırabilir.",
       selectedAnswer: "correct",
     },
     {
       id: 12,
-      text: "VÃ¼cut tipine uygun bir spor seÃ§mek, kiÅŸinin yaÅŸam boyu spor yapma alÄ±ÅŸkanlÄ±ÄŸÄ± kazanmasÄ±nÄ± kolaylaÅŸtÄ±rabilir.",
+      text: "Vücut tipine uygun bir spor seçmek, kişinin yaşam boyu spor yapma alışkanlığı kazanmasını kolaylaştırabilir.",
     },
     {
       id: 10,
-      text: "VÃ¼cut tipine uygun bir spor seÃ§mek, kiÅŸinin yaÅŸam boyu spor yapma alÄ±ÅŸkanlÄ±ÄŸÄ± kazanmasÄ±nÄ± kolaylaÅŸtÄ±rabilir.",
+      text: "Vücut tipine uygun bir spor seçmek, kişinin yaşam boyu spor yapma alışkanlığı kazanmasını kolaylaştırabilir.",
     },
     {
       id: 13,
-      text: "VÃ¼cut tipine uygun bir spor seÃ§mek, kiÅŸinin yaÅŸam boyu spor yapma alÄ±ÅŸkanlÄ±ÄŸÄ± kazanmasÄ±nÄ± kolaylaÅŸtÄ±rabilir.",
+      text: "Vücut tipine uygun bir spor seçmek, kişinin yaşam boyu spor yapma alışkanlığı kazanmasını kolaylaştırabilir.",
       selectedAnswer: "correct",
     },
     {
       id: 11,
-      text: "VÃ¼cut tipine uygun bir spor seÃ§mek, kiÅŸinin yaÅŸam boyu spor yapma alÄ±ÅŸkanlÄ±ÄŸÄ± kazanmasÄ±nÄ± kolaylaÅŸtÄ±rabilir.",
+      text: "Vücut tipine uygun bir spor seçmek, kişinin yaşam boyu spor yapma alışkanlığı kazanmasını kolaylaştırabilir.",
     },
     {
       id: 14,
-      text: "VÃ¼cut tipine uygun bir spor seÃ§mek, kiÅŸinin yaÅŸam boyu spor yapma alÄ±ÅŸkanlÄ±ÄŸÄ± kazanmasÄ±nÄ± kolaylaÅŸtÄ±rabilir.",
+      text: "Vücut tipine uygun bir spor seçmek, kişinin yaşam boyu spor yapma alışkanlığı kazanmasını kolaylaştırabilir.",
       selectedAnswer: "correct",
     },
   ]);
@@ -52,18 +52,18 @@ export default function ListeningPart2() {
     <div className="w-full mx-auto  min-h-screen">
       <div className="bg-yellow-50 border-b border-gray-300 px-6 py-4">
         <p className="text-lg leading-relaxed">
-          <strong>Sorular 9-14.</strong> DinlediÄŸiniz metne gÃ¶re aÅŸaÄŸÄ±daki
-          cÃ¼mleler iÃ§in <strong>DOÄRU</strong> ya da <strong>YANLIÅ</strong>{" "}
-          seÃ§eneklerinden birini iÅŸaretleyiniz.
+          <strong>Sorular 9-14.</strong> Dinlediğiniz metne göre aşağıdaki
+          cümleler için <strong>DOĞRU</strong> ya da <strong>YANLIŞ</strong>{" "}
+          seçeneklerinden birini işaretleyiniz.
         </p>
         <div className="mt-4 text-lg">
           <p>
-            <strong>DOÄRU</strong> â€“ cÃ¼mle, dinleme metnindeki bilgilerle uyumlu
-            ve/veya tutarlÄ±ysa
+            <strong>DOĞRU</strong> - cümle, dinleme metnindeki bilgilerle uyumlu
+            ve/veya tutarlıysa
           </p>
           <p>
-            <strong>YANLIÅ</strong> â€“ cÃ¼mle, dinleme metnindeki bilgilerle
-            tutarsÄ±z ve/veya Ã§eliÅŸkiliyse
+            <strong>YANLIŞ</strong> - cÃ¼mle, dinleme metnindeki bilgilerle
+            tutarsız ve/veya çelişkiliyse
           </p>
         </div>
       </div>
@@ -92,7 +92,7 @@ export default function ListeningPart2() {
                   checked={question.selectedAnswer === "correct"}
                   onChange={() => handleAnswerSelect(question.id, "correct")}
                 />
-                <span className="text-lg text-gray-700 ml-1">DoÄŸru</span>
+                <span className="text-lg text-gray-700 ml-1">Doğru</span>
               </label>
 
               <label className="flex items-center gap-2 cursor-pointer">
@@ -111,7 +111,7 @@ export default function ListeningPart2() {
                   checked={question.selectedAnswer === "incorrect"}
                   onChange={() => handleAnswerSelect(question.id, "incorrect")}
                 />
-                <span className="text-lg text-gray-700 ml-1">YanlÄ±ÅŸ</span>
+                <span className="text-lg text-gray-700 ml-1">Yanlış</span>
               </label>
             </div>
           </div>
@@ -120,3 +120,4 @@ export default function ListeningPart2() {
     </div>
   );
 }
+

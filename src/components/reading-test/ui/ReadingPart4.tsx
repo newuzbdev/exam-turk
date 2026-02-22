@@ -139,11 +139,11 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
                           className={`flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-50 cursor-pointer ${isTrueFalseQuestion ? 'min-w-[140px]' : ''}`}
                           onClick={() => onAnswerChange(q.id, opt.variantText)}
                         >
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                            answers[q.id] === opt.variantText ? "border-[#438553]" : "border-gray-400"
+                          <div className={`relative overflow-hidden w-5 h-5 rounded-full border-[1.75px] flex items-center justify-center flex-shrink-0 transition-all duration-150 ease-out ${
+                            answers[q.id] === opt.variantText ? "border-[#438553] scale-[1.02]" : "border-gray-400 scale-100"
                           }`}>
-                            <div className={`w-2.5 h-2.5 rounded-full ${
-                              answers[q.id] === opt.variantText ? "bg-[#438553]" : "bg-transparent"
+                            <div className={`w-4 h-4 rounded-full transition-all duration-150 ease-out ${
+                              answers[q.id] === opt.variantText ? "bg-[#438553] scale-100 opacity-100" : "bg-transparent scale-75 opacity-0"
                             }`} />
                           </div>
                           <div className="flex items-center gap-1 reading-text text-slate-600 text-[12px]">
@@ -233,11 +233,11 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
                             >
                               <div className="flex items-center gap-2 text-[15px] reading-text text-slate-600">
                                 <span className="font-semibold">{opt.variantText}.</span>
-                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                                  answers[q.id] === opt.variantText ? "border-[#438553]" : "border-gray-400"
+                                <div className={`relative overflow-hidden w-5 h-5 rounded-full border-[1.75px] flex items-center justify-center flex-shrink-0 transition-all duration-150 ease-out ${
+                                  answers[q.id] === opt.variantText ? "border-[#438553] scale-[1.02]" : "border-gray-400 scale-100"
                                 }`}>
-                                  <div className={`w-2.5 h-2.5 rounded-full ${
-                                    answers[q.id] === opt.variantText ? "bg-[#438553]" : "bg-transparent"
+                                  <div className={`w-4 h-4 rounded-full transition-all duration-150 ease-out ${
+                                    answers[q.id] === opt.variantText ? "bg-[#438553] scale-100 opacity-100" : "bg-transparent scale-75 opacity-0"
                                   }`} />
                                 </div>
                                 <span className="font-normal">{opt.answer}</span>
@@ -257,5 +257,4 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
     </div>
   );
 }
-
 

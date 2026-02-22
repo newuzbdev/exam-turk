@@ -71,7 +71,7 @@ export default function ReadingPart1({ testData, answers, onAnswerChange, partNu
           ? `${selectedOption.variantText}. ${selectedOption.answer}`
           : "Se\u00e7iniz";
         const desktopSelectedText = selectedOption
-          ? selectedOption.variantText
+          ? `${selectedOption.answer}`
           : normalizedSelectedVariant || "Se\u00e7iniz";
         parts.push(
           <span key={`${keyPrefix}-b-${qNum}`} className="inline-block align-middle mx-1">
@@ -82,8 +82,16 @@ export default function ReadingPart1({ testData, answers, onAnswerChange, partNu
               <SelectTrigger
                 className={
                   isMobile
-                    ? "h-7 min-w-[8rem] w-auto bg-white border border-gray-200 rounded-sm px-1.5 py-0 !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] leading-none focus:ring-2 focus:ring-[#438553] focus:border-[#438553] cursor-pointer"
-                    : "h-9 w-24 bg-white border border-gray-200 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-[#438553] focus:border-[#438553] cursor-pointer"
+                    ? `h-6 min-w-[8rem] w-auto border rounded-sm px-1.5 py-0 !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] leading-none cursor-pointer transition-all duration-150 ease-out data-[state=open]:scale-[1.01] ${
+                        selectedOption
+                          ? "border-gray-400 bg-gray-100 text-[#333333]"
+                          : "border-gray-200 bg-white text-[#333333] hover:border-gray-300"
+                      } focus:ring-1 focus:ring-black/15 focus:ring-offset-0 focus:border-gray-400`
+                    : `h-6 min-w-[8rem] w-auto border rounded-md px-1.5 py-0 !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] leading-none cursor-pointer transition-all duration-150 ease-out data-[state=open]:scale-[1.01] ${
+                        selectedOption
+                          ? "border-gray-400 bg-gray-100 text-[#333333]"
+                          : "border-gray-200 bg-white text-[#333333] hover:border-gray-300"
+                      } focus:ring-1 focus:ring-black/15 focus:ring-offset-0 focus:border-gray-400`
                 }
               >
                 {isMobile ? (
@@ -96,10 +104,10 @@ export default function ReadingPart1({ testData, answers, onAnswerChange, partNu
                   </SelectValue>
                 )}
               </SelectTrigger>
-              <SelectContent className="bg-white reading-select-content max-h-[60vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50">
+              <SelectContent className="bg-white border border-gray-200 shadow-sm rounded-md reading-select-content max-h-[60vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50">
                 <SelectItem
                   value="__none__"
-                  className={isMobile ? "cursor-pointer py-1 !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))]" : "cursor-pointer py-1"}
+                  className="cursor-pointer py-1 !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]"
                 >
                   {`Se\u00e7iniz`}
                 </SelectItem>
@@ -107,7 +115,7 @@ export default function ReadingPart1({ testData, answers, onAnswerChange, partNu
                   <SelectItem
                     key={opt.variantText}
                     value={opt.variantText}
-                    className={isMobile ? "cursor-pointer py-1 !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))]" : "cursor-pointer py-1"}
+                    className="cursor-pointer py-1 !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]"
                   >
                     {opt.variantText}. {opt.answer}
                   </SelectItem>
@@ -181,23 +189,21 @@ export default function ReadingPart1({ testData, answers, onAnswerChange, partNu
 
           <ResizablePanel defaultSize={40} minSize={20} className="reading-surface-alt min-h-0">
             <div className="h-full max-h-full p-6 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent pb-40 reading-scroll">
-              <div className="reading-surface-card border border-gray-200 bg-gray-50 rounded-lg p-4">
-                <div className="text-sm font-semibold text-slate-700 mb-3">{`Se\u00e7enekler`}</div>
-                <div className="space-y-2">
-                  {optionList.map((opt) => {
-                    const isUsed = selectedVariants.has(opt.variantText);
-                    return (
-                    <div key={opt.variantText} className="flex items-start gap-3">
-                      <span className={`font-semibold min-w-[2rem] text-right tabular-nums mt-[3px] ${isUsed ? "text-slate-400 line-through" : "text-slate-800"}`}>
-                        {opt.variantText}.
-                      </span>
-                      <span className={`reading-text leading-tight font-normal ${isUsed ? "text-slate-400 line-through" : ""}`}>
-                        {opt.answer}
-                      </span>
-                    </div>
-                    );
-                  })}
-                </div>
+              <div className="text-sm font-semibold text-slate-700 mb-3">{`Se\u00e7enekler`}</div>
+              <div className="space-y-2">
+                {optionList.map((opt) => {
+                  const isUsed = selectedVariants.has(opt.variantText);
+                  return (
+                  <div key={opt.variantText} className="flex items-start gap-3">
+                    <span className={`font-semibold min-w-[2rem] text-right tabular-nums mt-[3px] ${isUsed ? "text-slate-400 line-through" : "text-slate-800"}`}>
+                      {opt.variantText}.
+                    </span>
+                    <span className={`reading-text leading-tight font-normal ${isUsed ? "text-slate-400 line-through" : ""}`}>
+                      {opt.answer}
+                    </span>
+                  </div>
+                  );
+                })}
               </div>
             </div>
           </ResizablePanel>
@@ -206,7 +212,3 @@ export default function ReadingPart1({ testData, answers, onAnswerChange, partNu
     </div>
   );
 }
-
-
-
-

@@ -72,17 +72,19 @@ export default function ReadingPart3({ testData, answers, onAnswerChange, partNu
                         value={selectedLetter || ""}
                         onValueChange={(value) => onAnswerChange(q.id, value === "__none__" ? "" : value)}
                       >
-                        <SelectTrigger className="w-full bg-white border border-gray-200 rounded-md px-3 py-2 min-h-10 h-auto text-xs focus:ring-2 focus:ring-[#438553] focus:border-[#438553] cursor-pointer">
+                        <SelectTrigger className={`w-full border rounded-md px-3 py-2 min-h-10 h-auto text-xs cursor-pointer transition-all duration-150 ease-out data-[state=open]:scale-[1.01] ${
+                          selectedOption ? "border-gray-400 bg-gray-100 text-[#333333]" : "border-gray-200 bg-white text-[#333333] hover:border-gray-300"
+                        } focus:ring-1 focus:ring-black/15 focus:ring-offset-0 focus:border-gray-400`}>
                           <SelectValue placeholder="Seçiniz">
                             {selectedOption ? `${selectedOption.letter}. ${fixMojibake(selectedOption.text)}` : "Seçiniz"}
                           </SelectValue>
                         </SelectTrigger>
-                        <SelectContent className="bg-white reading-select-content reading-select-content max-h-[60vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50">
-                          <SelectItem value="__none__" className="cursor-pointer text-xs py-1">
+                        <SelectContent className="bg-white border border-gray-200 shadow-sm rounded-md reading-select-content reading-select-content max-h-[60vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50">
+                          <SelectItem value="__none__" className="cursor-pointer text-xs py-1 focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
                             {`Se\u00e7iniz`}
                           </SelectItem>
                           {optionList.map((opt) => (
-                            <SelectItem key={opt.letter} value={opt.letter} className="cursor-pointer text-xs py-1">
+                            <SelectItem key={opt.letter} value={opt.letter} className="cursor-pointer text-xs py-1 focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
                               {opt.letter}. {fixMojibake(opt.text)}
                             </SelectItem>
                           ))}
@@ -127,17 +129,19 @@ export default function ReadingPart3({ testData, answers, onAnswerChange, partNu
                               value={answers[q.id] || ""}
                               onValueChange={(value) => onAnswerChange(q.id, value === "__none__" ? "" : value)}
                             >
-                              <SelectTrigger className="w-28 bg-white border border-gray-200 rounded-md px-3 py-2 h-10 text-sm focus:ring-2 focus:ring-[#438553] focus:border-[#438553] cursor-pointer">
+                              <SelectTrigger className={`w-28 border rounded-md px-3 py-2 h-10 text-sm cursor-pointer transition-all duration-150 ease-out data-[state=open]:scale-[1.01] ${
+                                answers[q.id] ? "border-gray-400 bg-gray-100 text-[#333333]" : "border-gray-200 bg-white text-[#333333] hover:border-gray-300"
+                              } focus:ring-1 focus:ring-black/15 focus:ring-offset-0 focus:border-gray-400`}>
                                 <SelectValue placeholder="Seçiniz">
                                 {answers[q.id] ? `${answers[q.id]}.` : "Seçiniz"}
                               </SelectValue>
                               </SelectTrigger>
-                              <SelectContent className="bg-white reading-select-content reading-select-content max-h-[60vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50">
-                                <SelectItem value="__none__" className="cursor-pointer py-1">
+                              <SelectContent className="bg-white border border-gray-200 shadow-sm rounded-md reading-select-content reading-select-content max-h-[60vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50">
+                                <SelectItem value="__none__" className="cursor-pointer py-1 focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
                                   {`Se\u00e7iniz`}
                                 </SelectItem>
                                 {optionList.map((opt) => (
-                                  <SelectItem key={opt.letter} value={opt.letter} className="cursor-pointer py-1">
+                                  <SelectItem key={opt.letter} value={opt.letter} className="cursor-pointer py-1 focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
                                     {opt.letter}. {opt.text}
                                   </SelectItem>
                                 ))}
@@ -165,23 +169,21 @@ export default function ReadingPart3({ testData, answers, onAnswerChange, partNu
           {/* Right: Headings legend A..H (no question labels next to variants) */}
           <ResizablePanel defaultSize={40} minSize={25} className="reading-surface-alt">
             <div className="h-full p-6 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent flex flex-col reading-scroll">
-              <div className="reading-surface-card border border-gray-200 bg-gray-50 rounded-lg p-4">
-                <div className="text-sm font-semibold text-slate-700 mb-3">{`Se\u00e7enekler`}</div>
-                <div className="space-y-2">
-                  {optionList.map((opt) => {
-                    const isUsed = selectedVariants.has(opt.letter);
-                    return (
-                      <div key={opt.letter} className="flex items-start gap-3">
-                        <span className={`font-semibold min-w-[2rem] text-right tabular-nums mt-[3px] ${isUsed ? "text-slate-400 line-through" : "text-slate-800"}`}>
-                          {opt.letter}.
-                        </span>
-                        <span className={`reading-text leading-tight font-normal ${isUsed ? "text-slate-400 line-through" : ""}`}>
-                          {opt.text}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
+              <div className="text-sm font-semibold text-slate-700 mb-3">{`Se\u00e7enekler`}</div>
+              <div className="space-y-2">
+                {optionList.map((opt) => {
+                  const isUsed = selectedVariants.has(opt.letter);
+                  return (
+                    <div key={opt.letter} className="flex items-start gap-3">
+                      <span className={`font-semibold min-w-[2rem] text-right tabular-nums mt-[3px] ${isUsed ? "text-slate-400 line-through" : "text-slate-800"}`}>
+                        {opt.letter}.
+                      </span>
+                      <span className={`reading-text leading-tight font-normal ${isUsed ? "text-slate-400 line-through" : ""}`}>
+                        {opt.text}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </ResizablePanel>
@@ -190,9 +192,6 @@ export default function ReadingPart3({ testData, answers, onAnswerChange, partNu
     </div>
   );
 }
-
-
-
 
 
 

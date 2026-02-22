@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -75,11 +75,11 @@ export default function ListeningResultsPage() {
 
   // Transform data to match the table format
   const examData = data?.userAnswers?.map((ua: any, index: number) => {
-    const doğruAnswer = ua.question.answers.find((a: any) => a.correct);
+    const correctAnswer = ua.question.answers.find((a: any) => a.correct);
     return {
       no: index + 1,
       userAnswer: ua.userAnswer || "Seçilmedi",
-      doğruAnswer: doğruAnswer?.variantText || doğruAnswer?.answer || "",
+      correctAnswer: correctAnswer?.variantText || correctAnswer?.answer || "",
       result: ua.isCorrect ? "Doğru" : "Yanlış"
     };
   }) || [];
@@ -91,17 +91,17 @@ export default function ListeningResultsPage() {
     (data?.userAnswers || []).forEach((ua: any) => {
       userAnswerByQ[ua.questionId] = { userAnswer: ua.userAnswer, isCorrect: ua.isCorrect };
     });
-    const rows: { no: number; userAnswer: string; doğruAnswer: string; result: string }[] = [];
+    const rows: { no: number; userAnswer: string; correctAnswer: string; result: string }[] = [];
     let counter = 1;
     (testData.parts || []).forEach(p => {
       (p.sections || []).forEach(s => {
         (s.questions || []).forEach(q => {
           const ua = userAnswerByQ[q.id] || {};
-          const doğru = (q.answers || []).find((a: any) => a.correct);
+          const correct = (q.answers || []).find((a: any) => a.correct);
           rows.push({
             no: counter++,
             userAnswer: ua.userAnswer || "Seçilmedi",
-            doğruAnswer: (doğru?.variantText || doğru?.answer || "") as string,
+            correctAnswer: (correct?.variantText || correct?.answer || "") as string,
             result: ua.userAnswer ? (ua.isCorrect ? "Doğru" : "Yanlış") : "Seçilmedi",
           });
         });
@@ -130,7 +130,7 @@ export default function ListeningResultsPage() {
   const resolvedLevel =
     normalizeLevel((summary as any)?.level ?? (data as any)?.level) ||
     levelFromScore(Number(score) || 0);
-  const computedDoğruFromFull = useMemo(() => {
+  const computedCorrectFromFull = useMemo(() => {
     if (fullExamData) return fullExamData.filter(r => r.result === "Doğru").length;
     if (hasDetailedData) return (data!.userAnswers || []).filter((u: any) => u.isCorrect).length;
     return undefined;
@@ -140,7 +140,7 @@ export default function ListeningResultsPage() {
     if (hasDetailedData) return (data!.userAnswers || []).length;
     return undefined;
   }, [fullExamData, hasDetailedData, data]);
-  const doğruCount = summary?.doğruCount ?? computedDoğruFromFull;
+  const correctCount = (summary as any)?.dogruCount ?? (summary as any)?.doğruCount ?? (summary as any)?.correctCount ?? computedCorrectFromFull;
   const totalQuestions = summary?.totalQuestions ?? computedTotalFromFull;
   const userName = "JAXONGIRMIRZO"; // You can get this from user context or API
   const currentDate = new Date().toISOString().replace('T', ' ').substring(0, 19) + " GMT+5";
@@ -252,9 +252,9 @@ export default function ListeningResultsPage() {
         {/* Listening Score */}
         <div className="mb-6">
         <h2 className="text-xl font-semibold text-foreground">Dinleme Puanı: {score}
-          {typeof doğruCount === "number" && typeof totalQuestions === "number" && (
+          {typeof correctCount === "number" && typeof totalQuestions === "number" && (
             <span className="ml-3 text-base text-muted-foreground">(
-              {doğruCount} / {totalQuestions} doğru
+              {correctCount} / {totalQuestions} doğru
             )</span>
           )}
         </h2>
@@ -282,7 +282,7 @@ export default function ListeningResultsPage() {
                       >
                         <td className="px-4 py-3 text-gray-700 font-medium">{item.no}</td>
                         <td className="px-4 py-3 text-gray-600">{item.userAnswer || "Seçilmedi"}</td>
-                        <td className="px-4 py-3 text-gray-800 font-medium">{item.doğruAnswer}</td>
+                        <td className="px-4 py-3 text-gray-800 font-medium">{item.correctAnswer}</td>
                         <td className="px-4 py-3">
                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                             item.result === "Doğru" 
@@ -387,9 +387,9 @@ export default function ListeningResultsPage() {
       {/* Listening Score */}
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-foreground">Dinleme Puanı: {score}
-          {typeof doğruCount === "number" && typeof totalQuestions === "number" && (
+          {typeof correctCount === "number" && typeof totalQuestions === "number" && (
             <span className="ml-3 text-base text-muted-foreground">(
-              {doğruCount} / {totalQuestions} doğru
+              {correctCount} / {totalQuestions} doğru
             )</span>
           )}
         </h2>
@@ -416,7 +416,7 @@ export default function ListeningResultsPage() {
                   >
                     <td className="px-4 py-3 text-gray-700 font-medium">{item.no}</td>
                     <td className="px-4 py-3 text-gray-600">{item.userAnswer || "Seçilmedi"}</td>
-                    <td className="px-4 py-3 text-gray-800 font-medium">{item.doğruAnswer}</td>
+                    <td className="px-4 py-3 text-gray-800 font-medium">{item.correctAnswer}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                         item.result === "Doğru" 
@@ -451,3 +451,5 @@ export default function ListeningResultsPage() {
     </div>
   );
 }
+
+

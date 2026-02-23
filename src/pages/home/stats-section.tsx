@@ -119,7 +119,7 @@ const StatsSection = () => {
 
           <div>
             <div className="text-4xl font-bold text-red-600 mb-2">&lt;30 sn</div>
-            <div className="text-gray-600 text-sm sm:text-base">Yapay Zeka Sonuç Süresi</div>
+            <div className="text-gray-600 text-sm sm:text-base">Sonuç Süresi</div>
           </div>
         </div>
       </div>

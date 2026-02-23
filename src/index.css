@@ -584,6 +584,21 @@ button, a, .interactive {
 
 .reading-scroll {
   padding-bottom: max(10rem, env(safe-area-inset-bottom, 0px) + 6rem);
+  scrollbar-width: thin;
+}
+
+.reading-scroll::-webkit-scrollbar {
+  width: 2px !important;
+  height: 2px !important;
+}
+
+.reading-scroll::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.reading-scroll::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.45) !important;
+  border-radius: 9999px !important;
 }
 
 .reading-body {
@@ -636,21 +651,62 @@ button, a, .interactive {
 }
 
 .scrollbar-thin::-webkit-scrollbar {
-  width: 6px;
+  width: 1px !important;
+  height: 1px !important;
 }
 
 .scrollbar-thin::-webkit-scrollbar-track {
-  background: var(--theme-surface-muted, #f1f5f9);
-  border-radius: 3px;
+  background: transparent !important;
+  border-radius: 9999px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: var(--theme-border, #cbd5e1);
-  border-radius: 3px;
+  background: rgba(148, 163, 184, 0.35) !important;
+  border-radius: 9999px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: var(--theme-border-strong, #94a3b8);
+  background: rgba(148, 163, 184, 0.5) !important;
+}
+
+.scrollbar-ultra-thin {
+  scrollbar-width: thin;
+}
+
+.scrollbar-ultra-thin::-webkit-scrollbar {
+  width: 3px;
+  height: 3px;
+}
+
+.scrollbar-ultra-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-ultra-thin::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.45);
+  border-radius: 9999px;
+}
+
+.scrollbar-ultra-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.65);
+}
+
+.reading-scroll-ultra {
+  scrollbar-width: thin;
+}
+
+.reading-scroll-ultra::-webkit-scrollbar {
+  width: 2px !important;
+  height: 2px !important;
+}
+
+.reading-scroll-ultra::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.reading-scroll-ultra::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.45) !important;
+  border-radius: 9999px !important;
 }
 
 .scrollbar-thumb-gray-300::-webkit-scrollbar-thumb {
@@ -855,4 +911,3 @@ body.exam-mode {
 .radio-ink-hit {
   animation: radioInkHit 180ms cubic-bezier(0.18, 0.9, 0.25, 1);
 }
-

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+ï»¿import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -270,7 +270,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
           }
         }
       } catch (error) {
-        // toast.error("Test yüklenirken hata oluþtu");
+        // toast.error("Test yÃ¼klenirken hata oluÅŸtu");
         console.error("Error loading test:", error);
       } finally {
         setLoading(false);
@@ -436,7 +436,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
     });
   };
 
-  // Textarea ref and custom typing shortcuts like c= -> ç, i= -> ý, I= -> Ý, etc.
+  // Textarea ref and custom typing shortcuts like c= -> Ã§, i= -> Ä±, I= -> Ä°, etc.
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const handleShortcutKeyDown = (
     e: React.KeyboardEvent<HTMLTextAreaElement>
@@ -456,18 +456,18 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
 
     const prevChar = value[prevIndex];
     const map: Record<string, string> = {
-      c: "ç",
-      C: "Ç",
-      g: "ð",
-      G: "Ð",
-      s: "þ",
-      S: "Þ",
-      o: "ö",
-      O: "Ö",
-      u: "ü",
-      U: "Ü",
-      i: "ý",
-      I: "Ý",
+      c: "Ã§",
+      C: "Ã‡",
+      g: "ÄŸ",
+      G: "Äž",
+      s: "ÅŸ",
+      S: "Åž",
+      o: "Ã¶",
+      O: "Ã–",
+      u: "Ã¼",
+      U: "Ãœ",
+      i: "Ä±",
+      I: "Ä°",
     };
 
     const replacement = map[prevChar];
@@ -528,18 +528,18 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
     if (prevIndex < 0) return;
     const prevChar = value[prevIndex];
     const map: Record<string, string> = {
-      c: "ç",
-      C: "Ç",
-      g: "ð",
-      G: "Ð",
-      s: "þ",
-      S: "Þ",
-      o: "ö",
-      O: "Ö",
-      u: "ü",
-      U: "Ü",
-      i: "ý",
-      I: "Ý",
+      c: "Ã§",
+      C: "Ã‡",
+      g: "ÄŸ",
+      G: "Äž",
+      s: "ÅŸ",
+      S: "Åž",
+      o: "Ã¶",
+      O: "Ã–",
+      u: "Ã¼",
+      U: "Ãœ",
+      i: "Ä±",
+      I: "Ä°",
     };
     const replacement = map[prevChar];
     if (!replacement) return;
@@ -633,12 +633,12 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
     return (
       <div className="mt-3">
         <div className="text-xs sm:text-sm text-gray-700 mb-2">
-          <span className="font-semibold">Türkçe Karakterler:</span>
+          <span className="font-semibold">TÃ¼rkÃ§e Karakterler:</span>
           <span className="block">
-            Harfin ardýndan <span className="font-semibold">=</span> tuþuna
-            basarsanýz Türkçe karaktere dönüþür.
+            Harfin ardÄ±ndan <span className="font-semibold">=</span> tuÅŸuna
+            basarsanÄ±z TÃ¼rkÃ§e karaktere dÃ¶nÃ¼ÅŸÃ¼r.
           </span>
-          <span className="block">Kýsayollar: c=ç, g=ð, s=þ, o=ö, u=ü, i=ý, I=Ý</span>
+          <span className="block">KÄ±sayollar: c=Ã§, g=ÄŸ, s=ÅŸ, o=Ã¶, u=Ã¼, i=Ä±, I=Ä°</span>
         </div>
         <div className="grid grid-cols-7 gap-1 sm:gap-2 max-w-md">
           {turkishChars.map(({ char, lower }) => (
@@ -854,7 +854,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
               }));
           const sanitizedPayload = payload.filter((item) => item.questionId);
           
-          // Bu testin genel test akýþýnýn parçasý olup olmadýðýný kontrol et
+          // Bu testin genel test akÄ±ÅŸÄ±nÄ±n parÃ§asÄ± olup olmadÄ±ÄŸÄ±nÄ± kontrol et
           const { overallTestTokenStore } = await import("@/services/overallTest.service");
           const overallToken = overallTestTokenStore.getByTestId(readingData.testId);
           
@@ -870,7 +870,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
         }
       }
       
-      // Dinleme testini gönder - herhangi bir testten dinleme cevaplarýný ara
+      // Dinleme testini gÃ¶nder - herhangi bir testten dinleme cevaplarÄ±nÄ± ara
       const listeningAnswersKeys = Object.keys(sessionStorage).filter(key => key.startsWith('listening_answers_'));
       for (const key of listeningAnswersKeys) {
         const listeningAnswers = sessionStorage.getItem(key);
@@ -888,7 +888,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
               }));
           const sanitizedPayload = payload.filter((item) => item.questionId);
           
-          // Bu testin genel test akýþýnýn parçasý olup olmadýðýný kontrol et
+          // Bu testin genel test akÄ±ÅŸÄ±nÄ±n parÃ§asÄ± olup olmadÄ±ÄŸÄ±nÄ± kontrol et
           const { overallTestTokenStore } = await import("@/services/overallTest.service");
           const overallToken = overallTestTokenStore.getByTestId(listeningData.testId);
           
@@ -906,7 +906,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
         }
       }
       
-      // Yazma testlerini gönder
+      // Yazma testlerini gÃ¶nder
       const writingAnswersKeys = Object.keys(sessionStorage).filter((key) => key.startsWith("writing_answers_"));
       for (const key of writingAnswersKeys) {
         const writingAnswers = sessionStorage.getItem(key);
@@ -1014,8 +1014,8 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
           const trimmed = value.trim();
           return (
             trimmed.length > 0 &&
-            trimmed !== "[Cevap bulunamadý]" &&
-            trimmed !== "[Ses metne dönüþtürülemedi]"
+            trimmed !== "[Cevap bulunamadÄ±]" &&
+            trimmed !== "[Ses metne dÃ¶nÃ¼ÅŸtÃ¼rÃ¼lemedi]"
           );
         };
 
@@ -1105,7 +1105,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
       <div className="min-h-screen bg-gradient-to-br from-gray-100 via-gray-50 to-blue-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Test yükleniyor...</p>
+          <p className="mt-4 text-gray-600">Test yÃ¼kleniyor...</p>
         </div>
       </div>
     );
@@ -1137,7 +1137,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                       type="button"
                       className="h-7 w-7 rounded border border-gray-200 bg-white text-[11px] font-semibold text-gray-700"
                       onClick={() => setFontScale((v) => Math.max(0.9, Math.round((v - 0.05) * 100) / 100))}
-                      aria-label="Metni küçült"
+                      aria-label="Metni kÃ¼Ã§Ã¼lt"
                     >
                       A-
                     </button>
@@ -1145,7 +1145,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                       type="button"
                       className="h-7 w-7 rounded border border-gray-200 bg-white text-[11px] font-semibold text-gray-700"
                       onClick={() => setFontScale((v) => Math.min(1.2, Math.round((v + 0.05) * 100) / 100))}
-                      aria-label="Metni büyült"
+                      aria-label="Metni bÃ¼yÃ¼lt"
                     >
                       A+
                     </button>
@@ -1163,7 +1163,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                     <span className="tabular-nums">{formatTime(timeLeft)}</span>
                   </div>
                   <Button onClick={() => setShowSubmitModal(true)} className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-3 py-1.5 text-xs font-semibold min-h-[34px] touch-manipulation">
-                    GÖNDER
+                    GÃ–NDER
                   </Button>
                 </div>
               </div>
@@ -1189,7 +1189,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                     type="button"
                     className="h-8 w-8 rounded border border-gray-200 bg-white text-[11px] font-semibold text-gray-700"
                     onClick={() => setFontScale((v) => Math.max(0.9, Math.round((v - 0.05) * 100) / 100))}
-                    aria-label="Metni küçült"
+                    aria-label="Metni kÃ¼Ã§Ã¼lt"
                   >
                     A-
                   </button>
@@ -1197,7 +1197,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                     type="button"
                     className="h-8 w-8 rounded border border-gray-200 bg-white text-[11px] font-semibold text-gray-700"
                     onClick={() => setFontScale((v) => Math.min(1.2, Math.round((v + 0.05) * 100) / 100))}
-                    aria-label="Metni büyült"
+                    aria-label="Metni bÃ¼yÃ¼lt"
                   >
                     A+
                   </button>
@@ -1215,7 +1215,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                   <span className="tabular-nums">{formatTime(timeLeft)}</span>
                 </div>
                 <Button onClick={() => setShowSubmitModal(true)} className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-3 py-1.5 text-xs font-semibold min-h-[34px] touch-manipulation">
-                  GÖNDER
+                  GÃ–NDER
                 </Button>
               </div>
             </div>
@@ -1273,7 +1273,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                     <div className="p-4 rounded-lg bg-[#FEFEFC] border border-gray-200">
                       <h3 className="font-medium text-gray-900 mb-2 text-base">
                         {normalizeDisplayText(selectedSubPart.label) ||
-                          `Bölüm ${currentSubPartIndex + 1}`}
+                          `BÃ¶lÃ¼m ${currentSubPartIndex + 1}`}
                       </h3>
                       {selectedSubPart.question && (
                         renderPlainParagraphs(
@@ -1348,7 +1348,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
             <div className="bg-[#F7F7F5] rounded-xl shadow-sm p-3 sm:p-4 mt-0 mb-20 relative z-10 border border-gray-200">
               <div className="mb-2">
                 <label className="text-sm font-semibold text-gray-700 block mb-1">
-                  Cevabýnýzý yazýn:
+                  CevabÄ±nÄ±zÄ± yazÄ±n:
                 </label>
               </div>
               <div className="flex flex-wrap gap-2 mb-3 text-xs">
@@ -1358,7 +1358,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                 onKeyDown={handleShortcutKeyDown}
                 value={currentAnswer}
                 onChange={(e) => handleAnswerChange(e.target.value)}
-                placeholder="Yazýnýzý buraya yazýn.."
+                placeholder="YazÄ±nÄ±zÄ± buraya yazÄ±n.."
                 disabled={showPracticeModal}
                 className="w-full h-80 sm:h-96 p-3 sm:p-4 border border-gray-300 rounded-lg resize-y focus:outline-none focus:ring-1 focus:ring-black/15 focus:ring-offset-0 focus:border-gray-400 text-gray-900 placeholder:text-gray-400 text-sm sm:text-base overflow-y-auto bg-[#FEFEFC] disabled:opacity-60 disabled:cursor-not-allowed"
                 dir="ltr"
@@ -1375,7 +1375,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
               />
               <div className="mt-2 flex items-center justify-between">
                 <div className="text-[10px] sm:text-xs text-gray-500 font-semibold">
-                  {hasSubParts ? (currentSubPartIndex === 0 ? "Bölüm 1.1" : "Bölüm 1.2") : "Bölüm 2"}
+                  {hasSubParts ? (currentSubPartIndex === 0 ? "BÃ¶lÃ¼m 1.1" : "BÃ¶lÃ¼m 1.2") : "BÃ¶lÃ¼m 2"}
                 </div>
                 <div className={`text-xs sm:text-sm font-semibold ${isOverLimit ? "text-red-600" : "text-gray-600"}`}>
                   {wordCount}/{wordLimit} kelime
@@ -1486,7 +1486,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                       {hasSubParts && selectedSubPart && (
                         <div className="p-4 rounded-lg bg-[#FEFEFC] border border-gray-200">
                           <h3 className="font-medium text-gray-900 mb-2 text-lg">
-                            {normalizeDisplayText(selectedSubPart.label) || `Bölüm ${currentSubPartIndex + 1}`}
+                            {normalizeDisplayText(selectedSubPart.label) || `BÃ¶lÃ¼m ${currentSubPartIndex + 1}`}
                           </h3>
                           {selectedSubPart.question && (
                             renderPlainParagraphs(
@@ -1533,7 +1533,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                     onKeyDown={handleShortcutKeyDown}
                     value={currentAnswer}
                     onChange={(e) => handleAnswerChange(e.target.value)}
-                    placeholder="Yazýnýzý buraya yazýn.."
+                    placeholder="YazÄ±nÄ±zÄ± buraya yazÄ±n.."
                     disabled={showPracticeModal}
                     className="w-full min-h-[300px] h-auto flex-1 p-6 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-black/15 focus:ring-offset-0 focus:border-gray-400 text-gray-900 placeholder:text-gray-400 text-lg bg-[#FEFEFC] disabled:opacity-60 disabled:cursor-not-allowed"
                     dir="ltr"
@@ -1545,7 +1545,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                   />
                   <div className="mt-2 flex items-center justify-between">
                     <div className="text-xs text-gray-500 font-semibold">
-                      {hasSubParts ? (currentSubPartIndex === 0 ? "Bölüm 1.1" : "Bölüm 1.2") : "Bölüm 2"}
+                      {hasSubParts ? (currentSubPartIndex === 0 ? "BÃ¶lÃ¼m 1.1" : "BÃ¶lÃ¼m 1.2") : "BÃ¶lÃ¼m 2"}
                     </div>
                     <div className={`text-sm font-semibold ${isOverLimit ? "text-red-600" : "text-gray-600"}`}>
                       {wordCount}/{wordLimit} kelime
@@ -1568,11 +1568,11 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
           <div className="bg-white rounded-2xl p-8 max-w-sm w-full mx-4 text-center">
             <div className="animate-spin rounded-full h-16 w-16 border-4 border-red-500 border-t-transparent mx-auto mb-4"></div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">
-              Test Gönderiliyor
+              Test GÃ¶nderiliyor
             </h3>
             <p className="text-gray-600">
-              Lütfen bekleyin, testiniz gönderiliyor ve sonuçlar sayfasýna
-              yönlendiriliyorsunuz...
+              LÃ¼tfen bekleyin, testiniz gÃ¶nderiliyor ve sonuÃ§lar sayfasÄ±na
+              yÃ¶nlendiriliyorsunuz...
             </p>
             <div className="mt-4">
               <div className="w-full bg-gray-200 rounded-full h-2">
@@ -1591,10 +1591,10 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
         isOpen={showSubmitModal}
         onClose={() => setShowSubmitModal(false)}
         onConfirm={handleSubmit}
-        title="Testi Gönder"
-        message="Testi göndermek istediðinizden emin misiniz? Bu iþlem geri alýnamaz."
-        confirmText="Evet, Gönder"
-        cancelText="Ýptal"
+        title="Testi GÃ¶nder"
+        message="Testi gÃ¶ndermek istediÄŸinizden emin misiniz? Bu iÅŸlem geri alÄ±namaz."
+        confirmText="Evet, GÃ¶nder"
+        cancelText="Ä°ptal"
         isLoading={submitting}
       />
 
@@ -1604,11 +1604,11 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
           <div className="bg-white rounded-2xl w-full max-w-3xl shadow-xl border border-gray-200">
             <div className="px-5 py-4 border-b border-gray-200">
               <h3 className="text-lg sm:text-xl font-bold text-gray-900">
-                Pratik Alaný
+                Pratik AlanÄ±
               </h3>
               <p className="text-sm text-gray-600 mt-1">
-                Yazmaya baþlamadan önce Türkçe karakterleri deneyebilirsiniz.
-                Süre þu anda durduruldu.
+                Yazmaya baÅŸlamadan Ã¶nce TÃ¼rkÃ§e karakterleri deneyebilirsiniz.
+                SÃ¼re ÅŸu anda durduruldu.
               </p>
             </div>
             <div className="p-5 space-y-4">
@@ -1626,7 +1626,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                 onClick={() => setShowPracticeModal(false)}
                 className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-4 py-2 text-sm font-bold"
               >
-                Hazýrým, Baþla
+                HazÄ±rÄ±m, BaÅŸla
               </Button>
             </div>
           </div>
@@ -1636,4 +1636,5 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
     </div>
   );
 }
+
 

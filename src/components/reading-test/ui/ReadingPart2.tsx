@@ -115,36 +115,42 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                 const selectedOption = optionMap.get(selectedVariant);
 
                 return (
-                  <div
-                    key={q.id}
-                    className="reading-surface-card rounded-lg p-3 border border-gray-200/60 bg-white/80 shadow-[0_1px_0_rgba(0,0,0,0.03)]"
+                    <div
+                      key={q.id}
+                      className={`reading-surface-card rounded-lg p-3 border border-gray-200/60 bg-white/80 shadow-[0_1px_0_rgba(0,0,0,0.03)] ${
+                      hasImage ? "w-fit max-w-full mx-auto" : ""
+                    }`}
                   >
                     <div className="font-semibold text-slate-800 mb-2">S{qNum}</div>
                     <Select
                       value={selectedVariant || ""}
                       onValueChange={(value) => onAnswerChange(q.id, value === "__none__" ? "" : value)}
                     >
-                      <SelectTrigger className={`w-full mb-2 border rounded-md px-3 py-2 min-h-10 h-auto text-xs cursor-pointer transition-all duration-150 ease-out data-[state=open]:scale-[1.01] ${
+                      <SelectTrigger className={`w-full mb-2 border rounded-md px-3 py-2 min-h-10 h-auto !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] items-start cursor-pointer transition-all duration-150 ease-out data-[state=open]:scale-[1.01] ${
                         selectedOption ? "border-gray-400 bg-gray-100 text-[#333333]" : "border-gray-200 bg-white text-[#333333] hover:border-gray-300"
                       } focus:ring-1 focus:ring-black/15 focus:ring-offset-0 focus:border-gray-400`}>
                         <SelectValue placeholder="Seçiniz">
-                          {selectedOption
-                            ? `${selectedOption.variantText}. ${selectedOption.answer}`
-                            : "Seçiniz"}
+                          <span className="block min-w-0 pr-5 text-left leading-snug whitespace-normal break-words [overflow-wrap:anywhere] line-clamp-2">
+                            {selectedOption
+                              ? `${selectedOption.variantText}. ${selectedOption.answer}`
+                              : "Seçiniz"}
+                          </span>
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent
                         position="popper"
                         sideOffset={8}
                         collisionPadding={12}
-                        className="bg-white border border-gray-200 shadow-sm rounded-md reading-select-content w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] max-h-[55vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50"
+                        className="bg-white border border-gray-200 shadow-sm rounded-md reading-select-content w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] max-h-[65vh] overflow-y-auto overflow-x-hidden overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50"
                       >
-                        <SelectItem value="__none__" className="cursor-pointer text-xs py-1 focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
+                        <SelectItem value="__none__" className="cursor-pointer py-1 !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
                           {`Seçiniz`}
                         </SelectItem>
                         {optionList.map((opt) => (
-                          <SelectItem key={opt.variantText} value={opt.variantText} className="cursor-pointer text-xs py-1 focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
-                            {opt.variantText}. {opt.answer}
+                          <SelectItem key={opt.variantText} value={opt.variantText} className="cursor-pointer py-1 !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
+                            <span className="block whitespace-normal break-words [overflow-wrap:anywhere]">
+                              {opt.variantText}. {opt.answer}
+                            </span>
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -205,7 +211,9 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                   return (
                     <div
                       key={q.id}
-                      className="reading-surface-card rounded-lg border border-gray-200/60 bg-white/80 p-3 shadow-[0_1px_0_rgba(0,0,0,0.03)]"
+                      className={`reading-surface-card rounded-lg border border-gray-200/60 bg-white/80 p-3 shadow-[0_1px_0_rgba(0,0,0,0.03)] ${
+                        hasImage ? "w-fit max-w-full mx-auto" : ""
+                      }`}
                     >
                       <div className="flex items-start gap-4">
                         {hasImage ? (
@@ -216,7 +224,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                                   value={answers[q.id] || ""}
                                   onValueChange={(value) => onAnswerChange(q.id, value === "__none__" ? "" : value)}
                                 >
-                                <SelectTrigger className={`w-full max-w-[360px] border rounded-md px-3 py-2 h-auto text-sm items-start cursor-pointer transition-all duration-150 ease-out data-[state=open]:scale-[1.01] ${
+                                <SelectTrigger className={`w-full max-w-[360px] border rounded-md px-3 py-2 h-auto !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] items-start cursor-pointer transition-all duration-150 ease-out data-[state=open]:scale-[1.01] ${
                                   selectedOption ? "border-gray-400 bg-gray-100 text-[#333333]" : "border-gray-200 bg-white text-[#333333] hover:border-gray-300"
                                 } focus:ring-1 focus:ring-black/15 focus:ring-offset-0 focus:border-gray-400`}>
                                   <SelectValue placeholder={`Se\u00e7iniz`}>
@@ -228,11 +236,11 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                                     </SelectValue>
                                   </SelectTrigger>
                                 <SelectContent className="bg-white border border-gray-200 shadow-sm rounded-md reading-select-content reading-select-content max-h-[60vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50">
-                                  <SelectItem value="__none__" className="cursor-pointer py-1 focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
+                                  <SelectItem value="__none__" className="cursor-pointer py-1 !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
                                     {`Se\u00e7iniz`}
                                   </SelectItem>
                                   {optionList.map((opt) => (
-                                    <SelectItem key={opt.variantText} value={opt.variantText} className="cursor-pointer py-1 focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
+                                    <SelectItem key={opt.variantText} value={opt.variantText} className="cursor-pointer py-1 !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
                                       {opt.variantText}. {opt.answer}
                                     </SelectItem>
                                   ))}
@@ -267,7 +275,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                                 value={answers[q.id] || ""}
                                 onValueChange={(value) => onAnswerChange(q.id, value === "__none__" ? "" : value)}
                               >
-                                <SelectTrigger className={`w-full max-w-[360px] border rounded-md px-3 py-2 h-auto text-sm items-start cursor-pointer transition-all duration-150 ease-out data-[state=open]:scale-[1.01] ${
+                                <SelectTrigger className={`w-full max-w-[360px] border rounded-md px-3 py-2 h-auto !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] items-start cursor-pointer transition-all duration-150 ease-out data-[state=open]:scale-[1.01] ${
                                   selectedOption ? "border-gray-400 bg-gray-100 text-[#333333]" : "border-gray-200 bg-white text-[#333333] hover:border-gray-300"
                                 } focus:ring-1 focus:ring-black/15 focus:ring-offset-0 focus:border-gray-400`}>
                                   <SelectValue placeholder={`Se\u00e7iniz`}>
@@ -279,11 +287,11 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                                   </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent className="bg-white border border-gray-200 shadow-sm rounded-md reading-select-content reading-select-content max-h-[60vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50">
-                                  <SelectItem value="__none__" className="cursor-pointer py-1 focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
+                                  <SelectItem value="__none__" className="cursor-pointer py-1 !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
                                     {`Se\u00e7iniz`}
                                   </SelectItem>
                                   {optionList.map((opt) => (
-                                    <SelectItem key={opt.variantText} value={opt.variantText} className="cursor-pointer py-1 focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
+                                    <SelectItem key={opt.variantText} value={opt.variantText} className="cursor-pointer py-1 !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
                                       {opt.variantText}. {opt.answer}
                                     </SelectItem>
                                   ))}
@@ -336,8 +344,3 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
     </div>
   );
 }
-
-
-
-
-

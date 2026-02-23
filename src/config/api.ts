@@ -1,7 +1,9 @@
 ﻿import axios from "axios";
 import { SecureStorage } from "@/utils/secureStorage";
 
-const baseURL = import.meta.env.VITE_API_URL || "https://api.turkishmock.uz";
+const baseURL =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.DEV ? "http://localhost:3000" : "https://api.turkishmock.uz");
 
 const axiosPrivate = axios.create({
   baseURL,

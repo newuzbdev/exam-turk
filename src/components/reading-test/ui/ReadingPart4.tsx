@@ -1,7 +1,7 @@
 ﻿import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { useState } from "react";
 import HighlightableText from "@/pages/reading-test/components/HighlightableText";
 import { fixMojibake } from "@/utils/text";
+import { MoveVertical } from "lucide-react";
 
 interface ReadingPart4Props {
   testData: any;
@@ -11,7 +11,6 @@ interface ReadingPart4Props {
 }
 
 export default function ReadingPart4({ testData, answers, onAnswerChange, partNumber }: ReadingPart4Props) {
-  const [showPassage, setShowPassage] = useState(true);
   const part4 = (testData.parts || []).find((p: any) => (p.number || 0) === 4) || (testData.parts || [])[3];
   const section4 = part4?.sections && part4.sections[0];
   const content = fixMojibake(section4?.content || "");
@@ -37,23 +36,13 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
 
   return (
     <div className="mx-2 reading-body pr-2 text-slate-800">
-      {/* Mobile Layout - Stacked */}
+      {/* Mobile Layout - Split */}
       <div className="block lg:hidden h-[100svh]">
-        <div className="rounded-lg border border-gray-200 shadow-lg overflow-hidden h-[100svh] flex flex-col">
-          {/* Passage Section - Fixed */}
-          <div className="reading-surface p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-sm reading-strong-title text-slate-800">Metin</div>
-              <button
-                type="button"
-                className="text-xs font-semibold text-gray-700 border border-gray-200 rounded-md px-2 py-1 bg-white"
-                onClick={() => setShowPassage((v) => !v)}
-              >
-                {showPassage ? "Metni Gizle" : "Metni Göster"}
-              </button>
-            </div>
-            {showPassage && (
-              <div className="space-y-4 leading-relaxed max-h-[38vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent reading-scroll">
+        <ResizablePanelGroup direction="vertical" className="h-[100svh] bg-white">
+          <ResizablePanel defaultSize={50} minSize={25} maxSize={75} className="bg-white min-h-0">
+            <div className="h-full p-4 border-b border-gray-200 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent reading-scroll">
+              <div className="text-sm reading-strong-title text-slate-800 mb-3">Metin</div>
+              <div className="space-y-4 leading-relaxed">
                 <div className="reading-text font-sans leading-relaxed">
                   {contentTitle && (
                     <div className="reading-strong-title text-slate-800 mb-3">
@@ -63,15 +52,29 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
                   {contentBody && <HighlightableText text={contentBody} partNumber={partNumber} />}
                 </div>
               </div>
-            )}
-          </div>
-          
-          {/* Questions Section - More scroll space for mobile */}
-          <div className="reading-surface-alt p-4 space-y-4 flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent reading-scroll pb-28">
+            </div>
+          </ResizablePanel>
+
+          <ResizableHandle
+            withHandle={false}
+            className="h-[10px] touch-none cursor-row-resize data-[panel-group-direction=vertical]:h-[10px] data-[panel-group-direction=vertical]:my-0 bg-transparent !rounded-none !shadow-none data-[resize-handle-state=hover]:!bg-transparent data-[resize-handle-state=drag]:!bg-transparent"
+          >
+            <div className="mx-auto flex h-full w-full items-center justify-center">
+              <div className="relative w-full">
+                <div className="mx-auto h-px w-full bg-black/60" />
+                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-sm bg-white px-1">
+                  <MoveVertical className="h-3.5 w-3.5 text-black/80" strokeWidth={2.25} />
+                </div>
+              </div>
+            </div>
+          </ResizableHandle>
+
+          <ResizablePanel defaultSize={50} minSize={25} maxSize={75} className="bg-[#f9fafb] min-h-0">
+            <div className="h-full p-4 space-y-4 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent reading-scroll pb-28">
             <h4 className="text-sm reading-strong-title text-slate-700 mb-3 tracking-wide">Sorular</h4>
             
             {/* Instructions for Questions 21-24 */}
-            <div className="reading-surface-card border p-3 mb-3 rounded-lg">
+            <div className="p-2 mb-2">
               <p className="text-sm font-semibold leading-relaxed">
                 Sorular 21-24. Metne göre doğru seçeneği (A, B, C veya D) işaretleyiniz.
               </p>
@@ -103,13 +106,10 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
                 : options;
 
               return (
-                <div
-                  key={q.id}
-                  className="reading-surface-card rounded-lg border p-3 flex flex-col gap-3"
-                >
+                <div key={q.id} className="py-2 flex flex-col gap-3 border-b border-gray-200 last:border-b-0">
                   {/* Show instructions for questions 25-29 before the first True/False question */}
                   {isTrueFalseQuestion && questionNumber === 25 && (
-                    <div className="reading-surface-card border p-2 mb-2 rounded-lg">
+                    <div className="p-2 mb-2 bg-gray-50">
                       <p className="reading-text font-semibold mb-1">
                          Sorular 25-29. Sorulardaki cümleler metne göre DOĞRU, YANLIŞ ya da VERİLMEMİŞ olabilir. İlgili seçeneği işaretleyiniz.
                       </p>
@@ -157,8 +157,9 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
                 </div>
               );
             })}
-          </div>
-        </div>
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </div>
 
       {/* Desktop Layout - Fixed Left, Resizable Right */}
@@ -257,4 +258,3 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
     </div>
   );
 }
-

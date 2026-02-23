@@ -571,7 +571,9 @@ export const authService = {
     navigate: (path: string, options?: any) => void
   ): Promise<AuthResult & { phoneNumber?: string }> => {
     const phoneWithPrefix = authService.formatPhoneNumber(phone);
-    const baseURL = import.meta.env.VITE_API_URL || "https://api.turkishmock.uz";
+    const baseURL =
+      import.meta.env.VITE_API_URL ||
+      (import.meta.env.DEV ? "http://localhost:3000" : "https://api.turkishmock.uz");
     const url = `${baseURL}${authEndPoint.otpVerify}`;
     const token = SecureStorage.getSessionItem("accessToken");
 

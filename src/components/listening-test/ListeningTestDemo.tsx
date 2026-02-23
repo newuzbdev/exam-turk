@@ -45,10 +45,8 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
   const [part4ClearToken, setPart4ClearToken] = useState(0);
   const [isProgressReady, setIsProgressReady] = useState(false);
   const [isPartSwitchAnimating, setIsPartSwitchAnimating] = useState(false);
-  const [inkPulseKey, setInkPulseKey] = useState<string | null>(null);
-  const contentScrollRef = useRef<HTMLDivElement>(null);
-  const inkPulseTimeoutRef = useRef<number | null>(null);
-  const hasRestoredProgressRef = useRef(false);
+  const [inkPulseKey, setInkPulseKey] = useState<string | null>(null);  const contentScrollRef = useRef<HTMLDivElement>(null);
+  const inkPulseTimeoutRef = useRef<number | null>(null);  const hasRestoredProgressRef = useRef(false);
   const fullscreenRetryBoundRef = useRef(false);
   const fullscreenRetryHandlerRef = useRef<(() => void) | null>(null);
   const progressStorageKey = `listening_progress_${testId}`;
@@ -358,12 +356,11 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
   };
 
   const isRadioInkActive = (questionId: string, answer: string) => inkPulseKey === `${questionId}::${answer}`;
-
   const handleAnswerSelect = (questionId: string, answer: string) => {
     triggerRadioInkPulse(questionId, answer);
-    setUserAnswers(prev => ({
+    setUserAnswers((prev) => ({
       ...prev,
-      [questionId]: answer
+      [questionId]: answer,
     }));
   };
 
@@ -440,14 +437,13 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
 
   const renderQuestion = (question: any, _questionNumber: number, _partNumber?: number) => {
     const selectedAnswer = userAnswers[question.id];
-    const isSecondBolum = _partNumber === 2;
     const questionNumber = _questionNumber || 0;
 
     if (question.type === "TRUE_FALSE") {
       return (
         <div key={question.id} className="space-y-2">
           <div className="space-y-1.5">
-            <p className={`text-base text-[#333333] leading-relaxed ${isSecondBolum ? "" : "font-semibold"}`}>
+            <p className="text-base text-[#333333] leading-relaxed font-semibold">
               <span className="font-bold">S{questionNumber}. </span>
               <HighlightableTextSimple text={fixMojibake(question.text || question.content || "")} />
             </p>
@@ -530,7 +526,7 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
     return (
       <div key={question.id} className="space-y-2">
         <div className="space-y-1.5">
-          <p className={`text-base text-[#333333] leading-relaxed ${isSecondBolum ? "" : "font-semibold"}`}>
+          <p className="text-base text-[#333333] leading-relaxed font-semibold">
             <span className="font-bold">S{questionNumber}. </span>
             <HighlightableTextSimple text={fixMojibake(question.text || question.content || "")} />
           </p>
@@ -628,7 +624,7 @@ const renderPart = (bolum: number) => {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.74fr)_560px]">
-                <div>
+                <div className="min-w-0">
                   {questions.map((question, index) => {
                     const numbered = questionNumber + index;
                     return (
@@ -669,14 +665,14 @@ const renderPart = (bolum: number) => {
                   })}
                 </div>
 
-                <div className="border-t lg:border-t-0 lg:border-l border-gray-200">
+                <div className="min-w-0 border-t lg:border-t-0 lg:border-l border-gray-200">
                   <div className="px-2 py-2.5 grid grid-cols-1 gap-3.5">
                     {answerOptions.map((option: any) => (
-                      <div key={option.id || option.variantText} className="grid grid-cols-[28px_minmax(0,1fr)] items-center gap-2.5 text-left">
+                      <div key={option.id || option.variantText} className="grid grid-cols-[28px_minmax(0,1fr)] items-start gap-2.5 text-left">
                         <span className="w-7 h-7 rounded-full border border-gray-300 bg-gray-100 flex items-center justify-center text-[16px] font-semibold text-gray-600">
                           {option.variantText}
                         </span>
-                        <span className="text-[18px] text-[#333333] leading-[1.3] whitespace-nowrap">
+                        <span className="min-w-0 text-[18px] text-[#333333] leading-[1.3] whitespace-normal break-words [overflow-wrap:anywhere]">
                           <HighlightableTextSimple text={fixMojibake(String(option.answer || "")).replace(/^[A-Z][.)]\s*/, "")} />
                         </span>
                       </div>
@@ -779,7 +775,7 @@ const renderPart = (bolum: number) => {
                   const numbered = questionNumber + index;
                   return (
                     <div key={question.id} className="w-full border-b border-gray-200 last:border-b-0 py-2">
-                      <div className="text-sm text-[#333333] leading-relaxed">
+                      <div className="text-base text-[#333333] leading-relaxed">
                         <span className="font-bold">S{numbered}. </span>
                         <HighlightableTextSimple text={fixMojibake(question.text || question.content || "")} />
                       </div>
@@ -789,7 +785,7 @@ const renderPart = (bolum: number) => {
                           onValueChange={(value) => handleAnswerSelect(question.id, value)}
                         >
                           <SelectTrigger
-                            className={`w-20 h-10 text-sm cursor-pointer rounded-md border transition-all duration-150 ease-out data-[state=open]:scale-[1.01] ${
+                            className={`w-20 h-10 text-base cursor-pointer rounded-md border transition-all duration-150 ease-out data-[state=open]:scale-[1.01] ${
                               userAnswers[question.id]
                                 ? "border-gray-400 bg-gray-100 text-[#333333]"
                                 : "border-gray-300 bg-gray-50 text-[#333333] hover:border-gray-400 hover:bg-white"
@@ -1034,7 +1030,7 @@ const renderPart = (bolum: number) => {
                     const numbered = questionNumber + index;
                     return (
                       <div key={question.id} className="py-3 border-b border-gray-200 last:border-b-0">
-                        <div className="text-sm text-[#333333]">
+                        <div className="text-[18px] text-[#333333] leading-relaxed">
                           <span className="font-semibold">S{numbered}. </span>
                           <HighlightableTextSimple text={fixMojibake(question.text || question.content || "")} />
                         </div>
@@ -1049,12 +1045,12 @@ const renderPart = (bolum: number) => {
                             >
                               {isRadioInkActive(question.id, "A") && <span className="pointer-events-none absolute inset-0 rounded-full radio-ink-splash" />}
                               <div
-                                className={`w-5 h-5 rounded-full transition-all duration-150 ease-out ${
-                                  selected === "A" ? "bg-[#438553] scale-100 opacity-100" : "bg-transparent scale-75 opacity-0"
-                                }`}
-                              />
+                    className={`w-4 h-4 rounded-full transition-all duration-150 ease-out ${
+                      selected === "A" ? "bg-[#438553] scale-100 opacity-100" : "bg-transparent scale-75 opacity-0"
+                    }`}
+                  />
                             </div>
-                            <span className="text-sm text-gray-700">Doğru</span>
+                            <span className="text-base text-gray-700">Doğru</span>
                             <input
                               type="radio"
                               name={`question-${question.id}`}
@@ -1073,12 +1069,12 @@ const renderPart = (bolum: number) => {
                             >
                               {isRadioInkActive(question.id, "B") && <span className="pointer-events-none absolute inset-0 rounded-full radio-ink-splash" />}
                               <div
-                                className={`w-5 h-5 rounded-full transition-all duration-150 ease-out ${
-                                  selected === "B" ? "bg-[#438553] scale-100 opacity-100" : "bg-transparent scale-75 opacity-0"
-                                }`}
-                              />
+                    className={`w-4 h-4 rounded-full transition-all duration-150 ease-out ${
+                      selected === "B" ? "bg-[#438553] scale-100 opacity-100" : "bg-transparent scale-75 opacity-0"
+                    }`}
+                  />
                             </div>
-                            <span className="text-sm text-gray-700">Yanlış</span>
+                            <span className="text-base text-gray-700">Yanlış</span>
                             <input
                               type="radio"
                               name={`question-${question.id}`}
@@ -1098,8 +1094,8 @@ const renderPart = (bolum: number) => {
                   <table className="w-full max-w-7xl min-w-[760px] table-fixed">
                     <colgroup>
                       <col />
-                      <col className="w-24" />
-                      <col className="w-24" />
+                      <col className="w-20" />
+                      <col className="w-20" />
                     </colgroup>
                     <thead>
                       <tr className="bg-gray-50/80 text-left">
@@ -1117,7 +1113,7 @@ const renderPart = (bolum: number) => {
                             key={question.id}
                             className="odd:bg-white even:bg-gray-50/50 hover:bg-gray-100/60 transition-colors"
                           >
-                            <td className="px-4 py-3.5 pr-1 text-base text-[#333333] leading-relaxed align-top">
+                            <td className="px-4 py-3.5 pr-1 text-[18px] text-[#333333] leading-relaxed align-top">
                               <span className="font-semibold">S{numbered}. </span>
                               <HighlightableTextSimple text={fixMojibake(question.text || question.content || "")} />
                             </td>
@@ -1132,10 +1128,10 @@ const renderPart = (bolum: number) => {
                                 >
                                   {isRadioInkActive(question.id, "A") && <span className="pointer-events-none absolute inset-0 rounded-full radio-ink-splash" />}
                                   <div
-                                    className={`w-5 h-5 rounded-full transition-all duration-150 ease-out ${
-                                      selected === "A" ? "bg-[#438553] scale-100 opacity-100" : "bg-transparent scale-75 opacity-0"
-                                    }`}
-                                  />
+                    className={`w-4 h-4 rounded-full transition-all duration-150 ease-out ${
+                      selected === "A" ? "bg-[#438553] scale-100 opacity-100" : "bg-transparent scale-75 opacity-0"
+                    }`}
+                  />
                                 </div>
                                 <input
                                   type="radio"
@@ -1157,10 +1153,10 @@ const renderPart = (bolum: number) => {
                                 >
                                   {isRadioInkActive(question.id, "B") && <span className="pointer-events-none absolute inset-0 rounded-full radio-ink-splash" />}
                                   <div
-                                    className={`w-5 h-5 rounded-full transition-all duration-150 ease-out ${
-                                      selected === "B" ? "bg-[#438553] scale-100 opacity-100" : "bg-transparent scale-75 opacity-0"
-                                    }`}
-                                  />
+                    className={`w-4 h-4 rounded-full transition-all duration-150 ease-out ${
+                      selected === "B" ? "bg-[#438553] scale-100 opacity-100" : "bg-transparent scale-75 opacity-0"
+                    }`}
+                  />
                                 </div>
                                 <input
                                   type="radio"
@@ -1872,14 +1868,24 @@ const renderPart = (bolum: number) => {
         <div className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50 shadow-sm w-full">
           {/* Match horizontal padding with description block below */}
           <div className="px-2 sm:px-4">
-            <div className="flex justify-between items-center h-auto py-2 lg:h-[68px] lg:py-0">
+            <div className="flex justify-between items-center h-auto py-1 lg:h-[64px] lg:py-0">
               {/* Mobile Header - Single Line Layout */}
               <div className="block lg:hidden w-full">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="font-semibold text-base sm:text-lg tracking-[0.08em]">
+                <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <img
+                      src="/logo11.svg"
+                      alt="TURKISHMOCK"
+                      className="h-9 w-auto object-contain"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                      }}
+                    />
+                  </div>
+                  <div className="justify-self-center font-['Inter'] font-bold text-base sm:text-lg tracking-[0.08em]">
                     DİNLEME
                   </div>
-                  <Button onClick={handleSubmitClick} className="shrink-0 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-3 py-1.5 text-[16px] font-semibold min-h-[34px] touch-manipulation">
+                  <Button onClick={handleSubmitClick} className="shrink-0 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-3 py-0.5 text-[15px] font-semibold min-h-[28px] touch-manipulation">
                     GÖNDER
                   </Button>
                 </div>
@@ -1930,7 +1936,7 @@ const renderPart = (bolum: number) => {
                     }}
                   />
                 </div>
-                <div className="font-semibold text-base sm:text-lg tracking-[0.08em]">DİNLEME</div>
+                <div className="font-['Inter'] font-bold text-base sm:text-lg tracking-[0.08em]">DİNLEME</div>
                 <div className="flex items-center gap-4">
                   {isLg && testData?.audioUrl && !isSubmitting && (
                     <AudioPlayer
@@ -1958,7 +1964,7 @@ const renderPart = (bolum: number) => {
                       <span className="tabular-nums">{timerActive ? formatTime(timeLeft) : "10:00"}</span>
                     </div>
                   )}
-                  <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 text-[16px] font-semibold min-h-[34px]">
+                  <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 text-white px-3 py-0.5 text-[15px] font-semibold min-h-[28px]">
                     GÖNDER
                   </Button>
                 </div>
@@ -1979,7 +1985,7 @@ const renderPart = (bolum: number) => {
               <button
                 type="button"
                 onClick={() => setShowDescription((v) => !v)}
-                className="text-[16px] font-semibold text-gray-700 border border-gray-200 rounded-md px-2 py-1 bg-white"
+                className="text-xs sm:text-sm font-semibold text-gray-700 border border-gray-200 rounded-md px-2 py-1 bg-white"
               >
                 {showDescription ? "Anlatımı Gizle" : "Anlatımı Göster"}
               </button>
@@ -1987,7 +1993,7 @@ const renderPart = (bolum: number) => {
             {showDescription && (
               <>
                 {bolum === 2 ? (
-                  <div className="space-y-1.5 text-xs sm:text-sm lg:text-base text-[#333333] leading-relaxed">
+                  <div className="space-y-1.5 text-sm sm:text-base lg:text-lg text-[#333333] leading-relaxed">
                     <p>
                       Sorular 9-14. Dinlediğiniz metne göre aşağıdaki cümleler için DOĞRU ya da YANLIŞ seçeneklerinden
                       birini işaretleyiniz.
@@ -1996,7 +2002,7 @@ const renderPart = (bolum: number) => {
                     <p>YANLIŞ: cümle, dinleme metnindeki bilgilerle tutarsız ve/veya çelişkiliyse</p>
                   </div>
                 ) : (
-                  <p className="text-xs sm:text-sm lg:text-base text-[#333333] leading-relaxed">
+                  <p className="text-sm sm:text-base lg:text-lg text-[#333333] leading-relaxed">
                     {getStaticHeader(bolum)}
                   </p>
                 )}
@@ -2073,11 +2079,6 @@ const renderPart = (bolum: number) => {
     </div>
   );
 }
-
-
-
-
-
 
 
 

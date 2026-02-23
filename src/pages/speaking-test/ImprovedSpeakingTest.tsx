@@ -2602,14 +2602,14 @@ export default function ImprovedSpeakingTest() {
       )}
          {/* question rendering part */}
      <main className="flex flex-1 flex-col items-center justify-start sm:justify-center min-h-0 w-full px-2 sm:px-4 md:px-8 pt-4 sm:pt-6 md:pt-8 pb-28 sm:pb-20 safe-area-bottom overflow-y-auto overscroll-contain max-h-[calc(100dvh-5rem)] sm:max-h-none">
-       <AnimatePresence mode="wait">
-         <motion.div
-           key={`${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`}
-           initial={{ opacity: 0, y: -20 }}
-           animate={{ opacity: 1, y: 0 }}
-           exit={{ opacity: 0, y: 20 }}
-           className="mb-12 sm:mb-16"
-         >
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={`${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`}
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="mb-6 sm:mb-8 md:mb-8"
+          >
           {currentSection?.type !== "PART2" && currentSection?.type !== "PART3" && !isPlayingInstructions && (
              <div className="text-center px-2">
                <div className="text-black font-bold text-xl sm:text-2xl md:text-3xl">
@@ -2679,7 +2679,7 @@ export default function ImprovedSpeakingTest() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ delay: 0.2 }}
-              className="mb-8 sm:mb-12 md:mb-16 lg:mb-20 px-2 sm:px-4"
+              className="mb-8 sm:mb-12 md:mb-14 lg:mb-16 md:-mt-3 lg:-mt-4 px-2 sm:px-4"
             >
           {currentSection?.type === "PART2" ? (
             (() => {
@@ -2768,7 +2768,7 @@ export default function ImprovedSpeakingTest() {
 
         {/* Hide microphone button until TTS finishes and preparation time completes */}
         {!isPlayingInstructions && !isPlayingTTS && !isPrepRunning ? (
-          <div className="relative mt-2 sm:mt-4 md:mt-6">
+          <div className="relative mt-2 sm:mt-4 md:mt-6 min-h-[120px] sm:min-h-[140px] flex items-center justify-center">
             {isRecording && !isPaused && (
               <>
                 <span className="absolute inset-0 w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 -left-2 -top-2 sm:-left-3 sm:-top-3 md:-left-4 md:-top-4 rounded-full bg-red-400 opacity-30 animate-ping" style={{ animationDuration: '2.5s' }}></span>
@@ -2796,7 +2796,7 @@ export default function ImprovedSpeakingTest() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mb-16 sm:mb-20 flex flex-col items-center justify-center"
+              className="relative mt-2 sm:mt-4 md:mt-6 min-h-[120px] sm:min-h-[140px] flex flex-col items-center justify-center"
             >
               <motion.div
                 animate={{ rotate: 360 }}

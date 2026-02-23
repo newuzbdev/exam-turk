@@ -82,12 +82,12 @@ export default function ReadingPart1({ testData, answers, onAnswerChange, partNu
               <SelectTrigger
                 className={
                   isMobile
-                    ? `h-6 min-w-[8rem] w-auto border rounded-sm px-1.5 py-0 !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] leading-none cursor-pointer transition-all duration-150 ease-out data-[state=open]:scale-[1.01] ${
+                    ? `!h-[1.55em] !min-h-0 min-w-[8rem] w-auto border rounded-sm px-1.5 !py-0 !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] leading-none cursor-pointer transition-all duration-150 ease-out data-[state=open]:scale-[1.01] ${
                         selectedOption
                           ? "border-gray-400 bg-gray-100 text-[#333333]"
                           : "border-gray-200 bg-white text-[#333333] hover:border-gray-300"
                       } focus:ring-1 focus:ring-black/15 focus:ring-offset-0 focus:border-gray-400`
-                    : `h-6 min-w-[8rem] w-auto border rounded-md px-1.5 py-0 !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] leading-none cursor-pointer transition-all duration-150 ease-out data-[state=open]:scale-[1.01] ${
+                    : `!h-[1.55em] !min-h-0 min-w-[8rem] w-auto border rounded-md px-1.5 !py-0 !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] leading-none cursor-pointer transition-all duration-150 ease-out data-[state=open]:scale-[1.01] ${
                         selectedOption
                           ? "border-gray-400 bg-gray-100 text-[#333333]"
                           : "border-gray-200 bg-white text-[#333333] hover:border-gray-300"
@@ -104,7 +104,7 @@ export default function ReadingPart1({ testData, answers, onAnswerChange, partNu
                   </SelectValue>
                 )}
               </SelectTrigger>
-              <SelectContent className="bg-white border border-gray-200 shadow-sm rounded-md reading-select-content max-h-[60vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50">
+              <SelectContent className="bg-white border border-gray-200 shadow-sm rounded-md reading-select-content max-h-[60vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-ultra-thin reading-scroll-ultra scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50">
                 <SelectItem
                   value="__none__"
                   className="cursor-pointer py-1 !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]"
@@ -173,7 +173,7 @@ export default function ReadingPart1({ testData, answers, onAnswerChange, partNu
       <div className="hidden lg:block h-full">
         <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border border-gray-200 shadow-lg">
           <ResizablePanel defaultSize={60} minSize={30} className="reading-surface">
-            <div className="h-full p-6 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent pb-40 reading-scroll">
+            <div className="h-full p-6 overflow-y-auto overscroll-contain touch-pan-y scrollbar-ultra-thin reading-scroll-ultra scrollbar-thumb-gray-300/40 scrollbar-track-transparent pb-40 reading-scroll">
               <div className="space-y-4 reading-text">
                 {contentTitle && (
                   <div className="reading-strong-title text-slate-800 mb-3">
@@ -188,7 +188,7 @@ export default function ReadingPart1({ testData, answers, onAnswerChange, partNu
           <ResizableHandle withHandle={true} className="bg-gray-200/40 hover:bg-gray-300/60 transition-colors w-px" />
 
           <ResizablePanel defaultSize={40} minSize={20} className="reading-surface-alt min-h-0">
-            <div className="h-full max-h-full p-6 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent pb-40 reading-scroll">
+            <div className="h-full max-h-full p-6 overflow-y-auto overscroll-contain touch-pan-y scrollbar-ultra-thin reading-scroll-ultra scrollbar-thumb-gray-300/40 scrollbar-track-transparent pb-40 reading-scroll">
               <div className="text-sm font-semibold text-slate-700 mb-3">{`Se\u00e7enekler`}</div>
               <div className="space-y-2">
                 {optionList.map((opt) => {

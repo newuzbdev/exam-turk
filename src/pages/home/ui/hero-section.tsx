@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 type FeatureKey = "listening" | "reading" | "writing" | "speaking";
 
 const HeroSection = () => {
+  // Temporary switch: keep feature preview code, but disable opening from cards.
+  const isFeaturePreviewEnabled = false;
   const [activeFeature, setActiveFeature] = useState<FeatureKey | null>(null);
 
   const features = [
@@ -111,10 +113,15 @@ const HeroSection = () => {
               <Card
                 key={item.key}
                 onClick={() =>
+                  isFeaturePreviewEnabled &&
                   setActiveFeature((prev) => (prev === item.key ? null : item.key))
                 }
-                className={`relative bg-white border rounded-2xl shadow-sm transition-shadow duration-300 hover:shadow-md group cursor-pointer overflow-hidden ${
-                  activeFeature === item.key ? "border-red-300 ring-1 ring-red-200" : "border-gray-200 hover:border-gray-300"
+                className={`relative bg-white border rounded-2xl shadow-sm transition-shadow duration-300 hover:shadow-md group overflow-hidden ${
+                  isFeaturePreviewEnabled ? "cursor-pointer" : "cursor-default"
+                } ${
+                  activeFeature === item.key && isFeaturePreviewEnabled
+                    ? "border-red-300 ring-1 ring-red-200"
+                    : "border-gray-200 hover:border-gray-300"
                 }`}
                 style={{
                   opacity: 0,
@@ -144,7 +151,7 @@ const HeroSection = () => {
         </div>
       </section>
 
-      {activeFeature && (
+      {activeFeature && isFeaturePreviewEnabled && (
         <section className="pb-14 bg-white/95">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
@@ -177,5 +184,4 @@ const HeroSection = () => {
 };
 
 export default HeroSection;
-
 

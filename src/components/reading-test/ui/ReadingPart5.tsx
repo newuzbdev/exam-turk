@@ -1,8 +1,8 @@
-﻿import { useState } from "react";
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+﻿import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import HighlightableText from "@/pages/reading-test/components/HighlightableText";
 import { fixMojibake } from "@/utils/text";
+import { MoveVertical } from "lucide-react";
 
 interface ReadingPart5Props {
   testData: any;
@@ -12,7 +12,6 @@ interface ReadingPart5Props {
 }
 
 export default function ReadingPart5({ testData, answers, onAnswerChange, partNumber }: ReadingPart5Props) {
-  const [showPassage, setShowPassage] = useState(true);
   const part5 = (testData.parts || []).find((p: any) => (p.number || 0) === 5) || (testData.parts || [])[4];
   const section5 = part5?.sections && part5.sections[0];
   const content = section5?.content || "";
@@ -125,44 +124,46 @@ export default function ReadingPart5({ testData, answers, onAnswerChange, partNu
     <div className="mx-2 reading-body pr-2 text-slate-800">
    
 
-      {/* Mobile Layout - Stacked */}
+      {/* Mobile Layout - Split */}
       <div className="block lg:hidden h-[100svh]">
-        <div className="rounded-lg border border-gray-200 shadow-lg overflow-hidden h-[100svh] flex flex-col">
-          {/* Passage Section */}
-          <div className="reading-surface p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-sm reading-strong-title text-slate-800">Metin</div>
-              <button
-                type="button"
-                className="text-xs font-semibold text-gray-700 border border-gray-200 rounded-md px-2 py-1 bg-white"
-                onClick={() => setShowPassage((v) => !v)}
-              >
-                {showPassage ? "Metni Gizle" : "Metni Göster"}
-              </button>
-            </div>
-            {showPassage && (
-              <div className="space-y-4 leading-relaxed max-h-[38vh] overflow-y-auto overscroll-auto touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent reading-scroll pass-through-scroll">
-                <div className="space-y-4">
-                  {paragraphs.map((para) => (
-                    <div key={`${para.letter}.`} className="flex items-start gap-3">
-                      <span className="font-semibold text-slate-800 min-w-[1.5rem]">
-                        {`${para.letter}.`}
-                      </span>
-                      <div className="reading-text leading-relaxed flex-1">
-                        <HighlightableText text={fixMojibake(para.text)} partNumber={partNumber} />
-                      </div>
+        <ResizablePanelGroup direction="vertical" className="h-[100svh] bg-white">
+          <ResizablePanel defaultSize={50} minSize={25} maxSize={75} className="bg-white min-h-0">
+            <div className="h-full p-4 border-b border-gray-200 overflow-y-auto overscroll-auto touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent reading-scroll pass-through-scroll">
+              <div className="text-sm reading-strong-title text-slate-800 mb-3">Metin</div>
+              <div className="space-y-4">
+                {paragraphs.map((para) => (
+                  <div key={`${para.letter}.`} className="flex items-start gap-3">
+                    <span className="font-semibold text-slate-800 min-w-[1.5rem]">
+                      {`${para.letter}.`}
+                    </span>
+                    <div className="reading-text leading-relaxed flex-1">
+                      <HighlightableText text={fixMojibake(para.text)} partNumber={partNumber} />
                     </div>
-                  ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </ResizablePanel>
+
+          <ResizableHandle
+            withHandle={false}
+            className="h-[10px] touch-none cursor-row-resize data-[panel-group-direction=vertical]:h-[10px] data-[panel-group-direction=vertical]:my-0 bg-transparent !rounded-none !shadow-none data-[resize-handle-state=hover]:!bg-transparent data-[resize-handle-state=drag]:!bg-transparent"
+          >
+            <div className="mx-auto flex h-full w-full items-center justify-center">
+              <div className="relative w-full">
+                <div className="mx-auto h-px w-full bg-black/60" />
+                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-sm bg-white px-1">
+                  <MoveVertical className="h-3.5 w-3.5 text-black/80" strokeWidth={2.25} />
                 </div>
               </div>
-            )}
-          </div>
-          
-          {/* Questions Section - More scroll space for mobile */}
-          <div className="reading-surface-alt p-4 space-y-4 flex-1 min-h-0 overflow-y-auto overscroll-auto touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent reading-scroll pb-28 pass-through-scroll">
+            </div>
+          </ResizableHandle>
+
+          <ResizablePanel defaultSize={50} minSize={25} maxSize={75} className="bg-[#f9fafb] min-h-0">
+            <div className="h-full p-4 space-y-4 overflow-y-auto overscroll-auto touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent reading-scroll pb-28 pass-through-scroll">
             <h4 className="text-sm font-semibold text-slate-700 mb-3 tracking-wide">Sorular</h4>
             {/* Static instruction for 30-32 (always visible at top) */}
-            <div className="reading-surface-card border p-3 mb-3 rounded-lg">
+            <div className="p-2 mb-2">
               <p className="reading-text font-semibold font-sans leading-relaxed">
                  Sorular 30-32. Metne göre doğru seçeneği (A, B, C veya D) işaretleyiniz.
               </p>
@@ -173,11 +174,11 @@ export default function ReadingPart5({ testData, answers, onAnswerChange, partNu
               const isParagraphQuestion = questionNumber >= 33; // Questions 33-35 are paragraph matching
               
               return (
-                <div key={q.id} className="reading-surface-card rounded-lg border p-3 space-y-2">
+                <div key={q.id} className="py-2 space-y-2 border-b border-gray-200 last:border-b-0">
 
                   {/* Static instruction for 33-35 (render once above S33) */}
                   {isParagraphQuestion && questionNumber === 33 && (
-                    <div className="reading-surface-card border p-3 mb-3 rounded-lg">
+                    <div className="p-2 mb-2 bg-gray-50">
                       <p className="reading-text font-semibold font-sans leading-relaxed">
                          Sorular 33-35. Aşağıdaki cümleleri (33-35) okuyunuz. Cümlelerin hangi paragraflara (A-E) ait olduğunu bulunuz. Seçilmemesi gereken iki paragraf bulunmaktadır.
                       </p>
@@ -206,12 +207,12 @@ export default function ReadingPart5({ testData, answers, onAnswerChange, partNu
                           </Select>
                         </div>
                       </div>
-                      <p className="reading-text font-medium">
+                      <div className="reading-text font-medium">
                         <HighlightableText
                           text={fixMojibake(q.text || q.question || "Hangi paragrafta yer almaktadır?")}
                           partNumber={partNumber}
                         />
-                      </p>
+                      </div>
                     </>
                   ) : (
                     <div className="space-y-1">
@@ -242,9 +243,9 @@ export default function ReadingPart5({ testData, answers, onAnswerChange, partNu
                 </div>
               );
             })}
-            
-          </div>
-        </div>
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </div>
 
       {/* Desktop Layout - Resizable */}
@@ -286,15 +287,14 @@ export default function ReadingPart5({ testData, answers, onAnswerChange, partNu
               <div className="space-y-4 mb-8">
                 {orderedQuestions.map((q: any, idx: number) => {
                   const questionNumber = q.number || (30 + idx);
-                  const isParagraphQuestion = questionNumber >= 33; // Questions 33-35 are paragraph matching
-                  
+                  const isParagraphQuestion = questionNumber >= 33;
+
                   return (
                     <div key={q.id} className="rounded-lg border border-gray-200/60 bg-white/90 p-3 space-y-2">
-                      {/* Static instruction for 33-35 (render once above S33) */}
                       {isParagraphQuestion && questionNumber === 33 && (
                         <div className="bg-gray-50 border border-gray-200/60 p-3 mb-2 rounded-lg">
                           <p className="text-sm font-semibold font-sans leading-relaxed text-slate-700">
-                             Sorular 33-35. Aşağıdaki cümleleri (33-35) okuyunuz. Cümlelerin hangi paragraflara (A-E) ait olduğunu bulunuz. Seçilmemesi gereken iki paragraf bulunmaktadır.
+                            Sorular 33-35. Asagidaki cumleleri (33-35) okuyunuz. Cumlelerin hangi paragraflara (A-E) ait oldugunu bulunuz. Secilmemesi gereken iki paragraf bulunmaktadir.
                           </p>
                         </div>
                       )}
@@ -305,21 +305,21 @@ export default function ReadingPart5({ testData, answers, onAnswerChange, partNu
                             <span className="font-bold">S{questionNumber}.</span>
                             <div className="w-28">
                               <Select
-                                value={(answers[q.id] || "")}
+                                value={answers[q.id] || ""}
                                 onValueChange={(v) => onAnswerChange(q.id, v === "__none__" ? "" : v)}
                               >
                                 <SelectTrigger className={`h-9 text-sm font-medium border rounded-md cursor-pointer transition-all duration-150 ease-out data-[state=open]:scale-[1.01] ${
                                   answers[q.id] ? "border-gray-400 bg-gray-100 text-[#333333]" : "border-gray-200 bg-white text-slate-700 hover:border-gray-300"
                                 } focus:ring-1 focus:ring-black/15 focus:ring-offset-0 focus:border-gray-400`}>
-                                  <SelectValue placeholder={`Se\u00e7iniz`} className="font-normal text-slate-700">
-                                    {answers[q.id] ? `${answers[q.id]}.` : `Se\u00e7iniz`}
+                                  <SelectValue placeholder="Seciniz" className="font-normal text-slate-700">
+                                    {answers[q.id] ? `${answers[q.id]}.` : "Seciniz"}
                                   </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent className="bg-white border border-gray-200 shadow-sm rounded-md reading-select-content reading-select-content">
                                   <SelectItem value="__none__" className="font-normal focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
-                                    {`Se\u00e7iniz`}
+                                    Seciniz
                                   </SelectItem>
-                                  {(optionList.length ? optionList.map(o => o.variantText) : ["A","B","C","D","E"]).map((letter) => (
+                                  {(optionList.length ? optionList.map((o) => o.variantText) : ["A", "B", "C", "D", "E"]).map((letter) => (
                                     <SelectItem key={letter} value={String(letter)} className="font-normal focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
                                       {String(letter)}.
                                     </SelectItem>
@@ -328,12 +328,12 @@ export default function ReadingPart5({ testData, answers, onAnswerChange, partNu
                               </Select>
                             </div>
                           </div>
-                          <p className="reading-text font-normal">
+                          <div className="reading-text font-normal">
                             <HighlightableText
-                              text={fixMojibake(q.text || q.question || "Hangi paragrafta yer almaktadır?")}
+                              text={fixMojibake(q.text || q.question || "Hangi paragrafta yer almaktadir?")}
                               partNumber={partNumber}
                             />
-                          </p>
+                          </div>
                         </>
                       ) : (
                         <div className="space-y-1">
@@ -375,8 +375,6 @@ export default function ReadingPart5({ testData, answers, onAnswerChange, partNu
                   );
                 })}
               </div>
-
-              
             </div>
           </ResizablePanel>
         </ResizablePanelGroup>
@@ -384,6 +382,11 @@ export default function ReadingPart5({ testData, answers, onAnswerChange, partNu
     </div>
   );
 }
+
+
+
+
+
 
 
 

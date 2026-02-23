@@ -671,7 +671,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
         <div className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50 shadow-sm w-full">
           {/* Match horizontal padding with description block below */}
           <div className="px-2 sm:px-4">
-            <div className="flex justify-between items-center h-16 sm:h-[68px]">
+            <div className="flex justify-between items-center h-auto py-2 lg:h-[68px] lg:py-0">
               {/* Mobile Header - centered timer + title after logo */}
               <div className="block lg:hidden w-full">
                 <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
@@ -679,7 +679,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
                     <img
                       src="/logo11.svg"
                       alt="TURKISHMOCK"
-                      className="h-8 w-auto object-contain"
+                      className="h-9 w-auto object-contain"
                       onError={(e) => {
                         (e.target as HTMLImageElement).style.display = "none";
                       }}
@@ -687,11 +687,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
                   </div>
                   <div
                     className={`justify-self-center text-base font-semibold tabular-nums ${
-                      timeLeft <= 300
-                        ? "text-red-700"
-                        : timeLeft <= 600
-                        ? "text-amber-700"
-                        : "text-slate-700"
+                      timeLeft <= 300 ? "text-red-700 animate-pulse" : "text-black"
                     }`}
                   >
                     {formatTime(timeLeft)}
@@ -700,10 +696,10 @@ export default function ReadingPage({ testId }: { testId: string }) {
                     GÖNDER
                   </Button>
                 </div>
-                <div className="mt-2 flex items-center justify-end gap-1">
+                <div className="mt-2 flex items-center justify-start gap-1">
                   <button
                     type="button"
-                    className="h-7 w-7 rounded border border-gray-200 bg-white text-[11px] font-semibold text-gray-700"
+                    className="!h-5 !w-5 !min-h-0 rounded border border-gray-200 bg-white !text-[9px] leading-none font-medium text-gray-700 p-0"
                     onClick={() => setFontScale((v) => Math.max(0.9, Math.round((v - 0.05) * 100) / 100))}
                     aria-label="Metni küçült"
                   >
@@ -711,7 +707,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
                   </button>
                   <button
                     type="button"
-                    className="h-7 w-7 rounded border border-gray-200 bg-white text-[11px] font-semibold text-gray-700"
+                    className="!h-5 !w-5 !min-h-0 rounded border border-gray-200 bg-white !text-[9px] leading-none font-medium text-gray-700 p-0"
                     onClick={() => setFontScale((v) => Math.min(1.2, Math.round((v + 0.05) * 100) / 100))}
                     aria-label="Metni büyült"
                   >
@@ -735,11 +731,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
                 </div>
                 <div
                   className={`justify-self-center text-[22px] font-semibold tabular-nums ${
-                    timeLeft <= 300
-                      ? "text-red-700"
-                      : timeLeft <= 600
-                      ? "text-amber-700"
-                      : "text-slate-700"
+                    timeLeft <= 300 ? "text-red-700 animate-pulse" : "text-black"
                   }`}
                 >
                   {formatTime(timeLeft)}
@@ -947,7 +939,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
             </div>
 
             {/* Mobile Layout - compact prev/next with center progress */}
-            <div className="lg:hidden fixed bottom-2 right-2 left-2 grid grid-cols-[auto_1fr_auto] items-center gap-2 px-2 py-2 bg-white/98 backdrop-blur-sm rounded-lg shadow-sm border border-gray-300/80 z-50">
+            <div className="lg:hidden fixed bottom-[max(0.5rem,env(safe-area-inset-bottom))] right-2 left-2 grid grid-cols-[auto_1fr_auto] items-center gap-2 px-2 py-2 bg-white/98 backdrop-blur-sm rounded-lg shadow-sm border border-gray-300/80 z-50">
               <div className="justify-self-start">
                 <Button
                   onClick={handlePrevPart}
@@ -1007,14 +999,6 @@ export default function ReadingPage({ testId }: { testId: string }) {
     </ReadingNotesProvider>
   );
 }
-
-
-
-
-
-
-
-
 
 
 

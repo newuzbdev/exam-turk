@@ -1,8 +1,7 @@
-ï»¿import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import HighlightableText from "@/pages/reading-test/components/HighlightableText";
 import { fixMojibake } from "@/utils/text";
-import { toApiUrl } from "@/config/runtime";
 
 interface ReadingPart2Props {
   testData: any;
@@ -12,6 +11,11 @@ interface ReadingPart2Props {
 }
 
 const SELECT_PLACEHOLDER = "Se\u00e7iniz";
+
+const API_BASE_URL = ((import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, ""))
+  || (import.meta.env.DEV ? "http://localhost:3000" : "https://api.turkishmock.uz");
+
+const toApiUrl = (path: string) => `${API_BASE_URL}/${path.replace(/^\//, "")}`;
 
 export default function ReadingPart2({ testData, answers, onAnswerChange, partNumber }: ReadingPart2Props) {
   const part2 = (testData.parts || []).find((p: any) => (p.number || 0) === 2) || (testData.parts || [])[1];
@@ -78,7 +82,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
           <img
             key={`i-${start}`}
             src={src}
-            alt={`S${qNum} gÃ¶rseli`}
+            alt={`S${qNum} görseli`}
             className="w-full max-w-[520px] h-auto max-h-[340px] object-contain border border-gray-200 rounded my-2 mx-auto"
             onError={(e) => {
               const el = e.target as HTMLImageElement;
@@ -161,7 +165,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                         <div className="flex justify-center">
                           <img
                             src={makeImageSrc(q.imageUrl as string)}
-                            alt={`S${qNum} gÃ¶rseli`}
+                            alt={`S${qNum} görseli`}
                             className="w-full h-auto object-contain rounded"
                             onError={(e) => {
                               const el = e.target as HTMLImageElement;
@@ -199,7 +203,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
       {/* Desktop Layout - Resizable */}
       <div className="hidden lg:block h-full">
         <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border border-gray-200 shadow-lg">
-          {/* Left: Questions 7â€“14 with selects */}
+          {/* Left: Questions 7–14 with selects */}
           <ResizablePanel defaultSize={50} minSize={30} className="bg-gray-50">
             <div className="h-full p-6 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent pb-44 reading-scroll">
               <div className="grid grid-cols-[repeat(auto-fit,minmax(360px,1fr))] gap-4">
@@ -251,7 +255,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                               <div className="relative rounded-md overflow-hidden">
                                 <img
                                   src={makeImageSrc(q.imageUrl as string)}
-                                  alt={`S${qNum} gÃ¶rseli`}
+                                  alt={`S${qNum} görseli`}
                                   className="w-full max-w-none h-auto max-h-[700px] object-contain"
                                   onError={(e) => {
                                     const el = e.target as HTMLImageElement;

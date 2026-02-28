@@ -11,10 +11,11 @@ import { getInstructionForSection } from "@/config/speakingInstructions"
 import { speechToTextService } from "@/services/speechToText.service"
 import SimpleTextDisplay from "@/components/speaking-test/SimpleTextDisplay"
 import { normalizeDisplayText } from "@/utils/text"
+import { API_BASE_URL } from "@/config/runtime"
 // import ResultModal from "./components/ResultModal"
 // import DisableKeys from "./components/DisableKeys"
 
-const baseURL = import.meta.env.VITE_API_URL || "https://api.turkishmock.uz"
+const baseURL = API_BASE_URL
 
 interface Question {
   id: string
@@ -210,12 +211,14 @@ export default function ImprovedSpeakingTest() {
   const prepStartedKeyRef = useRef<string | null>(null)
   const skipToNextSectionRef = useRef<boolean>(false)
   const skipToNextQuestionRef = useRef<boolean>(false)
+  const skipToPart1SubPart2Ref = useRef<boolean>(false)
   const skipStoreEmptyRef = useRef<boolean>(false)
   // Guard to ensure section instruction audio plays only once per section
   const instructionPlayStartedRef = useRef<boolean>(false)
   const lastInstructionSectionRef = useRef<string | null>(null)
   const submitAllRetryRef = useRef<number>(0)
   const hasRestoredProgressRef = useRef(false)
+  const hasSubmittedRef = useRef(false)
   const progressStorageKey = testId ? `speaking_progress_${testId}` : null
   const micReadyStorageKey = testId ? `speaking_mic_checked_${testId}` : null
 
@@ -436,6 +439,17 @@ export default function ImprovedSpeakingTest() {
       sessionStorage.removeItem(progressStorageKey)
     } catch {}
   }
+
+  useEffect(() => {
+    return () => {
+      if (hasSubmittedRef.current) return
+      clearSpeakingProgress()
+      if (!testId) return
+      try { sessionStorage.removeItem(`speaking_answers_${testId}`) } catch {}
+      try { sessionStorage.removeItem(`speaking_mic_checked_${testId}`) } catch {}
+      try { sessionStorage.removeItem(`test_data_SPEAKING_${testId}`) } catch {}
+    }
+  }, [testId, progressStorageKey, micReadyStorageKey])
 
   const cleanupMedia = () => {
     try {
@@ -1131,7 +1145,17 @@ export default function ImprovedSpeakingTest() {
         }
         
         // If user requested to skip to next section, do it after saving
-        if (skipToNextSectionRef.current) {
+        if (skipToPart1SubPart2Ref.current) {
+          skipToPart1SubPart2Ref.current = false
+          setTimeout(() => {
+            setCurrentSubPartIndex(1)
+            setCurrentQuestionIndex(0)
+            setShowSectionDescription(true)
+            resetPerQuestionState()
+            prepStartedKeyRef.current = null
+            autoStartKeyRef.current = null
+          }, 300)
+        } else if (skipToNextSectionRef.current) {
           skipToNextSectionRef.current = false
           setTimeout(() => {
             advanceToNextSection()
@@ -1250,6 +1274,12 @@ export default function ImprovedSpeakingTest() {
     setIsPrepRunning(false)
 
     if (isRecording) {
+      if (currentSection?.type === "PART1" && currentSubPartIndex === 0) {
+        // While recording in 1.1, skip should still land on 1.2 after recorder finishes.
+        skipToPart1SubPart2Ref.current = true
+        stopRecording()
+        return
+      }
       // Preserve partial audio, then move to next section as soon as onstop persists it.
       skipToNextSectionRef.current = true
       stopRecording()
@@ -1525,6 +1555,7 @@ export default function ImprovedSpeakingTest() {
       toast.error("Test verisi bulunamadi")
       return
     }
+    hasSubmittedRef.current = true
     setIsSubmitting(true)
 
     try {
@@ -2398,7 +2429,7 @@ export default function ImprovedSpeakingTest() {
 
   return (
     <motion.div
-      className="min-h-screen relative overflow-hidden flex flex-col"
+      className="h-[100dvh] min-h-0 relative overflow-x-hidden overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch] flex flex-col"
       initial="initial"
       animate="animate"
     >
@@ -2408,14 +2439,43 @@ export default function ImprovedSpeakingTest() {
       <div className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50 shadow-sm w-full">
         {/* Match horizontal padding with description block below */}
         <div className="px-2 sm:px-4">
-          <div className="relative flex flex-wrap justify-between items-center min-h-[4.5rem] sm:min-h-[6rem] gap-2">
+          <div className="block sm:hidden w-full py-0.5">
+            <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <img
+                  src="/logo11.svg"
+                  alt="TURKISHMOCK"
+                  className="h-9 w-auto object-contain"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = "none";
+                  }}
+                />
+              </div>
+              <div className="justify-self-center px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 text-xs font-semibold">
+                {currentSectionIndex === 0
+                  ? (currentSubPartIndex === 0 ? "Bölüm 1.1" : "Bölüm 1.2")
+                  : currentSectionIndex === 1
+                  ? "Bölüm 2"
+                  : "Bölüm 3"}
+              </div>
+              <button
+                onClick={skipSectionWithConfirm}
+                className="px-3 py-1 text-xs bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold transition-all duration-200"
+              >
+                Bölümü Geç
+              </button>
+            </div>
+            <div className="mt-1" />
+          </div>
+
+          <div className="hidden sm:flex relative flex-wrap justify-between items-center min-h-[4.5rem] sm:min-h-[6rem] gap-2">
             {/* Logo on desktop, section label on mobile */}
             <div className="flex items-center flex-shrink-0">
-              <div className="block sm:hidden font-extrabold text-base tracking-wider">KONUŞMA</div>
+              <div className="block sm:hidden absolute left-1/2 -translate-x-1/2 font-extrabold text-base tracking-wider">KONUŞMA</div>
               <img 
                 src="/logo11.svg" 
                 alt="TURKISHMOCK" 
-                className="hidden sm:block h-9 sm:h-10 md:h-12 w-auto object-contain"
+                className="block h-8 sm:h-10 md:h-12 w-auto object-contain"
                 onError={(e) => {
                   console.error("Logo failed to load");
                   (e.target as HTMLImageElement).style.display = 'none';
@@ -2490,7 +2550,7 @@ export default function ImprovedSpeakingTest() {
             </div>
 
             {/* Mobile: show only current section */}
-            <div className="flex sm:hidden items-center justify-center flex-1">
+            <div className="flex sm:hidden items-center justify-end w-full mt-1">
               <div className="px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 text-xs font-semibold">
                 {currentSectionIndex === 0
                   ? (currentSubPartIndex === 0 ? "Bölüm 1.1" : "Bölüm 1.2")
@@ -2601,7 +2661,11 @@ export default function ImprovedSpeakingTest() {
         </motion.header>
       )}
          {/* question rendering part */}
-     <main className="flex flex-1 flex-col items-center justify-start sm:justify-center min-h-0 w-full px-2 sm:px-4 md:px-8 pt-4 sm:pt-6 md:pt-8 pb-28 sm:pb-20 safe-area-bottom overflow-y-auto overscroll-contain max-h-[calc(100dvh-5rem)] sm:max-h-none">
+     <main
+       className={`flex flex-1 flex-col items-center min-h-0 w-full px-2 sm:px-4 md:px-8 pt-2 sm:pt-6 md:pt-8 pb-36 sm:pb-20 safe-area-bottom ${
+         currentSection?.type === "PART1" && currentSubPartIndex === 0 ? "justify-center" : "justify-start"
+       } sm:justify-center`}
+     >
         <AnimatePresence mode="wait">
           <motion.div
             key={`${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`}
@@ -2612,7 +2676,10 @@ export default function ImprovedSpeakingTest() {
           >
           {currentSection?.type !== "PART2" && currentSection?.type !== "PART3" && !isPlayingInstructions && (
              <div className="text-center px-2">
-               <div className="text-black font-bold text-xl sm:text-2xl md:text-3xl">
+               <div
+                 className="text-black font-bold leading-tight"
+                 style={{ fontSize: "clamp(1.1rem, 5vw, 1.9rem)" }}
+               >
                  Soru {currentQuestionIndex + 1}
                </div>
              </div>
@@ -2630,7 +2697,10 @@ export default function ImprovedSpeakingTest() {
               const imgs = currentSection.subParts[currentSubPartIndex].images
               if (imgs.length === 1) {
                 return (
-                  <div className="w-full max-w-xs sm:max-w-md md:max-w-lg mx-auto aspect-[4/3] bg-transparent rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex items-center justify-center shadow-sm border border-gray-200">
+                  <div
+                    className="w-full mx-auto aspect-[4/3] bg-transparent rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex items-center justify-center shadow-sm border border-gray-200"
+                    style={{ maxWidth: "clamp(240px, 82vw, 560px)" }}
+                  >
                     <motion.img
                       src={imgs[0]}
                       alt="Soru görseli"
@@ -2647,7 +2717,10 @@ export default function ImprovedSpeakingTest() {
               }
               if (imgs.length >= 2) {
                 return (
-                  <div className="w-full max-w-xl sm:max-w-2xl md:max-w-3xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
+                  <div
+                    className="w-full mx-auto grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:gap-6"
+                    style={{ maxWidth: "clamp(280px, 92vw, 960px)" }}
+                  >
                     {imgs.slice(0, 2).map((src, idx) => (
                       <div key={`pimg-${idx}`} className="aspect-[4/3] bg-transparent rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex items-center justify-center shadow-sm border border-gray-200">
                         <motion.img
@@ -2679,7 +2752,7 @@ export default function ImprovedSpeakingTest() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ delay: 0.2 }}
-              className="mb-8 sm:mb-12 md:mb-14 lg:mb-16 md:-mt-3 lg:-mt-4 px-2 sm:px-4"
+              className="w-full mb-8 sm:mb-12 md:mb-14 lg:mb-16 md:-mt-3 lg:-mt-4 px-2 sm:px-4"
             >
           {currentSection?.type === "PART2" ? (
             (() => {
@@ -2699,8 +2772,8 @@ export default function ImprovedSpeakingTest() {
                         }}
                       />
                     </div>
-                    <div className="px-2 sm:px-0 self-center">
-                      <ul className="list-disc list-inside space-y-2 sm:space-y-3 text-black">
+                    <div className="px-2 sm:px-0 self-center text-center md:text-left">
+                      <ul className="list-disc list-inside space-y-2 sm:space-y-3 text-black inline-block text-left">
                         {questions.map((q) => (
                           <li key={q.id} className="text-base sm:text-lg md:text-xl leading-relaxed break-words">
                             {normalizeDisplayText(q.questionText)}
@@ -2757,7 +2830,10 @@ export default function ImprovedSpeakingTest() {
               </div>
             </div>
               ) : (
-                <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl font-medium text-gray-800 text-center leading-relaxed max-w-4xl mx-auto px-2 sm:px-4 break-words">
+                <h2
+                  className="font-medium text-gray-800 text-center leading-relaxed max-w-3xl mx-auto px-2 sm:px-4 break-words"
+                  style={{ fontSize: "clamp(1.25rem, 5.1vw, 2.25rem)" }}
+                >
                   {normalizeDisplayText(currentQuestion?.questionText)}
                 </h2>
               )}
@@ -2769,26 +2845,38 @@ export default function ImprovedSpeakingTest() {
         {/* Hide microphone button until TTS finishes and preparation time completes */}
         {!isPlayingInstructions && !isPlayingTTS && !isPrepRunning ? (
           <div className="relative mt-2 sm:mt-4 md:mt-6 min-h-[120px] sm:min-h-[140px] flex items-center justify-center">
-            {isRecording && !isPaused && (
-              <>
-                <span className="absolute inset-0 w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 -left-2 -top-2 sm:-left-3 sm:-top-3 md:-left-4 md:-top-4 rounded-full bg-red-400 opacity-30 animate-ping" style={{ animationDuration: '2.5s' }}></span>
-                <span className="absolute inset-0 w-28 h-28 sm:w-36 sm:h-36 md:w-48 md:h-48 -left-4 -top-4 sm:-left-6 sm:-top-6 md:-left-8 md:-top-8 rounded-full bg-red-500 opacity-20 animate-ping" style={{ animationDuration: '3s' }}></span>
-              </>
-            )}
-            <motion.div
-              className={`speaking-mic-core w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-32 lg:h-32 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 ${
-                isRecording
-                  ? "bg-red-600"
-                  : isProcessingSpeechToText
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-gradient-to-br from-red-400 to-red-600"
-              }`}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.4, type: "spring", stiffness: 200 }}
+            <div
+              className="relative flex items-center justify-center"
+              style={{ width: "clamp(96px, 24vw, 152px)", height: "clamp(96px, 24vw, 152px)" }}
             >
-              <Mic className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 text-white" />
-            </motion.div>
+              {isRecording && !isPaused && (
+                <>
+                  <span
+                    className="absolute left-1/2 top-1/2 w-full h-full -translate-x-1/2 -translate-y-1/2 rounded-full bg-red-400 opacity-30 animate-ping"
+                    style={{ animationDuration: "2.5s" }}
+                  />
+                  <span
+                    className="absolute left-1/2 top-1/2 w-[118%] h-[118%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-red-500 opacity-20 animate-ping"
+                    style={{ animationDuration: "3s" }}
+                  />
+                </>
+              )}
+              <motion.div
+                className={`speaking-mic-core relative z-10 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 ${
+                  isRecording
+                    ? "bg-red-600"
+                    : isProcessingSpeechToText
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-gradient-to-br from-red-400 to-red-600"
+                }`}
+                style={{ width: "clamp(74px, 19vw, 128px)", height: "clamp(74px, 19vw, 128px)" }}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.4, type: "spring", stiffness: 200 }}
+              >
+                <Mic className="text-white" style={{ width: "clamp(28px, 7.2vw, 48px)", height: "clamp(28px, 7.2vw, 48px)" }} />
+              </motion.div>
+            </div>
           </div>
         ) : (
           /* Show loading state when TTS is playing or preparation is running */
@@ -2800,9 +2888,31 @@ export default function ImprovedSpeakingTest() {
             >
               <motion.div
                 animate={{ rotate: 360 }}
-                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-red-200 border-t-red-600 mb-4"
-              />
+                transition={{ duration: 1.4, repeat: Infinity, ease: "linear" }}
+                className="w-16 h-16 sm:w-20 sm:h-20 aspect-square shrink-0 mx-auto mb-4"
+              >
+                <svg viewBox="0 0 100 100" className="w-full h-full">
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="42"
+                    fill="none"
+                    stroke="#fecaca"
+                    strokeWidth="8"
+                  />
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="42"
+                    fill="none"
+                    stroke="#dc2626"
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                    strokeDasharray="80 264"
+                    transform="rotate(-90 50 50)"
+                  />
+                </svg>
+              </motion.div>
               <p className="text-lg sm:text-xl font-semibold text-gray-700">
                 {isPlayingTTS ? "Soru okunuyor..." : "Hazırlık süresi..."}
               </p>
@@ -2919,32 +3029,21 @@ export default function ImprovedSpeakingTest() {
       </main>
 
 
-      {/* Timer always at bottom for all sections */}
-      <motion.div
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.6 }}
-        className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 lg:bottom-8 lg:right-8 z-[900]"
-      >
-        <div className="text-3xl sm:text-4xl lg:text-6xl font-bold text-gray-800 font-mono">
-          {isPrepRunning ? formatTime(prepSeconds) : formatTime(timeLeft)}
-        </div>
-        {isPrepRunning ? (
-          <div className="text-lg sm:text-xl lg:text-2xl font-bold text-red-600 font-mono text-center mt-1 sm:mt-2">
-             
+      {/* Bottom timer: show only while answering */}
+      {!isPrepRunning && !isPlayingTTS && !isPlayingInstructions && (
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.6 }}
+          className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 lg:bottom-8 lg:right-8 z-[900] bg-transparent border-0 shadow-none rounded-none p-0 m-0 pointer-events-none"
+        >
+          <div className="text-3xl sm:text-4xl lg:text-6xl font-bold text-gray-800 font-mono bg-transparent border-0 shadow-none">
+            {formatTime(timeLeft)}
           </div>
-        ) : (
-          isRecording && (
-            <div className="text-lg sm:text-xl lg:text-2xl font-bold text-red-600 font-mono text-center mt-1 sm:mt-2">
-            </div>
-          )
-        )}
-      </motion.div>
+        </motion.div>
+      )}
 
 
     </motion.div>
   )
 }
-
-
-

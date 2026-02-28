@@ -14,8 +14,9 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { MicrophoneCheck } from "@/pages/speaking-test/components/MicrophoneCheck";
-import { overallTestFlowStore, type TestType } from "@/services/overallTest.service";
+import { overallTestFlowStore, overallTestService, type TestType } from "@/services/overallTest.service";
 
 type SectionGuide = {
   title: string;
@@ -101,6 +102,8 @@ export default function OverallSectionReadyPage() {
   const soundTestRef = useRef<HTMLAudioElement | null>(null);
   const [isPlayingSoundTest, setIsPlayingSoundTest] = useState(false);
   const [isSpeakingMicReady, setIsSpeakingMicReady] = useState(false);
+  const [showExitConfirmModal, setShowExitConfirmModal] = useState(false);
+  const [isExiting, setIsExiting] = useState(false);
 
   const stepInfo = useMemo(() => {
     const total = Math.max(0, pending?.totalCount || 0);
@@ -187,6 +190,33 @@ export default function OverallSectionReadyPage() {
 
     overallTestFlowStore.clearPendingNextSection();
     navigate(nextPath, { replace: true });
+  };
+
+  const handleExitRequested = () => {
+    setShowExitConfirmModal(true);
+  };
+
+  const handleConfirmExit = async () => {
+    const overallId = overallTestFlowStore.getOverallId();
+    if (!overallId) {
+      overallTestFlowStore.clearPendingNextSection();
+      overallTestFlowStore.clear();
+      navigate("/test", { replace: true });
+      return;
+    }
+
+    setIsExiting(true);
+    const done = await overallTestService.finalizeEarlyExit(overallId);
+    if (!done) {
+      setIsExiting(false);
+      return;
+    }
+
+    overallTestFlowStore.clearPendingNextSection();
+    overallTestFlowStore.clear();
+    setIsExiting(false);
+    setShowExitConfirmModal(false);
+    navigate(`/overall-results/${overallId}`, { replace: true });
   };
 
   if (!pending || !section) {
@@ -300,10 +330,7 @@ export default function OverallSectionReadyPage() {
               <Button
                 variant="outline"
                 className="border-gray-300 text-gray-700 hover:bg-gray-100"
-                onClick={() => {
-                  overallTestFlowStore.clearPendingNextSection();
-                  navigate("/test");
-                }}
+                onClick={handleExitRequested}
               >
                 Geri Dön
               </Button>
@@ -318,6 +345,17 @@ export default function OverallSectionReadyPage() {
           </CardContent>
         </Card>
       </div>
+
+      <ConfirmationModal
+        isOpen={showExitConfirmModal}
+        onClose={() => !isExiting && setShowExitConfirmModal(false)}
+        onConfirm={handleConfirmExit}
+        title="Sınavı Sonlandır"
+        message="Sınav oturumunuz sonlandırılacak ve sonuç sayfasına yönlendirileceksiniz. Tamamladığınız bölümler değerlendirilecek, başlamadığınız bölümlere ait krediler hesabınıza otomatik olarak iade edilecektir. Devam etmek istiyor musunuz?"
+        confirmText="Evet, Sınavı Sonlandır"
+        cancelText="İptal"
+        isLoading={isExiting}
+      />
     </div>
   );
 }

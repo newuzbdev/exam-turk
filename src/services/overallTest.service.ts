@@ -178,6 +178,284 @@ export const overallTestFlowStore = {
 };
 
 export const overallTestService = {
+  submitPendingLocalSections: async (): Promise<{
+    ok: boolean;
+    failed: string[];
+    successful: string[];
+  }> => {
+    const failed: string[] = [];
+    const successful: string[] = [];
+
+    const runWithRetries = async <T,>(
+      runner: () => Promise<T>,
+      isSuccess?: (value: T) => boolean,
+      attempts: number = 3
+    ): Promise<T> => {
+      let lastError: any = null;
+      let lastValue: T | null = null;
+
+      for (let attempt = 1; attempt <= attempts; attempt++) {
+        try {
+          const value = await runner();
+          lastValue = value;
+          if (!isSuccess || isSuccess(value)) return value;
+          lastError = new Error("Submission returned unsuccessful result");
+        } catch (error) {
+          lastError = error;
+        }
+        if (attempt < attempts) {
+          await new Promise((resolve) => setTimeout(resolve, 700 * attempt));
+        }
+      }
+
+      if (lastValue !== null) return lastValue;
+      throw lastError || new Error("Submission failed after retries");
+    };
+
+    try {
+      const { readingSubmissionService } = await import("./readingTest.service");
+      const { listeningSubmissionService } = await import("./listeningTest.service");
+      const { writingSubmissionService } = await import("./writingSubmission.service");
+      const { speakingSubmissionService } = await import("./speakingSubmission.service");
+
+      const normalizePayload = (rawAnswers: any) => {
+        return Array.isArray(rawAnswers)
+          ? rawAnswers.map((item: any) => ({
+              questionId: String(item?.questionId ?? ""),
+              userAnswer: String(item?.userAnswer ?? ""),
+            }))
+          : Object.entries(rawAnswers || {}).map(([questionId, userAnswer]) => ({
+              questionId,
+              userAnswer: String(userAnswer),
+            }));
+      };
+
+      const readingKeys = Object.keys(sessionStorage).filter((key) => key.startsWith("reading_answers_"));
+      for (const key of readingKeys) {
+        const raw = sessionStorage.getItem(key);
+        if (!raw) continue;
+        const readingData = JSON.parse(raw);
+        const payload = normalizePayload(readingData.answers).filter((item: any) => item.questionId);
+        const overallToken = overallTestTokenStore.getByTestId(readingData.testId);
+        try {
+          await runWithRetries(
+            () => readingSubmissionService.submitAnswers(readingData.testId, payload, overallToken || undefined),
+            undefined,
+            3
+          );
+          successful.push(`Okuma (${readingData.testId})`);
+          try { sessionStorage.removeItem(key); } catch {}
+        } catch {
+          failed.push(`Okuma (${readingData.testId})`);
+        }
+      }
+
+      const listeningKeys = Object.keys(sessionStorage).filter((key) => key.startsWith("listening_answers_"));
+      for (const key of listeningKeys) {
+        const raw = sessionStorage.getItem(key);
+        if (!raw) continue;
+        const listeningData = JSON.parse(raw);
+        const payload = normalizePayload(listeningData.answers).filter((item: any) => item.questionId);
+        const overallToken = overallTestTokenStore.getByTestId(listeningData.testId);
+        try {
+          await runWithRetries(
+            () =>
+              listeningSubmissionService.submitAnswers(
+                listeningData.testId,
+                payload,
+                overallToken || undefined,
+                listeningData.audioUrl,
+                listeningData.imageUrls
+              ),
+            undefined,
+            3
+          );
+          successful.push(`Dinleme (${listeningData.testId})`);
+          try { sessionStorage.removeItem(key); } catch {}
+        } catch {
+          failed.push(`Dinleme (${listeningData.testId})`);
+        }
+      }
+
+      const writingKeys = Object.keys(sessionStorage).filter((key) => key.startsWith("writing_answers_"));
+      for (const key of writingKeys) {
+        const raw = sessionStorage.getItem(key);
+        if (!raw) continue;
+        const writingData = JSON.parse(raw);
+        const overallToken = overallTestTokenStore.getByTestId(writingData.testId);
+
+        const getWritingAnswer = (
+          questionId: string,
+          sectionIndex: number,
+          fallbackId?: string,
+          itemIndex?: number
+        ) => {
+          const direct = writingData.answers?.[questionId];
+          if (typeof direct === "string") return direct;
+          const fallback = typeof fallbackId === "string" ? fallbackId : "";
+          const idx = typeof itemIndex === "number" ? String(itemIndex) : "";
+          const keys = [
+            `${sectionIndex}-${questionId}`,
+            `${sectionIndex}-${fallback}`,
+            fallback,
+            idx && fallback ? `${sectionIndex}-${idx}-${fallback}` : "",
+            idx ? `${sectionIndex}-${idx}-${questionId}` : "",
+          ].filter(Boolean);
+          for (const k of keys) {
+            const v = writingData.answers?.[k];
+            if (typeof v === "string") return v;
+          }
+          return "";
+        };
+
+        const payload = {
+          writingTestId: writingData.testId,
+          sections: (writingData.sections || []).map((section: any, sectionIndex: number) => {
+            const sectionDescription =
+              (typeof section?.title === "string" && section.title.trim()) ||
+              (typeof section?.description === "string" && section.description.trim()) ||
+              `Section ${section?.order || sectionIndex + 1}`;
+            const sectionData: any = { description: sectionDescription };
+
+            if (Array.isArray(section.subParts) && section.subParts.length > 0) {
+              sectionData.subParts = section.subParts.map((subPart: any, subPartIndex: number) => {
+                const questions = Array.isArray(subPart.questions) ? subPart.questions : [];
+                const subPartDescription =
+                  (typeof subPart?.label === "string" && subPart.label.trim()) ||
+                  (typeof subPart?.description === "string" && subPart.description.trim()) ||
+                  `Sub Part ${subPart?.order || subPartIndex + 1}`;
+                const answersArr = questions
+                  .map((q: any) => {
+                    const rawQuestionId = q?.id || q?.questionId;
+                    const qid =
+                      typeof rawQuestionId === "string"
+                        ? rawQuestionId
+                        : String(rawQuestionId || "").trim();
+                    if (!qid) return null;
+                    return {
+                      questionId: qid,
+                      userAnswer: getWritingAnswer(qid, sectionIndex, subPart?.id, subPartIndex),
+                    };
+                  })
+                  .filter(Boolean);
+                return { description: subPartDescription, answers: answersArr };
+              });
+            }
+
+            if (Array.isArray(section.questions) && section.questions.length > 0) {
+              sectionData.answers = section.questions
+                .map((q: any, questionIndex: number) => {
+                  const rawQuestionId = q?.id || q?.questionId;
+                  const qid =
+                    typeof rawQuestionId === "string"
+                      ? rawQuestionId
+                      : String(rawQuestionId || "").trim();
+                  if (!qid) return null;
+                  return {
+                    questionId: qid,
+                    userAnswer: getWritingAnswer(qid, sectionIndex, section?.id, questionIndex),
+                  };
+                })
+                .filter(Boolean);
+            }
+            return sectionData;
+          }),
+          ...(overallToken ? { sessionToken: overallToken } : {}),
+        };
+
+        try {
+          await runWithRetries(() => writingSubmissionService.create(payload as any), (value) => !!value, 3);
+          successful.push(`Yazma (${writingData.testId})`);
+          try { sessionStorage.removeItem(key); } catch {}
+        } catch {
+          failed.push(`Yazma (${writingData.testId})`);
+        }
+      }
+
+      const speakingKeys = Object.keys(sessionStorage).filter((key) => key.startsWith("speaking_answers_"));
+      for (const key of speakingKeys) {
+        const raw = sessionStorage.getItem(key);
+        if (!raw) continue;
+        const speakingData = JSON.parse(raw);
+        const answerTextRecord: Record<string, string> = {};
+        const isMeaningfulText = (value: unknown) => {
+          if (typeof value !== "string") return false;
+          const trimmed = value.trim();
+          return (
+            trimmed.length > 0 &&
+            trimmed !== "[Cevap bulunamadı]" &&
+            trimmed !== "[Ses metne dönüştürülemedi]"
+          );
+        };
+
+        if (speakingData.transcripts && typeof speakingData.transcripts === "object") {
+          for (const [qid, t] of Object.entries(speakingData.transcripts)) {
+            if (isMeaningfulText(t)) answerTextRecord[qid] = String(t).trim();
+          }
+        }
+        if (speakingData.answers && typeof speakingData.answers === "object") {
+          for (const [qid, val] of Object.entries(speakingData.answers)) {
+            const maybeObj: any = val;
+            const text = typeof val === "string" ? val : maybeObj?.text;
+            if (isMeaningfulText(text)) answerTextRecord[qid] = String(text).trim();
+          }
+        }
+
+        const formattedSubmission = speakingSubmissionService.formatSubmissionData(
+          speakingData,
+          answerTextRecord
+        );
+        const overallToken = overallTestTokenStore.getByTestId(speakingData.testId);
+        if (overallToken) formattedSubmission.sessionToken = overallToken;
+
+        if (!speakingSubmissionService.validateSubmissionData(formattedSubmission)) {
+          failed.push(`Konuşma (${speakingData.testId})`);
+          continue;
+        }
+
+        const submissionResult = await speakingSubmissionService.submitSpeakingTest(formattedSubmission);
+        if (!submissionResult.success) {
+          failed.push(`Konuşma (${speakingData.testId})`);
+          continue;
+        }
+        successful.push(`Konuşma (${speakingData.testId})`);
+        try { sessionStorage.removeItem(key); } catch {}
+      }
+
+      return { ok: failed.length === 0, failed, successful };
+    } catch (error) {
+      console.error("Error submitting pending local sections:", error);
+      return { ok: false, failed: ["Bilinmeyen Hata"], successful: [] };
+    }
+  },
+
+  finalizeEarlyExit: async (overallId: string): Promise<boolean> => {
+    try {
+      const submit = await overallTestService.submitPendingLocalSections();
+      if (!submit.ok) {
+        toast.error(
+          `Bazi bolumler gonderilemedi: ${submit.failed.join(", ")}. Lutfen tekrar deneyin.`
+        );
+        return false;
+      }
+
+      const payload = {
+        earlyExit: true,
+        refundUnattemptedSections: true,
+      };
+      await axiosPrivate.patch(`/api/overal-test-result/${overallId}/complete`, payload);
+      overallTestFlowStore.markCompleted();
+      return true;
+    } catch (error: any) {
+      console.error("Error finalizing early exit:", error);
+      const message =
+        error?.response?.data?.message ||
+        "Sinav sonlandirilamadi. Lutfen tekrar deneyin.";
+      toast.error(message);
+      return false;
+    }
+  },
+
   start: async (payload: StartOverallRequest): Promise<StartOverallResponse | null> => {
     try {
       const res = await axiosPrivate.post<StartOverallResponse>(

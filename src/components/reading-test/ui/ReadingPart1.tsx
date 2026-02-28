@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import HighlightableText from "@/pages/reading-test/components/HighlightableText";
 import { fixMojibake } from "@/utils/text";
 
@@ -69,10 +69,10 @@ export default function ReadingPart1({ testData, answers, onAnswerChange, partNu
         const currentSelectValue = selectedOption ? selectedOption.variantText : "__none__";
         const mobileSelectedText = selectedOption
           ? `${selectedOption.variantText}. ${selectedOption.answer}`
-          : "Se\u00e7iniz";
+          : "Seçiniz";
         const desktopSelectedText = selectedOption
           ? `${selectedOption.answer}`
-          : normalizedSelectedVariant || "Se\u00e7iniz";
+          : normalizedSelectedVariant || "Seçiniz";
         parts.push(
           <span key={`${keyPrefix}-b-${qNum}`} className="inline-block align-middle mx-1">
             <Select
@@ -94,15 +94,10 @@ export default function ReadingPart1({ testData, answers, onAnswerChange, partNu
                       } focus:ring-1 focus:ring-black/15 focus:ring-offset-0 focus:border-gray-400`
                 }
               >
-                {isMobile ? (
-                  <SelectValue placeholder={`Se\u00e7iniz`}>
-                    {mobileSelectedText}
-                  </SelectValue>
-                ) : (
-                  <SelectValue placeholder={`Se\u00e7iniz`}>
-                    {desktopSelectedText}
-                  </SelectValue>
-                )}
+                <span className="truncate">
+                  <span className="font-semibold">{`S${qNum}.`}</span>{" "}
+                  {isMobile ? mobileSelectedText : desktopSelectedText}
+                </span>
               </SelectTrigger>
               <SelectContent className="bg-white border border-gray-200 shadow-sm rounded-md reading-select-content max-h-[60vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-ultra-thin reading-scroll-ultra scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50">
                 <SelectItem

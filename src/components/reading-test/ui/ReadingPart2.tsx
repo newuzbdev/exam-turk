@@ -1,7 +1,8 @@
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+ï»¿import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import HighlightableText from "@/pages/reading-test/components/HighlightableText";
 import { fixMojibake } from "@/utils/text";
+import { toApiUrl } from "@/config/runtime";
 
 interface ReadingPart2Props {
   testData: any;
@@ -10,10 +11,7 @@ interface ReadingPart2Props {
   partNumber?: number;
 }
 
-const API_BASE_URL = ((import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, ""))
-  || (import.meta.env.DEV ? "http://localhost:3000" : "https://api.turkishmock.uz");
-
-const toApiUrl = (path: string) => `${API_BASE_URL}/${path.replace(/^\//, "")}`;
+const SELECT_PLACEHOLDER = "Se\u00e7iniz";
 
 export default function ReadingPart2({ testData, answers, onAnswerChange, partNumber }: ReadingPart2Props) {
   const part2 = (testData.parts || []).find((p: any) => (p.number || 0) === 2) || (testData.parts || [])[1];
@@ -80,7 +78,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
           <img
             key={`i-${start}`}
             src={src}
-            alt={`S${qNum} görseli`}
+            alt={`S${qNum} gÃ¶rseli`}
             className="w-full max-w-[520px] h-auto max-h-[340px] object-contain border border-gray-200 rounded my-2 mx-auto"
             onError={(e) => {
               const el = e.target as HTMLImageElement;
@@ -136,7 +134,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                         <SelectValue placeholder="">
                           <span className="block min-w-0 pr-5 text-left leading-snug whitespace-normal break-words [overflow-wrap:anywhere] line-clamp-2">
                             <span className="font-bold">{`S${qNum}.`}</span>
-                            <span>{selectedOption ? ` ${selectedOption.variantText}. ${selectedOption.answer}` : " Seçiniz"}</span>
+                            <span>{selectedOption ? ` ${selectedOption.variantText}. ${selectedOption.answer}` : ` ${SELECT_PLACEHOLDER}`}</span>
                           </span>
                         </SelectValue>
                       </SelectTrigger>
@@ -147,7 +145,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                         className="bg-white border border-gray-200 shadow-sm rounded-md reading-select-content w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] max-h-[65vh] overflow-y-auto overflow-x-hidden overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50"
                       >
                         <SelectItem value="__none__" className="cursor-pointer py-1 !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
-                          {`Seçiniz`}
+                          {SELECT_PLACEHOLDER}
                         </SelectItem>
                         {optionList.map((opt) => (
                           <SelectItem key={opt.variantText} value={opt.variantText} className="cursor-pointer py-1 !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
@@ -163,7 +161,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                         <div className="flex justify-center">
                           <img
                             src={makeImageSrc(q.imageUrl as string)}
-                            alt={`S${qNum} görseli`}
+                            alt={`S${qNum} gÃ¶rseli`}
                             className="w-full h-auto object-contain rounded"
                             onError={(e) => {
                               const el = e.target as HTMLImageElement;
@@ -201,7 +199,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
       {/* Desktop Layout - Resizable */}
       <div className="hidden lg:block h-full">
         <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border border-gray-200 shadow-lg">
-          {/* Left: Questions 7–14 with selects */}
+          {/* Left: Questions 7â€“14 with selects */}
           <ResizablePanel defaultSize={50} minSize={30} className="bg-gray-50">
             <div className="h-full p-6 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent pb-44 reading-scroll">
               <div className="grid grid-cols-[repeat(auto-fit,minmax(360px,1fr))] gap-4">
@@ -233,13 +231,13 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                                   <SelectValue placeholder="">
                                     <span className="block text-left whitespace-normal leading-snug line-clamp-2">
                                       <span className="font-bold">{`S${qNum}.`}</span>
-                                      <span>{selectedOption ? ` ${selectedOption.variantText}. ${selectedOption.answer}` : " Seçiniz"}</span>
+                                      <span>{selectedOption ? ` ${selectedOption.variantText}. ${selectedOption.answer}` : ` ${SELECT_PLACEHOLDER}`}</span>
                                     </span>
                                   </SelectValue>
                                   </SelectTrigger>
                                 <SelectContent className="bg-white border border-gray-200 shadow-sm rounded-md reading-select-content reading-select-content max-h-[60vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50">
                                   <SelectItem value="__none__" className="cursor-pointer py-1 !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
-                                    {`Se\u00e7iniz`}
+                                    {SELECT_PLACEHOLDER}
                                   </SelectItem>
                                   {optionList.map((opt) => (
                                     <SelectItem key={opt.variantText} value={opt.variantText} className="cursor-pointer py-1 !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
@@ -253,7 +251,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                               <div className="relative rounded-md overflow-hidden">
                                 <img
                                   src={makeImageSrc(q.imageUrl as string)}
-                                  alt={`S${qNum} görseli`}
+                                  alt={`S${qNum} gÃ¶rseli`}
                                   className="w-full max-w-none h-auto max-h-[700px] object-contain"
                                   onError={(e) => {
                                     const el = e.target as HTMLImageElement;
@@ -282,13 +280,13 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                                   <SelectValue placeholder="">
                                     <span className="block text-left whitespace-normal leading-snug line-clamp-2">
                                       <span className="font-bold">{`S${qNum}.`}</span>
-                                      <span>{selectedOption ? ` ${selectedOption.variantText}. ${selectedOption.answer}` : " Seçiniz"}</span>
+                                      <span>{selectedOption ? ` ${selectedOption.variantText}. ${selectedOption.answer}` : ` ${SELECT_PLACEHOLDER}`}</span>
                                     </span>
                                   </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent className="bg-white border border-gray-200 shadow-sm rounded-md reading-select-content reading-select-content max-h-[60vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50">
                                   <SelectItem value="__none__" className="cursor-pointer py-1 !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
-                                    {`Se\u00e7iniz`}
+                                    {SELECT_PLACEHOLDER}
                                   </SelectItem>
                                   {optionList.map((opt) => (
                                     <SelectItem key={opt.variantText} value={opt.variantText} className="cursor-pointer py-1 !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">

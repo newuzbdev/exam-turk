@@ -1,4 +1,4 @@
-ï»¿import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import HighlightableText from "@/pages/reading-test/components/HighlightableText";
 import { fixMojibake } from "@/utils/text";
@@ -9,6 +9,11 @@ interface ReadingPart2Props {
   onAnswerChange: (questionId: string, value: string) => void;
   partNumber?: number;
 }
+
+const API_BASE_URL = ((import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, ""))
+  || (import.meta.env.DEV ? "http://localhost:3000" : "https://api.turkishmock.uz");
+
+const toApiUrl = (path: string) => `${API_BASE_URL}/${path.replace(/^\//, "")}`;
 
 export default function ReadingPart2({ testData, answers, onAnswerChange, partNumber }: ReadingPart2Props) {
   const part2 = (testData.parts || []).find((p: any) => (p.number || 0) === 2) || (testData.parts || [])[1];
@@ -40,7 +45,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
   const makeImageSrc = (u: string) => {
     let src = u.trim();
     if (/^(?:\/)?uploads\//i.test(src)) {
-      src = `https://api.turkishmock.uz/${src.replace(/^\//, '')}`;
+      src = toApiUrl(src.replace(/^\//, ""));
     }
     return src;
   };
@@ -68,14 +73,14 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
       let src = urlFromMd || urlFromHttp || urlFromUploads || "";
       src = src.replace(/^\(|\)/g, "");
       if (/^(?:\/)?uploads\//i.test(src)) {
-        src = `https://api.turkishmock.uz/${src.replace(/^\//, '')}`;
+        src = toApiUrl(src.replace(/^\//, ""));
       }
       if (src) {
         nodes.push(
           <img
             key={`i-${start}`}
             src={src}
-            alt={`S${qNum} gÃ¶rseli`}
+            alt={`S${qNum} görseli`}
             className="w-full max-w-[520px] h-auto max-h-[340px] object-contain border border-gray-200 rounded my-2 mx-auto"
             onError={(e) => {
               const el = e.target as HTMLImageElement;
@@ -102,38 +107,36 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
       className="mx-2 reading-body overflow-hidden text-slate-800"
     >
       {/* Mobile Layout - Stacked */}
-      <div className="block lg:hidden h-full">
-        <div className="rounded-lg border border-gray-200 shadow-lg overflow-hidden h-full flex flex-col">
+      <div className="block lg:hidden h-[calc(100svh-14rem)]">
+        <div className="h-full flex flex-col">
           {/* Questions Section - More scroll space for mobile */}
-          <div className="reading-surface-alt flex-1 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent p-4 pb-36 reading-scroll">
-            <h4 className="text-sm font-semibold text-slate-700 mb-3 tracking-wide">Sorular</h4>
-            <div className="space-y-4">
+          <div className="bg-gray-50 flex-1 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent p-3 pb-[calc(9rem+env(safe-area-inset-bottom))] reading-scroll">
+            <h4 className="text-[13px] font-bold text-slate-700 mb-2">Sorular</h4>
+            <div className="space-y-3">
               {numbered.map((q: any, idx: number) => {
                 const qNum = q.number || (7 + idx);
                 const hasImage = typeof q.imageUrl === 'string' && q.imageUrl.length > 0;
                 const selectedVariant = String(answers[q.id] || "").trim().replace(/\.$/, "");
                 const selectedOption = optionMap.get(selectedVariant);
+                const mobileCardWidthClass = hasImage ? "w-[clamp(300px,88vw,380px)] max-w-full mx-auto" : "w-full";
+                const selectValue = selectedVariant || "__none__";
 
                 return (
                     <div
                       key={q.id}
-                      className={`reading-surface-card rounded-lg p-3 border border-gray-200/60 bg-white/80 shadow-[0_1px_0_rgba(0,0,0,0.03)] ${
-                      hasImage ? "w-fit max-w-full mx-auto" : ""
-                    }`}
+                      className={`rounded-lg p-2.5 border border-gray-200 bg-white ${mobileCardWidthClass}`}
                   >
-                    <div className="font-semibold text-slate-800 mb-2">S{qNum}</div>
                     <Select
-                      value={selectedVariant || ""}
+                      value={selectValue}
                       onValueChange={(value) => onAnswerChange(q.id, value === "__none__" ? "" : value)}
                     >
-                      <SelectTrigger className={`w-full mb-2 border rounded-md px-3 py-2 min-h-10 h-auto !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] items-start cursor-pointer transition-all duration-150 ease-out data-[state=open]:scale-[1.01] ${
+                      <SelectTrigger className={`w-full mb-2 border rounded-md px-3 py-2 min-h-10 h-auto !text-[length:calc(clamp(14px,1.6vw,17px)*var(--reading-font-scale,1))] items-start cursor-pointer ${
                         selectedOption ? "border-gray-400 bg-gray-100 text-[#333333]" : "border-gray-200 bg-white text-[#333333] hover:border-gray-300"
                       } focus:ring-1 focus:ring-black/15 focus:ring-offset-0 focus:border-gray-400`}>
-                        <SelectValue placeholder="SeÃ§iniz">
+                        <SelectValue placeholder="">
                           <span className="block min-w-0 pr-5 text-left leading-snug whitespace-normal break-words [overflow-wrap:anywhere] line-clamp-2">
-                            {selectedOption
-                              ? `${selectedOption.variantText}. ${selectedOption.answer}`
-                              : "SeÃ§iniz"}
+                            <span className="font-bold">{`S${qNum}.`}</span>
+                            <span>{selectedOption ? ` ${selectedOption.variantText}. ${selectedOption.answer}` : " Seçiniz"}</span>
                           </span>
                         </SelectValue>
                       </SelectTrigger>
@@ -144,7 +147,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                         className="bg-white border border-gray-200 shadow-sm rounded-md reading-select-content w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] max-h-[65vh] overflow-y-auto overflow-x-hidden overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50"
                       >
                         <SelectItem value="__none__" className="cursor-pointer py-1 !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
-                          {`SeÃ§iniz`}
+                          {`Seçiniz`}
                         </SelectItem>
                         {optionList.map((opt) => (
                           <SelectItem key={opt.variantText} value={opt.variantText} className="cursor-pointer py-1 !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
@@ -160,8 +163,8 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                         <div className="flex justify-center">
                           <img
                             src={makeImageSrc(q.imageUrl as string)}
-                            alt={`S${qNum} gÃ¶rseli`}
-                            className="w-full max-w-[300px] h-auto object-contain rounded"
+                            alt={`S${qNum} görseli`}
+                            className="w-full h-auto object-contain rounded"
                             onError={(e) => {
                               const el = e.target as HTMLImageElement;
                               el.style.display = 'none';
@@ -169,7 +172,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                           />
                         </div>
                         {q.text && (
-                          <p className="reading-text italic bg-gray-50 px-2 py-1 rounded text-center">
+                          <p className="reading-text bg-gray-50 px-2 py-1 rounded text-center text-slate-600">
                             <HighlightableText text={fixMojibake(q.text || "")} partNumber={partNumber} />
                           </p>
                         )}
@@ -177,7 +180,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                     ) : (
                       <div className="space-y-2">
                         {q.text && (
-                          <h3 className="font-semibold leading-snug italic">
+                          <h3 className="font-medium leading-snug text-[14px] text-slate-700">
                             <HighlightableText text={fixMojibake(q.text || "")} partNumber={partNumber} />
                           </h3>
                         )}
@@ -198,8 +201,8 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
       {/* Desktop Layout - Resizable */}
       <div className="hidden lg:block h-full">
         <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border border-gray-200 shadow-lg">
-          {/* Left: Questions 7â€“14 with selects */}
-          <ResizablePanel defaultSize={50} minSize={30} className="reading-surface">
+          {/* Left: Questions 7–14 with selects */}
+          <ResizablePanel defaultSize={50} minSize={30} className="bg-gray-50">
             <div className="h-full p-6 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent pb-44 reading-scroll">
               <div className="grid grid-cols-[repeat(auto-fit,minmax(360px,1fr))] gap-4">
                 {numbered.map((q: any, idx: number) => {
@@ -207,33 +210,32 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                   const hasImage = typeof q.imageUrl === 'string' && q.imageUrl.length > 0;
                   const selectedVariant = String(answers[q.id] || "").trim().replace(/\.$/, "");
                   const selectedOption = optionMap.get(selectedVariant);
+                  const selectValue = selectedVariant || "__none__";
 
                   return (
                     <div
                       key={q.id}
-                      className={`reading-surface-card rounded-lg border border-gray-200/60 bg-white/80 p-3 shadow-[0_1px_0_rgba(0,0,0,0.03)] ${
-                        hasImage ? "w-fit max-w-full mx-auto" : ""
+                      className={`rounded-lg border border-gray-200 bg-white p-3 ${
+                        hasImage ? "w-[440px] max-w-full mx-auto" : ""
                       }`}
                     >
                       <div className="flex items-start gap-4">
                         {hasImage ? (
                           <div className="w-full">
                           <div className="flex items-center gap-3 mb-2">
-                              <div className="text-lg font-semibold text-slate-800">S{qNum}</div>
                                 <Select
-                                  value={answers[q.id] || ""}
+                                  value={selectValue}
                                   onValueChange={(value) => onAnswerChange(q.id, value === "__none__" ? "" : value)}
                                 >
-                                <SelectTrigger className={`w-full max-w-[360px] border rounded-md px-3 py-2 h-auto !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] items-start cursor-pointer transition-all duration-150 ease-out data-[state=open]:scale-[1.01] ${
+                                <SelectTrigger className={`w-full border rounded-md px-3 py-2 h-auto !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] items-start cursor-pointer transition-all duration-150 ease-out data-[state=open]:scale-[1.01] ${
                                   selectedOption ? "border-gray-400 bg-gray-100 text-[#333333]" : "border-gray-200 bg-white text-[#333333] hover:border-gray-300"
                                 } focus:ring-1 focus:ring-black/15 focus:ring-offset-0 focus:border-gray-400`}>
-                                  <SelectValue placeholder={`Se\u00e7iniz`}>
-                                      <span className="block text-left whitespace-normal leading-snug line-clamp-2">
-                                        {selectedOption
-                                          ? `${selectedOption.variantText}. ${selectedOption.answer}`
-                                          : `Se\u00e7iniz`}
-                                      </span>
-                                    </SelectValue>
+                                  <SelectValue placeholder="">
+                                    <span className="block text-left whitespace-normal leading-snug line-clamp-2">
+                                      <span className="font-bold">{`S${qNum}.`}</span>
+                                      <span>{selectedOption ? ` ${selectedOption.variantText}. ${selectedOption.answer}` : " Seçiniz"}</span>
+                                    </span>
+                                  </SelectValue>
                                   </SelectTrigger>
                                 <SelectContent className="bg-white border border-gray-200 shadow-sm rounded-md reading-select-content reading-select-content max-h-[60vh] overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent z-50">
                                   <SelectItem value="__none__" className="cursor-pointer py-1 !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] focus:bg-gray-100 data-[state=checked]:bg-gray-100 data-[state=checked]:text-[#333333]">
@@ -251,8 +253,8 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                               <div className="relative rounded-md overflow-hidden">
                                 <img
                                   src={makeImageSrc(q.imageUrl as string)}
-                                  alt={`S${qNum} gÃ¶rseli`}
-                                  className="w-full max-w-none h-auto max-h-[420px] object-contain"
+                                  alt={`S${qNum} görseli`}
+                                  className="w-full max-w-none h-auto max-h-[700px] object-contain"
                                   onError={(e) => {
                                     const el = e.target as HTMLImageElement;
                                     el.style.display = 'none';
@@ -270,19 +272,17 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                         ) : (
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-3">
-                              <div className="font-semibold text-slate-800">S{qNum}</div>
                               <Select
-                                value={answers[q.id] || ""}
+                                value={selectValue}
                                 onValueChange={(value) => onAnswerChange(q.id, value === "__none__" ? "" : value)}
                               >
-                                <SelectTrigger className={`w-full max-w-[360px] border rounded-md px-3 py-2 h-auto !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] items-start cursor-pointer transition-all duration-150 ease-out data-[state=open]:scale-[1.01] ${
+                                <SelectTrigger className={`w-full border rounded-md px-3 py-2 h-auto !text-[length:calc(clamp(15px,1.6vw,18px)*var(--reading-font-scale,1))] items-start cursor-pointer transition-all duration-150 ease-out data-[state=open]:scale-[1.01] ${
                                   selectedOption ? "border-gray-400 bg-gray-100 text-[#333333]" : "border-gray-200 bg-white text-[#333333] hover:border-gray-300"
                                 } focus:ring-1 focus:ring-black/15 focus:ring-offset-0 focus:border-gray-400`}>
-                                  <SelectValue placeholder={`Se\u00e7iniz`}>
+                                  <SelectValue placeholder="">
                                     <span className="block text-left whitespace-normal leading-snug line-clamp-2">
-                                      {selectedOption
-                                        ? `${selectedOption.variantText}. ${selectedOption.answer}`
-                                        : `Se\u00e7iniz`}
+                                      <span className="font-bold">{`S${qNum}.`}</span>
+                                      <span>{selectedOption ? ` ${selectedOption.variantText}. ${selectedOption.answer}` : " Seçiniz"}</span>
                                     </span>
                                   </SelectValue>
                                 </SelectTrigger>
@@ -317,7 +317,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
           <ResizableHandle withHandle={true} className="bg-gray-200/40 hover:bg-gray-300/60 transition-colors w-px" />
 
           {/* Right: Options legend A..J - Fixed Sidebar */}
-          <ResizablePanel defaultSize={50} minSize={25} className="reading-surface-alt">
+          <ResizablePanel defaultSize={50} minSize={25} className="bg-gray-50">
             <div className="h-full flex flex-col">
               <div className="flex-1 p-4 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent reading-scroll">
                 <div className="text-sm font-semibold text-slate-700 mb-3">{`Se\u00e7enekler`}</div>

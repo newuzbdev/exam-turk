@@ -48,10 +48,10 @@ export default function ReadingPart3({ testData, answers, onAnswerChange, partNu
   return (
     <div className="mx-2 reading-body overflow-hidden text-slate-800">
       {/* Mobile Layout - Stacked */}
-      <div className="block lg:hidden h-full">
-        <div className="rounded-lg border border-gray-200 shadow-lg overflow-hidden h-full flex flex-col">
+      <div className="block lg:hidden h-[calc(100svh-14rem)]">
+        <div className="reading-surface rounded-lg border border-gray-200 shadow-lg overflow-hidden h-full flex flex-col">
           {/* Questions Section - More scroll space for mobile */}
-          <div className="reading-surface-alt flex-1 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent p-4 reading-scroll">
+          <div className="reading-surface-alt flex-1 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent p-4 pb-[calc(10rem+env(safe-area-inset-bottom))] reading-scroll">
             <h4 className="text-sm font-semibold text-slate-700 mb-3 tracking-wide">Paragraflar</h4>
             <div className="space-y-4">
               {paragraphQuestions.map((q: any, idx: number) => {
@@ -205,9 +205,5 @@ export default function ReadingPart3({ testData, answers, onAnswerChange, partNu
     </div>
   );
 }
-
-
-
-
 
 

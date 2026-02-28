@@ -37,9 +37,9 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
   return (
     <div className="mx-2 reading-body pr-2 text-slate-800">
       {/* Mobile Layout - Split */}
-      <div className="block lg:hidden h-[100svh]">
-        <ResizablePanelGroup direction="vertical" className="h-[100svh] bg-white">
-          <ResizablePanel defaultSize={50} minSize={25} maxSize={75} className="bg-white min-h-0">
+      <div className="block lg:hidden h-[calc(100svh-14rem)]">
+        <ResizablePanelGroup direction="vertical" className="h-full reading-surface">
+          <ResizablePanel defaultSize={45} minSize={25} maxSize={75} className="reading-surface min-h-0">
             <div className="h-full p-4 border-b border-gray-200 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent reading-scroll">
               <div className="text-sm reading-strong-title text-slate-800 mb-3">Metin</div>
               <div className="space-y-4 leading-relaxed">
@@ -69,8 +69,8 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
             </div>
           </ResizableHandle>
 
-          <ResizablePanel defaultSize={50} minSize={25} maxSize={75} className="bg-[#f9fafb] min-h-0">
-            <div className="h-full p-4 space-y-4 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent reading-scroll pb-28">
+          <ResizablePanel defaultSize={55} minSize={25} maxSize={75} className="reading-surface-alt min-h-0">
+            <div className="h-full p-4 space-y-4 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent reading-scroll pb-[calc(10rem+env(safe-area-inset-bottom))]">
             <h4 className="text-sm reading-strong-title text-slate-700 mb-3 tracking-wide">Sorular</h4>
             
             {/* Instructions for Questions 21-24 */}

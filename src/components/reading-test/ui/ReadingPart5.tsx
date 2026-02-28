@@ -125,10 +125,10 @@ export default function ReadingPart5({ testData, answers, onAnswerChange, partNu
    
 
       {/* Mobile Layout - Split */}
-      <div className="block lg:hidden h-[100svh]">
-        <ResizablePanelGroup direction="vertical" className="h-[100svh] bg-white">
-          <ResizablePanel defaultSize={50} minSize={25} maxSize={75} className="bg-white min-h-0">
-            <div className="h-full p-4 border-b border-gray-200 overflow-y-auto overscroll-auto touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent reading-scroll pass-through-scroll">
+      <div className="block lg:hidden h-[calc(100svh-14rem)]">
+        <ResizablePanelGroup direction="vertical" className="h-full reading-surface">
+          <ResizablePanel defaultSize={50} minSize={25} maxSize={75} className="reading-surface min-h-0">
+            <div className="h-full p-4 border-b border-gray-200 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent reading-scroll">
               <div className="text-sm reading-strong-title text-slate-800 mb-3">Metin</div>
               <div className="space-y-4">
                 {paragraphs.map((para) => (
@@ -159,8 +159,8 @@ export default function ReadingPart5({ testData, answers, onAnswerChange, partNu
             </div>
           </ResizableHandle>
 
-          <ResizablePanel defaultSize={50} minSize={25} maxSize={75} className="bg-[#f9fafb] min-h-0">
-            <div className="h-full p-4 space-y-4 overflow-y-auto overscroll-auto touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent reading-scroll pb-28 pass-through-scroll">
+          <ResizablePanel defaultSize={50} minSize={25} maxSize={75} className="reading-surface-alt min-h-0">
+            <div className="h-full p-4 space-y-4 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent reading-scroll pb-[calc(10rem+env(safe-area-inset-bottom))]">
             <h4 className="text-sm font-semibold text-slate-700 mb-3 tracking-wide">Sorular</h4>
             {/* Static instruction for 30-32 (always visible at top) */}
             <div className="p-2 mb-2">
@@ -382,10 +382,6 @@ export default function ReadingPart5({ testData, answers, onAnswerChange, partNu
     </div>
   );
 }
-
-
-
-
 
 
 

@@ -29,6 +29,7 @@ export default function HighlightableText({
   wrapperAs = "div",
 }: HighlightableTextProps) {
   const { notes, addNote, updateNote, deleteNote } = useReadingNotes();
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [highlights, setHighlights] = useState<Highlight[]>([]);
   const [tooltip, setTooltip] = useState<{
     x: number;
@@ -53,6 +54,15 @@ export default function HighlightableText({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia("(max-width: 1023px)");
+    const sync = () => setIsMobileViewport(mql.matches);
+    sync();
+    mql.addEventListener("change", sync);
+    return () => mql.removeEventListener("change", sync);
+  }, []);
 
   // Sync highlights with notes that have highlightedText - automatically highlight noted text
   useEffect(() => {
@@ -167,9 +177,10 @@ export default function HighlightableText({
   }, []);
 
   useEffect(() => {
-  const handleClickOutside = (event: MouseEvent) => {
+  const handleClickOutside = (event: MouseEvent | TouchEvent) => {
       if (!containerRef.current) return;
-      const target = event.target as Node;
+      const target = event.target as Node | null;
+      if (!target) return;
       const inTooltip = tooltipRef.current && tooltipRef.current.contains(target);
       const inMark = (target as HTMLElement)?.closest?.("mark");
       // Clear when clicking anywhere that's not tooltip or a highlight
@@ -180,7 +191,11 @@ export default function HighlightableText({
     };
 
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside, { passive: true });
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
   }, []);
 
   const handleHighlight = () => {
@@ -552,7 +567,7 @@ export default function HighlightableText({
   };
 
   return (
-    <Wrapper ref={containerRef as any} className="relative" onMouseDown={handleContainerClick}>
+    <Wrapper ref={containerRef as any} className="relative select-text" onMouseDown={handleContainerClick}>
       <Component className={`reading-text font-sans whitespace-pre-line ${className || ""}`}>
         {renderText()}
       </Component>
@@ -560,12 +575,17 @@ export default function HighlightableText({
       {tooltip && (
         <div
           ref={tooltipRef}
-          className="absolute bg-black text-white text-xs px-3 py-2 rounded shadow-lg flex items-center gap-2 z-50"
-          style={{
-            top: tooltip.y + window.scrollY,
-            left: tooltip.x,
-            transform: "translate(-50%, -100%)",
-          }}
+          className={`${isMobileViewport
+            ? "fixed bottom-[max(5rem,env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2"
+            : "absolute"
+          } bg-black text-white text-xs px-3 py-2 rounded shadow-lg flex items-center gap-2 z-[80] max-w-[calc(100vw-1rem)] flex-wrap justify-center`}
+          style={isMobileViewport
+            ? undefined
+            : {
+                top: tooltip.y,
+                left: tooltip.x,
+                transform: "translate(-50%, -100%)",
+              }}
         >
           <span>{isHighlighted ? `Kald\u0131r\u0131ls\u0131n m\u0131?` : `Vurgulans\u0131n m\u0131?`}</span>
           <Button
@@ -601,7 +621,7 @@ export default function HighlightableText({
         <div
           className="absolute bg-yellow-50 border-2 border-yellow-400 text-gray-800 text-xs px-3 py-2.5 rounded-lg shadow-xl z-50 max-w-xs pointer-events-none"
           style={{
-            top: notePreview.y + window.scrollY + 15,
+            top: notePreview.y + 15,
             left: notePreview.x,
             transform: "translate(-50%, 0)",
           }}

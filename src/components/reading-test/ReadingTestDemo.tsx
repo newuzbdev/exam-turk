@@ -37,6 +37,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
   const [showDescription, setShowDescription] = useState(true);
   const [fontScale, setFontScale] = useState(1);
   const hasRestoredProgressRef = useRef(false);
+  const hasSubmittedRef = useRef(false);
   const progressStorageKey = `reading_progress_${testId}`;
 
   useEffect(() => {
@@ -184,8 +185,18 @@ export default function ReadingPage({ testId }: { testId: string }) {
     try { sessionStorage.removeItem(progressStorageKey); } catch {}
   };
 
+  useEffect(() => {
+    return () => {
+      if (hasSubmittedRef.current) return;
+      clearReadingProgress();
+      try { sessionStorage.removeItem(`reading_answers_${testId}`); } catch {}
+      try { sessionStorage.removeItem(`test_data_READING_${testId}`); } catch {}
+    };
+  }, [testId, progressStorageKey]);
+
   const handleSubmit = async () => {
     if (isSubmitting) return;
+    hasSubmittedRef.current = true;
     try {
       setIsSubmitting(true);
       
@@ -664,7 +675,9 @@ export default function ReadingPage({ testId }: { testId: string }) {
   return (
     <ReadingNotesProvider>
       <div
-        className="min-h-screen h-full overflow-y-auto bg-gray-50 font-sans text-[#333333] pb-44 sm:pb-52"
+        className={`min-h-screen h-full bg-gray-50 font-sans text-[#333333] pb-44 sm:pb-52 ${
+          currentPartNumber >= 2 && currentPartNumber <= 5 ? "overflow-y-hidden lg:overflow-y-auto" : "overflow-y-auto"
+        }`}
         style={{ color: "#333333", ["--reading-font-scale" as any]: fontScale }}
       >
         {/* Header - Same height and logic as main navbar */}
@@ -999,8 +1012,4 @@ export default function ReadingPage({ testId }: { testId: string }) {
     </ReadingNotesProvider>
   );
 }
-
-
-
-
 

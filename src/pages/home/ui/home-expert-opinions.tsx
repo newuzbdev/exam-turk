@@ -11,19 +11,11 @@ const experts = [
     instagram: "https://www.instagram.com/mattu_turkish/",
   },
   {
-    name: "Mehmet Arslan",
-    role: "Sınav Hazırlık Uzmanı",
-    image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=320&q=80",
-    text: "Konuşma ve yazma geri bildirimleri pratik ve uygulanabilir. Öğrencinin eksik yönlerini bir çalışma planına dönüştürmek için güçlü bir temel sunuyor.",
-    telegram: "",
-    instagram: "",
-  },
-  {
     name: "Timur Makarov",
     role: "Platform Kurucusu ve Geliştiricisi",
     image: "/tim%202.png",
     text: "Bu platform, gerçek sınav deneyimini yaşamanız, seviyenizi ve gelişime açık yönlerinizi net şekilde görmeniz amacıyla hazırlanmıştır. Böylece sınava daha bilinçli ve etkili bir şekilde hazırlanabilirsiniz.",
-    telegram: "https://t.me/timur_makarov",
+    telegram: "https://t.me/zargana_deus_ex_machina",
     instagram: "https://www.instagram.com/bigby.wolf/",
   },
 ];
@@ -228,3 +220,4 @@ const HomeExpertOpinions = () => {
 };
 
 export default HomeExpertOpinions;
+

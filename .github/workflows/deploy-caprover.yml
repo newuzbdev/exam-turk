@@ -10,6 +10,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check CapRover secrets
+        run: |
+          if [ -z "${{ secrets.CAPROVER_SERVER }}" ] || [ -z "${{ secrets.APP_NAME }}" ] || [ -z "${{ secrets.APP_TOKEN }}" ]; then
+            echo "::error::Missing secrets. In GitHub repo go to Settings > Secrets and variables > Actions and add: CAPROVER_SERVER, APP_NAME, APP_TOKEN"
+            exit 1
+          fi
+          echo "Secrets are set."
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:

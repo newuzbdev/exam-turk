@@ -354,9 +354,13 @@ export const paymeService = {
     const products = await paymeService.getAllProducts();
     const productId = pickProductId(planId, products);
 
+    const returnUrl =
+      typeof window !== "undefined" ? window.location.href : undefined;
+
     const response = await axiosPrivate.post("/api/product/checkout", {
       amount: units,
       productId,
+      returnUrl,
     });
 
     return (response?.data?.data ||

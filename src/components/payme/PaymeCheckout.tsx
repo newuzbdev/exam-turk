@@ -31,10 +31,14 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
   const [amount, setAmount] = useState<string>(initialUnits ? String(initialUnits) : '');
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationProgress, setVerificationProgress] = useState(0);
+  const [isAwaitingAutoCredit, setIsAwaitingAutoCredit] = useState(false);
+  const [targetCredits, setTargetCredits] = useState<number | null>(null);
   const [unitPrice, setUnitPrice] = useState<number>(1000);
   const verificationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const verificationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoRefreshIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoRefreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const getErrorMessage = (error: any, fallback: string) =>
     error?.response?.data?.message ||
@@ -59,6 +63,35 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
     }
   };
 
+  const clearAutoCreditWatch = () => {
+    if (autoRefreshIntervalRef.current) {
+      clearInterval(autoRefreshIntervalRef.current);
+      autoRefreshIntervalRef.current = null;
+    }
+    if (autoRefreshTimeoutRef.current) {
+      clearTimeout(autoRefreshTimeoutRef.current);
+      autoRefreshTimeoutRef.current = null;
+    }
+  };
+
+  const startAutoCreditWatch = (units: number) => {
+    clearAutoCreditWatch();
+    const current = user?.coin ?? 0;
+    setTargetCredits(current + units);
+    setIsAwaitingAutoCredit(true);
+
+    autoRefreshIntervalRef.current = setInterval(() => {
+      refreshUser().catch(() => undefined);
+    }, 3000);
+
+    autoRefreshTimeoutRef.current = setTimeout(() => {
+      clearAutoCreditWatch();
+      setIsAwaitingAutoCredit(false);
+      setTargetCredits(null);
+      toast.info('Odeme alindiysa kredi kisa sure icinde otomatik yansir.');
+    }, 10 * 60 * 1000);
+  };
+
   // Fetch unit price once
   useEffect(() => {
     let mounted = true;
@@ -79,8 +112,21 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
   useEffect(() => {
     return () => {
       clearVerificationTimers();
+      clearAutoCreditWatch();
     };
   }, []);
+
+  useEffect(() => {
+    if (!isAwaitingAutoCredit || targetCredits === null) return;
+    const current = user?.coin ?? 0;
+    if (current < targetCredits) return;
+
+    clearAutoCreditWatch();
+    setIsAwaitingAutoCredit(false);
+    setTargetCredits(null);
+    onSuccess?.('auto');
+    toast.success('Kredi otomatik olarak hesabiniza yuklendi.');
+  }, [isAwaitingAutoCredit, onSuccess, targetCredits, user?.coin]);
 
   const handleCheckout = async () => {
     const units = Math.floor(parseFloat(amount));
@@ -102,8 +148,8 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
       }
       if (unified?.status === 'PAYMENT_REQUIRED' && unified.checkoutUrl) {
         window.open(unified.checkoutUrl, '_blank');
-        toast.info('Odeme tamamlandiktan sonra tekrar Devam Et butonuna basin.');
-        await refreshUser().catch(() => undefined);
+        toast.info('Odeme tamamlandiginda kredi otomatik yansiyacak.');
+        startAutoCreditWatch(units);
         return;
       }
       if (unified?.status === 'PAYMENT_REQUIRED' && !unified.checkoutUrl) {
@@ -128,6 +174,7 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
         const txId = resp.result?.transactionId || resp.data?.transactionId;
         if (url) {
           window.open(url, '_blank');
+          startAutoCreditWatch(units);
           // Begin verification loop; on success, auto-purchase credits
           if (txId) {
             await startVerificationProcess(txId, units);
@@ -213,8 +260,11 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
 
   const handleCancel = () => {
     clearVerificationTimers();
+    clearAutoCreditWatch();
     setIsVerifying(false);
     setVerificationProgress(0);
+    setIsAwaitingAutoCredit(false);
+    setTargetCredits(null);
     onCancel?.();
   };
 
@@ -309,13 +359,15 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
             </div>
 
             {/* Verification Progress */}
-            {isVerifying && (
+            {(isVerifying || isAwaitingAutoCredit) && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-500">Odeme dogrulaniyor...</span>
-                  <span className="text-slate-500">{verificationProgress}%</span>
+                  <span className="text-slate-500">
+                    {isVerifying ? 'Odeme dogrulaniyor...' : 'Odeme bekleniyor...'}
+                  </span>
+                  {isVerifying && <span className="text-slate-500">{verificationProgress}%</span>}
                 </div>
-                <Progress value={verificationProgress} className="w-full" />
+                {isVerifying && <Progress value={verificationProgress} className="w-full" />}
               </div>
             )}
 

@@ -66,7 +66,8 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
     }
   };
 
-  const clearAutoCreditWatch = () => {
+  const clearAutoCreditWatch = (options?: { clearPendingStorage?: boolean }) => {
+    const shouldClearPendingStorage = options?.clearPendingStorage ?? false;
     if (autoRefreshIntervalRef.current) {
       clearInterval(autoRefreshIntervalRef.current);
       autoRefreshIntervalRef.current = null;
@@ -76,7 +77,7 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
       autoRefreshTimeoutRef.current = null;
     }
     autoFinalizeInFlightRef.current = false;
-    if (typeof window !== 'undefined') {
+    if (shouldClearPendingStorage && typeof window !== 'undefined') {
       window.localStorage.removeItem(pendingPurchaseStorageKey);
     }
   };
@@ -92,7 +93,7 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
       const unified = await paymeService.checkoutProductSingleFlow(planId, units);
       if (unified?.status !== 'COMPLETED') return;
 
-      clearAutoCreditWatch();
+      clearAutoCreditWatch({ clearPendingStorage: true });
       setIsAwaitingAutoCredit(false);
       setTargetCredits(null);
       autoFinalizeUnitsRef.current = null;
@@ -130,6 +131,7 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
     }, 3000);
 
     autoRefreshTimeoutRef.current = setTimeout(() => {
+      // Keep pending purchase key for global retry in AuthContext.
       clearAutoCreditWatch();
       setIsAwaitingAutoCredit(false);
       setTargetCredits(null);
@@ -158,6 +160,7 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
   useEffect(() => {
     return () => {
       clearVerificationTimers();
+      // Do not clear pending storage on unmount; global watcher should keep retrying.
       clearAutoCreditWatch();
     };
   }, []);
@@ -167,7 +170,7 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
     const current = user?.coin ?? 0;
     if (current < targetCredits) return;
 
-    clearAutoCreditWatch();
+    clearAutoCreditWatch({ clearPendingStorage: true });
     setIsAwaitingAutoCredit(false);
     setTargetCredits(null);
     autoFinalizeUnitsRef.current = null;
@@ -188,6 +191,9 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
       // Preferred single-flow checkout. Backend decides direct purchase vs Payme top-up.
       const unified = await paymeService.checkoutProductSingleFlow(planId, units);
       if (unified?.status === 'COMPLETED') {
+        if (typeof window !== 'undefined') {
+          window.localStorage.removeItem(pendingPurchaseStorageKey);
+        }
         const txId = unified?.transaction?.id || 'purchase';
         onSuccess?.(txId, unified);
         await refreshUser().catch(() => undefined);
@@ -270,7 +276,7 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
           try {
             const purchaseData = await paymeService.purchaseProduct(planId, amountValue);
             setTimeout(() => {
-              clearAutoCreditWatch();
+              clearAutoCreditWatch({ clearPendingStorage: true });
               autoFinalizeUnitsRef.current = null;
               setIsVerifying(false);
               onSuccess?.(transactionId, purchaseData);

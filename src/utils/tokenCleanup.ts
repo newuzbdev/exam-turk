@@ -1,4 +1,5 @@
 import { authService } from '@/services/auth.service';
+import { API_BASE_URL } from '@/config/runtime';
 
 // Manual token cleanup utility
 export const cleanupExpiredTokens = () => {
@@ -51,8 +52,7 @@ export const checkTokenStatus = () => {
 // Test token refresh
 export const testTokenRefresh = async () => {
   try {
-    const baseURL = import.meta.env.VITE_API_URL || "https://api.turkishmock.uz";
-    const response = await fetch(`${baseURL}/api/user/refresh`, {
+    const response = await fetch(`${API_BASE_URL}/api/user/refresh`, {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -81,12 +81,11 @@ export const testTokenRefresh = async () => {
 export const testApiEndpoint = async (endpoint: string = '/api/auth/me') => {
   try {
     const { accessToken } = authService.getStoredTokens();
-  const baseURL = import.meta.env.VITE_API_URL || "https://api.turkishmock.uz";
     
     console.log('🧪 Testing API endpoint:', endpoint);
     console.log('🔑 Using token:', accessToken ? accessToken.substring(0, 20) + '...' : 'No token');
     
-    const response = await fetch(`${baseURL}${endpoint}`, {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${accessToken}`,

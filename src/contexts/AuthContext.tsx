@@ -11,6 +11,7 @@ import { SecureStorage } from "@/utils/secureStorage";
 interface User {
   id?: string;
   userName?: string;
+  username?: string;
   name: string;
   avatarUrl?: string;
   avatar?: string;
@@ -18,6 +19,8 @@ interface User {
   createdAt?: string;
   balance?: number;
   coin?: number;
+  accountType?: "STUDENT" | "TEACHER" | "INSTITUTION";
+  role?: string;
 }
 
 interface AuthContextType {

@@ -99,6 +99,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   const submitAllRetryRef = useRef(0);
   const [showShortcuts] = useState(true);
   const hasRestoredProgressRef = useRef(false);
+  const hasSubmittedRef = useRef(false);
   const restoredProgressRef = useRef<Partial<WritingProgressSnapshot> | null>(null);
   const progressStorageKey = `writing_progress_${testId}`;
 
@@ -765,8 +766,18 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
     try { sessionStorage.removeItem(progressStorageKey); } catch {}
   };
 
+  useEffect(() => {
+    return () => {
+      if (hasSubmittedRef.current) return;
+      clearWritingProgress();
+      try { sessionStorage.removeItem(`writing_answers_${testId}`); } catch {}
+      try { sessionStorage.removeItem(`test_data_WRITING_${testId}`); } catch {}
+    };
+  }, [testId, progressStorageKey]);
+
   const handleSubmit = async () => {
     if (!testId || submitting) return;
+    hasSubmittedRef.current = true;
     setSubmitting(true);
     setShowSubmitModal(false);
 
@@ -1636,5 +1647,4 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
     </div>
   );
 }
-
 

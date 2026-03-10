@@ -1,15 +1,27 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, X } from "lucide-react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
+import { REGEXP_ONLY_DIGITS_AND_CHARS } from "input-otp";
 import { authService } from "@/services/auth.service";
+import { API_BASE_URL } from "@/config/runtime";
 import {
   InputOTP,
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp";
-import { REGEXP_ONLY_DIGITS_AND_CHARS } from "input-otp";
+
+type AuthIntent = "login" | "register";
+type ModalStep =
+  | "method"
+  | "passwordLogin"
+  | "phone"
+  | "otp"
+  | "register"
+  | "resetPhone"
+  | "resetOtp";
+type OtpFlow = "login" | "register";
 
 interface AuthModalProps {
   open: boolean;
@@ -17,96 +29,111 @@ interface AuthModalProps {
   initialMode?: "login" | "register";
 }
 
-const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps) => {
+const formatPhoneForInput = (value: string) => {
+  let input = value || "";
+  if (input.startsWith("+")) {
+    input = "+" + input.slice(1).replace(/\D/g, "");
+  } else {
+    input = input.replace(/\D/g, "");
+  }
+
+  let digits = input.replace(/\D/g, "");
+  if (!digits.length) return "+998 ";
+
+  if (!digits.startsWith("998")) {
+    digits = digits.startsWith("8") ? `99${digits}` : `998${digits}`;
+  }
+  digits = digits.slice(0, 12);
+
+  let formatted = "+998";
+  if (digits.length > 3) formatted += ` ${digits.slice(3, 5)}`;
+  if (digits.length > 5) formatted += ` ${digits.slice(5, 8)}`;
+  if (digits.length > 8) formatted += ` ${digits.slice(8, 10)}`;
+  if (digits.length > 10) formatted += ` ${digits.slice(10, 12)}`;
+  return formatted;
+};
+
+const phoneHasEnoughDigits = (value: string) =>
+  value.replace(/\D/g, "").length >= 12;
+
+export default function AuthModal({
+  open,
+  onOpenChange,
+  initialMode = "login",
+}: AuthModalProps) {
   const navigate = useNavigate();
-  const [authMode, setAuthMode] = useState<"login" | "register">(initialMode);
-  const [registerMethod, setRegisterMethod] = useState<"email" | "phone">("email");
+
+  const [intent, setIntent] = useState<AuthIntent>(initialMode);
+  const [step, setStep] = useState<ModalStep>("method");
+  const [otpFlow, setOtpFlow] = useState<OtpFlow>(
+    initialMode === "register" ? "register" : "login",
+  );
+
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  
-  // Login states
-  const [loginStep, setLoginStep] = useState<"login" | "phone" | "otp">("login");
-  const [loginPhone, setLoginPhone] = useState("");
-  const [loginOtp, setLoginOtp] = useState("");
-  const [loginData, setLoginData] = useState({
-    name: "",
-    password: "",
-  });
-  
-  // Register states
-  const [registerStep, setRegisterStep] = useState<"options" | "phone" | "otp" | "register">("options");
-  const [registerPhone, setRegisterPhone] = useState("");
-  const [registerOtp, setRegisterOtp] = useState("");
-  const [registerData, setRegisterData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    password: "",
-    phoneNumber: "",
-    userName: "",
-  });
-  
-  // Timer states
   const [timer, setTimer] = useState(0);
   const [canResend, setCanResend] = useState(false);
 
-  // Sync authMode with initialMode when modal opens or parent changes mode (e.g. "Kayıt Ol" vs "Giriş Yap")
+  const [phone, setPhone] = useState("+998 ");
+  const [otp, setOtp] = useState("");
+  const [verifiedPhone, setVerifiedPhone] = useState("");
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+
+  const [passwordLogin, setPasswordLogin] = useState({
+    identifier: "",
+    password: "",
+  });
+
+  const [registerForm, setRegisterForm] = useState({
+    name: "",
+    userName: "",
+    password: "",
+    confirmPassword: "",
+  });
+
+  const [resetForm, setResetForm] = useState({
+    phone: "+998 ",
+    otp: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+
+  const resetAll = (mode: AuthIntent) => {
+    setIntent(mode);
+    setStep("method");
+    setOtpFlow(mode === "register" ? "register" : "login");
+    setLoading(false);
+    setTimer(0);
+    setCanResend(false);
+    setPhone("+998 ");
+    setOtp("");
+    setVerifiedPhone("");
+    setShowPassword(false);
+    setShowNewPassword(false);
+    setPasswordLogin({ identifier: "", password: "" });
+    setRegisterForm({
+      name: "",
+      userName: "",
+      password: "",
+      confirmPassword: "",
+    });
+    setResetForm({
+      phone: "+998 ",
+      otp: "",
+      newPassword: "",
+      confirmPassword: "",
+    });
+  };
+
   useEffect(() => {
     if (open) {
-      setAuthMode(initialMode);
-      if (initialMode === "register") {
-        setRegisterStep("options");
-      } else {
-        setLoginStep("login");
-      }
+      resetAll(initialMode);
     }
   }, [open, initialMode]);
 
-  // Phone number formatting function
-  const formatPhoneNumber = (value: string) => {
-    let input = value;
-    if (input.startsWith("+")) {
-      input = "+" + input.substring(1).replace(/\D/g, "");
-    } else {
-      input = input.replace(/\D/g, "");
-    }
-
-    let digits = input.replace(/\D/g, "");
-
-    if (digits.length === 0) {
-      return "+998 ";
-    }
-
-    if (digits.startsWith("998")) {
-      digits = digits;
-    } else if (digits.startsWith("8") && digits.length > 1) {
-      digits = "99" + digits;
-    } else {
-      digits = "998" + digits;
-    }
-
-    digits = digits.substring(0, 12);
-
-    let formatted = "+998";
-    if (digits.length > 3) {
-      formatted += " " + digits.substring(3, 5);
-    }
-    if (digits.length > 5) {
-      formatted += " " + digits.substring(5, 8);
-    }
-    if (digits.length > 8) {
-      formatted += " " + digits.substring(8, 10);
-    }
-    if (digits.length > 10) {
-      formatted += " " + digits.substring(10, 12);
-    }
-
-    return formatted;
-  };
-
-  // Timer effect
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: NodeJS.Timeout | undefined;
     if (timer > 0) {
       interval = setInterval(() => {
         setTimer((prev) => {
@@ -118,708 +145,706 @@ const AuthModal = ({ open, onOpenChange, initialMode = "login" }: AuthModalProps
         });
       }, 1000);
     }
-    return () => clearInterval(interval);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [timer]);
+
+  const title = useMemo(() => {
+    if (step === "method") return "Hizli Giris";
+    if (step === "passwordLogin") return "Sifre ile Giris";
+    if (step === "phone") return "Telefon Dogrulama";
+    if (step === "otp") return "OTP Kodu";
+    if (step === "register") return "Hesap Tamamlama";
+    if (step === "resetPhone") return "Sifre Sifirlama";
+    return "Yeni Sifre";
+  }, [step]);
+
+  const subtitle = useMemo(() => {
+    if (step === "method") {
+      return intent === "register"
+        ? "Google veya telefon ile kayit olun"
+        : "Google, telefon OTP veya sifre ile devam edin";
+    }
+    if (step === "register") {
+      return "Bilgilerinizi tamamlayin ve sifrenizi kaydedin";
+    }
+    if (step === "resetOtp") {
+      return "OTP ile yeni sifre belirleyin";
+    }
+    return "";
+  }, [intent, step]);
+
+  const closeModal = () => onOpenChange(false);
 
   const startTimer = () => {
     setTimer(60);
     setCanResend(false);
   };
 
-  // Reset form when modal opens/closes or mode changes
-  useEffect(() => {
-    if (open) {
-      setAuthMode(initialMode);
-      setRegisterMethod("email");
-      setLoginStep("login");
-      setRegisterStep("options");
-      setLoginData({ name: "", password: "" });
-      setRegisterData({ name: "", email: "", phone: "", password: "", phoneNumber: "", userName: "" });
-      setLoginPhone("");
-      setRegisterPhone("");
-      setLoginOtp("");
-      setRegisterOtp("");
-      setShowPassword(false);
-      setTimer(0);
-      setCanResend(false);
-    }
-  }, [open, initialMode]);
-
-  // Login handlers
-  const handleLoginPhone = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleGoogle = () => {
     setLoading(true);
-    const result = await authService.sendOtpRequest(loginPhone);
-    if (result.success) {
-      setLoginStep("otp");
-      startTimer();
-    }
-    setLoading(false);
-  };
-
-  const handleLoginOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    const result = await authService.verifyOtpForLogin(
-      loginPhone,
-      loginOtp.toString(),
-      navigate
-    );
-    setLoading(false);
-    if (result?.shouldShowRegister && result?.phoneNumber) {
-      setRegisterPhone(loginPhone);
-      setRegisterData((prev) => ({
-        ...prev,
-        phoneNumber: result.phoneNumber!,
-      }));
-      setAuthMode("register");
-      setRegisterStep("register");
-      return;
-    }
-    if (result?.success && result?.shouldNavigate) {
-      onOpenChange(false);
-    }
-  };
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    const result = await authService.loginWithCredentials(
-      { name: loginData.name, password: loginData.password },
-      navigate
-    );
-    setLoading(false);
-    if (result?.success && open) {
-      onOpenChange(false);
-    }
-  };
-
-  // Register handlers
-  const handleGoogleLogin = () => {
-    setLoading(true);
-    const baseUrl = import.meta.env.VITE_API_URL || "https://api.turkishmock.uz";
     const callbackUrl = `${window.location.origin}/oauth-callback`;
-    window.location.href = `${baseUrl}/api/auth/google/redirect?callback=${encodeURIComponent(
-      callbackUrl
+    window.location.href = `${API_BASE_URL}/api/auth/google/redirect?callback=${encodeURIComponent(
+      callbackUrl,
     )}`;
   };
 
-  const handleRegisterPhone = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    const result = await authService.sendOtpRequest(registerPhone);
-    if (result.success) {
-      setRegisterStep("otp");
-      startTimer();
-    }
-    setLoading(false);
+  const goPhoneStep = (flow: OtpFlow) => {
+    setOtpFlow(flow);
+    setOtp("");
+    setStep("phone");
   };
 
-  const handleRegisterOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    const result = await authService.verifyOtpForSignup(
-      registerPhone,
-      registerOtp.toString(),
-      navigate
-    );
-
-    if (result.success && !result.shouldNavigate && !result.shouldRedirectToLogin) {
-      const phoneNumber = result.phoneNumber || authService.formatPhoneNumber(registerPhone);
-      setRegisterData({
-        ...registerData,
-        phoneNumber,
-      });
-      setRegisterStep("register");
-    }
-    setLoading(false);
-  };
-
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    // Get the phone number from registerData (set during OTP verification)
-    const phoneNumber = registerData.phoneNumber || authService.formatPhoneNumber(registerPhone);
-    
-    // Validate userName is not empty
-    const userName = registerMethod === "email" ? registerData.email : registerData.userName;
-    if (!userName || userName.trim() === "") {
-      toast.error("Kullanıcı adı boş olamaz");
-      setLoading(false);
+  const sendOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!phoneHasEnoughDigits(phone)) {
+      toast.error("Telefon numarasini tam girin");
       return;
     }
-    
-    const registrationPayload = {
-      name: registerData.name,
-      password: registerData.password,
-      phoneNumber: phoneNumber,
-      userName: userName,
-      avatarUrl: "",
-    };
-
-    console.log("DEBUG handleRegister - registrationPayload:", registrationPayload);
-
-    const result = await authService.registerUser(registrationPayload, navigate);
+    setLoading(true);
+    const result = await authService.sendOtpRequest(phone);
     setLoading(false);
-    if (result?.success && open) {
-      onOpenChange(false);
+    if (!result.success) return;
+    setStep("otp");
+    setOtp("");
+    startTimer();
+  };
+
+  const verifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (otp.length !== 4) return;
+    setLoading(true);
+
+    if (otpFlow === "login") {
+      const result = await authService.verifyOtpForLogin(
+        phone,
+        otp,
+        navigate,
+      );
+      setLoading(false);
+
+      if (result?.shouldShowRegister) {
+        setIntent("register");
+        setOtpFlow("register");
+        setVerifiedPhone(result.phoneNumber || authService.formatPhoneNumber(phone));
+        setStep("register");
+        return;
+      }
+
+      if (result?.success && result?.shouldNavigate) {
+        closeModal();
+      }
+      return;
     }
+
+    const result = await authService.verifyOtpForSignup(phone, otp, navigate);
+    setLoading(false);
+    if (result.success && !result.shouldNavigate && !result.shouldRedirectToLogin) {
+      setVerifiedPhone(result.phoneNumber || authService.formatPhoneNumber(phone));
+      setStep("register");
+    }
+  };
+
+  const loginWithPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const result = await authService.loginWithCredentials(
+      {
+        name: passwordLogin.identifier.trim(),
+        password: passwordLogin.password,
+      },
+      navigate,
+    );
+    setLoading(false);
+    if (result?.success) closeModal();
+  };
+
+  const sendResetOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!phoneHasEnoughDigits(resetForm.phone)) {
+      toast.error("Telefon numarasini tam girin");
+      return;
+    }
+
+    setLoading(true);
+    const result = await authService.requestPasswordReset(resetForm.phone);
+    setLoading(false);
+    if (!result.success) return;
+
+    setResetForm((prev) => ({ ...prev, otp: "", newPassword: "", confirmPassword: "" }));
+    setStep("resetOtp");
+    startTimer();
+  };
+
+  const confirmResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (resetForm.newPassword.trim().length < 6) {
+      toast.error("Sifre en az 6 karakter olmali");
+      return;
+    }
+    if (resetForm.newPassword !== resetForm.confirmPassword) {
+      toast.error("Sifreler ayni degil");
+      return;
+    }
+
+    setLoading(true);
+    const result = await authService.confirmPasswordReset(
+      resetForm.phone,
+      resetForm.otp,
+      resetForm.newPassword,
+    );
+    setLoading(false);
+    if (!result.success) return;
+
+    setPasswordLogin((prev) => ({
+      ...prev,
+      identifier: authService.formatPhoneNumber(resetForm.phone),
+      password: "",
+    }));
+    setStep("passwordLogin");
+  };
+
+  const register = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const effectivePhone = verifiedPhone || authService.formatPhoneNumber(phone);
+    if (!effectivePhone) {
+      toast.error("Telefon dogrulamasi tekrar gerekli");
+      setStep("phone");
+      return;
+    }
+    if (registerForm.password.trim().length < 6) {
+      toast.error("Sifre en az 6 karakter olmali");
+      return;
+    }
+    if (registerForm.password !== registerForm.confirmPassword) {
+      toast.error("Sifreler ayni degil");
+      return;
+    }
+
+    setLoading(true);
+    const result = await authService.registerUser(
+      {
+        name: registerForm.name.trim(),
+        userName: registerForm.userName.trim(),
+        password: registerForm.password,
+        phoneNumber: effectivePhone,
+        avatarUrl: "",
+        accountType: "STUDENT",
+      },
+      navigate,
+    );
+    setLoading(false);
+    if (result?.success) closeModal();
   };
 
   if (!open) return null;
 
   const modalContent = (
-    <div 
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200 min-h-screen"
+    <div
+      className="fixed inset-0 z-[9999] flex min-h-screen items-center justify-center bg-black/55 p-4 backdrop-blur-sm"
       onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          onOpenChange(false);
-        }
+        if (e.target === e.currentTarget) closeModal();
       }}
     >
-      <div className="bg-white rounded-[12px] shadow-2xl w-full max-w-[440px] max-h-[90vh] overflow-y-auto p-8 relative animate-in zoom-in-95 duration-200 mx-auto">
+      <div className="relative w-full max-w-[460px] max-h-[92vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl sm:p-8">
         <button
-          onClick={() => onOpenChange(false)}
-          className="absolute top-5 right-5 text-[#333333] hover:text-black transition-colors"
+          type="button"
+          onClick={closeModal}
+          className="absolute right-4 top-4 rounded-md p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+          aria-label="Kapat"
         >
-          <X className="w-5 h-5" />
+          <X className="h-5 w-5" />
         </button>
 
-        <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">
-          {authMode === "login" 
-            ? loginStep === "phone" 
-              ? "Telefon Numarası"
-              : loginStep === "otp"
-              ? "Kodu Girin"
-              : "Giriş Yap"
-            : registerStep === "options"
-            ? "Kayıt Ol"
-            : registerStep === "phone"
-            ? "Telefon Numarası"
-            : registerStep === "otp"
-            ? "Kodu Girin"
-            : "Hesabınızı Tamamlayın"}
-        </h2>
+        <h2 className="text-center text-2xl font-bold text-gray-900">{title}</h2>
+        {subtitle ? <p className="mt-2 text-center text-sm text-gray-600">{subtitle}</p> : null}
 
-        {/* Login Flow */}
-        {authMode === "login" && (
-          <>
-            {loginStep === "login" && (
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Kullanıcı Adı
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={loginData.name}
-                    onChange={(e) =>
-                      setLoginData({ ...loginData, name: e.target.value })
-                    }
-                    placeholder="Kullanıcı adı veya telefon"
-                    className="w-full bg-white border border-[#E5E5E5] text-gray-900 rounded-lg p-3 outline-none focus:border-black transition-colors placeholder-gray-400"
-                  />
-                </div>
+        {step === "method" ? (
+          <div className="mt-6 space-y-4">
+            <div className="grid grid-cols-2 gap-2 rounded-lg border border-gray-200 bg-gray-50 p-1">
+              <button
+                type="button"
+                onClick={() => setIntent("login")}
+                className={`rounded-md px-3 py-2 text-sm font-medium transition ${
+                  intent === "login"
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                Giris
+              </button>
+              <button
+                type="button"
+                onClick={() => setIntent("register")}
+                className={`rounded-md px-3 py-2 text-sm font-medium transition ${
+                  intent === "register"
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                Kayit
+              </button>
+            </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Şifre
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      required
-                      value={loginData.password}
-                      onChange={(e) =>
-                        setLoginData({ ...loginData, password: e.target.value })
-                      }
-                      className="w-full bg-white border border-[#E5E5E5] text-gray-900 rounded-lg p-3 pr-10 outline-none focus:border-black transition-colors placeholder-gray-400"
-                      placeholder="Şifreniz"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      {showPassword ? (
-                        <EyeOff className="w-5 h-5" />
-                      ) : (
-                        <Eye className="w-5 h-5" />
-                      )}
-                    </button>
-                  </div>
-                </div>
+            <button
+              type="button"
+              onClick={handleGoogle}
+              disabled={loading}
+              className="flex h-12 w-full items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <svg className="h-5 w-5" viewBox="0 0 24 24">
+                <path
+                  fill="#4285F4"
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                />
+              </svg>
+              {intent === "register" ? "Google ile Kayit" : "Google ile Giris"}
+            </button>
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition-colors shadow-sm mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? "Giriş yapılıyor..." : "Giriş Yap"}
-                </button>
+            <button
+              type="button"
+              onClick={() => goPhoneStep(intent === "register" ? "register" : "login")}
+              className="h-12 w-full rounded-lg bg-red-600 text-sm font-semibold text-white transition hover:bg-red-700"
+            >
+              Telefon ile Devam Et
+            </button>
 
-                <div className="relative my-4">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t border-gray-200" />
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="bg-white px-4 text-gray-500">veya</span>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setLoginStep("phone")}
-                  className="w-full text-sm font-medium text-gray-600 hover:text-red-600 transition-colors"
-                >
-                  Telefon ile Giriş Yap
-                </button>
-              </form>
-            )}
-
-            {loginStep === "phone" && (
-              <form onSubmit={handleLoginPhone} className="space-y-4">
-                <button
-                  type="button"
-                  onClick={() => setLoginStep("login")}
-                  className="mb-2 text-gray-600 hover:text-red-600 transition-colors flex items-center gap-2"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Geri Dön
-                </button>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Telefon Numarası
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    value={loginPhone || "+998 "}
-                    onChange={(e) => setLoginPhone(formatPhoneNumber(e.target.value))}
-                    placeholder="+998 91 570 66 42"
-                    className="w-full bg-white border border-[#E5E5E5] text-gray-900 rounded-lg p-3 outline-none focus:border-black transition-colors placeholder-gray-400"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? "Gönderiliyor..." : "Devam Et"}
-                </button>
-              </form>
-            )}
-
-            {loginStep === "otp" && (
-              <form onSubmit={handleLoginOtp} className="space-y-4">
-                <button
-                  type="button"
-                  onClick={() => setLoginStep("phone")}
-                  className="mb-2 text-gray-600 hover:text-red-600 transition-colors flex items-center gap-2"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Geri Dön
-                </button>
-
-                <div className="text-center">
-                  <p className="text-sm text-gray-600 mb-6">
-                    {loginPhone} numarasına gönderilen kodu girin
-                  </p>
-
-                  <div className="flex justify-center mb-6">
-                    <InputOTP
-                      maxLength={4}
-                      pattern={REGEXP_ONLY_DIGITS_AND_CHARS}
-                      value={loginOtp}
-                      onChange={(value) => setLoginOtp(value)}
-                    >
-                      <InputOTPGroup className="gap-2">
-                        <InputOTPSlot
-                          index={0}
-                          className="w-12 h-12 text-lg font-semibold border-gray-200 focus:border-red-500"
-                        />
-                        <InputOTPSlot
-                          index={1}
-                          className="w-12 h-12 text-lg font-semibold border-gray-200 focus:border-red-500"
-                        />
-                        <InputOTPSlot
-                          index={2}
-                          className="w-12 h-12 text-lg font-semibold border-gray-200 focus:border-red-500"
-                        />
-                        <InputOTPSlot
-                          index={3}
-                          className="w-12 h-12 text-lg font-semibold border-gray-200 focus:border-red-500"
-                        />
-                      </InputOTPGroup>
-                    </InputOTP>
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading || loginOtp.length !== 4}
-                  className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? "Doğrulanıyor..." : "Giriş Yap"}
-                </button>
-
-                <div className="text-center">
-                  {timer > 0 ? (
-                    <p className="text-sm text-gray-500">
-                      Tekrar gönder: {Math.floor(timer / 60)}:
-                      {(timer % 60).toString().padStart(2, "0")}
-                    </p>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={(e: React.MouseEvent<HTMLButtonElement>) => handleLoginPhone(e)}
-                      disabled={loading || !canResend}
-                      className="text-sm text-red-600 hover:text-red-700 disabled:opacity-50"
-                    >
-                      Tekrar Gönder
-                    </button>
-                  )}
-                </div>
-              </form>
-            )}
-          </>
-        )}
-
-        {/* Register Flow */}
-        {authMode === "register" && (
-          <>
-            {registerStep === "options" && (
-              <div className="space-y-4">
-                {/* Google Login */}
-                <button
-                  onClick={handleGoogleLogin}
-                  disabled={loading}
-                  className="w-full h-12 bg-white hover:bg-gray-50 text-gray-700 font-medium border border-gray-300 hover:border-gray-400 flex items-center justify-center gap-3 rounded-lg transition-colors disabled:opacity-50"
-                >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24">
-                    <path
-                      fill="#4285F4"
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                    />
-                  </svg>
-                  {loading ? "Yükleniyor..." : "Google ile Kayıt Ol"}
-                </button>
-
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t border-gray-200" />
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="bg-white px-4 text-gray-500">veya</span>
-                  </div>
-                </div>
-
-                <div className="flex border-b border-gray-200 mb-6">
-                  <button
-                    onClick={() => {
-                      setRegisterMethod("email");
-                      setRegisterStep("register");
-                    }}
-                    className={`flex-1 pb-3 text-sm font-semibold transition-all ${
-                      registerMethod === "email"
-                        ? "text-black border-b-2 border-black"
-                        : "text-gray-400 hover:text-gray-600"
-                    }`}
-                  >
-                  Kullanıcı adı
-
-                  </button>
-                  <button
-                    onClick={() => setRegisterStep("phone")}
-                    className={`flex-1 pb-3 text-sm font-semibold transition-all ${
-                      registerMethod === "phone"
-                        ? "text-black border-b-2 border-black"
-                        : "text-gray-400 hover:text-gray-600"
-                    }`}
-                  >
-                    Telefon ile
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {registerStep === "phone" && (
-              <form onSubmit={handleRegisterPhone} className="space-y-4">
-                <button
-                  type="button"
-                  onClick={() => setRegisterStep("options")}
-                  className="mb-2 text-gray-600 hover:text-red-600 transition-colors flex items-center gap-2"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Geri Dön
-                </button>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Telefon Numarası
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    value={registerPhone || "+998 "}
-                    onChange={(e) => setRegisterPhone(formatPhoneNumber(e.target.value))}
-                    placeholder="+998 91 570 66 42"
-                    className="w-full bg-white border border-[#E5E5E5] text-gray-900 rounded-lg p-3 outline-none focus:border-black transition-colors placeholder-gray-400"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? "Gönderiliyor..." : "Devam Et"}
-                </button>
-              </form>
-            )}
-
-            {registerStep === "otp" && (
-              <form onSubmit={handleRegisterOtp} className="space-y-4">
-                <button
-                  type="button"
-                  onClick={() => setRegisterStep("phone")}
-                  className="mb-2 text-gray-600 hover:text-red-600 transition-colors flex items-center gap-2"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Geri Dön
-                </button>
-
-                <div className="text-center">
-                  <p className="text-sm text-gray-600 mb-6">
-                    {registerPhone} numarasına gönderilen kodu girin
-                  </p>
-
-                  <div className="flex justify-center mb-6">
-                    <InputOTP
-                      maxLength={4}
-                      pattern={REGEXP_ONLY_DIGITS_AND_CHARS}
-                      value={registerOtp}
-                      onChange={(value) => setRegisterOtp(value)}
-                    >
-                      <InputOTPGroup className="gap-2">
-                        <InputOTPSlot
-                          index={0}
-                          className="w-12 h-12 text-lg font-semibold border-gray-200 focus:border-red-500"
-                        />
-                        <InputOTPSlot
-                          index={1}
-                          className="w-12 h-12 text-lg font-semibold border-gray-200 focus:border-red-500"
-                        />
-                        <InputOTPSlot
-                          index={2}
-                          className="w-12 h-12 text-lg font-semibold border-gray-200 focus:border-red-500"
-                        />
-                        <InputOTPSlot
-                          index={3}
-                          className="w-12 h-12 text-lg font-semibold border-gray-200 focus:border-red-500"
-                        />
-                      </InputOTPGroup>
-                    </InputOTP>
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading || registerOtp.length !== 4}
-                  className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? "Doğrulanıyor..." : "Devam Et"}
-                </button>
-
-                <div className="text-center">
-                  {timer > 0 ? (
-                    <p className="text-sm text-gray-500">
-                      Tekrar gönder: {Math.floor(timer / 60)}:
-                      {(timer % 60).toString().padStart(2, "0")}
-                    </p>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={(e) => handleRegisterPhone(e)}
-                      disabled={loading || !canResend}
-                      className="text-sm text-red-600 hover:text-red-700 disabled:opacity-50"
-                    >
-                      Tekrar Gönder
-                    </button>
-                  )}
-                </div>
-              </form>
-            )}
-
-            {registerStep === "register" && (
-              <form onSubmit={handleRegister} className="space-y-4">
-                {registerMethod === "phone" && (
-                  <button
-                    type="button"
-                    onClick={() => setRegisterStep("otp")}
-                    className="mb-2 text-gray-600 hover:text-red-600 transition-colors flex items-center gap-2"
-                  >
-                    <ArrowLeft className="w-4 h-4" />
-                    Geri Dön
-                  </button>
-                )}
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Ad Soyad
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={registerData.name}
-                    onChange={(e) =>
-                      setRegisterData({ ...registerData, name: e.target.value })
-                    }
-                    className="w-full bg-white border border-[#E5E5E5] text-gray-900 rounded-lg p-3 outline-none focus:border-black transition-colors placeholder-gray-400"
-                    placeholder="Adınız ve soyadınız"
-                  />
-                </div>
-
-                {registerMethod === "email" && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Kullanıcı adı
-
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={registerData.email}
-                      onChange={(e) =>
-                        setRegisterData({ ...registerData, email: e.target.value })
-                      }
-                      className="w-full bg-white border border-[#E5E5E5] text-gray-900 rounded-lg p-3 outline-none focus:border-black transition-colors placeholder-gray-400"
-                      placeholder="Kullanıcı adı adresiniz"
-                    />
-                  </div>
-                )}
-
-                {registerMethod === "phone" && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Kullanıcı Adı
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={registerData.userName || ""}
-                      onChange={(e) =>
-                        setRegisterData({ ...registerData, userName: e.target.value })
-                      }
-                      className="w-full bg-white border border-[#E5E5E5] text-gray-900 rounded-lg p-3 outline-none focus:border-black transition-colors placeholder-gray-400"
-                      placeholder="Kullanıcı adınız"
-                    />
-                  </div>
-                )}
-
-
-
-                {(registerMethod === "email" || registerStep === "register") && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Şifre
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        required
-                        value={registerData.password}
-                        onChange={(e) =>
-                          setRegisterData({
-                            ...registerData,
-                            password: e.target.value,
-                          })
-                        }
-                        className="w-full bg-white border border-[#E5E5E5] text-gray-900 rounded-lg p-3 pr-10 outline-none focus:border-black transition-colors placeholder-gray-400"
-                        placeholder="Şifreniz"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      >
-                        {showPassword ? (
-                          <EyeOff className="w-5 h-5" />
-                        ) : (
-                          <Eye className="w-5 h-5" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition-colors shadow-sm mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? "Kayıt olunuyor..." : "Kayıt Ol"}
-                </button>
-              </form>
-            )}
-          </>
-        )}
-
-        {/* Mode Switch */}
-        {(authMode === "login" && loginStep === "login") ||
-        (authMode === "register" && registerStep === "options") ||
-        (authMode === "register" && registerStep === "register" && registerMethod === "email") ? (
-          <div className="mt-6 text-center">
-            {authMode === "login" ? (
-              <p className="text-sm text-gray-500">
-                Hesabın yok mu?{" "}
-                <button
-                  onClick={() => {
-                    setAuthMode("register");
-                    setRegisterStep("options");
-                  }}
-                  className="font-bold text-black hover:text-red-600 transition-colors"
-                >
-                  Kayıt ol
-                </button>
-              </p>
+            {intent === "login" ? (
+              <button
+                type="button"
+                onClick={() => setStep("passwordLogin")}
+                className="h-11 w-full rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+              >
+                Sifre ile Giris
+              </button>
             ) : (
-              <p className="text-sm text-gray-500">
-                Zaten hesabın var mı?{" "}
-                <button
-                  onClick={() => {
-                    setAuthMode("login");
-                    setLoginStep("login");
-                  }}
-                  className="font-bold text-black hover:text-red-600 transition-colors"
-                >
-                  Giriş yap
-                </button>
+              <p className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                Kayit icin telefon dogrulama ve profil bilgileri yeterlidir.
               </p>
             )}
           </div>
+        ) : null}
+
+        {step === "passwordLogin" ? (
+          <form onSubmit={loginWithPassword} className="mt-6 space-y-4">
+            <button
+              type="button"
+              onClick={() => setStep("method")}
+              className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-red-600"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Geri
+            </button>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                Kullanici adi veya telefon
+              </label>
+              <input
+                type="text"
+                value={passwordLogin.identifier}
+                onChange={(e) =>
+                  setPasswordLogin((prev) => ({ ...prev, identifier: e.target.value }))
+                }
+                required
+                className="h-11 w-full rounded-lg border border-gray-300 px-3 outline-none transition focus:border-red-500"
+                placeholder="ornek: ali123 veya 998901234567"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">Sifre</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={passwordLogin.password}
+                  onChange={(e) =>
+                    setPasswordLogin((prev) => ({ ...prev, password: e.target.value }))
+                  }
+                  required
+                  className="h-11 w-full rounded-lg border border-gray-300 px-3 pr-10 outline-none transition focus:border-red-500"
+                  placeholder="Sifrenizi girin"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800"
+                  aria-label="Sifre goster/gizle"
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="h-12 w-full rounded-lg bg-red-600 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
+            >
+              {loading ? "Giris yapiliyor..." : "Giris Yap"}
+            </button>
+
+            <div className="flex items-center justify-between text-sm">
+              <button
+                type="button"
+                onClick={() => setStep("resetPhone")}
+                className="text-gray-600 hover:text-red-600"
+              >
+                Sifremi unuttum
+              </button>
+              <button
+                type="button"
+                onClick={() => goPhoneStep("login")}
+                className="text-gray-600 hover:text-red-600"
+              >
+                Telefon OTP ile giris
+              </button>
+            </div>
+          </form>
+        ) : null}
+
+        {step === "phone" ? (
+          <form onSubmit={sendOtp} className="mt-6 space-y-4">
+            <button
+              type="button"
+              onClick={() => setStep("method")}
+              className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-red-600"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Geri
+            </button>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">Telefon</label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(formatPhoneForInput(e.target.value))}
+                required
+                className="h-11 w-full rounded-lg border border-gray-300 px-3 outline-none transition focus:border-red-500"
+                placeholder="+998 90 123 45 67"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="h-12 w-full rounded-lg bg-red-600 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
+            >
+              {loading ? "Kod gonderiliyor..." : "OTP Gonder"}
+            </button>
+          </form>
+        ) : null}
+
+        {step === "otp" ? (
+          <form onSubmit={verifyOtp} className="mt-6 space-y-4">
+            <button
+              type="button"
+              onClick={() => setStep("phone")}
+              className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-red-600"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Geri
+            </button>
+
+            <p className="text-center text-sm text-gray-600">
+              {phone} numarasina gelen 4 haneli kodu girin
+            </p>
+
+            <div className="flex justify-center">
+              <InputOTP
+                maxLength={4}
+                pattern={REGEXP_ONLY_DIGITS_AND_CHARS}
+                value={otp}
+                onChange={setOtp}
+              >
+                <InputOTPGroup className="gap-2">
+                  <InputOTPSlot index={0} className="h-12 w-12 text-lg" />
+                  <InputOTPSlot index={1} className="h-12 w-12 text-lg" />
+                  <InputOTPSlot index={2} className="h-12 w-12 text-lg" />
+                  <InputOTPSlot index={3} className="h-12 w-12 text-lg" />
+                </InputOTPGroup>
+              </InputOTP>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading || otp.length !== 4}
+              className="h-12 w-full rounded-lg bg-red-600 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
+            >
+              {loading ? "Dogrulaniyor..." : "Dogrula"}
+            </button>
+
+            <div className="text-center text-sm text-gray-500">
+              {timer > 0 ? (
+                <>Tekrar gonder: {Math.floor(timer / 60)}:{(timer % 60).toString().padStart(2, "0")}</>
+              ) : (
+                <button
+                  type="button"
+                  disabled={loading || !canResend}
+                  onClick={() => sendOtp()}
+                  className="text-red-600 hover:text-red-700 disabled:opacity-50"
+                >
+                  Kodu tekrar gonder
+                </button>
+              )}
+            </div>
+          </form>
+        ) : null}
+
+        {step === "register" ? (
+          <form onSubmit={register} className="mt-6 space-y-4">
+            <button
+              type="button"
+              onClick={() => setStep("otp")}
+              className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-red-600"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Geri
+            </button>
+
+            <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+              Dogrulanan telefon: <span className="font-semibold">{verifiedPhone || authService.formatPhoneNumber(phone)}</span>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">Ad Soyad</label>
+              <input
+                type="text"
+                required
+                value={registerForm.name}
+                onChange={(e) =>
+                  setRegisterForm((prev) => ({ ...prev, name: e.target.value }))
+                }
+                className="h-11 w-full rounded-lg border border-gray-300 px-3 outline-none transition focus:border-red-500"
+                placeholder="Adinizi girin"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">Kullanici Adi</label>
+              <input
+                type="text"
+                required
+                value={registerForm.userName}
+                onChange={(e) =>
+                  setRegisterForm((prev) => ({ ...prev, userName: e.target.value }))
+                }
+                className="h-11 w-full rounded-lg border border-gray-300 px-3 outline-none transition focus:border-red-500"
+                placeholder="ornek: ali_ogretmen"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">Sifre</label>
+              <div className="relative">
+                <input
+                  type={showNewPassword ? "text" : "password"}
+                  required
+                  value={registerForm.password}
+                  onChange={(e) =>
+                    setRegisterForm((prev) => ({ ...prev, password: e.target.value }))
+                  }
+                  className="h-11 w-full rounded-lg border border-gray-300 px-3 pr-10 outline-none transition focus:border-red-500"
+                  placeholder="En az 6 karakter"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800"
+                  aria-label="Sifre goster/gizle"
+                >
+                  {showNewPassword ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">Sifre Tekrar</label>
+              <input
+                type={showNewPassword ? "text" : "password"}
+                required
+                value={registerForm.confirmPassword}
+                onChange={(e) =>
+                  setRegisterForm((prev) => ({
+                    ...prev,
+                    confirmPassword: e.target.value,
+                  }))
+                }
+                className="h-11 w-full rounded-lg border border-gray-300 px-3 outline-none transition focus:border-red-500"
+                placeholder="Sifreyi tekrar yazin"
+              />
+            </div>
+
+            <p className="rounded-lg border border-green-100 bg-green-50 px-3 py-2 text-xs text-green-700">
+              Bu sifre ile giris yapabilirsiniz. Unutursaniz telefon OTP ile giris
+              yapabilir veya "Sifremi unuttum" adimini kullanabilirsiniz.
+            </p>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="h-12 w-full rounded-lg bg-red-600 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
+            >
+              {loading ? "Hesap olusturuluyor..." : "Hesap Olustur"}
+            </button>
+          </form>
+        ) : null}
+
+        {step === "resetPhone" ? (
+          <form onSubmit={sendResetOtp} className="mt-6 space-y-4">
+            <button
+              type="button"
+              onClick={() => setStep("passwordLogin")}
+              className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-red-600"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Geri
+            </button>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                Telefon
+              </label>
+              <input
+                type="tel"
+                value={resetForm.phone}
+                onChange={(e) =>
+                  setResetForm((prev) => ({
+                    ...prev,
+                    phone: formatPhoneForInput(e.target.value),
+                  }))
+                }
+                required
+                className="h-11 w-full rounded-lg border border-gray-300 px-3 outline-none transition focus:border-red-500"
+                placeholder="+998 90 123 45 67"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="h-12 w-full rounded-lg bg-red-600 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
+            >
+              {loading ? "Kod gonderiliyor..." : "Kod Gonder"}
+            </button>
+          </form>
+        ) : null}
+
+        {step === "resetOtp" ? (
+          <form onSubmit={confirmResetPassword} className="mt-6 space-y-4">
+            <button
+              type="button"
+              onClick={() => setStep("resetPhone")}
+              className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-red-600"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Geri
+            </button>
+
+            <p className="text-center text-sm text-gray-600">
+              {resetForm.phone} numarasina gelen OTP kodu ve yeni sifrenizi girin
+            </p>
+
+            <div className="flex justify-center">
+              <InputOTP
+                maxLength={4}
+                pattern={REGEXP_ONLY_DIGITS_AND_CHARS}
+                value={resetForm.otp}
+                onChange={(value) =>
+                  setResetForm((prev) => ({ ...prev, otp: value }))
+                }
+              >
+                <InputOTPGroup className="gap-2">
+                  <InputOTPSlot index={0} className="h-12 w-12 text-lg" />
+                  <InputOTPSlot index={1} className="h-12 w-12 text-lg" />
+                  <InputOTPSlot index={2} className="h-12 w-12 text-lg" />
+                  <InputOTPSlot index={3} className="h-12 w-12 text-lg" />
+                </InputOTPGroup>
+              </InputOTP>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">Yeni Sifre</label>
+              <input
+                type={showNewPassword ? "text" : "password"}
+                value={resetForm.newPassword}
+                onChange={(e) =>
+                  setResetForm((prev) => ({ ...prev, newPassword: e.target.value }))
+                }
+                required
+                className="h-11 w-full rounded-lg border border-gray-300 px-3 outline-none transition focus:border-red-500"
+                placeholder="En az 6 karakter"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                Yeni Sifre Tekrar
+              </label>
+              <input
+                type={showNewPassword ? "text" : "password"}
+                value={resetForm.confirmPassword}
+                onChange={(e) =>
+                  setResetForm((prev) => ({
+                    ...prev,
+                    confirmPassword: e.target.value,
+                  }))
+                }
+                required
+                className="h-11 w-full rounded-lg border border-gray-300 px-3 outline-none transition focus:border-red-500"
+                placeholder="Sifreyi tekrar yazin"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={
+                loading ||
+                resetForm.otp.length !== 4 ||
+                resetForm.newPassword.trim().length < 6
+              }
+              className="h-12 w-full rounded-lg bg-red-600 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
+            >
+              {loading ? "Sifre guncelleniyor..." : "Sifreyi Guncelle"}
+            </button>
+
+            <div className="text-center text-sm text-gray-500">
+              {timer > 0 ? (
+                <>Tekrar gonder: {Math.floor(timer / 60)}:{(timer % 60).toString().padStart(2, "0")}</>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => sendResetOtp()}
+                  disabled={loading || !canResend}
+                  className="text-red-600 hover:text-red-700 disabled:opacity-50"
+                >
+                  Kodu tekrar gonder
+                </button>
+              )}
+            </div>
+          </form>
         ) : null}
       </div>
     </div>
   );
 
   return createPortal(modalContent, document.body);
-};
-
-export default AuthModal;
+}

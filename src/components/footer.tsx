@@ -124,7 +124,7 @@ export const Footer = () => {
                   <Send className="w-5 h-5" />
                 </a>
                 <a
-                  href="#"
+                  href="https://www.instagram.com/turkishmock.uz?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw=="
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:text-red-600 hover:border-red-200 transition-all hover:-translate-y-1 shadow-sm"
@@ -132,15 +132,12 @@ export const Footer = () => {
                 >
                   <Instagram className="w-5 h-5" />
                 </a>
-                <a
-                  href="#"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:text-red-600 hover:border-red-200 transition-all hover:-translate-y-1 shadow-sm"
-                  aria-label="YouTube"
+                <span
+                  className="w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-400 cursor-not-allowed shadow-sm"
+                  aria-label="YouTube (yakında)"
                 >
                   <Youtube className="w-5 h-5" />
-                </a>
+                </span>
               </div>
             </div>
           </div>

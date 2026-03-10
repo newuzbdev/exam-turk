@@ -11,12 +11,11 @@ import { getInstructionForSection } from "@/config/speakingInstructions"
 import { speechToTextService } from "@/services/speechToText.service"
 import SimpleTextDisplay from "@/components/speaking-test/SimpleTextDisplay"
 import { normalizeDisplayText } from "@/utils/text"
+import { API_BASE_URL } from "@/config/runtime"
 // import ResultModal from "./components/ResultModal"
 // import DisableKeys from "./components/DisableKeys"
 
-const baseURL =
-  import.meta.env.VITE_API_URL ||
-  (import.meta.env.DEV ? "http://localhost:3000" : "https://api.turkishmock.uz")
+const baseURL = API_BASE_URL
 
 interface Question {
   id: string

@@ -1,4 +1,4 @@
-import axiosPrivate from "@/config/api";
+﻿import axiosPrivate from "@/config/api";
 import { authEndPoint } from "@/config/endpoint";
 import { toast } from "@/utils/toast";
 import { SecureStorage } from "@/utils/secureStorage";
@@ -17,6 +17,7 @@ export interface RegisterData {
   phoneNumber: string;
   userName: string;
   avatarUrl?: string;
+  accountType?: "STUDENT" | "TEACHER" | "INSTITUTION";
 }
 
 export interface OtpSendData {
@@ -44,6 +45,14 @@ export interface AuthResult {
   shouldShowRegister?: boolean;
   phoneNumber?: string;
   message?: string;
+  accessToken?: string;
+  refreshToken?: string;
+  telegramUser?: {
+    firstName?: string;
+    lastName?: string;
+    phoneNumber?: string;
+    telegramId?: string | number;
+  };
 }
 
 // Global variable to track ongoing user fetch requests
@@ -84,6 +93,30 @@ const extractTokens = (
     accessToken: accessToken ? String(accessToken) : undefined,
     refreshToken: refreshToken ? String(refreshToken) : undefined,
   };
+};
+
+const extractUserFromPayload = (payload: any): any | null => {
+  if (!payload || typeof payload !== "object") return null;
+
+  const data = payload.data && typeof payload.data === "object" ? payload.data : null;
+  const candidates = [payload.user, data?.user, data, payload];
+
+  for (const candidate of candidates) {
+    if (!candidate || typeof candidate !== "object") continue;
+    if (
+      candidate.id ||
+      candidate.userId ||
+      candidate.accountType ||
+      candidate.username ||
+      candidate.userName ||
+      candidate.phoneNumber ||
+      candidate.email
+    ) {
+      return candidate;
+    }
+  }
+
+  return null;
 };
 
 
@@ -129,19 +162,13 @@ const decodeUserIdFromStoredAccessToken = (): string | null => {
 export const authService = {
   // Helper function to format phone number
   formatPhoneNumber: (phone: string): string => {
-    // Remove spaces and + sign, format phone number
-    const cleanPhone = phone.replace(/[\s+]/g, "");
-    let phoneWithPrefix = cleanPhone;
-
-    if (phoneWithPrefix.startsWith("+998")) {
-      phoneWithPrefix = phoneWithPrefix.substring(1);
-    } else if (phoneWithPrefix.startsWith("998")) {
-      phoneWithPrefix = phoneWithPrefix;
-    } else {
-      phoneWithPrefix = `998${phoneWithPrefix}`;
-    }
-
-    return phoneWithPrefix;
+    const digits = String(phone || "").replace(/\D/g, "");
+    const normalized = digits.startsWith("998")
+      ? digits
+      : digits.length === 9
+        ? `998${digits}`
+        : digits;
+    return normalized ? `+${normalized}` : "";
   },
 
   // Upload avatar file and return URL or path
@@ -163,12 +190,20 @@ export const authService = {
       avatarUrl: string;
       phoneNumber: string;
       email: string | null;
+      accountType: "STUDENT" | "TEACHER" | "INSTITUTION";
     }>,
     options?: { avatarFile?: File | null }
   ): Promise<any> => {
     try {
       const hasFile = !!options?.avatarFile;
-      let effectiveUpdates = { ...(updates || {}) } as any;
+      const effectiveUpdates = { ...(updates || {}) } as any;
+      if (
+        typeof effectiveUpdates.userName === "string" &&
+        !effectiveUpdates.username
+      ) {
+        effectiveUpdates.username = effectiveUpdates.userName;
+      }
+      delete effectiveUpdates.userName;
       if (hasFile && options?.avatarFile) {
         const uploadedUrl = await authService.uploadAvatar(options.avatarFile);
         if (uploadedUrl) {
@@ -281,7 +316,7 @@ export const authService = {
       const payload = JSON.parse(atob(token.split('.')[1]));
       const currentTime = Math.floor(Date.now() / 1000);
       const isExpired = payload.exp < currentTime;
-      console.log('🔍 Token expiration check:', {
+      console.log('ğŸ” Token expiration check:', {
         exp: payload.exp,
         currentTime,
         isExpired,
@@ -363,13 +398,14 @@ export const authService = {
         const response = await axiosPrivate.get(authEndPoint.me);
         console.log("User data from /api/auth/me:", response.data);
 
-        if (response.data) {
-          const meUserId = extractUserIdFromPayload(response.data);
+        const meUser = extractUserFromPayload(response.data);
+        if (meUser) {
+          const meUserId = extractUserIdFromPayload(meUser);
           if (meUserId) {
             SecureStorage.setSessionItem("userId", meUserId);
             SecureStorage.setItem("userId", meUserId);
           }
-          return response.data;
+          return meUser;
         }
 
         throw new Error("No user data returned from /api/auth/me");
@@ -397,7 +433,8 @@ export const authService = {
               `${authEndPoint.user}/${userId}`
             );
             console.log("User data from /api/user/{id}:", userResponse.data);
-            return userResponse.data;
+            const userData = extractUserFromPayload(userResponse.data);
+            return userData || userResponse.data;
           } catch (userError) {
             console.error(
               "Error fetching user from /api/user/{id}:",
@@ -434,6 +471,121 @@ export const authService = {
       return { success: true };
     } catch (error: any) {
       toast.error(getApiErrorMessage(error, "OTP gönderilemedi"));
+      return { success: false };
+    }
+  },
+
+  // Verify Telegram OTP (6-digit code from @turkishmockbot)
+  verifyTelegramOtp: async (otpCode: string): Promise<AuthResult> => {
+    try {
+      const code = String(otpCode || "").trim();
+      if (!/^\d{6}$/.test(code)) {
+        toast.error("6 xonali Telegram kodini kiriting");
+        return { success: false };
+      }
+
+      const baseURL =
+        import.meta.env.VITE_TELEGRAM_OTP_API_URL ||
+        (import.meta.env.DEV ? "http://localhost:3002" : "");
+      const verifyUrl = import.meta.env.VITE_TELEGRAM_VERIFY_URL || `${baseURL}/api/verify-telegram`;
+
+      const response = await fetch(verifyUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ otpCode: code }),
+      });
+
+      let data: any = {};
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        try {
+          data = await response.json();
+        } catch {
+          data = {};
+        }
+      }
+
+      if (!response.ok || data?.success !== true) {
+        const errorMessage =
+          (typeof data?.message === "string" && data.message) ||
+          "Telegram kodu yanlış veya süresi dolmuş";
+        toast.error(errorMessage);
+        return { success: false, message: errorMessage };
+      }
+
+      const user = data?.user || {};
+      const { accessToken, refreshToken } = extractTokens(data);
+      if (!accessToken) {
+        const message =
+          (typeof data?.message === "string" && data.message) ||
+          "Telegram tasdiqlandi, lekin backend oturum yaratmadi";
+        toast.error(message);
+        return { success: false, message };
+      }
+
+      toast.success("Telegram kodi tasdiqlandi");
+      return {
+        success: true,
+        message: "Telegram kodi tasdiqlandi",
+        accessToken,
+        refreshToken,
+        telegramUser: {
+          firstName: typeof user?.firstName === "string" ? user.firstName : "",
+          lastName: typeof user?.lastName === "string" ? user.lastName : "",
+          phoneNumber: typeof user?.phoneNumber === "string" ? user.phoneNumber : "",
+          telegramId:
+            typeof user?.telegramId === "string" || typeof user?.telegramId === "number"
+              ? user.telegramId
+              : undefined,
+        },
+      };
+    } catch (error: any) {
+      toast.error(getApiErrorMessage(error, "Telegram kodi tasdiqlanmadi"));
+      return { success: false };
+    }
+  },
+
+  // Send password reset OTP
+  requestPasswordReset: async (phone: string): Promise<AuthResult> => {
+    try {
+      const identifier = authService.formatPhoneNumber(phone);
+      const res = await axiosPrivate.post(authEndPoint.passwordReset, {
+        identifier,
+      });
+
+      const otpCode = res?.data?.code ?? res?.data?.data?.code;
+      if (import.meta.env.DEV && otpCode) {
+        toast.info(`OTP: ${otpCode}`);
+      }
+
+      toast.success("Şifre sıfırlama kodu gönderildi");
+      return { success: true };
+    } catch (error: any) {
+      toast.error(getApiErrorMessage(error, "Şifre sıfırlama kodu gönderilemedi"));
+      return { success: false };
+    }
+  },
+
+  // Verify password reset OTP and set new password
+  confirmPasswordReset: async (
+    phone: string,
+    code: string,
+    newPassword: string
+  ): Promise<AuthResult> => {
+    try {
+      const identifier = authService.formatPhoneNumber(phone);
+      await axiosPrivate.post(authEndPoint.passwordResetConfirm, {
+        identifier,
+        code,
+        newPassword,
+      });
+
+      toast.success("Şifreniz güncellendi. Şimdi giriş yapabilirsiniz.");
+      return { success: true };
+    } catch (error: any) {
+      toast.error(getApiErrorMessage(error, "Şifre güncellenemedi"));
       return { success: false };
     }
   },
@@ -592,7 +744,7 @@ export const authService = {
         redirect: "manual",
       });
 
-      // Backend returned redirect (e.g. 302 to /) — do not follow; show register form.
+      // Backend returned redirect (e.g. 302 to /) - do not follow; show register form.
       if (res.type === "opaqueredirect" || res.redirected || res.status === 301 || res.status === 302) {
         toast.success("OTP doğrulandı - Kayıt formunu doldurun");
         return { success: true, phoneNumber: phoneWithPrefix };
@@ -611,8 +763,14 @@ export const authService = {
       const message: string = String(data?.message || "");
       const statusOk = res.status >= 200 && res.status < 300;
       const dataSuccess = data?.success === true;
-      const messageIndicatesSuccess = /verified|doğruland|tasdiqlandi/i.test(message) || message.includes("tasdiqlandi");
+      const messageIndicatesSuccess =
+        /verified|doğruland|tasdiqlandi/i.test(message) ||
+        message.includes("tasdiqlandi");
       const hasAccessToken = !!data?.accessToken;
+      const isExistingUser =
+        data?.userExists === true ||
+        (typeof data?.message === "string" &&
+          data.message.toLowerCase().includes("kullanici mevcut"));
 
       const needsRegistration =
         data?.requiresRegistration === true ||
@@ -623,6 +781,14 @@ export const authService = {
       const successNoToken = (statusOk || dataSuccess || messageIndicatesSuccess) && !hasAccessToken;
       const hasTokenButNewUser = hasAccessToken && needsRegistration;
 
+      if (isExistingUser) {
+        toast.info(
+          "Bu telefon numarasi kayitli. Giris sayfasina yonlendiriliyorsunuz.",
+        );
+        navigate("/login", { replace: true });
+        return { success: true, shouldRedirectToLogin: true };
+      }
+
       if (needsRegistration || successNoToken || hasTokenButNewUser) {
         toast.success("OTP doğrulandı - Kayıt formunu doldurun");
         return { success: true, phoneNumber: phoneWithPrefix };
@@ -632,14 +798,6 @@ export const authService = {
         authService.storeTokensSilent(data.accessToken, data.refreshToken);
         toast.success("OTP doğrulandı - Kayıt formunu doldurun");
         return { success: true, phoneNumber: phoneWithPrefix };
-      }
-
-      if (data.userExists || (typeof data.message === "string" && data.message.includes("kullanıcı mevcut"))) {
-        toast.info(
-          "Bu telefon numarası kayıtlı. Giriş sayfasına yönlendiriliyorsunuz."
-        );
-        navigate("/login", { replace: true });
-        return { success: true, shouldRedirectToLogin: true };
       }
 
       toast.error("OTP doğrulanamadı");
@@ -656,7 +814,31 @@ export const authService = {
     navigate: (path: string, options?: any) => void
   ): Promise<AuthResult> => {
     try {
-      const response = await axiosPrivate.post(authEndPoint.register, data);
+      let response;
+      try {
+        response = await axiosPrivate.post(authEndPoint.register, data);
+      } catch (firstError: any) {
+        const backendMessage = String(
+          firstError?.response?.data?.message ||
+            firstError?.response?.data?.error ||
+            firstError?.message ||
+            ""
+        ).toLowerCase();
+
+        // Backward compatibility: some backend snapshots do not accept accountType in register DTO.
+        if (
+          data.accountType &&
+          (backendMessage.includes("accounttype") ||
+            backendMessage.includes("should not exist") ||
+            backendMessage.includes("property accounttype"))
+        ) {
+          const fallbackPayload = { ...data } as RegisterData;
+          delete fallbackPayload.accountType;
+          response = await axiosPrivate.post(authEndPoint.register, fallbackPayload);
+        } else {
+          throw firstError;
+        }
+      }
       console.log("Registration response:", response.data); // Debug log
 
       const { accessToken, refreshToken } = extractTokens(response.data);
@@ -772,3 +954,4 @@ export const authService = {
 };
 
 // Auth service for handling authentication flows
+

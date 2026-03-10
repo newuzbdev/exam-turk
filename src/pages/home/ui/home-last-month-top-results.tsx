@@ -2,6 +2,7 @@
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Calendar, Zap } from "lucide-react";
 import { overallTestService } from "@/services/overallTest.service";
+import { toApiUrl } from "@/config/runtime";
 
 const TEST_SCOPE_OPTIONS = [
   { key: "ALL", label: "Hepsi" },
@@ -175,7 +176,7 @@ const HomeLastMonthTopResults = () => {
           const formattedAvatarUrl = avatarUrl
             ? avatarUrl.startsWith("http")
               ? avatarUrl
-              : `https://api.turkishmock.uz/${avatarUrl}`
+              : toApiUrl(avatarUrl)
             : undefined;
 
           return {
@@ -335,4 +336,3 @@ const HomeLastMonthTopResults = () => {
 };
 
 export default HomeLastMonthTopResults;
-

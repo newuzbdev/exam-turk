@@ -1,4 +1,4 @@
-import { BookOpen, Headphones, Pencil, X, Coins, MessageCircle } from "lucide-react";
+﻿import { BookOpen, Headphones, Pencil, X, Coins, MessageCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useMemo, useState } from "react";
@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import testCoinPriceService from "@/services/testCoinPrice.service";
 import type { TestCoinPriceItem } from "@/services/testCoinPrice.service";
 import TestConfirmationModal from "./TestConfirmationModal";
-import AuthModal from "@/components/auth/AuthModal";
+import PaymeCheckoutModal from "@/components/payme/PaymeCheckoutModal";
 
 interface TurkishTest {
   id: string;
@@ -76,12 +76,12 @@ const TestModal = ({
   readingTests,
 }: TestModalProps) => {
   const navigate = useNavigate();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, refreshUser } = useAuth();
 
   // selection state - start with empty selection
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isCreditModalOpen, setIsCreditModalOpen] = useState(false);
 
   // Reset selection when modal opens
   useEffect(() => {
@@ -122,8 +122,8 @@ const TestModal = ({
   const skillsData = [
     { 
       id: 'listening', 
-      name: 'DİNLEME', 
-      duration: '30–40 dk', 
+      name: "DİNLEME",
+      duration: "30-40 dk",
       testCount: listeningTests.length > 0 ? `${listeningTests.length} test` : '0 test', 
       cost: coinByType["LISTENING"] ?? 2, 
       icon: Headphones 
@@ -146,8 +146,8 @@ const TestModal = ({
     },
     { 
       id: 'speaking', 
-      name: 'KONUŞMA', 
-      duration: '11–14 dk', 
+      name: "KONUŞMA",
+      duration: "11-14 dk",
       testCount: speakingTests.length > 0 ? `${speakingTests.length} test` : '0 test', 
       cost: coinByType["SPEAKING"] ?? 5, 
       icon: MessageCircle 
@@ -160,6 +160,9 @@ const TestModal = ({
       return total + (skill ? skill.cost : 0);
     }, 0);
   }, [selectedSkills]);
+  const missingCredits = Math.max(0, totalCost - (user?.coin ?? 0));
+  const isStartDisabled =
+    selectedSkills.length === 0 || (isAuthenticated && missingCredits > 0);
 
   const handleCta = () => {
     if (selectedSkills.length === 0) {
@@ -168,16 +171,21 @@ const TestModal = ({
     }
 
     if (!isAuthenticated) {
-      // Open auth modal in register mode instead of navigating
-      setIsAuthModalOpen(true);
+      // Use the new dedicated login route (register intent preselected).
+      navigate("/login", {
+        state: {
+          mode: "register",
+          redirectTo: "/test",
+        },
+      });
       return;
     }
 
-    // Preflight coin check: redirect to pricing if not enough coins
+    // Preflight coin check: open credit modal if not enough credits
     const userCoins = user?.coin ?? 0;
     if (userCoins < totalCost) {
       toast.error("Yetersiz kredi. Başlamak için lütfen daha fazla satın alın.");
-      navigate(`/price?neededCoins=${totalCost - userCoins}`);
+      setIsCreditModalOpen(true);
       return;
     }
 
@@ -186,6 +194,31 @@ const TestModal = ({
   };
 
   const handleConfirmStart = async () => {
+    // Always start from a clean runtime state so previous unfinished tests cannot be resumed.
+    try {
+      overallTestFlowStore.clear();
+      const runtimePrefixes = [
+        "reading_progress_",
+        "listening_progress_",
+        "listening_audio_progress_",
+        "writing_progress_",
+        "speaking_progress_",
+        "reading_answers_",
+        "listening_answers_",
+        "writing_answers_",
+        "speaking_answers_",
+        "test_data_",
+        "speaking_mic_checked_",
+        "overall.sessionToken.",
+        "overall.flow.",
+      ];
+      Object.keys(sessionStorage).forEach((key) => {
+        if (runtimePrefixes.some((prefix) => key.startsWith(prefix))) {
+          sessionStorage.removeItem(key);
+        }
+      });
+    } catch {}
+
     // Determine selected tests and call overall start API first
     const readingId = selectedSkills.includes('reading') && readingTests?.[0]?.id ? readingTests[0].id : undefined;
     const listeningId = selectedSkills.includes('listening') && listeningTests?.[0]?.id ? listeningTests[0].id : undefined;
@@ -333,6 +366,12 @@ const TestModal = ({
     // Don't deduct coins - just close the modal
   };
 
+  const handleCreditPurchaseSuccess = async () => {
+    await refreshUser();
+    setIsCreditModalOpen(false);
+    toast.success("Kredi hesabiniza eklendi. Simdi teste baslayabilirsiniz.");
+  };
+
   if (!open) return null;
 
   return (
@@ -436,14 +475,30 @@ const TestModal = ({
                         </svg>
                       </div>
                     </div>
+                    {isAuthenticated && missingCredits > 0 && (
+                      <p className="mt-3 border-t border-gray-200 pt-2 text-xs text-gray-600">
+                        Teste başlamak için {missingCredits} kredi daha gerekli.
+                      </p>
+                    )}
                   </div>
-                  <button 
-                    onClick={handleCta}
-                    disabled={selectedSkills.length === 0}
-                    className="w-full sm:w-auto bg-red-600 cursor-pointer text-white font-medium py-3 px-6 sm:px-8 rounded-lg shadow-lg shadow-red-600/20 transition-all hover:-translate-y-0.5 disabled:bg-gray-300 disabled:shadow-none disabled:cursor-not-allowed text-sm sm:text-base flex-shrink-0"
-                  >
-                    {isAuthenticated ? "Teste Başla →" : "Başlamak İçin Kayıt Ol →"}
-                  </button>
+                  <div className="w-full sm:w-auto flex flex-col sm:flex-row items-stretch gap-2 flex-shrink-0">
+                    {isAuthenticated && missingCredits > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setIsCreditModalOpen(true)}
+                        className="w-full sm:min-w-[150px] h-10 rounded-lg bg-gray-200 px-4 sm:px-5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-300"
+                      >
+                        Kredi Satın Al
+                      </button>
+                    )}
+                    <button
+                      onClick={handleCta}
+                      disabled={isStartDisabled}
+                      className="w-full sm:min-w-[150px] h-10 bg-red-600 cursor-pointer text-white font-medium px-4 sm:px-5 rounded-lg shadow-lg shadow-red-600/20 transition-all hover:-translate-y-0.5 disabled:bg-gray-300 disabled:shadow-none disabled:cursor-not-allowed text-sm"
+                    >
+                      {isAuthenticated ? "Teste Başla" : "Başlamak İçin Kayıt Ol"}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -457,14 +512,21 @@ const TestModal = ({
         onCancel={handleCancelConfirmation}
       />
 
-      {/* Auth Modal */}
-      <AuthModal
-        open={isAuthModalOpen}
-        onOpenChange={setIsAuthModalOpen}
-        initialMode="register"
+
+      <PaymeCheckoutModal
+        isOpen={isCreditModalOpen}
+        onClose={() => setIsCreditModalOpen(false)}
+        planName="Kredi Satın Al"
+        planId="quick"
+        initialUnits={missingCredits > 0 ? missingCredits : undefined}
+        onSuccess={handleCreditPurchaseSuccess}
       />
     </>
   );
 };
 
 export default TestModal;
+
+
+
+

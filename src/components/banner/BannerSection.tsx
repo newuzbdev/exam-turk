@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ExternalLink, Calendar, Star } from 'lucide-react';
 import { bannerService, type Banner } from '@/services/banner.service';
+import { toApiUrl } from '@/config/runtime';
 
 interface BannerSectionProps {
   position?: 'top' | 'middle' | 'bottom';
@@ -167,7 +168,7 @@ export const BannerSection: React.FC<BannerSectionProps> = ({
               {banner.imageUrl && (
                 <div className="relative w-full lg:w-[450px] h-[450px] lg:h-full min-h-[400px] overflow-hidden rounded-md m-4">
                   <img
-                    src={banner.imageUrl.startsWith('http') ? banner.imageUrl : `https://api.turkishmock.uz/${banner.imageUrl}`}
+                    src={toApiUrl(banner.imageUrl)}
                     alt={banner.name || banner.title}
                     className="w-full h-full object-cover rounded-md"
                     onError={(e) => {

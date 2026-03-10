@@ -144,6 +144,73 @@ export default function ListeningResultsPage() {
   const totalQuestions = summary?.totalQuestions ?? computedTotalFromFull;
   const userName = "JAXONGIRMIRZO"; // You can get this from user context or API
   const currentDate = new Date().toISOString().replace('T', ' ').substring(0, 19) + " GMT+5";
+  const rowsForDisplay = fullExamData || examData;
+
+  const renderSplitResultsTable = (rows: Array<{ no: number; userAnswer: string; correctAnswer: string; result: string }>) => {
+    const firstColumnRows = rows.slice(0, 18);
+    const secondColumnRows = rows.slice(18, 35);
+    const resolvedCorrect =
+      typeof correctCount === "number"
+        ? correctCount
+        : rows.filter((r) => r.result === "Doğru").length;
+    const resolvedTotal = typeof totalQuestions === "number" ? totalQuestions : rows.length;
+
+    const renderColumn = (columnRows: typeof rows) => (
+      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+        <table className="w-full table-fixed">
+          <thead>
+            <tr className="bg-green-600 text-white">
+              <th className="px-3 py-2 text-left font-medium w-[70px]">No.</th>
+              <th className="px-3 py-2 text-left font-medium">Kullanıcı Cevabı</th>
+              <th className="px-3 py-2 text-left font-medium">Doğru Cevap</th>
+              <th className="px-3 py-2 text-left font-medium w-[90px]">Sonuç</th>
+            </tr>
+          </thead>
+          <tbody>
+            {columnRows.map((item, index) => (
+              <tr
+                key={item.no}
+                className={`border-b border-gray-200 last:border-b-0 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
+              >
+                <td className="px-3 py-2 text-gray-700 font-medium">{item.no}</td>
+                <td className="px-3 py-2 text-gray-600">{item.userAnswer || "Seçilmedi"}</td>
+                <td className="px-3 py-2 text-gray-800 font-medium">{item.correctAnswer}</td>
+                <td className="px-3 py-2">
+                  <span
+                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      item.result === "Doğru"
+                        ? "bg-green-100 text-green-800"
+                        : item.result === "Yanlış"
+                          ? "bg-red-100 text-red-800"
+                          : "bg-gray-100 text-gray-700"
+                    }`}
+                  >
+                    {item.result}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+
+    return (
+      <Card className="overflow-hidden rounded-lg border border-gray-200">
+        <CardContent className="p-4 sm:p-5">
+          <div className="mb-4 text-sm sm:text-base font-semibold text-gray-800">
+            Doğru Sayısı: {resolvedCorrect} / {resolvedTotal}
+          </div>
+          <div className="overflow-x-auto">
+            <div className="grid grid-cols-2 gap-4 min-w-[1080px]">
+              {renderColumn(firstColumnRows)}
+              {renderColumn(secondColumnRows)}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
 
   // Debug logging
   console.log("Sonuçs page state:", { resultId, data, summary, loading });
@@ -262,45 +329,7 @@ export default function ListeningResultsPage() {
 
         {/* Prefer full table using original test structure to include Seçilmedi rows */}
         {fullExamData ? (
-          <Card className="overflow-hidden rounded-lg border border-gray-200">
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-green-600 text-white">
-                      <th className="px-4 py-3 text-left font-medium rounded-tl-lg">No.</th>
-                      <th className="px-4 py-3 text-left font-medium">Kullanıcı Cevabı</th>
-                      <th className="px-4 py-3 text-left font-medium">Doğru Cevap</th>
-                      <th className="px-4 py-3 text-left font-medium rounded-tr-lg">Sonuç</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {fullExamData.map((item, index) => (
-                      <tr
-                        key={item.no}
-                        className={`border-b border-gray-200 last:border-b-0 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
-                      >
-                        <td className="px-4 py-3 text-gray-700 font-medium">{item.no}</td>
-                        <td className="px-4 py-3 text-gray-600">{item.userAnswer || "Seçilmedi"}</td>
-                        <td className="px-4 py-3 text-gray-800 font-medium">{item.correctAnswer}</td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            item.result === "Doğru" 
-                              ? "bg-green-100 text-green-800" 
-                              : item.result === "Yanlış" 
-                                ? "bg-red-100 text-red-800"
-                                : "bg-gray-100 text-gray-700"
-                          }`}>
-                            {item.result}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
+          renderSplitResultsTable(fullExamData)
         ) : (
           <Card className="overflow-hidden rounded-lg border border-gray-200">
             <CardContent className="p-6">
@@ -396,45 +425,7 @@ export default function ListeningResultsPage() {
       </div>
 
       {/* Sonuçs Table */}
-      <Card className="overflow-hidden rounded-lg border border-gray-200">
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-green-600 text-white">
-                  <th className="px-4 py-3 text-left font-medium rounded-tl-lg">No.</th>
-                  <th className="px-4 py-3 text-left font-medium">Kullanıcı Cevabı</th>
-                  <th className="px-4 py-3 text-left font-medium">Doğru Cevap</th>
-                  <th className="px-4 py-3 text-left font-medium rounded-tr-lg">Sonuç</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(fullExamData || examData).map((item: any, index: number) => (
-                  <tr
-                    key={item.no}
-                    className={`border-b border-gray-200 last:border-b-0 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
-                  >
-                    <td className="px-4 py-3 text-gray-700 font-medium">{item.no}</td>
-                    <td className="px-4 py-3 text-gray-600">{item.userAnswer || "Seçilmedi"}</td>
-                    <td className="px-4 py-3 text-gray-800 font-medium">{item.correctAnswer}</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        item.result === "Doğru" 
-                          ? "bg-green-100 text-green-800" 
-                          : item.result === "Yanlış" 
-                            ? "bg-red-100 text-red-800"
-                            : "bg-gray-100 text-gray-700"
-                      }`}>
-                        {item.result}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+      {renderSplitResultsTable(rowsForDisplay)}
 
       {/* Download PDF Button */}
       <div className="flex justify-end mt-6">
@@ -451,5 +442,4 @@ export default function ListeningResultsPage() {
     </div>
   );
 }
-
 

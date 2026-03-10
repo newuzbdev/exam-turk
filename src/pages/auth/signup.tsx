@@ -10,6 +10,8 @@ import { REGEXP_ONLY_DIGITS_AND_CHARS } from "input-otp";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router";
 import { authService } from "@/services/auth.service";
+import { API_BASE_URL } from "@/config/runtime";
+import { toast } from "@/utils/toast";
 
 const SignUp = () => {
   const navigate = useNavigate();
@@ -23,6 +25,7 @@ const SignUp = () => {
   const [registrationData, setRegistrationData] = useState({
     name: "",
     password: "",
+    confirmPassword: "",
     phoneNumber: "",
     avatarUrl: "",
     userName: "",
@@ -214,6 +217,18 @@ const SignUp = () => {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!registrationData.userName.trim()) {
+      toast.error("Kullanici adi bos olamaz");
+      return;
+    }
+    if (registrationData.password.trim().length < 6) {
+      toast.error("Sifre en az 6 karakter olmali");
+      return;
+    }
+    if (registrationData.password !== registrationData.confirmPassword) {
+      toast.error("Sifreler ayni degil");
+      return;
+    }
     setLoading(true);
 
     // Debug logging
@@ -258,6 +273,7 @@ const SignUp = () => {
       phoneNumber: phoneForRegistration,
       userName: registrationData.userName,
       avatarUrl: registrationData.avatarUrl || "",
+      accountType: "STUDENT" as "STUDENT",
     };
 
     console.log("Registration - FINAL payload:", registrationPayload);
@@ -274,9 +290,8 @@ const SignUp = () => {
   const handleGoogleLogin = () => {
     setLoading(true);
     // Redirect to Google OAuth with proper callback URL
-    const baseUrl = import.meta.env.VITE_API_URL || "https://api.turkishmock.uz";
     const callbackUrl = `${window.location.origin}/oauth-callback`;
-    window.location.href = `${baseUrl}/api/auth/google/redirect?callback=${encodeURIComponent(
+    window.location.href = `${API_BASE_URL}/api/auth/google/redirect?callback=${encodeURIComponent(
       callbackUrl
     )}`;
   };
@@ -565,6 +580,27 @@ const SignUp = () => {
                   )}
                 </button>
               </div>
+
+              <div>
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Sifre Tekrar"
+                  value={registrationData.confirmPassword}
+                  onChange={(e) =>
+                    setRegistrationData({
+                      ...registrationData,
+                      confirmPassword: e.target.value,
+                    })
+                  }
+                  className="h-11 sm:h-12 lg:h-14 xl:h-16 border-gray-200 focus:border-red-500 focus:ring-1 focus:ring-red-500 text-sm sm:text-base lg:text-lg xl:text-xl"
+                  required
+                />
+              </div>
+
+              <p className="rounded-lg border border-green-100 bg-green-50 px-3 py-2 text-xs text-green-700">
+                Sifrenizi unutursaniz telefon OTP veya Sifremi Unuttum adimiyla
+                tekrar giris yapabilirsiniz.
+              </p>
 
               <Button
                 type="submit"

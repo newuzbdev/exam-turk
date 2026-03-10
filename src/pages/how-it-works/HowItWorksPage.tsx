@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+﻿import { NavLink } from "react-router-dom";
 import { useState } from "react";
 import {
   Coins,
@@ -15,25 +15,18 @@ import {
   Target,
   TrendingUp,
   CreditCard,
-  Wallet,
   Layout,
   HelpCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import BalanceTopUp from "@/components/payme/BalanceTopUp";
 import PaymeCheckoutModal from "@/components/payme/PaymeCheckoutModal";
 
 const HowItWorksPage = () => {
-  const { user, isAuthenticated, refreshUser } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [isCoinModalOpen, setIsCoinModalOpen] = useState(false);
 
-  const currentBalance = user?.balance ?? 0;
   const currentCoin = user?.coin ?? 0;
-
-  const handleBalanceUpdate = async () => {
-    await refreshUser();
-  };
 
   return (
     <div className="bg-white text-gray-900 min-h-screen font-sans">
@@ -64,24 +57,24 @@ const HowItWorksPage = () => {
               <div className="flex-grow grid xl:grid-cols-[1fr_320px] gap-6 items-start w-full">
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-3">
-                    Bakiye Yükleme
+                    Kredi Satın Alma
                     <CreditCard className="w-6 h-6 text-gray-400" />
                   </h2>
                   <p className="text-gray-600 mb-6 leading-relaxed">
-                    Sınava başlamak için önce hesabınıza bakiye yükleyin. Güvenli ödeme altyapısıyla işlem saniyeler içinde tamamlanır.
+                    Tek adimda kredi miktarini girin, Payme ile odemeyi tamamlayin ve krediniz hesabiniza otomatik eklensin.
                   </p>
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
                       <CheckCircle2 className="w-5 h-5 text-red-600 mt-0.5" />
-                      <span className="text-sm text-gray-700 font-medium">Sağ üstteki bakiye alanına tıklayın.</span>
+                      <span className="text-sm text-gray-700 font-medium">Kredi Satın Al butonuna tıklayın.</span>
                     </div>
                     <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
                       <CheckCircle2 className="w-5 h-5 text-red-600 mt-0.5" />
-                      <span className="text-sm text-gray-700 font-medium">Yüklemek istediğiniz tutarı girin.</span>
+                      <span className="text-sm text-gray-700 font-medium">Almak istediginiz kredi miktarini girin.</span>
                     </div>
                     <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100 sm:col-span-2">
                       <CheckCircle2 className="w-5 h-5 text-red-600 mt-0.5" />
-                      <span className="text-sm text-gray-700 font-medium">Payme ile ödemeyi tamamlayın.</span>
+                      <span className="text-sm text-gray-700 font-medium">Payme odemesi tamamlaninca kredi otomatik yuklenir.</span>
                     </div>
                   </div>
                 </div>
@@ -90,23 +83,23 @@ const HowItWorksPage = () => {
                   <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-md">
                     <div className="rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 flex items-center justify-between mb-2">
                       <span className="text-[10px] font-bold text-red-600 tracking-wide">TURKISHMOCK</span>
-                      <div className="flex items-center gap-1.5">
-                        <span className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-[10px] font-semibold text-gray-800">
-                          <Wallet className="w-3 h-3" />
-                          {currentBalance}
-                        </span>
-                        <span className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-[10px] font-semibold text-gray-800">
-                          <Coins className="w-3 h-3" />
-                          {currentCoin}
-                        </span>
-                      </div>
+                      <span className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-[10px] font-semibold text-gray-800">
+                        <Coins className="w-3 h-3" />
+                        {currentCoin}
+                      </span>
                     </div>
 
                     {isAuthenticated ? (
-                      <BalanceTopUp currentBalance={currentBalance} onBalanceUpdate={handleBalanceUpdate} />
+                      <button
+                        type="button"
+                        onClick={() => setIsCoinModalOpen(true)}
+                        className="w-full inline-flex items-center justify-center rounded-md bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700 transition-colors"
+                      >
+                        Kredi Satın Al
+                      </button>
                     ) : (
                       <div className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] text-amber-800">
-                        Gerçek bakiye yükleme modalını görmek için giriş yapın.
+                        Kredi satin alma modalini gormek icin giris yapin.
                       </div>
                     )}
                   </div>
@@ -125,11 +118,11 @@ const HowItWorksPage = () => {
               <div className="flex-grow grid xl:grid-cols-[1fr_320px] gap-6 items-start w-full">
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-3">
-                    Kredi Satın Alma
+                    Teste Baslama
                     <Coins className="w-6 h-6 text-gray-400" />
                   </h2>
                   <p className="text-gray-600 mb-6 leading-relaxed">
-                    Yüklediğiniz bakiyeyi krediye çevirin. Her sınav bölümü belirli kredi ile açılır.
+                    Krediniz yeterliyse test bolumlerini secin ve aninda baslayin.
                   </p>
 
                   <div className="bg-blue-50 border border-blue-100 rounded-xl p-5 mb-6">

@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { authService } from "@/services/auth.service";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { toApiUrl } from "@/config/runtime";
 
 const ProfileHeader = () => {
   const [user, setUser] = useState<any>(null);
@@ -20,7 +21,7 @@ const ProfileHeader = () => {
     if (!user) return null;
     const avatar = user.avatarUrl || user.avatar;
     if (!avatar) return null;
-    return avatar.startsWith('http') ? avatar : `https://api.turkishmock.uz/${avatar}`;
+    return toApiUrl(avatar);
   };
 
     useEffect(() => {
@@ -153,7 +154,7 @@ const ProfileHeader = () => {
                     {avatarPreview || form.avatarUrl ? (
                       <div className="flex justify-center">
                         <img 
-                          src={avatarPreview || (form.avatarUrl?.startsWith('http') ? form.avatarUrl : `https://api.turkishmock.uz/${form.avatarUrl}`)} 
+                          src={avatarPreview || toApiUrl(form.avatarUrl)} 
                           alt="Önizleme" 
                           className="w-24 h-24 rounded-full object-cover border-2 border-gray-200 shadow-sm" 
                         />

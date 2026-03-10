@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Wallet,  Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Wallet, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { paymeService } from '@/services/payme.service';
 import { toast } from '@/utils/toast';
 
@@ -26,8 +26,27 @@ export const BalanceTopUp: React.FC<BalanceTopUpProps> = ({
   const [amount, setAmount] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingBalance, setIsCheckingBalance] = useState(false);
+  const checkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isControlled = typeof open === 'boolean';
   const isOpen = isControlled ? Boolean(open) : internalIsOpen;
+
+  const clearVerificationTimers = () => {
+    if (checkIntervalRef.current) {
+      clearInterval(checkIntervalRef.current);
+      checkIntervalRef.current = null;
+    }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      clearVerificationTimers();
+    };
+  }, []);
 
   const setIsOpen = (nextOpen: boolean) => {
     if (!isControlled) {
@@ -38,60 +57,75 @@ export const BalanceTopUp: React.FC<BalanceTopUpProps> = ({
 
   const handleTopUp = async () => {
     const amountValue = parseFloat(amount);
-    
+
     if (!amountValue || amountValue <= 0) {
-      toast.error('Lütfen geçerli bir miktar girin');
+      toast.error('Lutfen gecerli bir miktar girin');
       return;
     }
 
     if (amountValue < 1000) {
-      toast.error('Minimum yükleme miktarı 1,000 UZS');
+      toast.error('Minimum yukleme miktari 1,000 UZS');
       return;
     }
 
     setIsLoading(true);
     try {
       const response = await paymeService.initiateCheckout(amountValue);
-      
-      // Extract URL from response
+      if (!response.success) {
+        toast.error(response.message || 'Odeme URLsi alinamadi');
+        return;
+      }
+
       const checkoutUrl = response.result?.url || response.data?.checkoutUrl;
-      
-      if (checkoutUrl) {
-        // Open Payme checkout in new window
-        const checkoutWindow = window.open(checkoutUrl, '_blank', 'width=600,height=700');
-        
-        if (checkoutWindow) {
-          // Start checking for payment completion
-          const transactionId = response.result?.transactionId || response.data?.transactionId;
-          if (transactionId) {
-            checkPaymentStatus(transactionId);
-          }
-        } else {
-          toast.error('Popup engellendi. Lütfen popup\'ları etkinleştirin.');
-        }
-      } else {
-        toast.error('Ödeme URL\'si alınamadı');
+      if (!checkoutUrl) {
+        toast.error('Odeme URLsi alinamadi');
+        return;
+      }
+
+      // Open Payme checkout in new window
+      const checkoutWindow = window.open(checkoutUrl, '_blank', 'width=600,height=700');
+      if (!checkoutWindow) {
+        toast.error('Popup engellendi. Lutfen popup izni verin.');
+        return;
+      }
+
+      // Start checking for payment completion
+      const transactionId = response.result?.transactionId || response.data?.transactionId;
+      if (transactionId) {
+        checkPaymentStatus(transactionId);
       }
     } catch (error) {
       console.error('Top-up error:', error);
-      toast.error('Bakiye yükleme işlemi başarısız');
+      toast.error('Bakiye yukleme islemi basarisiz');
     } finally {
       setIsLoading(false);
     }
   };
 
   const checkPaymentStatus = async (transactionId: string) => {
-    const checkInterval = setInterval(async () => {
+    clearVerificationTimers();
+
+    checkIntervalRef.current = setInterval(async () => {
       try {
-        const isCompleted = await paymeService.verifyPayment(transactionId);
-        
-        if (isCompleted) {
-          clearInterval(checkInterval);
-          toast.success('Bakiye başarıyla yüklendi!');
+        const status = await paymeService.checkTransactionStatus(transactionId);
+        if (!status.success) return;
+
+        if (status.status === 'completed') {
+          clearVerificationTimers();
+          toast.success('Bakiye basariyla yuklendi!');
           setIsOpen(false);
           setAmount('');
-          // Refresh balance
           fetchBalance();
+          return;
+        }
+
+        if (status.status === 'failed' || status.status === 'cancelled') {
+          clearVerificationTimers();
+          toast.error(
+            status.status === 'failed'
+              ? 'Odeme basarisiz oldu'
+              : 'Odeme iptal edildi'
+          );
         }
       } catch (error) {
         console.error('Payment verification error:', error);
@@ -99,8 +133,9 @@ export const BalanceTopUp: React.FC<BalanceTopUpProps> = ({
     }, 3000);
 
     // Timeout after 10 minutes
-    setTimeout(() => {
-      clearInterval(checkInterval);
+    timeoutRef.current = setTimeout(() => {
+      clearVerificationTimers();
+      toast.error('Odeme kontrol suresi doldu. Lutfen tekrar deneyin.');
     }, 600000);
   };
 
@@ -137,8 +172,8 @@ export const BalanceTopUp: React.FC<BalanceTopUpProps> = ({
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="sm:max-w-md w-[92vw] bg-gray-50 border border-gray-200 shadow-xl">
           <DialogHeader>
-            <DialogTitle className="text-center text-gray-900">Bakiye İşlemleri</DialogTitle>
-            <DialogDescription className="text-center text-gray-600">Hesabınıza bakiye yükleyin</DialogDescription>
+            <DialogTitle className="text-center text-gray-900">Bakiye Islemleri</DialogTitle>
+            <DialogDescription className="text-center text-gray-600">Hesabiniza bakiye yukleyin</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -156,11 +191,11 @@ export const BalanceTopUp: React.FC<BalanceTopUpProps> = ({
 
             {/* Amount Input */}
             <div className="space-y-2">
-              <Label htmlFor="topup-amount" className="text-gray-700 font-medium">Yüklenecek Miktar (UZS)</Label>
+              <Label htmlFor="topup-amount" className="text-gray-700 font-medium">Yuklenecek Miktar (UZS)</Label>
               <Input
                 id="topup-amount"
                 type="number"
-                placeholder="Örnek: 50000"
+                placeholder="Ornek: 50000"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 min="1000"
@@ -169,7 +204,7 @@ export const BalanceTopUp: React.FC<BalanceTopUpProps> = ({
               />
               {amountValue > 0 && (
                 <div className="text-center text-sm text-gray-600">
-                  Yüklenecek: {formattedAmount}
+                  Yuklenecek: {formattedAmount}
                 </div>
               )}
             </div>
@@ -178,14 +213,14 @@ export const BalanceTopUp: React.FC<BalanceTopUpProps> = ({
             {amountValue > 0 && amountValue < 1000 && (
               <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-3 rounded-lg">
                 <AlertCircle className="w-4 h-4" />
-                <span>Minimum yükleme miktarı 1,000 UZS</span>
+                <span>Minimum yukleme miktari 1,000 UZS</span>
               </div>
             )}
 
             {amountValue >= 1000 && (
               <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 p-3 rounded-lg">
                 <CheckCircle className="w-4 h-4" />
-                <span>Miktar geçerli</span>
+                <span>Miktar gecerli</span>
               </div>
             )}
 
@@ -199,12 +234,12 @@ export const BalanceTopUp: React.FC<BalanceTopUpProps> = ({
                 {isLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    İşlem Başlatılıyor...
+                    Islem Baslatiliyor...
                   </>
                 ) : (
                   <>
                     <Wallet className="w-4 h-4 mr-2" />
-                    Payme ile Yükle
+                    Payme ile Yukle
                   </>
                 )}
               </Button>
@@ -214,10 +249,9 @@ export const BalanceTopUp: React.FC<BalanceTopUpProps> = ({
                 onClick={() => setIsOpen(false)}
                 className="w-full h-11 border-gray-300 bg-white text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                İptal
+                Iptal
               </Button>
             </div>
-
           </div>
         </DialogContent>
       </Dialog>
@@ -226,3 +260,4 @@ export const BalanceTopUp: React.FC<BalanceTopUpProps> = ({
 };
 
 export default BalanceTopUp;
+

@@ -9,12 +9,11 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Menu, User, LogOut, Coins, Wallet } from "lucide-react";
+import { Menu, User, LogOut, Coins } from "lucide-react";
 import PaymeCheckoutModal from "@/components/payme/PaymeCheckoutModal";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
-import BalanceTopUp from "@/components/payme/BalanceTopUp";
-import AuthModal from "@/components/auth/AuthModal";
+import { toApiUrl } from "@/config/runtime";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,13 +51,9 @@ const Navbar = () => {
   const { user, isAuthenticated, logout, refreshUser } = useAuth();
 
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authModalMode, setAuthModalMode] = useState<"login" | "register">("login");
   const [isCoinModalOpen, setIsCoinModalOpen] = useState(false);
-  const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const balance = user?.balance || 0;
   const coin = user?.coin ?? 0;
 
   const getInitials = (fullName?: string) => {
@@ -77,17 +72,11 @@ const Navbar = () => {
     if (!user) return undefined;
     const avatar = user.avatarUrl || user.avatar;
     if (!avatar) return undefined;
-    return avatar.startsWith("http") ? avatar : `https://api.turkishmock.uz/${avatar}`;
+    return toApiUrl(avatar);
   };
 
-  const handleBalanceUpdate = async () => {
+  const handleCoinUpdate = async () => {
     await refreshUser();
-  };
-
-  const openAuthModal = (mode: "login" | "register") => {
-    setAuthModalMode(mode);
-    setIsAuthModalOpen(true);
-    setMobileMenuOpen(false);
   };
 
   const handleLogoutConfirm = () => {
@@ -120,12 +109,6 @@ const Navbar = () => {
           <div className="hidden lg:block" />
 
           <div className="flex items-center gap-2">
-            {isAuthenticated && (
-              <div className="hidden xl:block">
-                <BalanceTopUp currentBalance={balance} onBalanceUpdate={handleBalanceUpdate} />
-              </div>
-            )}
-
             {isAuthenticated && user ? (
               <div className="hidden items-center gap-3 lg:flex">
                 <button
@@ -172,20 +155,13 @@ const Navbar = () => {
               </div>
             ) : (
               <div className="hidden items-center gap-3 lg:flex">
-                <button
+                <Button
                   type="button"
-                  onClick={() => openAuthModal("login")}
-                  className="px-3 py-2 text-sm font-medium text-gray-700 transition-all duration-300 hover:text-red-600"
-                >
-                  Giriş Yap
-                </button>
-                <button
-                  type="button"
-                  onClick={() => openAuthModal("register")}
                   className="theme-important rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-300 hover:bg-red-700 hover:shadow-md"
+                  onClick={() => navigate("/login")}
                 >
-                  Kayıt Ol
-                </button>
+                  Oturum Aç
+                </Button>
               </div>
             )}
 
@@ -224,35 +200,19 @@ const Navbar = () => {
                           </NavLink>
                         </SheetClose>
 
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setMobileMenuOpen(false);
-                              setIsWalletModalOpen(true);
-                            }}
-                            className="rounded-md border border-gray-200 bg-white px-2 py-2 text-left transition-colors hover:bg-gray-50"
-                          >
-                            <span className="flex items-center gap-1 text-xs font-medium text-gray-600">
-                              <Wallet className="h-3.5 w-3.5" />
-                              Cüzdan
-                            </span>
-                            <span className="mt-1 block text-sm font-semibold text-gray-900">{balance}</span>
-                          </button>
-
+                        <div className="grid grid-cols-1 gap-2">
                           <button
                             type="button"
                             onClick={() => {
                               setMobileMenuOpen(false);
                               setIsCoinModalOpen(true);
                             }}
-                            className="rounded-md border border-gray-200 bg-white px-2 py-2 text-left transition-colors hover:bg-gray-50"
+                            className="rounded-md border border-gray-200 bg-white px-3 py-2 text-left transition-colors hover:bg-gray-50"
                           >
-                            <span className="flex items-center gap-1 text-xs font-medium text-gray-600">
+                            <span className="flex items-center gap-2 text-sm font-semibold text-gray-900">
                               <Coins className="h-3.5 w-3.5" />
-                              Kredi
+                              {coin}
                             </span>
-                            <span className="mt-1 block text-sm font-semibold text-gray-900">{coin}</span>
                           </button>
                         </div>
                       </div>
@@ -277,21 +237,16 @@ const Navbar = () => {
                     </div>
 
                     {!isAuthenticated && (
-                      <div className="mt-2 grid grid-cols-2 gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="border-gray-300 text-gray-700"
-                          onClick={() => openAuthModal("login")}
-                        >
-                          Giriş Yap
-                        </Button>
+                      <div className="mt-2">
                         <Button
                           type="button"
                           className="theme-important bg-red-600 text-white hover:bg-red-700"
-                          onClick={() => openAuthModal("register")}
+                          onClick={() => {
+                            setMobileMenuOpen(false);
+                            navigate("/login");
+                          }}
                         >
-                          Kayıt Ol
+                          Oturum Aç
                         </Button>
                       </div>
                     )}
@@ -341,23 +296,7 @@ const Navbar = () => {
         onClose={() => setIsCoinModalOpen(false)}
         planName="Kredi Satın Al"
         planId="quick"
-      />
-
-      {isAuthenticated && (
-        <BalanceTopUp
-          currentBalance={balance}
-          onBalanceUpdate={handleBalanceUpdate}
-          open={isWalletModalOpen}
-          onOpenChange={setIsWalletModalOpen}
-          hideTrigger
-        />
-      )}
-
-      <AuthModal
-        key={isAuthModalOpen ? `auth-${authModalMode}` : "auth-closed"}
-        open={isAuthModalOpen}
-        onOpenChange={setIsAuthModalOpen}
-        initialMode={authModalMode}
+        onSuccess={handleCoinUpdate}
       />
     </nav>
   );

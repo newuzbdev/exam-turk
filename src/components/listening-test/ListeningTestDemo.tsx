@@ -13,6 +13,7 @@ import HighlightableTextSimple from "@/components/listening-test/HighlightableTe
 import MapWithDrawing from "@/components/listening-test/MapWithDrawing";
 import { toast } from "sonner";
 import { fixMojibake } from "@/utils/text";
+import { toApiUrl } from "@/config/runtime";
 
 interface UserAnswers {
   [questionId: string]: string;
@@ -45,8 +46,11 @@ export default function ListeningTestDemo({ testId }: { testId: string }) {
   const [part4ClearToken, setPart4ClearToken] = useState(0);
   const [isProgressReady, setIsProgressReady] = useState(false);
   const [isPartSwitchAnimating, setIsPartSwitchAnimating] = useState(false);
-  const [inkPulseKey, setInkPulseKey] = useState<string | null>(null);  const contentScrollRef = useRef<HTMLDivElement>(null);
-  const inkPulseTimeoutRef = useRef<number | null>(null);  const hasRestoredProgressRef = useRef(false);
+  const [inkPulseKey, setInkPulseKey] = useState<string | null>(null);
+  const contentScrollRef = useRef<HTMLDivElement>(null);
+  const inkPulseTimeoutRef = useRef<number | null>(null);
+  const hasRestoredProgressRef = useRef(false);
+  const hasSubmittedRef = useRef(false);
   const fullscreenRetryBoundRef = useRef(false);
   const fullscreenRetryHandlerRef = useRef<(() => void) | null>(null);
   const progressStorageKey = `listening_progress_${testId}`;
@@ -741,7 +745,7 @@ const renderPart = (bolum: number) => {
                   src={
                     imageUrl.startsWith('http://') || imageUrl.startsWith('https://')
                       ? imageUrl
-                      : `https://api.turkishmock.uz/${imageUrl}`
+                      : toApiUrl(imageUrl)
                   }
                   alt="Map for questions 19-23"
                   className={`rounded-md border border-gray-200 transition-all duration-200 ${
@@ -860,7 +864,7 @@ const renderPart = (bolum: number) => {
                         src={
                           imageUrl.startsWith('http://') || imageUrl.startsWith('https://')
                             ? imageUrl
-                            : `https://api.turkishmock.uz/${imageUrl}`
+                            : toApiUrl(imageUrl)
                         }
                         alt="Map for questions 19-23"
                         className={`transition-all duration-200 ${
@@ -1215,7 +1219,7 @@ const renderPart = (bolum: number) => {
                             src={
                               question.imageUrl.startsWith('http://') || question.imageUrl.startsWith('https://')
                                 ? question.imageUrl
-                                : `https://api.turkishmock.uz/${question.imageUrl}`
+                                : toApiUrl(question.imageUrl)
                             }
                             alt="Question image"
                             className="w-full h-full object-contain"
@@ -1414,8 +1418,18 @@ const renderPart = (bolum: number) => {
     try { sessionStorage.removeItem(audioProgressStorageKey); } catch {}
   };
 
+  useEffect(() => {
+    return () => {
+      if (hasSubmittedRef.current) return;
+      clearListeningProgress();
+      try { sessionStorage.removeItem(`listening_answers_${testId}`); } catch {}
+      try { sessionStorage.removeItem(`test_data_LISTENING_${testId}`); } catch {}
+    };
+  }, [testId, progressStorageKey, audioProgressStorageKey]);
+
   const handleSubmit = async () => {
     if (isSubmitting) return;
+    hasSubmittedRef.current = true;
     try {
       stopAllMediaPlayback();
       setTimerActive(false);
@@ -1897,7 +1911,7 @@ const renderPart = (bolum: number) => {
                         src={
                           testData.audioUrl.startsWith('http://') || testData.audioUrl.startsWith('https://')
                             ? testData.audioUrl
-                            : `https://api.turkishmock.uz/${testData.audioUrl}`
+                            : toApiUrl(testData.audioUrl)
                         }
                         onAudioEnded={handleAudioEnded}
                         autoPlay={isProgressReady ? !timerActive : false}
@@ -1943,7 +1957,7 @@ const renderPart = (bolum: number) => {
                       src={
                         testData.audioUrl.startsWith('http://') || testData.audioUrl.startsWith('https://')
                           ? testData.audioUrl
-                          : `https://api.turkishmock.uz/${testData.audioUrl}`
+                          : toApiUrl(testData.audioUrl)
                       }
                       onAudioEnded={handleAudioEnded}
                       autoPlay={isProgressReady ? !timerActive : false}
@@ -2079,8 +2093,6 @@ const renderPart = (bolum: number) => {
     </div>
   );
 }
-
-
 
 
 

@@ -33,7 +33,7 @@ export const bannerService = {
       const response = await axiosPrivate.get('/api/banner');
       const apiResponse: BannerApiResponse = response.data;
       return apiResponse.data || [];
-    } catch (error: any) {
+    } catch {
       // Don't show error toast for banners, just return empty array
       return [];
     }

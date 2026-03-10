@@ -48,7 +48,7 @@ export interface ListeningPart {
 }
 
 export interface ListeningTestItem {
-  audioUrl: any;
+  audioUrl: string | null;
   id: string;
   title: string;
   type?: string;
@@ -100,13 +100,14 @@ export interface TestResultData {
   userAnswers: UserAnswerResult[];
 }
 
-function extractData<T = any>(res: any): T {
+function extractData<T = unknown>(res: unknown): T {
+  const r = res as { data?: unknown };
   return (
-    (res && res.data && res.data.data) ??
-    (res && res.data) ??
-    (res && res.data && res.data.ieltsData) ??
+    (r?.data && typeof r.data === "object" && (r.data as { data?: unknown })?.data) ??
+    r?.data ??
+    (r?.data && typeof r.data === "object" && (r.data as { ieltsData?: unknown })?.ieltsData) ??
     res
-  );
+  ) as T;
 }
 
 const readClientAccessToken = (): string | null => {
@@ -119,7 +120,9 @@ const readClientAccessToken = (): string | null => {
     try {
       const fromLocal = localStorage.getItem(key);
       if (fromLocal) return fromLocal;
-    } catch {}
+    } catch {
+      // no-op
+    }
   }
   return null;
 };
@@ -130,7 +133,7 @@ const normalizeExamAnswers = (
   const uuidLike =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   const mapped = Array.isArray(rawAnswers)
-    ? rawAnswers.map((item: any) => ({
+    ? rawAnswers.map((item: { questionId?: string; userAnswer?: string }) => ({
         questionId: String(item?.questionId ?? "").trim(),
         userAnswer: String(item?.userAnswer ?? ""),
       }))
@@ -153,11 +156,13 @@ export const listeningTestService = {
       const res = await axiosPrivate.get("/api/test", {
         params: { page, limit, type: "LISTENING" },
       });
-      const data = extractData<any>(res);
-      if (Array.isArray(data.data)) return data.data as ListeningTestItem[];
+      const data = extractData<{ data?: ListeningTestItem[] } | ListeningTestItem[]>(res);
       if (Array.isArray(data)) return data as ListeningTestItem[];
+      if (data && typeof data === "object" && "data" in data && Array.isArray((data as { data?: ListeningTestItem[] }).data)) {
+        return (data as { data: ListeningTestItem[] }).data;
+      }
       return [];
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("getAllListeningTests error:", error);
       toast.error("Tinglash testlari yuklanmadi");
       return [];
@@ -211,7 +216,7 @@ export const listeningSubmissionService = {
         throw new Error("Sınav sonuçlarını göndermek için kimlik doğrulama gerekli.");
       }
 
-      const payload: any = { 
+      const payload: Record<string, unknown> = { 
         testId, 
         answers: normalizedAnswers
       };
@@ -228,13 +233,13 @@ export const listeningSubmissionService = {
       }
       
       const res = await axiosPrivate.post("/api/exam/submit-all", payload);
-      const data = extractData<any>(res);
+      const data = extractData<unknown>(res);
 
       // toast.success("Javoblar muvaffaqiyatli jo'natildi");
-      try { if (overallSessionToken) overallTestTokenStore.clearByTestId(testId); } catch {}
+      try { if (overallSessionToken) overallTestTokenStore.clearByTestId(testId); } catch { /* no-op */ }
       return data ?? res.data ?? res;
-    } catch (error: any) {
-      const status = error?.response?.status;
+    } catch (error: unknown) {
+      const status = (error as { response?: { status?: number } })?.response?.status;
       if (status === 401 || status === 403) {
         toast.error("Javoblarni yuborish uchun tizimga kirishingiz kerak.");
         throw new Error(

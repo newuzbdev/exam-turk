@@ -35,7 +35,7 @@ const ProfileHeader = () => {
               followers: 0, // Default values for now
               following: 0,
               joinDate: userData.createdAt
-                ? new Date(userData.createdAt).toLocaleDateString("tr-TR", {
+                ? new Date(String(userData.createdAt)).toLocaleDateString("tr-TR", {
                     year: "numeric",
                     month: "long",
                   })
@@ -43,7 +43,11 @@ const ProfileHeader = () => {
               totalPoints: 0,
               bio: "Türkçe dil ve kültürünü öğrenmeye tutkulu.",
             });
-            setForm({ name: userData.name || "", userName: userData.username || userData.userName || "", avatarUrl: userData.avatarUrl || userData.avatar || "" });
+            setForm({
+              name: String(userData.name ?? ""),
+              userName: String(userData.username ?? userData.userName ?? ""),
+              avatarUrl: String(userData.avatarUrl ?? userData.avatar ?? ""),
+            });
           }
         } catch (error) {
           console.error("Profile - Error fetching user data:", error);

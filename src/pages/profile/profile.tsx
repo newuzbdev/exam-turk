@@ -155,9 +155,9 @@ export default function ProfilePage() {
 
         setUser(userData);
         setForm({
-          name: userData.name || "",
-          userName: userData.username || userData.userName || "",
-          avatarUrl: userData.avatarUrl || userData.avatar || "",
+          name: String(userData.name ?? userData.userName ?? ""),
+          userName: String(userData.username ?? userData.userName ?? ""),
+          avatarUrl: String(userData.avatarUrl ?? userData.avatar ?? ""),
         });
 
         const [statsResponse, firstPageResponse] = await Promise.all([

@@ -115,7 +115,7 @@ const SignUp = () => {
   }, [phone]);
 
   // Ensure phone number is set in registrationData when entering register step
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   useEffect(() => {
     console.log("useEffect [step] triggered, step:", step, "phone:", phone, "phoneRef.current:", phoneRef.current, "registrationData.phoneNumber:", registrationData.phoneNumber);
     if (step === "register") {
@@ -273,7 +273,7 @@ const SignUp = () => {
       phoneNumber: phoneForRegistration,
       userName: registrationData.userName,
       avatarUrl: registrationData.avatarUrl || "",
-      accountType: "STUDENT" as "STUDENT",
+      accountType: "STUDENT" as const,
     };
 
     console.log("Registration - FINAL payload:", registrationPayload);

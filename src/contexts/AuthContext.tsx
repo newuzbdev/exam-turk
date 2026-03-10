@@ -74,12 +74,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Fetch user data
       const userData = await authService.getCurrentUser();
       if (userData) {
-        setUser(userData);
+        setUser(userData as unknown as User);
         setIsAuthenticated(true);
 
         // Store user ID if available
-        if (userData.id) {
-          SecureStorage.setSessionItem("userId", userData.id);
+        const userId = userData.id ?? userData.userId;
+        if (userId) {
+          SecureStorage.setSessionItem("userId", String(userId));
         }
         console.log("Login completed successfully");
       }
@@ -101,7 +102,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const userData = await authService.getCurrentUser();
       if (userData) {
-        setUser(userData);
+        setUser(userData as unknown as User);
         setIsAuthenticated(true);
       }
     } catch (error) {
@@ -140,12 +141,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.log("Checking existing auth...");
         const userData = await authService.getCurrentUser();
         if (userData) {
-          setUser(userData);
+          setUser(userData as unknown as User);
           setIsAuthenticated(true);
 
           // Store user ID if available and not already stored
-          if (userData.id && !SecureStorage.getSessionItem("userId")) {
-            SecureStorage.setSessionItem("userId", userData.id);
+          const userId = userData.id ?? userData.userId;
+          if (userId && !SecureStorage.getSessionItem("userId")) {
+            SecureStorage.setSessionItem("userId", String(userId));
           }
           console.log("Auth check completed successfully");
         }

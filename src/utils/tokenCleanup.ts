@@ -107,11 +107,21 @@ export const testApiEndpoint = async (endpoint: string = '/api/auth/me') => {
   }
 };
 
+declare global {
+  interface Window {
+    cleanupExpiredTokens: typeof cleanupExpiredTokens;
+    clearAllTokens: typeof clearAllTokens;
+    checkTokenStatus: typeof checkTokenStatus;
+    testTokenRefresh: typeof testTokenRefresh;
+    testApiEndpoint: typeof testApiEndpoint;
+  }
+}
+
 // Make functions available globally for debugging
 if (typeof window !== 'undefined') {
-  (window as any).cleanupExpiredTokens = cleanupExpiredTokens;
-  (window as any).clearAllTokens = clearAllTokens;
-  (window as any).checkTokenStatus = checkTokenStatus;
-  (window as any).testTokenRefresh = testTokenRefresh;
-  (window as any).testApiEndpoint = testApiEndpoint;
+  window.cleanupExpiredTokens = cleanupExpiredTokens;
+  window.clearAllTokens = clearAllTokens;
+  window.checkTokenStatus = checkTokenStatus;
+  window.testTokenRefresh = testTokenRefresh;
+  window.testApiEndpoint = testApiEndpoint;
 }

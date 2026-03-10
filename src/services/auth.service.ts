@@ -35,7 +35,7 @@ export interface AuthResponse {
   refreshToken?: string;
   message?: string;
   userExists?: boolean;
-  [key: string]: any; // For additional properties that might be returned
+  [key: string]: unknown;
 }
 
 export interface AuthResult {
@@ -56,38 +56,31 @@ export interface AuthResult {
 }
 
 // Global variable to track ongoing user fetch requests
-let currentUserRequest: Promise<any> | null = null;
+let currentUserRequest: Promise<Record<string, unknown> | null> | null = null;
 
-const getApiErrorMessage = (error: any, fallback: string): string => {
-  const data = error?.response?.data;
+const getApiErrorMessage = (error: unknown, fallback: string): string => {
+  const err = error as { response?: { data?: Record<string, unknown>; status?: number }; message?: string };
+  const data = err?.response?.data;
+  const nested = data && typeof data.data === "object" ? (data.data as Record<string, unknown>) : undefined;
   const msg =
     (typeof data?.message === "string" && data.message) ||
     (typeof data?.error === "string" && data.error) ||
-    (typeof data?.data?.message === "string" && data.data.message) ||
-    (typeof data?.data?.error === "string" && data.data.error) ||
-    (typeof error?.message === "string" && error.message);
+    (typeof nested?.message === "string" && nested.message) ||
+    (typeof nested?.error === "string" && nested.error) ||
+    (typeof err?.message === "string" && err.message);
   return msg || fallback;
 };
 
 const extractTokens = (
-  payload: any
+  payload: unknown
 ): { accessToken?: string; refreshToken?: string } => {
-  const data = payload && typeof payload === "object" ? payload : {};
-  const nested = data.data && typeof data.data === "object" ? data.data : {};
+  const data: Record<string, unknown> = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
+  const nested: Record<string, unknown> = data.data && typeof data.data === "object" ? (data.data as Record<string, unknown>) : {};
 
   const accessToken =
-    data.accessToken ||
-    data.access_token ||
-    data.token ||
-    nested.accessToken ||
-    nested.access_token ||
-    nested.token;
-
+    (data.accessToken ?? data.access_token ?? data.token ?? nested.accessToken ?? nested.access_token ?? nested.token) as string | undefined;
   const refreshToken =
-    data.refreshToken ||
-    data.refresh_token ||
-    nested.refreshToken ||
-    nested.refresh_token;
+    (data.refreshToken ?? data.refresh_token ?? nested.refreshToken ?? nested.refresh_token) as string | undefined;
 
   return {
     accessToken: accessToken ? String(accessToken) : undefined,
@@ -95,24 +88,25 @@ const extractTokens = (
   };
 };
 
-const extractUserFromPayload = (payload: any): any | null => {
+const extractUserFromPayload = (payload: unknown): Record<string, unknown> | null => {
   if (!payload || typeof payload !== "object") return null;
-
-  const data = payload.data && typeof payload.data === "object" ? payload.data : null;
-  const candidates = [payload.user, data?.user, data, payload];
+  const p = payload as Record<string, unknown>;
+  const data = p.data && typeof p.data === "object" ? (p.data as Record<string, unknown>) : null;
+  const candidates = [p.user, data?.user, data, p];
 
   for (const candidate of candidates) {
     if (!candidate || typeof candidate !== "object") continue;
+    const c = candidate as Record<string, unknown>;
     if (
-      candidate.id ||
-      candidate.userId ||
-      candidate.accountType ||
-      candidate.username ||
-      candidate.userName ||
-      candidate.phoneNumber ||
-      candidate.email
+      c.id ||
+      c.userId ||
+      c.accountType ||
+      c.username ||
+      c.userName ||
+      c.phoneNumber ||
+      c.email
     ) {
-      return candidate;
+      return c;
     }
   }
 
@@ -120,18 +114,21 @@ const extractUserFromPayload = (payload: any): any | null => {
 };
 
 
-const extractUserIdFromPayload = (payload: any): string | undefined => {
-  const data = payload && typeof payload === "object" ? payload : {};
-  const nested = data.data && typeof data.data === "object" ? data.data : {};
+const extractUserIdFromPayload = (payload: unknown): string | undefined => {
+  const data: Record<string, unknown> = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
+  const nested: Record<string, unknown> = data.data && typeof data.data === "object" ? (data.data as Record<string, unknown>) : {};
 
-  const candidates = [
-    data?.user?.id,
-    data?.data?.user?.id,
-    data?.userId,
-    data?.id,
-    nested?.user?.id,
-    nested?.userId,
-    nested?.id,
+  const dataUser = data?.user as Record<string, unknown> | undefined;
+  const dataData = data?.data as Record<string, unknown> | undefined;
+  const nestedUser = nested?.user as Record<string, unknown> | undefined;
+  const candidates: (string | undefined)[] = [
+    dataUser?.id as string | undefined,
+    (dataData?.user as Record<string, unknown> | undefined)?.id as string | undefined,
+    data?.userId as string | undefined,
+    data?.id as string | undefined,
+    nestedUser?.id as string | undefined,
+    nested?.userId as string | undefined,
+    nested?.id as string | undefined,
   ];
 
   const matched = candidates.find(
@@ -193,10 +190,10 @@ export const authService = {
       accountType: "STUDENT" | "TEACHER" | "INSTITUTION";
     }>,
     options?: { avatarFile?: File | null }
-  ): Promise<any> => {
+  ): Promise<Record<string, unknown>> => {
     try {
       const hasFile = !!options?.avatarFile;
-      const effectiveUpdates = { ...(updates || {}) } as any;
+      const effectiveUpdates: Record<string, unknown> = { ...(updates || {}) };
       if (
         typeof effectiveUpdates.userName === "string" &&
         !effectiveUpdates.username
@@ -219,12 +216,15 @@ export const authService = {
         if (typeof window !== "undefined") {
           window.dispatchEvent(new CustomEvent("auth:user", { detail: updatedUser }));
         }
-      } catch {}
+      } catch {
+        // no-op
+      }
       toast.success("Profil güncellendi");
       return updatedUser;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Update user error:", error);
-      toast.error(error?.response?.data?.message || "Profil güncellenemedi");
+      const msg = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg || "Profil güncellenemedi");
       throw error;
     }
   },
@@ -244,7 +244,9 @@ export const authService = {
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("auth:tokens"));
       }
-    } catch {}
+    } catch {
+      // no-op
+    }
   },
 
   // Store tokens without dispatching auth:tokens (used during signup OTP so we don't
@@ -383,7 +385,7 @@ export const authService = {
   },
 
   // Helper function to get current user data (with request deduplication)
-  getCurrentUser: async (): Promise<any> => {
+  getCurrentUser: async (): Promise<Record<string, unknown> | null> => {
     // If there's already a request in progress, return that promise
     if (currentUserRequest) {
       console.log("Reusing existing user data request...");
@@ -391,7 +393,7 @@ export const authService = {
     }
 
     // Create new request
-    currentUserRequest = (async () => {
+    currentUserRequest = (async (): Promise<Record<string, unknown> | null> => {
       try {
         // First try the /api/auth/me endpoint
         console.log("Trying to fetch user data from /api/auth/me...");
@@ -409,7 +411,7 @@ export const authService = {
         }
 
         throw new Error("No user data returned from /api/auth/me");
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Error fetching user from /api/auth/me:", error);
 
         // If /api/auth/me fails, try to use /api/user/{id} if we have a stored user ID
@@ -434,7 +436,7 @@ export const authService = {
             );
             console.log("User data from /api/user/{id}:", userResponse.data);
             const userData = extractUserFromPayload(userResponse.data);
-            return userData || userResponse.data;
+            return userData ?? (userResponse.data as Record<string, unknown>);
           } catch (userError) {
             console.error(
               "Error fetching user from /api/user/{id}:",
@@ -469,7 +471,7 @@ export const authService = {
       }
       toast.success("OTP kodu gönderildi");
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error(getApiErrorMessage(error, "OTP gönderilemedi"));
       return { success: false };
     }
@@ -517,7 +519,7 @@ export const authService = {
       }
       toast.error("Telegram girişi için geçersiz yanıt alındı");
       return null;
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error(getApiErrorMessage(error, "Telegram girişi başlatılamadı"));
       return null;
     }
@@ -586,7 +588,7 @@ export const authService = {
               : undefined,
         },
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error(getApiErrorMessage(error, "Telegram kodi tasdiqlanmadi"));
       return { success: false };
     }
@@ -661,7 +663,7 @@ export const authService = {
               : undefined,
         },
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error(getApiErrorMessage(error, "Telegram kodi tasdiqlanmadi"));
       return { success: false };
     }
@@ -682,7 +684,7 @@ export const authService = {
 
       toast.success("Şifre sıfırlama kodu gönderildi");
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error(getApiErrorMessage(error, "Şifre sıfırlama kodu gönderilemedi"));
       return { success: false };
     }
@@ -704,7 +706,7 @@ export const authService = {
 
       toast.success("Şifreniz güncellendi. Şimdi giriş yapabilirsiniz.");
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error(getApiErrorMessage(error, "Şifre güncellenemedi"));
       return { success: false };
     }
@@ -743,7 +745,7 @@ export const authService = {
 
       toast.error(backendMsg || "Giriş başarısız");
       return { success: false };
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error(getApiErrorMessage(error, "Giriş başarısız"));
       return { success: false };
     }
@@ -808,16 +810,21 @@ export const authService = {
 
       toast.error("OTP doğrulanamadı");
       return { success: false };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string; error?: string }; status?: number } };
+      const data = err?.response?.data;
+      const nested = data && typeof (data as Record<string, unknown>).data === "object"
+        ? (data as Record<string, { message?: string; error?: string }>).data
+        : undefined;
       const msg = String(
-        error.response?.data?.message ||
-          error.response?.data?.error ||
-          error.response?.data?.data?.message ||
-          error.response?.data?.data?.error ||
+        data?.message ||
+          data?.error ||
+          nested?.message ||
+          nested?.error ||
           ""
       ).toLowerCase();
       if (
-        error.response?.status === 404 ||
+        err?.response?.status === 404 ||
         msg.includes("bulunamadı") ||
         msg.includes("mevcut değil") ||
         msg.includes("kayıt")
@@ -922,7 +929,7 @@ export const authService = {
 
       toast.error("OTP doğrulanamadı");
       return { success: false };
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error(getApiErrorMessage(error, "OTP doğrulanamadı"));
       return { success: false };
     }
@@ -996,8 +1003,10 @@ export const authService = {
               if (typeof window !== "undefined") {
                 window.dispatchEvent(new CustomEvent("auth:user", { detail: userResponse }));
               }
-            } catch {}
-            toast.success(`Kayıt başarılı! Hoş geldiniz ${userResponse.name}!`);
+            } catch {
+              // no-op
+            }
+            toast.success(`Kayıt başarılı! Hoş geldiniz ${(userResponse as { name?: string }).name}!`);
             navigate("/", { replace: true });
 
             return { success: true, shouldNavigate: true };
@@ -1019,15 +1028,17 @@ export const authService = {
           (response.data.user ||
             response.data.data?.user ||
             response.data.data ||
-            response.data)) as any;
+            response.data)) as Record<string, unknown> | undefined;
         if (createdUser && createdUser.id && (createdUser.name || createdUser.userName)) {
           try {
-            SecureStorage.setSessionItem("userId", createdUser.id);
+            SecureStorage.setSessionItem("userId", String(createdUser.id));
             if (typeof window !== "undefined") {
               window.dispatchEvent(new CustomEvent("auth:user", { detail: createdUser }));
             }
-          } catch {}
-          toast.success(`Kayıt başarılı! Hoş geldiniz ${createdUser.name || createdUser.userName}!`);
+          } catch {
+            // no-op
+          }
+          toast.success(`Kayıt başarılı! Hoş geldiniz ${String(createdUser?.name ?? createdUser?.userName)}!`);
           navigate("/", { replace: true });
           return { success: true, shouldNavigate: true };
         }
@@ -1044,18 +1055,21 @@ export const authService = {
             // Fetch user and notify app
             try {
               const userResponse = await authService.getCurrentUser();
-              if (userResponse?.id) {
-                SecureStorage.setSessionItem("userId", userResponse.id);
+              const uid = userResponse?.id ?? userResponse?.userId;
+              if (uid) {
+                SecureStorage.setSessionItem("userId", String(uid));
               }
               if (typeof window !== "undefined") {
                 window.dispatchEvent(new CustomEvent("auth:user", { detail: userResponse }));
               }
-            } catch {}
+            } catch {
+              // no-op
+            }
             toast.success("Kayıt başarılı! Hoş geldiniz!");
             navigate("/", { replace: true });
             return { success: true, shouldNavigate: true };
           }
-        } catch (e) {
+        } catch {
           // Swallow and continue to generic success
         }
 
@@ -1065,7 +1079,7 @@ export const authService = {
         return { success: true, shouldNavigate: true };
       }
       return { success: false };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Registration error:", error);
       toast.error(getApiErrorMessage(error, "Kayıt başarısız"));
       return { success: false };

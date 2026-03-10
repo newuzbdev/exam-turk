@@ -3,10 +3,13 @@ import React, {
   useContext,
   useState,
   useEffect,
+  useRef,
   type ReactNode,
 } from "react";
 import { authService } from "@/services/auth.service";
 import { SecureStorage } from "@/utils/secureStorage";
+import { paymeService } from "@/services/payme.service";
+import { toast } from "@/utils/toast";
 
 interface User {
   id?: string;
@@ -51,6 +54,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessingLogin, setIsProcessingLogin] = useState(false);
+  const autoPurchaseIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoPurchaseInFlightRef = useRef(false);
+  const pendingPurchaseStorageKey = "tm_pending_credit_purchase_v1";
 
   const login = async (accessToken: string, refreshToken?: string) => {
     // Prevent multiple simultaneous login attempts
@@ -182,6 +188,68 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      if (autoPurchaseIntervalRef.current) {
+        clearInterval(autoPurchaseIntervalRef.current);
+        autoPurchaseIntervalRef.current = null;
+      }
+      return;
+    }
+
+    const runAutoFinalize = async () => {
+      if (autoPurchaseInFlightRef.current) return;
+      if (typeof window === "undefined") return;
+
+      const raw = window.localStorage.getItem(pendingPurchaseStorageKey);
+      if (!raw) return;
+
+      let pending: { planId?: string; units?: number; createdAt?: number } | null = null;
+      try {
+        pending = JSON.parse(raw);
+      } catch {
+        window.localStorage.removeItem(pendingPurchaseStorageKey);
+        return;
+      }
+
+      const units = Math.floor(Number(pending?.units || 0));
+      const planId = String(pending?.planId || "quick");
+      const createdAt = Number(pending?.createdAt || 0);
+      const isStale = createdAt > 0 && Date.now() - createdAt > 60 * 60 * 1000;
+
+      if (units <= 0 || isStale) {
+        window.localStorage.removeItem(pendingPurchaseStorageKey);
+        return;
+      }
+
+      autoPurchaseInFlightRef.current = true;
+      try {
+        const result = await paymeService.checkoutProductSingleFlow(planId, units);
+        if (result?.status !== "COMPLETED") return;
+
+        window.localStorage.removeItem(pendingPurchaseStorageKey);
+        await refreshUser().catch(() => undefined);
+        toast.success(`${units} kredi otomatik olarak hesabiniza yuklendi.`);
+      } catch {
+        // Keep pending key and retry in next interval.
+      } finally {
+        autoPurchaseInFlightRef.current = false;
+      }
+    };
+
+    void runAutoFinalize();
+    autoPurchaseIntervalRef.current = setInterval(() => {
+      void runAutoFinalize();
+    }, 5000);
+
+    return () => {
+      if (autoPurchaseIntervalRef.current) {
+        clearInterval(autoPurchaseIntervalRef.current);
+        autoPurchaseIntervalRef.current = null;
+      }
+    };
+  }, [isAuthenticated]);
 
   const value: AuthContextType = {
     user,

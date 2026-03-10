@@ -41,6 +41,7 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
   const autoRefreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoFinalizeInFlightRef = useRef(false);
   const autoFinalizeUnitsRef = useRef<number | null>(null);
+  const pendingPurchaseStorageKey = 'tm_pending_credit_purchase_v1';
 
   const getErrorMessage = (error: any, fallback: string) =>
     error?.response?.data?.message ||
@@ -75,6 +76,9 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
       autoRefreshTimeoutRef.current = null;
     }
     autoFinalizeInFlightRef.current = false;
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(pendingPurchaseStorageKey);
+    }
   };
 
   const tryAutoFinalizePurchase = async () => {
@@ -109,6 +113,16 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
     setTargetCredits(current + units);
     setIsAwaitingAutoCredit(true);
     autoFinalizeUnitsRef.current = units;
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(
+        pendingPurchaseStorageKey,
+        JSON.stringify({
+          planId,
+          units,
+          createdAt: Date.now(),
+        }),
+      );
+    }
 
     autoRefreshIntervalRef.current = setInterval(() => {
       refreshUser().catch(() => undefined);

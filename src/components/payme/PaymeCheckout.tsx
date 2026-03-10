@@ -39,6 +39,8 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
   const verificationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoRefreshIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoRefreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoFinalizeInFlightRef = useRef(false);
+  const autoFinalizeUnitsRef = useRef<number | null>(null);
 
   const getErrorMessage = (error: any, fallback: string) =>
     error?.response?.data?.message ||
@@ -72,6 +74,33 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
       clearTimeout(autoRefreshTimeoutRef.current);
       autoRefreshTimeoutRef.current = null;
     }
+    autoFinalizeInFlightRef.current = false;
+  };
+
+  const tryAutoFinalizePurchase = async () => {
+    if (autoFinalizeInFlightRef.current) return;
+
+    const units = autoFinalizeUnitsRef.current;
+    if (!isAwaitingAutoCredit || !units || units <= 0) return;
+
+    autoFinalizeInFlightRef.current = true;
+    try {
+      const unified = await paymeService.checkoutProductSingleFlow(planId, units);
+      if (unified?.status !== 'COMPLETED') return;
+
+      clearAutoCreditWatch();
+      setIsAwaitingAutoCredit(false);
+      setTargetCredits(null);
+      autoFinalizeUnitsRef.current = null;
+
+      await refreshUser().catch(() => undefined);
+      onSuccess?.(unified?.transaction?.id || 'auto', unified);
+      toast.success(`${units} kredi otomatik olarak hesabiniza yuklendi.`);
+    } catch {
+      // Payment may still be processing; keep polling.
+    } finally {
+      autoFinalizeInFlightRef.current = false;
+    }
   };
 
   const startAutoCreditWatch = (units: number) => {
@@ -79,15 +108,18 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
     const current = user?.coin ?? 0;
     setTargetCredits(current + units);
     setIsAwaitingAutoCredit(true);
+    autoFinalizeUnitsRef.current = units;
 
     autoRefreshIntervalRef.current = setInterval(() => {
       refreshUser().catch(() => undefined);
+      void tryAutoFinalizePurchase();
     }, 3000);
 
     autoRefreshTimeoutRef.current = setTimeout(() => {
       clearAutoCreditWatch();
       setIsAwaitingAutoCredit(false);
       setTargetCredits(null);
+      autoFinalizeUnitsRef.current = null;
       toast.info('Odeme alindiysa kredi kisa sure icinde otomatik yansir.');
     }, 10 * 60 * 1000);
   };
@@ -124,6 +156,7 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
     clearAutoCreditWatch();
     setIsAwaitingAutoCredit(false);
     setTargetCredits(null);
+    autoFinalizeUnitsRef.current = null;
     onSuccess?.('auto');
     toast.success('Kredi otomatik olarak hesabiniza yuklendi.');
   }, [isAwaitingAutoCredit, onSuccess, targetCredits, user?.coin]);
@@ -223,6 +256,8 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
           try {
             const purchaseData = await paymeService.purchaseProduct(planId, amountValue);
             setTimeout(() => {
+              clearAutoCreditWatch();
+              autoFinalizeUnitsRef.current = null;
               setIsVerifying(false);
               onSuccess?.(transactionId, purchaseData);
               toast.success(`${amountValue} kredi basariyla satin alindi!`);
@@ -231,8 +266,8 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
             console.error('Product purchase failed:', purchaseError);
             setTimeout(() => {
               setIsVerifying(false);
-              onSuccess?.(transactionId);
-              toast.error('Odeme basarili ancak urun satin alma isleminde hata olustu');
+              // Keep auto-credit watcher alive; it will retry checkout/purchase automatically.
+              toast.info('Odeme alindi. Kredi otomatik tamamlanmasi bekleniyor...');
             }, 1000);
           }
           return;
@@ -265,6 +300,7 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
     setVerificationProgress(0);
     setIsAwaitingAutoCredit(false);
     setTargetCredits(null);
+    autoFinalizeUnitsRef.current = null;
     onCancel?.();
   };
 

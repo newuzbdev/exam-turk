@@ -1,4 +1,4 @@
-﻿import axiosPrivate from "@/config/api";
+import axiosPrivate from "@/config/api";
 import { authEndPoint } from "@/config/endpoint";
 import { toast } from "@/utils/toast";
 import { SecureStorage } from "@/utils/secureStorage";
@@ -475,8 +475,128 @@ export const authService = {
     }
   },
 
-  // Verify Telegram OTP (6-digit code from @turkishmockbot)
-  verifyTelegramOtp: async (otpCode: string): Promise<AuthResult> => {
+  // Start Telegram login: call API init, returns sessionToken and botLink
+  // NOTE: Always call production API directly so it does not depend on local axios baseURL.
+  initTelegramAuth: async (): Promise<{ sessionToken: string; botLink: string } | null> => {
+    try {
+      const url = "https://api.turkishmock.uz/api/auth/telegram/init";
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({}),
+      });
+
+      if (!response.ok) {
+        let payload: any = {};
+        try {
+          payload = await response.json();
+        } catch {
+          payload = {};
+        }
+        const message = getApiErrorMessage(
+          { response: { data: payload } },
+          "Telegram girişi başlatılamadı",
+        );
+        toast.error(message);
+        return null;
+      }
+
+      let data: any = {};
+      try {
+        data = await response.json();
+      } catch {
+        data = {};
+      }
+
+      const sessionToken = data?.sessionToken ?? data?.data?.sessionToken;
+      const botLink = data?.botLink ?? data?.data?.botLink;
+      if (sessionToken && botLink) {
+        return { sessionToken: String(sessionToken), botLink: String(botLink) };
+      }
+      toast.error("Telegram girişi için geçersiz yanıt alındı");
+      return null;
+    } catch (error: any) {
+      toast.error(getApiErrorMessage(error, "Telegram girişi başlatılamadı"));
+      return null;
+    }
+  },
+
+  // Verify Telegram code with session from init (main API: /api/auth/telegram/verify-code)
+  // NOTE: Always call production API directly so it does not depend on local axios baseURL.
+  verifyTelegramCode: async (code: string, sessionToken: string): Promise<AuthResult> => {
+    try {
+      const trimmed = String(code || "").trim();
+      if (!/^\d{4,6}$/.test(trimmed)) {
+        toast.error("4 veya 6 haneli kodu girin");
+        return { success: false };
+      }
+
+      const url = "https://api.turkishmock.uz/api/auth/telegram/verify-code";
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          code: trimmed,
+          sessionToken,
+        }),
+      });
+
+      let data: any = {};
+      try {
+        data = await response.json();
+      } catch {
+        data = {};
+      }
+
+      if (!response.ok) {
+        const message =
+          (typeof data?.message === "string" && data.message) ||
+          "Telegram kodu yanlış veya süresi dolmuş";
+        toast.error(message);
+        return { success: false, message };
+      }
+
+      const user = data?.user ?? data?.data?.user ?? {};
+      const { accessToken, refreshToken } = extractTokens(data);
+      if (!accessToken) {
+        const message =
+          (typeof data?.message === "string" && data.message) ||
+          "Telegram tasdiqlandi, lekin oturum yaratmadi";
+        toast.error(message);
+        return { success: false, message };
+      }
+
+      toast.success("Telegram kodi tasdiqlandi");
+      return {
+        success: true,
+        message: "Telegram kodi tasdiqlandi",
+        accessToken,
+        refreshToken,
+        telegramUser: {
+          firstName: typeof user?.firstName === "string" ? user.firstName : "",
+          lastName: typeof user?.lastName === "string" ? user.lastName : "",
+          phoneNumber: typeof user?.phoneNumber === "string" ? user.phoneNumber : "",
+          telegramId:
+            typeof user?.telegramId === "string" || typeof user?.telegramId === "number"
+              ? user.telegramId
+              : undefined,
+        },
+      };
+    } catch (error: any) {
+      toast.error(getApiErrorMessage(error, "Telegram kodi tasdiqlanmadi"));
+      return { success: false };
+    }
+  },
+
+  // Verify Telegram OTP (legacy 6-digit from old bot flow; prefer init + verifyTelegramCode)
+  verifyTelegramOtp: async (otpCode: string, sessionToken?: string): Promise<AuthResult> => {
+    if (sessionToken) {
+      return authService.verifyTelegramCode(otpCode, sessionToken);
+    }
     try {
       const code = String(otpCode || "").trim();
       if (!/^\d{6}$/.test(code)) {

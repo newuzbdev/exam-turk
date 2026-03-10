@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Kurulum:
  *   npm init -y
  *   npm install express cors dotenv node-telegram-bot-api
@@ -23,6 +23,7 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.VITE_TELEGRAM_BO
 const FRONTEND_URL = process.env.FRONTEND_URL || "https://turkishmock.uz";
 const DEFAULT_PUBLIC_LOGIN_URL = "https://turkishmock.uz";
 const MAIN_API_URL = (process.env.MAIN_API_URL || "http://localhost:3000").replace(/\/+$/, "");
+const AUTH_API_BASE_URL = (process.env.AUTH_API_BASE_URL || process.env.MAIN_API_URL || "https://api.turkishmock.uz").replace(/\/+$/, "");
 const TELEGRAM_AUTH_PASSWORD = process.env.TELEGRAM_AUTH_PASSWORD || "ChangeMe-Telegram-Auth-Password";
 const TELEGRAM_DEFAULT_ACCOUNT_TYPE = process.env.TELEGRAM_DEFAULT_ACCOUNT_TYPE || "STUDENT";
 const TELEGRAM_ENABLE_BACKEND_AUTH = String(
@@ -255,31 +256,55 @@ bot.on("polling_error", (error) => {
   }
 });
 
-bot.onText(/\/start/, async (msg) => {
+// Session-based flow: /start <sessionToken> from website bot link (api.turkishmock.uz/auth/telegram/init)
+bot.onText(/\/start(?:\s+(.+))?/, async (msg, match) => {
   const chatId = msg.chat.id;
-  console.log(`[TG] /start received chatId=${chatId} from=${msg.from?.username || msg.from?.id || "unknown"}`);
+  const startPayload = match && match[1] ? match[1].trim() : null;
+  console.log(`[TG] /start chatId=${chatId} payload=${startPayload || "none"} from=${msg.from?.username || msg.from?.id || "unknown"}`);
 
   try {
+    if (startPayload) {
+      // Deep link from website: sessionToken from init -> request code from API and send to user
+      const sessionToken = startPayload;
+      const requestCodeUrl = `${AUTH_API_BASE_URL}/api/auth/telegram/request-code`;
+      let code = null;
+
+      const res = await postJson(requestCodeUrl, { sessionToken });
+      if (res.ok && res.data && typeof res.data.code === "string") {
+        code = res.data.code;
+      }
+      if (!code) {
+        const fallbackCode = String(Math.floor(1000 + Math.random() * 9000));
+        const registerRes = await postJson(requestCodeUrl, { sessionToken, code: fallbackCode });
+        code = registerRes.ok ? fallbackCode : (registerRes.data?.code || fallbackCode);
+      }
+
+      if (code) {
+        await bot.sendMessage(
+          chatId,
+          `🔒 Doğrulama kodunuz: **${code}**\n\nBu kodu web sitesindeki giriş sayfasında girin.`,
+          { parse_mode: "Markdown" },
+        );
+        return;
+      }
+
+      await bot.sendMessage(chatId, "Kod alınamadı. Lütfen web sitesinden tekrar \"Telegram ile giriş\" başlatın.");
+      return;
+    }
+
+    // No payload: legacy or direct /start - ask for phone or show website link
     await bot.sendMessage(
       chatId,
-      "Merhaba 👋\nTurkishMock doğrulama botuna hoş geldiniz.\nDevam etmek için telefon numaranızı paylaşın.",
+      "Merhaba 👋\nTurkishMock doğrulama botuna hoş geldiniz.\n\nGiriş yapmak için önce web sitede \"Telegram ile giriş\"e tıklayın, size verilen linke tıklayarak buraya gelin.",
       {
-      reply_markup: {
-        keyboard: [
-          [
-            {
-              text: "📱 Telefon Numaramı Paylaş",
-              request_contact: true,
-            },
-          ],
-        ],
-        resize_keyboard: true,
-        one_time_keyboard: true,
+        reply_markup: {
+          inline_keyboard: [[{ text: "🌐 Siteye git", url: TELEGRAM_LOGIN_URL }]],
+        },
       },
-    },
     );
   } catch (error) {
-    console.error("/start mesajı gönderilemedi:", error.message);
+    console.error("/start error:", error?.message || error);
+    await bot.sendMessage(chatId, "Bir hata oluştu. Lütfen daha sonra tekrar deneyin.");
   }
 });
 

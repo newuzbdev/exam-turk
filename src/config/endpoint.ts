@@ -9,6 +9,8 @@ export const authEndPoint = {
   otpVerify: "/api/otp/verify",
   user: "/api/user", // For getting user by ID: /api/user/{id}
   logout: "/api/auth/logout",
+  telegramInit: "/api/auth/telegram/init",
+  telegramVerifyCode: "/api/auth/telegram/verify-code",
 };
 
 export const writingEndPoint = {

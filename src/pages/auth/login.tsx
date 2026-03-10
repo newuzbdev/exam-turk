@@ -56,6 +56,9 @@ const TelegramLogo = () => (
   </svg>
 );
 
+const TELEGRAM_BOT_USERNAME =
+  import.meta.env.VITE_TELEGRAM_BOT_USERNAME || "turkishmockbot";
+
 const formatPhoneForInput = (value: string) => {
   let input = value || "";
   if (input.startsWith("+")) {
@@ -95,6 +98,8 @@ export default function Login() {
   const [phone, setPhone] = useState("+998 ");
   const [phoneOtp, setPhoneOtp] = useState("");
   const [telegramOtp, setTelegramOtp] = useState("");
+  const [telegramSessionToken, setTelegramSessionToken] = useState<string | null>(null);
+  const [telegramBotLink, setTelegramBotLink] = useState<string | null>(null);
   const [verifiedPhoneNumber, setVerifiedPhoneNumber] = useState("");
 
   const [credentials, setCredentials] = useState({
@@ -160,7 +165,7 @@ export default function Login() {
     if (step === "password")
       return "Daha önce kayıt olduysan kullanıcı adı/telefon ve şifre ile gir.";
     if (step === "telegramOtp")
-      return "@turkishmockbot üzerinden aldığınız 6 haneli kodu girin.";
+      return "Botta gelen 4 veya 6 haneli kodu girin.";
     if (step === "resetPhone") return "Telefon numaranızı girin.";
     if (step === "resetOtp") return "OTP ve yeni şifre girin.";
     return "";
@@ -174,8 +179,17 @@ export default function Login() {
     )}`;
   };
 
-  const handleTelegramStart = () => {
-    setStep("telegramOtp");
+  const handleTelegramStart = async () => {
+    setLoading(true);
+    const result = await authService.initTelegramAuth();
+    setLoading(false);
+    if (result) {
+      setTelegramSessionToken(result.sessionToken);
+      setTelegramBotLink(result.botLink);
+      setTelegramOtp("");
+      setStep("telegramOtp");
+      if (result.botLink) window.open(result.botLink, "_blank", "noopener,noreferrer");
+    }
   };
 
   const handleSendPhoneOtp = async (e: React.FormEvent) => {
@@ -263,10 +277,15 @@ export default function Login() {
 
   const handleTelegramVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (telegramOtp.length !== 6) return;
+    const codeLen = telegramOtp.length;
+    if (codeLen < 4 || codeLen > 6) return;
+    if (!telegramSessionToken) {
+      toast.error("Önce \"Telegram ile giriş\"e tıklayıp bot linkini açın.");
+      return;
+    }
 
     setLoading(true);
-    const result = await authService.verifyTelegramOtp(telegramOtp);
+    const result = await authService.verifyTelegramCode(telegramOtp, telegramSessionToken);
     if (result.success && result.accessToken) {
       authService.storeTokens(result.accessToken, result.refreshToken);
       navigateAfterLogin();
@@ -549,14 +568,20 @@ export default function Login() {
 
         {step === "telegramOtp" ? (
           <form onSubmit={handleTelegramVerify} className="mt-8 w-full max-w-md space-y-4">
-            <a
-              href="https://t.me/turkishmockbot"
-              target="_blank"
-              rel="noreferrer"
-              className="block text-center text-sm text-[#229ED9] underline"
-            >
-              @turkishmockbot aç
-            </a>
+            {telegramBotLink ? (
+              <a
+                href={telegramBotLink || `https://t.me/${TELEGRAM_BOT_USERNAME}`}
+                target="_blank"
+                rel="noreferrer"
+                className="block text-center text-sm text-[#229ED9] underline"
+              >
+                Botu aç (@{TELEGRAM_BOT_USERNAME}, kod burada görünecek)
+              </a>
+            ) : (
+              <p className="text-center text-sm text-gray-500">
+                Telegram ile giriş başlatıldığında bot linki açılır.
+              </p>
+            )}
 
             <div className="flex justify-center">
               <InputOTP
@@ -577,12 +602,25 @@ export default function Login() {
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              <Button type="button" variant="outline" onClick={() => setStep("entry")}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setStep("entry");
+                  setTelegramSessionToken(null);
+                  setTelegramBotLink(null);
+                }}
+              >
                 Geri
               </Button>
               <Button
                 type="submit"
-                disabled={loading || telegramOtp.length !== 6}
+                disabled={
+                  loading ||
+                  telegramOtp.length < 4 ||
+                  telegramOtp.length > 6 ||
+                  !telegramSessionToken
+                }
                 className="bg-red-600 text-white hover:bg-red-700 disabled:bg-red-300 disabled:text-white"
               >
                 {loading ? "Doğrulanıyor..." : "Doğrula"}

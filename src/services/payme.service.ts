@@ -73,6 +73,8 @@ export const PRICING_PRODUCTS = {
   test: "3d232477-38c7-422c-8e5f-be82dd3bb99b",
 } as const;
 
+const FALLBACK_PRODUCT_ID = "00000000-0000-0000-0000-000000000000";
+
 const extractApiErrorMessage = (error: any, fallback: string): string => {
   const msg =
     (typeof error?.response?.data?.message === "string" &&
@@ -190,6 +192,23 @@ const containsInsufficientBalanceHint = (value: unknown) => {
     normalized.includes("balans") ||
     normalized.includes("bakiye")
   );
+};
+
+const pickProductId = (
+  planId: string,
+  products: unknown
+): string => {
+  const mappedProductId =
+    PRICING_PRODUCTS[planId as keyof typeof PRICING_PRODUCTS];
+  const normalizedProducts = Array.isArray(products)
+    ? (products as Array<{ id?: string }>)
+    : [];
+
+  const selected =
+    normalizedProducts.find((item) => item?.id === mappedProductId) ||
+    normalizedProducts[0];
+
+  return selected?.id || mappedProductId || FALLBACK_PRODUCT_ID;
 };
 
 // Payme service for handling payment operations
@@ -333,24 +352,11 @@ export const paymeService = {
     units: number
   ): Promise<UnifiedProductCheckoutResponse> => {
     const products = await paymeService.getAllProducts();
-    if (!products || products.length === 0) {
-      throw new Error("No products available in the system");
-    }
-
-    const mappedProductId =
-      PRICING_PRODUCTS[planId as keyof typeof PRICING_PRODUCTS];
-    const normalizedProducts = products as Array<{ id?: string }>;
-    const product =
-      normalizedProducts.find((item) => item?.id === mappedProductId) ||
-      normalizedProducts[0];
-
-    if (!product?.id) {
-      throw new Error("Product ID not found");
-    }
+    const productId = pickProductId(planId, products);
 
     const response = await axiosPrivate.post("/api/product/checkout", {
       amount: units,
-      productId: product.id,
+      productId,
     });
 
     return (response?.data?.data ||
@@ -365,24 +371,11 @@ export const paymeService = {
   ): Promise<ProductPurchaseResponse> => {
     try {
       const products = await paymeService.getAllProducts();
-      if (!products || products.length === 0) {
-        throw new Error("No products available in the system");
-      }
-
-      const mappedProductId =
-        PRICING_PRODUCTS[planId as keyof typeof PRICING_PRODUCTS];
-      const normalizedProducts = products as Array<{ id?: string }>;
-      const chosenProduct =
-        normalizedProducts.find((item) => item?.id === mappedProductId) ||
-        normalizedProducts[0];
-
-      if (!chosenProduct?.id) {
-        throw new Error("Product ID not found");
-      }
+      const productId = pickProductId(planId, products);
 
       const response = await axiosPrivate.post("/api/product/purchase", {
         amount: units,
-        productId: chosenProduct.id,
+        productId,
       });
 
       toast.success("Mahsulot muvaffaqiyatli sotib olindi!");

@@ -36,6 +36,14 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const verificationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const getErrorMessage = (error: any, fallback: string) =>
+    error?.response?.data?.message ||
+    error?.response?.data?.error ||
+    error?.response?.data?.data?.message ||
+    error?.response?.data?.data?.error ||
+    error?.message ||
+    fallback;
+
   const clearVerificationTimers = () => {
     if (verificationIntervalRef.current) {
       clearInterval(verificationIntervalRef.current);
@@ -98,6 +106,10 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
         await refreshUser().catch(() => undefined);
         return;
       }
+      if (unified?.status === 'PAYMENT_REQUIRED' && !unified.checkoutUrl) {
+        toast.error(unified?.message || 'Odeme baglantisi olusturulamadi');
+        return;
+      }
 
       // Legacy fallback for older backend payloads
       const purchase = await paymeService.purchaseProduct(planId, units);
@@ -121,10 +133,10 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
             await startVerificationProcess(txId, units);
           }
         } else {
-          toast.error('Odeme baglantisi olusturulamadi');
+          toast.error(resp?.message || 'Odeme baglantisi olusturulamadi');
         }
       } else {
-        toast.error(error?.response?.data?.message || 'Satin alma sirasinda hata olustu');
+        toast.error(getErrorMessage(error, 'Satin alma sirasinda hata olustu'));
       }
     } finally {
       setIsLoading(false);

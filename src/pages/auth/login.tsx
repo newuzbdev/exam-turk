@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { ArrowLeft, User } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { REGEXP_ONLY_DIGITS_AND_CHARS } from "input-otp";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { toast } from "@/utils/toast";
 import { authService } from "@/services/auth.service";
 import { API_BASE_URL } from "@/config/runtime";
@@ -59,28 +58,26 @@ const TelegramLogo = () => (
 const TELEGRAM_BOT_USERNAME =
   import.meta.env.VITE_TELEGRAM_BOT_USERNAME || "turkishmockbot";
 
-const formatPhoneForInput = (value: string) => {
-  let input = value || "";
-  if (input.startsWith("+")) {
-    input = "+" + input.slice(1).replace(/\D/g, "");
-  } else {
-    input = input.replace(/\D/g, "");
-  }
-
-  let digits = input.replace(/\D/g, "");
-  if (!digits.length) return "+998 ";
-  if (!digits.startsWith("998")) {
-    digits = digits.startsWith("8") ? `99${digits}` : `998${digits}`;
-  }
-  digits = digits.slice(0, 12);
-
-  let formatted = "+998";
-  if (digits.length > 3) formatted += ` ${digits.slice(3, 5)}`;
-  if (digits.length > 5) formatted += ` ${digits.slice(5, 8)}`;
-  if (digits.length > 8) formatted += ` ${digits.slice(8, 10)}`;
-  if (digits.length > 10) formatted += ` ${digits.slice(10, 12)}`;
-  return formatted;
-};
+// const formatPhoneForInput = (value: string) => {
+//   let input = value || "";
+//   if (input.startsWith("+")) {
+//     input = "+" + input.slice(1).replace(/\D/g, "");
+//   } else {
+//     input = input.replace(/\D/g, "");
+//   }
+//   let digits = input.replace(/\D/g, "");
+//   if (!digits.length) return "+998 ";
+//   if (!digits.startsWith("998")) {
+//     digits = digits.startsWith("8") ? `99${digits}` : `998${digits}`;
+//   }
+//   digits = digits.slice(0, 12);
+//   let formatted = "+998";
+//   if (digits.length > 3) formatted += ` ${digits.slice(3, 5)}`;
+//   if (digits.length > 5) formatted += ` ${digits.slice(5, 8)}`;
+//   if (digits.length > 8) formatted += ` ${digits.slice(8, 10)}`;
+//   if (digits.length > 10) formatted += ` ${digits.slice(10, 12)}`;
+//   return formatted;
+// };
 
 export default function Login() {
   const navigate = useNavigate();
@@ -102,33 +99,33 @@ export default function Login() {
   const [telegramBotLink, setTelegramBotLink] = useState<string | null>(null);
   // const [verifiedPhoneNumber, setVerifiedPhoneNumber] = useState("");
 
-  const [credentials, setCredentials] = useState({
-    identifier: "",
-    password: "",
-  });
+  // const [credentials, setCredentials] = useState({
+  //   identifier: "",
+  //   password: "",
+  // });
 
   // const [phoneSetup, setPhoneSetup] = useState({
   //   userName: "",
   //   password: "",
   // });
 
-  const [resetForm, setResetForm] = useState({
-    phone: "+998 ",
-    otp: "",
-    newPassword: "",
-  });
+  // const [resetForm, setResetForm] = useState({
+  //   phone: "+998 ",
+  //   otp: "",
+  //   newPassword: "",
+  // });
 
   const navigateAfterLogin = () => {
     navigate(redirectTo, { replace: true });
   };
 
-  const rememberPhone = (rawPhone: string) => {
-    if (typeof window === "undefined") return;
-    const normalized = authService.formatPhoneNumber(rawPhone);
-    if (normalized) {
-      localStorage.setItem("login:lastPhone", normalized);
-    }
-  };
+  // const rememberPhone = (rawPhone: string) => {
+  //   if (typeof window === "undefined") return;
+  //   const normalized = authService.formatPhoneNumber(rawPhone);
+  //   if (normalized) {
+  //     localStorage.setItem("login:lastPhone", normalized);
+  //   }
+  // };
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -136,14 +133,13 @@ export default function Login() {
     }
   }, [isAuthenticated]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const storedPhone = localStorage.getItem("login:lastPhone");
-    if (!storedPhone) return;
-    const formatted = formatPhoneForInput(storedPhone);
-    // setPhone(formatted);
-    setResetForm((prev) => ({ ...prev, phone: formatted }));
-  }, []);
+  // useEffect(() => {
+  //   if (typeof window === "undefined") return;
+  //   const storedPhone = localStorage.getItem("login:lastPhone");
+  //   if (!storedPhone) return;
+  //   const formatted = formatPhoneForInput(storedPhone);
+  //   setResetForm((prev) => ({ ...prev, phone: formatted }));
+  // }, []);
 
   const title = useMemo(() => {
     if (step === "phoneOtp") return "SMS Kodu";
@@ -258,23 +254,6 @@ export default function Login() {
   //   setLoading(false);
   // };
 
-  const handleCredentialLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!credentials.identifier.trim() || !credentials.password.trim()) {
-      toast.error("Kullanıcı adı/telefon ve şifre girin");
-      return;
-    }
-    setLoading(true);
-    await authService.loginWithCredentials(
-      {
-        name: credentials.identifier.trim(),
-        password: credentials.password,
-      },
-      () => navigateAfterLogin(),
-    );
-    setLoading(false);
-  };
-
   const handleTelegramVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     const codeLen = telegramOtp.length;
@@ -292,54 +271,6 @@ export default function Login() {
     }
     setLoading(false);
   };
-
-  const handleSendResetOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    const result = await authService.requestPasswordReset(resetForm.phone);
-    if (result.success) {
-      rememberPhone(resetForm.phone);
-      setResetForm((prev) => ({ ...prev, otp: "", newPassword: "" }));
-      setStep("resetOtp");
-    }
-    setLoading(false);
-  };
-
-  const handleConfirmReset = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (resetForm.otp.length !== 4) {
-      toast.error("4 haneli kodu girin");
-      return;
-    }
-    if (resetForm.newPassword.trim().length < 6) {
-      toast.error("Şifre en az 6 karakter olmalı");
-      return;
-    }
-
-    setLoading(true);
-    const result = await authService.confirmPasswordReset(
-      resetForm.phone,
-      resetForm.otp,
-      resetForm.newPassword,
-    );
-    if (result.success) {
-      const normalizedPhone = authService.formatPhoneNumber(resetForm.phone);
-      setCredentials((prev) => ({
-        ...prev,
-        identifier: normalizedPhone || prev.identifier,
-        password: "",
-      }));
-      setStep("password");
-    }
-    setLoading(false);
-  };
-
-  // const normalizedPhoneForOtp = authService.formatPhoneNumber(phone);
-  // const isPhoneReadyForOtp = /^\+998\d{9}$/.test(normalizedPhoneForOtp || "");
-  const normalizedResetPhone = authService.formatPhoneNumber(resetForm.phone);
-  const isResetPhoneReadyForOtp = /^\+998\d{9}$/.test(normalizedResetPhone || "");
-  const isResetOtpReady =
-    resetForm.otp.length === 4 && resetForm.newPassword.trim().length >= 6;
 
   return (
     <div className="min-h-screen bg-white">
@@ -398,6 +329,7 @@ export default function Login() {
               Telefon ile Devam Et
             </Button>
             */}
+            {/* Username/password login - commented out
             <div className="relative py-1">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-300" />
@@ -417,6 +349,7 @@ export default function Login() {
             <p className="text-center text-xs text-gray-500">
               Daha önce kayıt olduysanız bu yöntemle giriş yapın.
             </p>
+            */}
           </div>
         ) : null}
 
@@ -518,6 +451,7 @@ export default function Login() {
         ) : null}
         */}
 
+        {/* Username/password login - commented out
         {step === "password" ? (
           <form onSubmit={handleCredentialLogin} className="mt-8 w-full max-w-md space-y-4">
             <Input
@@ -569,6 +503,7 @@ export default function Login() {
             </button>
           </form>
         ) : null}
+        */}
 
         {step === "telegramOtp" ? (
           <form onSubmit={handleTelegramVerify} className="mt-8 w-full max-w-md space-y-4">
@@ -633,6 +568,7 @@ export default function Login() {
           </form>
         ) : null}
 
+        {/* Password reset - commented out (requires username login)
         {step === "resetPhone" ? (
           <form onSubmit={handleSendResetOtp} className="mt-8 w-full max-w-md space-y-4">
             <Input
@@ -708,6 +644,7 @@ export default function Login() {
             </div>
           </form>
         ) : null}
+        */}
       </main>
     </div>
   );

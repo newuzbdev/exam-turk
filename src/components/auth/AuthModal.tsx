@@ -77,10 +77,9 @@ export default function AuthModal({
   const [otp, setOtp] = useState("");
   const [verifiedPhone, setVerifiedPhone] = useState("");
 
-  const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
 
-  const [passwordLogin, setPasswordLogin] = useState({
+  const [, setPasswordLogin] = useState({
     identifier: "",
     password: "",
   });
@@ -109,7 +108,6 @@ export default function AuthModal({
     setPhone("+998 ");
     setOtp("");
     setVerifiedPhone("");
-    setShowPassword(false);
     setShowNewPassword(false);
     setPasswordLogin({ identifier: "", password: "" });
     setRegisterForm({
@@ -246,20 +244,6 @@ export default function AuthModal({
     }
   };
 
-  const loginWithPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    const result = await authService.loginWithCredentials(
-      {
-        name: passwordLogin.identifier.trim(),
-        password: passwordLogin.password,
-      },
-      navigate,
-    );
-    setLoading(false);
-    if (result?.success) closeModal();
-  };
-
   const sendResetOtp = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!phoneHasEnoughDigits(resetForm.phone)) {
@@ -297,12 +281,7 @@ export default function AuthModal({
     setLoading(false);
     if (!result.success) return;
 
-    setPasswordLogin((prev) => ({
-      ...prev,
-      identifier: authService.formatPhoneNumber(resetForm.phone),
-      password: "",
-    }));
-    setStep("passwordLogin");
+    closeModal();
   };
 
   const register = async (e: React.FormEvent) => {
@@ -424,6 +403,7 @@ export default function AuthModal({
             </button>
             */}
 
+            {/* Username/password login - commented out
             {intent === "login" ? (
               <button
                 type="button"
@@ -437,9 +417,16 @@ export default function AuthModal({
                 Kayit icin telefon dogrulama ve profil bilgileri yeterlidir.
               </p>
             )}
+            */}
+            {intent === "register" ? (
+              <p className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                Kayit icin Google ile devam edin.
+              </p>
+            ) : null}
           </div>
         ) : null}
 
+        {/* Username/password login - commented out
         {step === "passwordLogin" ? (
           <form onSubmit={loginWithPassword} className="mt-6 space-y-4">
             <button
@@ -507,7 +494,6 @@ export default function AuthModal({
               >
                 Sifremi unuttum
               </button>
-              {/* Telefon OTP ile giris - commented out
               <button
                 type="button"
                 onClick={() => goPhoneStep("login")}
@@ -515,10 +501,10 @@ export default function AuthModal({
               >
                 Telefon OTP ile giris
               </button>
-              */}
             </div>
           </form>
         ) : null}
+        */}
 
         {step === "phone" ? (
           <form onSubmit={sendOtp} className="mt-6 space-y-4">

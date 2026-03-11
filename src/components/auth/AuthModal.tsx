@@ -190,11 +190,11 @@ export default function AuthModal({
     )}`;
   };
 
-  const goPhoneStep = (flow: OtpFlow) => {
-    setOtpFlow(flow);
-    setOtp("");
-    setStep("phone");
-  };
+  // const goPhoneStep = (flow: OtpFlow) => {
+  //   setOtpFlow(flow);
+  //   setOtp("");
+  //   setStep("phone");
+  // };
 
   const sendOtp = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();

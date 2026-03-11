@@ -95,22 +95,22 @@ export default function Login() {
   const [step, setStep] = useState<LoginStep>("entry");
   const [loading, setLoading] = useState(false);
 
-  const [phone, setPhone] = useState("+998 ");
-  const [phoneOtp, setPhoneOtp] = useState("");
+  // const [phone, setPhone] = useState("+998 ");
+  // const [phoneOtp, setPhoneOtp] = useState("");
   const [telegramOtp, setTelegramOtp] = useState("");
   const [telegramSessionToken, setTelegramSessionToken] = useState<string | null>(null);
   const [telegramBotLink, setTelegramBotLink] = useState<string | null>(null);
-  const [verifiedPhoneNumber, setVerifiedPhoneNumber] = useState("");
+  // const [verifiedPhoneNumber, setVerifiedPhoneNumber] = useState("");
 
   const [credentials, setCredentials] = useState({
     identifier: "",
     password: "",
   });
 
-  const [phoneSetup, setPhoneSetup] = useState({
-    userName: "",
-    password: "",
-  });
+  // const [phoneSetup, setPhoneSetup] = useState({
+  //   userName: "",
+  //   password: "",
+  // });
 
   const [resetForm, setResetForm] = useState({
     phone: "+998 ",
@@ -141,7 +141,7 @@ export default function Login() {
     const storedPhone = localStorage.getItem("login:lastPhone");
     if (!storedPhone) return;
     const formatted = formatPhoneForInput(storedPhone);
-    setPhone(formatted);
+    // setPhone(formatted);
     setResetForm((prev) => ({ ...prev, phone: formatted }));
   }, []);
 
@@ -192,71 +192,71 @@ export default function Login() {
     }
   };
 
-  const handleSendPhoneOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    const result = await authService.sendOtpRequest(phone);
-    if (result.success) {
-      rememberPhone(phone);
-      setStep("phoneOtp");
-      setPhoneOtp("");
-    }
-    setLoading(false);
-  };
+  // const handleSendPhoneOtp = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   setLoading(true);
+  //   const result = await authService.sendOtpRequest(phone);
+  //   if (result.success) {
+  //     rememberPhone(phone);
+  //     setStep("phoneOtp");
+  //     setPhoneOtp("");
+  //   }
+  //   setLoading(false);
+  // };
 
-  const handleVerifyPhoneOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (phoneOtp.length !== 4) return;
+  // const handleVerifyPhoneOtp = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   if (phoneOtp.length !== 4) return;
 
-    setLoading(true);
-    const result = await authService.verifyOtpForLogin(
-      phone,
-      phoneOtp,
-      () => {
-        toast.info("Hesabınız bulundu, giriş yapılıyor...");
-        rememberPhone(phone);
-        navigateAfterLogin();
-      },
-    );
+  //   setLoading(true);
+  //   const result = await authService.verifyOtpForLogin(
+  //     phone,
+  //     phoneOtp,
+  //     () => {
+  //       toast.info("Hesabınız bulundu, giriş yapılıyor...");
+  //       rememberPhone(phone);
+  //       navigateAfterLogin();
+  //     },
+  //   );
 
-    if (result?.shouldShowRegister) {
-      setVerifiedPhoneNumber(
-        result.phoneNumber || authService.formatPhoneNumber(phone),
-      );
-      setPhoneSetup({ userName: "", password: "" });
-      setStep("phoneSetup");
-    }
-    setLoading(false);
-  };
+  //   if (result?.shouldShowRegister) {
+  //     setVerifiedPhoneNumber(
+  //       result.phoneNumber || authService.formatPhoneNumber(phone),
+  //     );
+  //     setPhoneSetup({ userName: "", password: "" });
+  //     setStep("phoneSetup");
+  //   }
+  //   setLoading(false);
+  // };
 
-  const handleCompletePhoneSetup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!phoneSetup.userName.trim()) {
-      toast.error("Kullanıcı adı girin");
-      return;
-    }
-    if (phoneSetup.password.trim().length < 6) {
-      toast.error("Şifre en az 6 karakter olmalı");
-      return;
-    }
+  // const handleCompletePhoneSetup = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   if (!phoneSetup.userName.trim()) {
+  //     toast.error("Kullanıcı adı girin");
+  //     return;
+  //   }
+  //   if (phoneSetup.password.trim().length < 6) {
+  //     toast.error("Şifre en az 6 karakter olmalı");
+  //     return;
+  //   }
 
-    const phoneNumber =
-      verifiedPhoneNumber || authService.formatPhoneNumber(phone);
+  //   const phoneNumber =
+  //     verifiedPhoneNumber || authService.formatPhoneNumber(phone);
 
-    setLoading(true);
-    await authService.registerUser(
-      {
-        name: phoneSetup.userName.trim(),
-        userName: phoneSetup.userName.trim(),
-        password: phoneSetup.password,
-        phoneNumber,
-        avatarUrl: "",
-        accountType: "STUDENT",
-      },
-      () => navigateAfterLogin(),
-    );
-    setLoading(false);
-  };
+  //   setLoading(true);
+  //   await authService.registerUser(
+  //     {
+  //       name: phoneSetup.userName.trim(),
+  //       userName: phoneSetup.userName.trim(),
+  //       password: phoneSetup.password,
+  //       phoneNumber,
+  //       avatarUrl: "",
+  //       accountType: "STUDENT",
+  //     },
+  //     () => navigateAfterLogin(),
+  //   );
+  //   setLoading(false);
+  // };
 
   const handleCredentialLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -334,8 +334,8 @@ export default function Login() {
     setLoading(false);
   };
 
-  const normalizedPhoneForOtp = authService.formatPhoneNumber(phone);
-  const isPhoneReadyForOtp = /^\+998\d{9}$/.test(normalizedPhoneForOtp || "");
+  // const normalizedPhoneForOtp = authService.formatPhoneNumber(phone);
+  // const isPhoneReadyForOtp = /^\+998\d{9}$/.test(normalizedPhoneForOtp || "");
   const normalizedResetPhone = authService.formatPhoneNumber(resetForm.phone);
   const isResetPhoneReadyForOtp = /^\+998\d{9}$/.test(normalizedResetPhone || "");
   const isResetOtpReady =

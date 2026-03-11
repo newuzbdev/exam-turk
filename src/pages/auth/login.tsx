@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { ArrowLeft, Phone, User } from "lucide-react";
+import { ArrowLeft, User } from "lucide-react";
 import { REGEXP_ONLY_DIGITS_AND_CHARS } from "input-otp";
 
 import { Button } from "@/components/ui/button";
@@ -387,6 +387,7 @@ export default function Login() {
               <TelegramLogo />
               Telegram ile Devam Et
             </Button>
+            {/* Login with phone - commented out
             <Button
               type="button"
               onClick={() => setStep("phone")}
@@ -396,6 +397,7 @@ export default function Login() {
               <Phone className="h-5 w-5" />
               Telefon ile Devam Et
             </Button>
+            */}
             <div className="relative py-1">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-300" />
@@ -418,6 +420,7 @@ export default function Login() {
           </div>
         ) : null}
 
+        {/* Login with phone - commented out
         {step === "phone" ? (
           <div className="mt-8 w-full max-w-md space-y-4">
             <form onSubmit={handleSendPhoneOtp} className="space-y-3">
@@ -513,6 +516,7 @@ export default function Login() {
             </div>
           </form>
         ) : null}
+        */}
 
         {step === "password" ? (
           <form onSubmit={handleCredentialLogin} className="mt-8 w-full max-w-md space-y-4">
@@ -644,7 +648,7 @@ export default function Login() {
               placeholder="+998 90 123 45 67"
             />
             <div className="grid grid-cols-2 gap-2">
-              <Button type="button" variant="outline" onClick={() => setStep("phone")}>
+              <Button type="button" variant="outline" onClick={() => setStep("password")}>
                 Geri
               </Button>
               <Button

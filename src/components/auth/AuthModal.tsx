@@ -414,6 +414,7 @@ export default function AuthModal({
               {intent === "register" ? "Google ile Kayit" : "Google ile Giris"}
             </button>
 
+            {/* Login/Register with phone - commented out
             <button
               type="button"
               onClick={() => goPhoneStep(intent === "register" ? "register" : "login")}
@@ -421,6 +422,7 @@ export default function AuthModal({
             >
               Telefon ile Devam Et
             </button>
+            */}
 
             {intent === "login" ? (
               <button
@@ -505,6 +507,7 @@ export default function AuthModal({
               >
                 Sifremi unuttum
               </button>
+              {/* Telefon OTP ile giris - commented out
               <button
                 type="button"
                 onClick={() => goPhoneStep("login")}
@@ -512,6 +515,7 @@ export default function AuthModal({
               >
                 Telefon OTP ile giris
               </button>
+              */}
             </div>
           </form>
         ) : null}

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -330,10 +330,24 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
   const formattedAmount = paymeService.formatBalance(totalCost);
 
   const hasEnough = (user?.balance ?? 0) >= totalCost;
-  const presets = [1, 10, 50, 100, 200];
-  const setUnits = (u: number) => setAmount(String(Math.max(1, u)));
-  const dec = () => setUnits(Math.max(1, (parseInt(amount || '0', 10) || 0) - 1));
-  const inc = () => setUnits((parseInt(amount || '0', 10) || 0) + 1);
+  // Only allow even kredi values (2, 4, 6, 8, ...)
+  const presets = [2, 4, 6, 8, 10];
+  const normalizeEvenUnits = (value: number) => {
+    if (!Number.isFinite(value) || value <= 0) return 2;
+    const floored = Math.floor(value);
+    return floored % 2 === 0 ? floored : floored - 1 || 2;
+  };
+  const setUnits = (u: number) => setAmount(String(normalizeEvenUnits(u)));
+  const dec = () => {
+    const current = parseInt(amount || '0', 10) || 0;
+    const next = normalizeEvenUnits(current - 2);
+    setAmount(String(next));
+  };
+  const inc = () => {
+    const current = parseInt(amount || '0', 10) || 0;
+    const next = normalizeEvenUnits(current + 2);
+    setAmount(String(next));
+  };
   const approxUnits = Math.floor((user?.balance ?? 0) / (unitPrice || 1));
 
   return (
@@ -403,9 +417,21 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
                   type="number"
                   placeholder="Ornek: 10"
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  min="1"
-                  step="1"
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (!raw) {
+                      setAmount('');
+                      return;
+                    }
+                    const parsed = parseFloat(raw.replace(',', '.'));
+                    if (Number.isNaN(parsed)) {
+                      setAmount('');
+                      return;
+                    }
+                    setAmount(String(normalizeEvenUnits(parsed)));
+                  }}
+                  min="2"
+                  step="2"
                   className="text-center text-base bg-white border border-gray-300 rounded-xl focus-visible:ring-0 focus-visible:ring-offset-0 text-gray-900"
                 />
                 <button onClick={inc} className="w-9 h-9 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-100 transition-colors">

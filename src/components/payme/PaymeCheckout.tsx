@@ -330,8 +330,8 @@ export const PaymeCheckout: React.FC<PaymeCheckoutProps> = ({
   const formattedAmount = paymeService.formatBalance(totalCost);
 
   const hasEnough = (user?.balance ?? 0) >= totalCost;
-  // Only allow even kredi values (2, 4, 6, 8, ...)
-  const presets = [2, 4, 6, 8, 10];
+  // Only allow even kredi values (2, 4, 6, 8, 10, 12, ...)
+  const presets = [2, 4, 6, 8, 10, 12];
   const normalizeEvenUnits = (value: number) => {
     if (!Number.isFinite(value) || value <= 0) return 2;
     const floored = Math.floor(value);

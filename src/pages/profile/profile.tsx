@@ -93,6 +93,8 @@ const getCefrLevel = (score: number | null | undefined): string => {
   if (score >= 38) return "B1";
   return "B1 alti";
 };
+const wholeScore = (score: number | null | undefined): number =>
+  Math.round(Number(score) || 0);
 
 const getSelectedTests = (test: TestResult) => {
   const selected: string[] = [];
@@ -303,9 +305,9 @@ export default function ProfilePage() {
   const totalTests = Number(profileStats?.totalTests ?? completedResults.length ?? 0);
   const highestScore =
     Number(profileStats?.highestScore ?? 0) > 0
-      ? Number(profileStats?.highestScore)
+      ? wholeScore(Number(profileStats?.highestScore))
       : completedResults.length
-        ? Math.max(...completedResults.map((item) => Number(item.overallScore || 0)))
+        ? wholeScore(Math.max(...completedResults.map((item) => Number(item.overallScore || 0))))
         : 0;
 
   const latestByDate = useMemo(() => {
@@ -315,8 +317,8 @@ export default function ProfilePage() {
 
   const latestScore =
     Number(profileStats?.latestScore ?? 0) > 0
-      ? Number(profileStats?.latestScore)
-      : Number(latestByDate?.overallScore || 0);
+      ? wholeScore(Number(profileStats?.latestScore))
+      : wholeScore(Number(latestByDate?.overallScore || 0));
   const latestTestDate = profileStats?.latestTestDate
     ? formatDate(profileStats.latestTestDate)
     : latestByDate
@@ -596,6 +598,7 @@ export default function ProfilePage() {
                     <div className="space-y-3">
                       {sortedExamResults.map((result) => {
                         const tests = getSelectedTests(result);
+                        const roundedOverall = wholeScore(result.overallScore);
                         return (
                           <div
                             key={result.id}
@@ -628,8 +631,8 @@ export default function ProfilePage() {
                                 <div className="text-right">
                                   <p className="text-xs text-gray-500">Skor</p>
                                   <p className="text-sm font-semibold text-gray-900">
-                                    {Number(result.overallScore || 0) > 0
-                                      ? `${result.overallScore} / ${getCefrLevel(result.overallScore)}`
+                                    {roundedOverall > 0
+                                      ? `${roundedOverall} / ${getCefrLevel(roundedOverall)}`
                                       : "-"}
                                   </p>
                                 </div>
@@ -658,85 +661,149 @@ export default function ProfilePage() {
                     <CardTitle>Harcamalar</CardTitle>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   {sortedSpendingRows.length === 0 ? (
                     <div className="rounded-xl border border-dashed border-gray-300 px-4 py-10 text-center text-sm text-gray-600">
                       Henuz harcama kaydi yok.
                     </div>
                   ) : (
-                    <div className="rounded-xl border border-gray-200">
-                      <table className="w-full table-fixed">
-                        <colgroup>
-                          <col className="w-[8%]" />
-                          <col className="w-[18.4%]" />
-                          <col className="w-[18.4%]" />
-                          <col className="w-[18.4%]" />
-                          <col className="w-[18.4%]" />
-                          <col className="w-[18.4%]" />
-                        </colgroup>
-                        <thead className="bg-gray-50">
-                          <tr className="text-left text-xs uppercase tracking-wide text-gray-500">
-                            <th className="px-4 py-3 font-semibold">#</th>
-                            <th className="px-4 py-3 font-semibold">
-                              <button
-                                type="button"
-                                onClick={() => toggleTxSort("date")}
-                                className="inline-flex items-center gap-1 transition hover:text-gray-900"
-                              >
-                                ISLEM TARIHI {txSortBy === "date" ? (txSortDir === "asc" ? "↑" : "↓") : ""}
-                              </button>
-                            </th>
-                            <th className="px-4 py-3 font-semibold">ODEME YONTEMI</th>
-                            <th className="px-4 py-3 font-semibold">NE ICIN</th>
-                            <th className="px-4 py-3 font-semibold">ISLEM TURU</th>
-                            <th className="px-4 py-3 text-right font-semibold">
-                              <button
-                                type="button"
-                                onClick={() => toggleTxSort("amount")}
-                                className="inline-flex items-center gap-1 transition hover:text-gray-900"
-                              >
-                                TUTAR {txSortBy === "amount" ? (txSortDir === "asc" ? "↑" : "↓") : ""}
-                              </button>
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 bg-white">
-                          {sortedSpendingRows.map((row, index) => (
-                            <tr key={row.id} className="text-sm text-gray-700">
-                              <td className="px-4 py-3 font-medium text-gray-500">{index + 1}</td>
-                              <td className="px-4 py-3">{formatDateTime(row.date)}</td>
-                              <td className="px-4 py-3 whitespace-nowrap">
-                                <span className="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs font-medium">
-                                  {row.source}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3">
-                                <span className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700" title={row.paidFor}>
+                    <>
+                      <div className="flex flex-wrap gap-2 md:hidden">
+                        <Button
+                          type="button"
+                          variant={txSortBy === "date" ? "default" : "outline"}
+                          size="sm"
+                          className={txSortBy === "date" ? "bg-red-600 text-white hover:bg-red-700" : ""}
+                          onClick={() => toggleTxSort("date")}
+                        >
+                          Tarih {txSortBy === "date" ? (txSortDir === "asc" ? "(ASC)" : "(DESC)") : ""}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={txSortBy === "amount" ? "default" : "outline"}
+                          size="sm"
+                          className={txSortBy === "amount" ? "bg-red-600 text-white hover:bg-red-700" : ""}
+                          onClick={() => toggleTxSort("amount")}
+                        >
+                          Tutar {txSortBy === "amount" ? (txSortDir === "asc" ? "(ASC)" : "(DESC)") : ""}
+                        </Button>
+                      </div>
+
+                      <div className="space-y-3 md:hidden">
+                        {sortedSpendingRows.map((row, index) => (
+                          <div key={row.id} className="rounded-xl border border-gray-200 bg-white p-3">
+                            <div className="mb-2 flex items-start justify-between gap-2">
+                              <div>
+                                <p className="text-xs text-gray-500">#{index + 1}</p>
+                                <p className="text-sm font-semibold text-gray-900">{formatDateTime(row.date)}</p>
+                              </div>
+                              <span className="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-700">
+                                {row.source}
+                              </span>
+                            </div>
+
+                            <div className="space-y-2 text-sm">
+                              <div className="flex items-start justify-between gap-3">
+                                <span className="text-gray-500">Ne Icin</span>
+                                <span className="max-w-[68%] break-words text-right font-medium text-gray-800">
                                   {row.paidFor}
                                 </span>
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap">{row.type}</td>
-                              <td className="px-4 py-3 text-right">
-                                {row.direction === "credit_purchase" ? (
-                                  <>
-                                    <p className="font-semibold text-red-600">-{formatUzs(row.amountUzs)}</p>
-                                    <p className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600">
-                                      +{row.amountCredits} <Coins className="h-3.5 w-3.5" />
-                                    </p>
-                                  </>
-                                ) : (
-                                  <>
+                              </div>
+                              <div className="flex items-start justify-between gap-3">
+                                <span className="text-gray-500">Islem Turu</span>
+                                <span className="max-w-[68%] break-words text-right font-medium text-gray-800">
+                                  {row.type}
+                                </span>
+                              </div>
+                              <div className="flex items-start justify-between gap-3 border-t border-gray-100 pt-2">
+                                <span className="text-gray-500">Tutar</span>
+                                <div className="text-right">
+                                  {row.direction === "credit_purchase" ? (
+                                    <>
+                                      <p className="font-semibold text-red-600">-{formatUzs(row.amountUzs)}</p>
+                                      <p className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600">
+                                        +{row.amountCredits} <Coins className="h-3.5 w-3.5" />
+                                      </p>
+                                    </>
+                                  ) : (
                                     <p className="inline-flex items-center gap-1 font-semibold text-red-600">
                                       -{row.amountCredits} <Coins className="h-4 w-4" />
                                     </p>
-                                  </>
-                                )}
-                              </td>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="hidden overflow-x-auto rounded-xl border border-gray-200 md:block">
+                        <table className="min-w-[860px] w-full table-auto">
+                          <thead className="bg-gray-50">
+                            <tr className="text-left text-xs uppercase tracking-wide text-gray-500">
+                              <th className="px-4 py-3 font-semibold">#</th>
+                              <th className="px-4 py-3 font-semibold">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleTxSort("date")}
+                                  className="inline-flex items-center gap-1 transition hover:text-gray-900"
+                                >
+                                  ISLEM TARIHI {txSortBy === "date" ? (txSortDir === "asc" ? "(ASC)" : "(DESC)") : ""}
+                                </button>
+                              </th>
+                              <th className="px-4 py-3 font-semibold">ODEME YONTEMI</th>
+                              <th className="px-4 py-3 font-semibold">NE ICIN</th>
+                              <th className="px-4 py-3 font-semibold">ISLEM TURU</th>
+                              <th className="px-4 py-3 text-right font-semibold">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleTxSort("amount")}
+                                  className="inline-flex items-center gap-1 transition hover:text-gray-900"
+                                >
+                                  TUTAR {txSortBy === "amount" ? (txSortDir === "asc" ? "(ASC)" : "(DESC)") : ""}
+                                </button>
+                              </th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100 bg-white">
+                            {sortedSpendingRows.map((row, index) => (
+                              <tr key={row.id} className="text-sm text-gray-700">
+                                <td className="px-4 py-3 font-medium text-gray-500">{index + 1}</td>
+                                <td className="whitespace-nowrap px-4 py-3">{formatDateTime(row.date)}</td>
+                                <td className="whitespace-nowrap px-4 py-3">
+                                  <span className="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs font-medium">
+                                    {row.source}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span
+                                    className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700"
+                                    title={row.paidFor}
+                                  >
+                                    {row.paidFor}
+                                  </span>
+                                </td>
+                                <td className="whitespace-nowrap px-4 py-3">{row.type}</td>
+                                <td className="px-4 py-3 text-right">
+                                  {row.direction === "credit_purchase" ? (
+                                    <>
+                                      <p className="font-semibold text-red-600">-{formatUzs(row.amountUzs)}</p>
+                                      <p className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600">
+                                        +{row.amountCredits} <Coins className="h-3.5 w-3.5" />
+                                      </p>
+                                    </>
+                                  ) : (
+                                    <p className="inline-flex items-center gap-1 font-semibold text-red-600">
+                                      -{row.amountCredits} <Coins className="h-4 w-4" />
+                                    </p>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
                   )}
                 </CardContent>
               </Card>

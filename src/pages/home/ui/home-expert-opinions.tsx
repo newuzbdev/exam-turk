@@ -16,7 +16,7 @@ const experts = [
     image: "/tim%202.png",
     text: "Bu platform, gerçek sınav deneyimini yaşamanız, seviyenizi ve gelişime açık yönlerinizi net şekilde görmeniz amacıyla hazırlanmıştır. Böylece sınava daha bilinçli ve etkili bir şekilde hazırlanabilirsiniz.",
     telegram: "https://t.me/zargana_deus_ex_machina",
-    instagram: "https://www.instagram.com/bigby.wolf/",
+    instagram: "https://www.instagram.com/timur_x_makarov/",
   },
 ];
 
@@ -220,4 +220,3 @@ const HomeExpertOpinions = () => {
 };
 
 export default HomeExpertOpinions;
-

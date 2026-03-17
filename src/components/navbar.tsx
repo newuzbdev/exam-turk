@@ -1,4 +1,4 @@
-﻿import { NavLink, useNavigate } from "react-router";
+import { NavLink, useLocation, useNavigate } from "react-router";
 import { useState } from "react";
 import { Button } from "./ui/button";
 import {
@@ -9,11 +9,12 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Menu, User, LogOut, Coins } from "lucide-react";
+import { Menu, User, LogOut, Coins, Instagram, Send } from "lucide-react";
 import PaymeCheckoutModal from "@/components/payme/PaymeCheckoutModal";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
 import { toApiUrl } from "@/config/runtime";
+import { setPostLoginRedirect } from "@/utils/postLoginRedirect";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,6 +39,11 @@ const navLinks = [
   { title: "Nasıl Çalışır", href: "/how-it-works" },
   { title: "Fiyatlar", href: "/price" },
 ];
+const SOCIAL_LINKS = {
+  telegram: "https://t.me/turkishmock",
+  instagram:
+    "https://www.instagram.com/turkishmock.uz?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==",
+};
 
 const mobileLinkClass = ({ isActive }: { isActive: boolean }) =>
   `rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
@@ -48,6 +54,7 @@ const mobileLinkClass = ({ isActive }: { isActive: boolean }) =>
 
 const Navbar = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, isAuthenticated, logout, refreshUser } = useAuth();
 
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
@@ -55,6 +62,9 @@ const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const coin = user?.coin ?? 0;
+  const displayName = String(
+    user?.username || user?.userName || user?.name || "Kullanici",
+  );
 
   const getInitials = (fullName?: string) => {
     const value = String(fullName || "").trim();
@@ -79,6 +89,16 @@ const Navbar = () => {
     await refreshUser();
   };
 
+  const navigateToLogin = () => {
+    const redirectTo = `${location.pathname}${location.search}${location.hash}` || "/";
+    setPostLoginRedirect(redirectTo);
+    navigate("/login", {
+      state: {
+        mode: "login",
+        redirectTo,
+      },
+    });
+  };
   const handleLogoutConfirm = () => {
     logout();
     setShowLogoutDialog(false);
@@ -109,6 +129,27 @@ const Navbar = () => {
           <div className="hidden lg:block" />
 
           <div className="flex items-center gap-2">
+            <div className="hidden items-center gap-1 md:flex">
+              <a
+                href={SOCIAL_LINKS.telegram}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Telegram"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-200 text-gray-600 transition-colors hover:bg-gray-50 hover:text-red-600"
+              >
+                <Send className="h-4 w-4" />
+              </a>
+              <a
+                href={SOCIAL_LINKS.instagram}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Instagram"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-200 text-gray-600 transition-colors hover:bg-gray-50 hover:text-red-600"
+              >
+                <Instagram className="h-4 w-4" />
+              </a>
+            </div>
+
             {isAuthenticated && user ? (
               <div className="hidden items-center gap-3 lg:flex">
                 <button
@@ -126,11 +167,11 @@ const Navbar = () => {
                       variant="ghost"
                       className="flex items-center gap-2 rounded-lg px-2 pr-0 text-sm transition-all duration-300 hover:bg-gray-50"
                     >
-                      <span className="max-w-[180px] truncate font-medium text-gray-900">{user.name}</span>
+                      <span className="max-w-[180px] truncate font-medium text-gray-900">{displayName}</span>
                       <Avatar className="h-10 w-10 border-2 border-gray-200">
-                        <AvatarImage src={getAvatarSrc()} alt={user.name} />
+                        <AvatarImage src={getAvatarSrc()} alt={displayName} />
                         <AvatarFallback className="bg-red-50 text-xs font-semibold text-red-700">
-                          {getInitials(user.name)}
+                          {getInitials(displayName)}
                         </AvatarFallback>
                       </Avatar>
                     </Button>
@@ -158,12 +199,51 @@ const Navbar = () => {
                 <Button
                   type="button"
                   className="theme-important rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-300 hover:bg-red-700 hover:shadow-md"
-                  onClick={() => navigate("/login")}
+                  onClick={navigateToLogin}
                 >
                   Oturum Aç
                 </Button>
               </div>
             )}
+
+            <div className="flex items-center gap-2 lg:hidden">
+              {isAuthenticated && user ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setIsCoinModalOpen(true)}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 text-xs font-semibold text-gray-900"
+                    aria-label="Kredi bakiyesi"
+                  >
+                    <Coins className="h-3.5 w-3.5" />
+                    <span>{coin}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => navigate("/profile")}
+                    className="inline-flex items-center justify-center rounded-full"
+                    aria-label="Profil sayfasına git"
+                  >
+                    <Avatar className="h-9 w-9 border border-gray-200">
+                      <AvatarImage src={getAvatarSrc()} alt={displayName} />
+                      <AvatarFallback className="bg-red-50 text-xs font-semibold text-red-700">
+                        {getInitials(displayName)}
+                      </AvatarFallback>
+                    </Avatar>
+                  </button>
+                </>
+              ) : (
+                <Button
+                  type="button"
+                  size="sm"
+                  className="theme-important h-9 rounded-md bg-red-600 px-3 text-xs font-semibold text-white hover:bg-red-700"
+                  onClick={navigateToLogin}
+                >
+                  Oturum Aç
+                </Button>
+              )}
+            </div>
 
             <div className="lg:hidden">
               <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
@@ -187,13 +267,13 @@ const Navbar = () => {
                           >
                             <div className="flex items-center gap-2">
                               <Avatar className="h-9 w-9">
-                                <AvatarImage src={getAvatarSrc()} alt={user.name} />
+                                <AvatarImage src={getAvatarSrc()} alt={displayName} />
                                 <AvatarFallback className="text-xs font-semibold text-red-700">
-                                  {getInitials(user.name)}
+                                  {getInitials(displayName)}
                                 </AvatarFallback>
                               </Avatar>
                               <div className="min-w-0">
-                                <p className="truncate text-sm font-medium text-gray-900">{user.name}</p>
+                                <p className="truncate text-sm font-medium text-gray-900">{displayName}</p>
                                 <p className="text-xs text-gray-500">Profil sayfasına git</p>
                               </div>
                             </div>
@@ -236,6 +316,27 @@ const Navbar = () => {
                       )}
                     </div>
 
+                    <div className="mt-1 flex items-center gap-2">
+                      <a
+                        href={SOCIAL_LINKS.telegram}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="Telegram"
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-200 text-gray-600 transition-colors hover:bg-gray-50 hover:text-red-600"
+                      >
+                        <Send className="h-4 w-4" />
+                      </a>
+                      <a
+                        href={SOCIAL_LINKS.instagram}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="Instagram"
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-200 text-gray-600 transition-colors hover:bg-gray-50 hover:text-red-600"
+                      >
+                        <Instagram className="h-4 w-4" />
+                      </a>
+                    </div>
+
                     {!isAuthenticated && (
                       <div className="mt-2">
                         <Button
@@ -243,7 +344,7 @@ const Navbar = () => {
                           className="theme-important bg-red-600 text-white hover:bg-red-700"
                           onClick={() => {
                             setMobileMenuOpen(false);
-                            navigate("/login");
+                            navigateToLogin();
                           }}
                         >
                           Oturum Aç

@@ -1,292 +1,514 @@
-﻿import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { useState } from "react";
+import type { LucideIcon } from "lucide-react";
 import {
-  Coins,
-  BookOpen,
-  Headphones,
-  PenTool,
-  Mic,
   ArrowRight,
+  BookOpen,
   CheckCircle2,
   Clock,
-  FileText,
-  Award,
-  Zap,
-  Target,
-  TrendingUp,
+  Coins,
   CreditCard,
-  Layout,
+  Headphones,
   HelpCircle,
+  Layout,
+  Mic,
+  PenTool,
+  ShieldCheck,
+  Sparkles,
+  Target,
+  UserCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import PaymeCheckoutModal from "@/components/payme/PaymeCheckoutModal";
+import { setPostLoginRedirect } from "@/utils/postLoginRedirect";
+
+type ProcessStep = {
+  id: number;
+  title: string;
+  description: string;
+  icon: LucideIcon;
+  points: string[];
+};
+
+type SkillCard = {
+  title: string;
+  detail: string;
+  duration: string;
+  output: string;
+  icon: LucideIcon;
+  colorClass: string;
+};
+
+const QUICK_FACTS = [
+  {
+    title: "Toplam Bölüm",
+    value: "4",
+    description: "Okuma, Dinleme, Yazma, Konuşma",
+  },
+  {
+    title: "Bölüm Ücreti",
+    value: "3 Kredi",
+    description: "Her bölüm için ayrı ücretlendirme",
+  },
+  {
+    title: "Sonuç Hızı",
+    value: "Anında",
+    description: "Bölüm tamamlanınca sonuç ekranı hazır",
+  },
+  {
+    title: "Seviye Ölçeği",
+    value: "B1-C1",
+    description: "CEFR uyumlu değerlendirme",
+  },
+];
+
+const PROCESS_STEPS: ProcessStep[] = [
+  {
+    id: 1,
+    title: "Giriş Yap ve Profilini Hazırla",
+    description:
+      "Google veya Telegram ile birkaç saniyede giriş yaparsın. Profil adı ve hesap bilgilerini daha sonra güncelleyebilirsin.",
+    icon: UserCheck,
+    points: [
+      "Yeni hesap açmakla uğraşmadan direkt başla.",
+      "Profilindeki isim, sonuç sayfalarında görünür.",
+      "Hesabınla tekrar giriş yaptığında geçmişin korunur.",
+    ],
+  },
+  {
+    id: 2,
+    title: "Kredi Yükle",
+    description:
+      "Teste başlamadan önce kredi bakiyen yeterli olmalıdır. Ödeme tamamlanınca kredi hesabına otomatik eklenir.",
+    icon: CreditCard,
+    points: [
+      "Kredi satın alma işlemi birkaç adımda tamamlanır.",
+      "Bölüm seçimine göre sadece kullandığın kadar kredi harcarsın.",
+      "Bakiyeni üst menüden her zaman görebilirsin.",
+    ],
+  },
+  {
+    id: 3,
+    title: "Sınav Bölümlerini Seç",
+    description:
+      "Tek bir bölümü çözebilir veya tam deneme için tüm bölümleri tamamlayabilirsin. Sistem seçimine göre seni yönlendirir.",
+    icon: Layout,
+    points: [
+      "Okuma, dinleme, yazma ve konuşma bölümleri ayrı ayrı yönetilir.",
+      "Bölüm başlamadan önce talimatları görürsün.",
+      "Sınava geçmeden önce kontrol ekranı sunulur.",
+    ],
+  },
+  {
+    id: 4,
+    title: "Sınavı Gerçek Ortamda Tamamla",
+    description:
+      "Süre yönetimi, soru düzeni ve akış gerçek sınav mantığına yakın şekilde hazırlanmıştır.",
+    icon: Clock,
+    points: [
+      "Masaüstünde okuma ve dinleme için not alma araçları bulunur.",
+      "Cevaplama alanları sade tutulduğu için odak kaybı azalır.",
+      "Her bölüm kendi kurallarına uygun ilerler.",
+    ],
+  },
+  {
+    id: 5,
+    title: "Sonuçları ve Seviyeni İncele",
+    description:
+      "Sınav bittiğinde puanın, seviye karşılığı ve gelişim alanların ekranda görüntülenir. Sonuç geçmişine profilinden ulaşabilirsin.",
+    icon: Target,
+    points: [
+      "Puanlar ve seviyeler tek ekranda anlaşılır biçimde gösterilir.",
+      "Hangi beceride güçlü veya zayıf olduğunu görebilirsin.",
+      "Yeni denemelerde gelişimini karşılaştırabilirsin.",
+    ],
+  },
+];
+
+const SKILL_CARDS: SkillCard[] = [
+  {
+    title: "Okuma",
+    detail: "Metin anlama, ana fikir yakalama ve detay çözümleme becerisi ölçülür.",
+    duration: "Süreli bölüm",
+    output: "Puan + CEFR seviye karşılığı",
+    icon: BookOpen,
+    colorClass: "text-blue-600 bg-blue-50 border-blue-100",
+  },
+  {
+    title: "Dinleme",
+    detail: "Ses kayıtlarını doğru anlama, bağlamı takip etme ve doğru seçenek bulma değerlendirilir.",
+    duration: "Süreli bölüm",
+    output: "Puan + CEFR seviye karşılığı",
+    icon: Headphones,
+    colorClass: "text-emerald-600 bg-emerald-50 border-emerald-100",
+  },
+  {
+    title: "Yazma",
+    detail: "Yazının içeriği, dil doğruluğu, kelime kullanımı ve anlatım düzeni analiz edilir.",
+    duration: "Süreli bölüm",
+    output: "Puan + detaylı geri bildirim",
+    icon: PenTool,
+    colorClass: "text-amber-600 bg-amber-50 border-amber-100",
+  },
+  {
+    title: "Konuşma",
+    detail: "Telaffuz, akıcılık, kelime kullanımı ve yanıt kalitesi bir arada değerlendirilir.",
+    duration: "Süreli bölüm",
+    output: "Puan + detaylı geri bildirim",
+    icon: Mic,
+    colorClass: "text-rose-600 bg-rose-50 border-rose-100",
+  },
+];
+
+const FAQ_ITEMS = [
+  {
+    q: "Tüm bölümleri aynı gün çözmek zorunda mıyım?",
+    a: "Hayır. Bölümleri ayrı ayrı çözebilirsin. Hazır olduğun bölümden başlayıp diğerlerini sonra tamamlayabilirsin.",
+  },
+  {
+    q: "Sonuçlarımı nerede göreceğim?",
+    a: "Her bölümden sonra sonuç ekranı açılır. Ayrıca profil sayfandaki geçmiş alanından eski sonuçlarına tekrar ulaşabilirsin.",
+  },
+  {
+    q: "Telefon ve bilgisayar arasında fark var mı?",
+    a: "Sınav her iki cihazda da çalışır. Masaüstünde ek not alma araçları bulunduğu için özellikle okuma ve dinlemede daha rahat bir deneyim sunar.",
+  },
+  {
+    q: "Kredi biterse sınavım silinir mi?",
+    a: "Hayır. Tamamladığın sonuçlar hesabında kalır. Sadece yeni bir bölüme başlamak için yeterli kredi gerekir.",
+  },
+];
 
 const HowItWorksPage = () => {
+  const location = useLocation();
   const { user, isAuthenticated } = useAuth();
   const [isCoinModalOpen, setIsCoinModalOpen] = useState(false);
+  const redirectTo = `${location.pathname}${location.search}${location.hash}` || "/";
 
   const currentCoin = user?.coin ?? 0;
+  const isLoggedIn = Boolean(isAuthenticated && user);
 
   return (
-    <div className="bg-white text-gray-900 min-h-screen font-sans">
-      <section className="pt-24 pb-16 bg-white border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-red-50 border border-red-100 rounded-full mb-8">
-            <span className="flex h-2 w-2 rounded-full bg-red-600 animate-pulse"></span>
-            <span className="text-sm text-red-700 font-bold tracking-wide uppercase">Başlangıç Rehberi</span>
+    <div className="min-h-screen bg-gray-50 text-gray-900">
+      <section className="relative overflow-hidden border-b border-gray-200 bg-white pb-16 pt-24">
+        <div className="pointer-events-none absolute inset-0 opacity-70">
+          <div className="absolute -top-20 -right-16 h-56 w-56 rounded-full bg-red-100 blur-3xl" />
+          <div className="absolute bottom-0 left-0 h-44 w-44 rounded-full bg-orange-100 blur-3xl" />
+        </div>
+
+        <div className="relative mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[1.2fr_0.8fr] lg:px-8">
+          <div>
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-red-100 bg-red-50 px-4 py-1.5">
+              <Sparkles className="h-4 w-4 text-red-600" />
+              <span className="text-xs font-semibold uppercase tracking-wide text-red-700">
+                Platform Rehberi
+              </span>
+            </div>
+
+            <h1 className="max-w-3xl text-4xl font-extrabold tracking-tight text-gray-900 md:text-6xl">
+              TURKISHMOCK
+              <span className="block text-red-600">Nasıl Çalışır?</span>
+            </h1>
+
+            <p className="mt-6 max-w-2xl text-base leading-relaxed text-gray-600 md:text-lg">
+              Bu sayfa, platformu ilk kez kullanan birinin bile hiçbir adımı
+              kaçırmadan sınava başlayabilmesi için hazırlandı. Kısa özet, adım
+              adım süreç ve sık sorulan soruların tamamı burada.
+            </p>
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <NavLink to="/test">
+                <Button className="h-12 rounded-xl bg-red-600 px-7 text-base font-semibold text-white hover:bg-red-700">
+                  Teste Başla
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </NavLink>
+              <NavLink to="/price">
+                <Button
+                  variant="outline"
+                  className="h-12 rounded-xl border-gray-300 bg-white px-7 text-base font-semibold text-gray-800 hover:bg-gray-50"
+                >
+                  Fiyatları Gör
+                </Button>
+              </NavLink>
+            </div>
           </div>
-          <h1 className="text-4xl md:text-6xl font-extrabold text-gray-900 mb-6 tracking-tight leading-tight">
-            Süreç Nasıl <span className="text-red-600">İşliyor?</span>
-          </h1>
-          <p className="text-lg md:text-xl text-gray-500 max-w-2xl mx-auto font-normal leading-relaxed">
-            TURKISHMOCK platformunu kullanarak CEFR seviyenizi öğrenmek için gereken tüm adımlar.
-          </p>
+
+          <aside className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="mb-5 flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 p-3">
+              <span className="text-sm font-semibold text-gray-700">
+                Mevcut Bakiye
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-sm font-bold text-gray-900">
+                <Coins className="h-4 w-4" />
+                {currentCoin}
+              </span>
+            </div>
+
+            <h2 className="text-lg font-semibold text-gray-900">
+              Hızlı Başlangıç
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-gray-600">
+              Giriş yap, kredini kontrol et ve sınav türünü seçerek hemen
+              başlayabilirsin.
+            </p>
+
+            <div className="mt-4 space-y-2.5">
+              <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                <CheckCircle2 className="h-4 w-4 text-red-600" />
+                Hesabına giriş yap
+              </div>
+              <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                <CheckCircle2 className="h-4 w-4 text-red-600" />
+                Kredi bakiyeni doğrula
+              </div>
+              <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                <CheckCircle2 className="h-4 w-4 text-red-600" />
+                Bölüm seçip sınavı başlat
+              </div>
+            </div>
+
+            <div className="mt-5">
+              {isLoggedIn ? (
+                <Button
+                  type="button"
+                  onClick={() => setIsCoinModalOpen(true)}
+                  className="h-11 w-full rounded-xl bg-red-600 text-sm font-semibold text-white hover:bg-red-700"
+                >
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  Kredi Satın Al
+                </Button>
+              ) : (
+                <NavLink to="/login" state={{ mode: "login", redirectTo }} onClick={() => setPostLoginRedirect(redirectTo)}>
+                  <Button className="h-11 w-full rounded-xl bg-red-600 text-sm font-semibold text-white hover:bg-red-700">
+                    Giriş Yap ve Başla
+                  </Button>
+                </NavLink>
+              )}
+            </div>
+          </aside>
         </div>
       </section>
 
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
-          <div className="bg-white rounded-2xl border border-gray-200 p-8 md:p-12 shadow-sm hover:shadow-xl transition-all duration-300 group">
-            <div className="flex flex-col md:flex-row gap-8 items-start">
-              <div className="flex-shrink-0">
-                <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center text-red-600 font-bold text-2xl border border-red-100 group-hover:bg-red-600 group-hover:text-white transition-colors duration-300">
-                  1
-                </div>
-              </div>
-              <div className="flex-grow grid xl:grid-cols-[1fr_320px] gap-6 items-start w-full">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-3">
-                    Kredi Satın Alma
-                    <CreditCard className="w-6 h-6 text-gray-400" />
-                  </h2>
-                  <p className="text-gray-600 mb-6 leading-relaxed">
-                    Tek adimda kredi miktarini girin, Payme ile odemeyi tamamlayin ve krediniz hesabiniza otomatik eklensin.
-                  </p>
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                      <CheckCircle2 className="w-5 h-5 text-red-600 mt-0.5" />
-                      <span className="text-sm text-gray-700 font-medium">Kredi Satın Al butonuna tıklayın.</span>
-                    </div>
-                    <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                      <CheckCircle2 className="w-5 h-5 text-red-600 mt-0.5" />
-                      <span className="text-sm text-gray-700 font-medium">Almak istediginiz kredi miktarini girin.</span>
-                    </div>
-                    <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100 sm:col-span-2">
-                      <CheckCircle2 className="w-5 h-5 text-red-600 mt-0.5" />
-                      <span className="text-sm text-gray-700 font-medium">Payme odemesi tamamlaninca kredi otomatik yuklenir.</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="w-full max-w-[280px] mx-auto">
-                  <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-md">
-                    <div className="rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 flex items-center justify-between mb-2">
-                      <span className="text-[10px] font-bold text-red-600 tracking-wide">TURKISHMOCK</span>
-                      <span className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-[10px] font-semibold text-gray-800">
-                        <Coins className="w-3 h-3" />
-                        {currentCoin}
-                      </span>
-                    </div>
-
-                    {isAuthenticated ? (
-                      <button
-                        type="button"
-                        onClick={() => setIsCoinModalOpen(true)}
-                        className="w-full inline-flex items-center justify-center rounded-md bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700 transition-colors"
-                      >
-                        Kredi Satın Al
-                      </button>
-                    ) : (
-                      <div className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] text-amber-800">
-                        Kredi satin alma modalini gormek icin giris yapin.
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-gray-200 p-8 md:p-12 shadow-sm hover:shadow-xl transition-all duration-300 group">
-            <div className="flex flex-col md:flex-row gap-8 items-start">
-              <div className="flex-shrink-0">
-                <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center text-red-600 font-bold text-2xl border border-red-100 group-hover:bg-red-600 group-hover:text-white transition-colors duration-300">
-                  2
-                </div>
-              </div>
-              <div className="flex-grow grid xl:grid-cols-[1fr_320px] gap-6 items-start w-full">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-3">
-                    Teste Baslama
-                    <Coins className="w-6 h-6 text-gray-400" />
-                  </h2>
-                  <p className="text-gray-600 mb-6 leading-relaxed">
-                    Krediniz yeterliyse test bolumlerini secin ve aninda baslayin.
-                  </p>
-
-                  <div className="bg-blue-50 border border-blue-100 rounded-xl p-5 mb-6">
-                    <div className="flex items-start gap-3">
-                      <Zap className="w-5 h-5 text-blue-600 mt-1" />
-                      <div>
-                        <h4 className="font-bold text-blue-900 mb-1">Kredi Maliyetleri</h4>
-                        <div className="flex flex-wrap gap-2">
-                          <span className="bg-white text-blue-700 px-3 py-1 rounded-md text-xs font-bold border border-blue-100">Okuma: 3 Kredi</span>
-                          <span className="bg-white text-blue-700 px-3 py-1 rounded-md text-xs font-bold border border-blue-100">Dinleme: 3 Kredi</span>
-                          <span className="bg-white text-blue-700 px-3 py-1 rounded-md text-xs font-bold border border-blue-100">Yazma: 3 Kredi</span>
-                          <span className="bg-white text-blue-700 px-3 py-1 rounded-md text-xs font-bold border border-blue-100">Konuşma: 3 Kredi</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="w-full max-w-[280px] mx-auto">
-                  <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-md">
-                    <div className="rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 flex items-center justify-between mb-2">
-                      <span className="text-[10px] font-bold text-red-600 tracking-wide">TURKISHMOCK</span>
-                      <span className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-[10px] font-semibold text-gray-800">
-                        <Coins className="w-3 h-3" />
-                        {currentCoin}
-                      </span>
-                    </div>
-
-                    {isAuthenticated ? (
-                      <button
-                        type="button"
-                        onClick={() => setIsCoinModalOpen(true)}
-                        className="w-full inline-flex items-center justify-center rounded-md bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700 transition-colors"
-                      >
-                        Kredi Satın Al
-                      </button>
-                    ) : (
-                      <div className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] text-amber-800">
-                        Gerçek kredi satın alma modalını görmek için giriş yapın.
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-gray-200 p-8 md:p-12 shadow-sm hover:shadow-xl transition-all duration-300 group">
-            <div className="flex flex-col md:flex-row gap-8 items-start">
-              <div className="flex-shrink-0">
-                <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center text-red-600 font-bold text-2xl border border-red-100 group-hover:bg-red-600 group-hover:text-white transition-colors duration-300">
-                  3
-                </div>
-              </div>
-              <div className="flex-grow">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-3">
-                  Sınav Seçimi
-                  <Layout className="w-6 h-6 text-gray-400" />
-                </h2>
-                <p className="text-gray-600 mb-6 leading-relaxed">Krediniz hazır olduğunda test sayfasından istediğiniz sınav paketini seçip başlayın.</p>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                    <Target className="w-5 h-5 text-red-600" />
-                    <span className="text-sm text-gray-700 font-medium">Test türünü belirleyin.</span>
-                  </div>
-                  <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                    <Target className="w-5 h-5 text-red-600" />
-                    <span className="text-sm text-gray-700 font-medium">Bölümleri seçin.</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-gray-200 p-8 md:p-12 shadow-sm hover:shadow-xl transition-all duration-300 group">
-            <div className="flex flex-col md:flex-row gap-8 items-start">
-              <div className="flex-shrink-0">
-                <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center text-red-600 font-bold text-2xl border border-red-100 group-hover:bg-red-600 group-hover:text-white transition-colors duration-300">
-                  4
-                </div>
-              </div>
-              <div className="flex-grow">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-3">
-                  Test Çözme Süreci
-                  <Clock className="w-6 h-6 text-gray-400" />
-                </h2>
-                <p className="text-gray-600 mb-8 leading-relaxed">Her bölüm için özel yönergeler ve zaman yönetimi desteği bulunur.</p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="p-4 rounded-xl bg-gray-50 border border-gray-100 text-center hover:border-red-100 transition-colors">
-                    <BookOpen className="w-8 h-8 text-blue-600 mx-auto mb-3" />
-                    <h3 className="font-bold text-gray-900 text-sm mb-1">Okuma</h3>
-                    <p className="text-xs text-gray-500">Metinleri analiz edin, süreyi takip edin.</p>
-                  </div>
-                  <div className="p-4 rounded-xl bg-gray-50 border border-gray-100 text-center hover:border-red-100 transition-colors">
-                    <Headphones className="w-8 h-8 text-green-600 mx-auto mb-3" />
-                    <h3 className="font-bold text-gray-900 text-sm mb-1">Dinleme</h3>
-                    <p className="text-xs text-gray-500">Kulaklık kullanın, metinleri dikkatle dinleyin.</p>
-                  </div>
-                  <div className="p-4 rounded-xl bg-gray-50 border border-gray-100 text-center hover:border-red-100 transition-colors">
-                    <PenTool className="w-8 h-8 text-orange-600 mx-auto mb-3" />
-                    <h3 className="font-bold text-gray-900 text-sm mb-1">Yazma</h3>
-                    <p className="text-xs text-gray-500">Kelime limitine uyun, özgün olun.</p>
-                  </div>
-                  <div className="p-4 rounded-xl bg-gray-50 border border-gray-100 text-center hover:border-red-100 transition-colors">
-                    <Mic className="w-8 h-8 text-red-600 mx-auto mb-3" />
-                    <h3 className="font-bold text-gray-900 text-sm mb-1">Konuşma</h3>
-                    <p className="text-xs text-gray-500">Net konuşun, süreyi verimli kullanın.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-gray-200 p-8 md:p-12 shadow-sm hover:shadow-xl transition-all duration-300 group">
-            <div className="flex flex-col md:flex-row gap-8 items-start">
-              <div className="flex-shrink-0">
-                <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center text-red-600 font-bold text-2xl border border-red-100 group-hover:bg-red-600 group-hover:text-white transition-colors duration-300">
-                  5
-                </div>
-              </div>
-              <div className="flex-grow">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-3">
-                  Sonuçları Görüntüleme
-                  <Award className="w-6 h-6 text-gray-400" />
-                </h2>
-                <p className="text-gray-600 mb-6 leading-relaxed">
-                  Test biter bitmez performansınız analiz edilir. Okuma ve Dinleme puanları anında, Yazma ve Konuşma için detaylı rapor sunulur.
+      <section className="py-12">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {QUICK_FACTS.map((fact) => (
+              <article
+                key={fact.title}
+                className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
+              >
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  {fact.title}
                 </p>
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <div className="flex items-center gap-3 p-4 bg-green-50 rounded-xl border border-green-100 flex-1">
-                    <TrendingUp className="w-5 h-5 text-green-600" />
-                    <div>
-                      <div className="font-bold text-gray-900 text-sm">Anında Puanlama</div>
-                      <div className="text-xs text-gray-500">Objektif değerlendirme</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 p-4 bg-purple-50 rounded-xl border border-purple-100 flex-1">
-                    <FileText className="w-5 h-5 text-purple-600" />
-                    <div>
-                      <div className="font-bold text-gray-900 text-sm">Detaylı Rapor</div>
-                      <div className="text-xs text-gray-500">Gelişim alanları analizi</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+                <p className="mt-2 text-2xl font-bold text-gray-900">
+                  {fact.value}
+                </p>
+                <p className="mt-1 text-sm text-gray-600">{fact.description}</p>
+              </article>
+            ))}
           </div>
         </div>
       </section>
 
-      <section className="py-24 bg-white border-t border-gray-100">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-4xl font-bold text-gray-900 mb-6 tracking-tight">Hazır mısınız?</h2>
-          <p className="text-gray-500 text-xl mb-10 max-w-2xl mx-auto font-normal">CEFR seviyenizi öğrenmek için hemen teste başlayın.</p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+      <section className="pb-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900 md:text-4xl">
+              5 Adımda Tüm Süreç
+            </h2>
+            <p className="mt-3 max-w-3xl text-base leading-relaxed text-gray-600">
+              Buradaki akış, platformu sıfırdan kullanan birinin en kısa yoldan
+              sınava girip sonucunu alması için tasarlandı.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            {PROCESS_STEPS.map((step) => {
+              const Icon = step.icon;
+              return (
+                <article
+                  key={step.id}
+                  className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-all duration-200 hover:shadow-md"
+                >
+                  <div className="flex flex-col gap-4 md:flex-row md:items-start">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-red-100 bg-red-50 text-lg font-bold text-red-600">
+                        {step.id}
+                      </div>
+                      <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-gray-700">
+                        <Icon className="h-5 w-5" />
+                      </div>
+                    </div>
+
+                    <div className="flex-1">
+                      <h3 className="text-xl font-semibold text-gray-900">
+                        {step.title}
+                      </h3>
+                      <p className="mt-2 text-sm leading-relaxed text-gray-600 md:text-base">
+                        {step.description}
+                      </p>
+
+                      <div className="mt-4 grid gap-2 md:grid-cols-2">
+                        {step.points.map((point) => (
+                          <div
+                            key={point}
+                            className="flex items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700"
+                          >
+                            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+                            <span>{point}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-y border-gray-200 bg-white py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mb-8 text-center">
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900 md:text-4xl">
+              Bölümlere Göre Değerlendirme
+            </h2>
+            <p className="mx-auto mt-3 max-w-3xl text-base leading-relaxed text-gray-600">
+              Her bölüm ayrı beceriyi ölçer. Sonuç ekranında hem puan hem de
+              seviyene karşılık gelen yorumları görebilirsin.
+            </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            {SKILL_CARDS.map((card) => {
+              const Icon = card.icon;
+              return (
+                <article
+                  key={card.title}
+                  className="rounded-2xl border border-gray-200 bg-gray-50 p-5"
+                >
+                  <div className="flex items-start gap-4">
+                    <div
+                      className={`flex h-12 w-12 items-center justify-center rounded-xl border ${card.colorClass}`}
+                    >
+                      <Icon className="h-6 w-6" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {card.title}
+                      </h3>
+                      <p className="mt-1 text-sm leading-relaxed text-gray-600">
+                        {card.detail}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <span className="rounded-md border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700">
+                          {card.duration}
+                        </span>
+                        <span className="rounded-md border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700">
+                          {card.output}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-white py-20">
+        <div className="mx-auto grid max-w-7xl gap-6 px-4 sm:px-6 lg:grid-cols-3 lg:px-8">
+          <article className="rounded-2xl border border-gray-200 bg-gray-50 p-6">
+            <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-red-100 bg-red-50 text-red-600">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900">Güvenli Hesap</h3>
+            <p className="mt-2 text-sm leading-relaxed text-gray-600">
+              Giriş yaptığında profil bilgilerin korunur ve geçmiş sonuçların
+              hesabında kalır.
+            </p>
+          </article>
+
+          <article className="rounded-2xl border border-gray-200 bg-gray-50 p-6">
+            <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-red-100 bg-red-50 text-red-600">
+              <Coins className="h-5 w-5" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Esnek Kredi Kullanımı
+            </h3>
+            <p className="mt-2 text-sm leading-relaxed text-gray-600">
+              İstersen tek bölüm, istersen tüm bölümler için kredi kullanarak
+              kendi çalışma planına göre ilerleyebilirsin.
+            </p>
+          </article>
+
+          <article className="rounded-2xl border border-gray-200 bg-gray-50 p-6">
+            <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-red-100 bg-red-50 text-red-600">
+              <HelpCircle className="h-5 w-5" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900">Destek Süreci</h3>
+            <p className="mt-2 text-sm leading-relaxed text-gray-600">
+              Takıldığın noktada destek ekibine ulaşabilir, sınav akışı ve hesap
+              süreçleri hakkında hızlıca yardım alabilirsin.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section className="bg-gray-50 py-20">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+          <h2 className="text-center text-3xl font-bold tracking-tight text-gray-900 md:text-4xl">
+            Sık Sorulan Sorular
+          </h2>
+          <div className="mt-8 space-y-3">
+            {FAQ_ITEMS.map((item) => (
+              <article
+                key={item.q}
+                className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
+              >
+                <h3 className="text-base font-semibold text-gray-900 md:text-lg">
+                  {item.q}
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-gray-600 md:text-base">
+                  {item.a}
+                </p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="relative overflow-hidden bg-red-600 py-20">
+        <div className="pointer-events-none absolute inset-0 opacity-10">
+          <div className="absolute -top-20 right-0 h-64 w-64 rounded-full bg-white blur-3xl" />
+          <div className="absolute -bottom-20 left-0 h-64 w-64 rounded-full bg-white blur-3xl" />
+        </div>
+        <div className="relative mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
+          <h2 className="text-3xl font-bold tracking-tight text-white md:text-5xl">
+            Hazırsan Sınava Geçebilirsin
+          </h2>
+          <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-red-50 md:text-lg">
+            Artık tüm adımları biliyorsun. Hedef seviyeni görmek için hemen
+            teste başla.
+          </p>
+
+          <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
             <NavLink to="/test">
-              <Button size="lg" className="bg-red-600 hover:bg-red-700 text-white px-10 py-7 text-lg rounded-full shadow-xl hover:shadow-red-200 transition-all hover:-translate-y-1">
-                Teste Başla <ArrowRight className="ml-2 w-5 h-5" />
+              <Button className="h-12 rounded-xl bg-white px-8 text-base font-semibold text-red-600 hover:bg-red-50">
+                Teste Başla
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </NavLink>
             <NavLink to="/#contact">
-              <Button variant="outline" size="lg" className="bg-white border-gray-200 text-gray-700 hover:bg-gray-50 px-10 py-7 text-lg rounded-full hover:border-gray-300 transition-all">
-                <HelpCircle className="mr-2 w-5 h-5" /> Destek Al
+              <Button
+                variant="outline"
+                className="h-12 rounded-xl border-red-200 bg-transparent px-8 text-base font-semibold text-white hover:bg-red-700"
+              >
+                Destek Al
               </Button>
             </NavLink>
           </div>

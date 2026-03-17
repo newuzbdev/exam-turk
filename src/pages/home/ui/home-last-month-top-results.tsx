@@ -3,6 +3,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Calendar, Zap } from "lucide-react";
 import { overallTestService } from "@/services/overallTest.service";
 import { toApiUrl } from "@/config/runtime";
+import { Link } from "react-router-dom";
 
 const TEST_SCOPE_OPTIONS = [
   { key: "ALL", label: "Hepsi" },
@@ -173,6 +174,7 @@ const HomeLastMonthTopResults = () => {
           const resultUser: ApiUser = item.user || { id: "", name: "Anonim" };
           const date = item.completedAt || item.createdAt || "";
           const avatarUrl = resultUser.avatarUrl || resultUser.avatar;
+          const roundedOverall = Math.round(item.overallScore || 0);
           const formattedAvatarUrl = avatarUrl
             ? avatarUrl.startsWith("http")
               ? avatarUrl
@@ -188,8 +190,8 @@ const HomeLastMonthTopResults = () => {
             okuma: formatScore(item.readingScore),
             yazma: formatScore(item.writingScore),
             konusma: formatScore(item.speakingScore),
-            overallScore: Math.round(item.overallScore || 0),
-            level: getCefrLevel(item.overallScore),
+            overallScore: roundedOverall,
+            level: getCefrLevel(roundedOverall),
           };
         });
 
@@ -233,7 +235,7 @@ const HomeLastMonthTopResults = () => {
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-          <div className="px-4 sm:px-5 py-3 border-b border-gray-100 bg-gray-50 flex items-center justify-start">
+          <div className="px-4 sm:px-5 py-3 border-b border-gray-100 bg-gray-50 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Filtre</span>
               <select
@@ -248,6 +250,12 @@ const HomeLastMonthTopResults = () => {
                 ))}
               </select>
             </div>
+            <Link
+              to="/sonuclar/tam-liste"
+              className="h-9 inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-3 text-sm font-semibold text-gray-800 hover:bg-gray-100 transition-colors"
+            >
+              Tam Liste
+            </Link>
           </div>
 
           {loading ? (

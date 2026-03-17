@@ -9,6 +9,11 @@ import { authService } from "@/services/auth.service";
 import { API_BASE_URL } from "@/config/runtime";
 import { useAuth } from "@/contexts/AuthContext";
 import {
+  consumePostLoginRedirect,
+  resolvePostLoginRedirect,
+  setPostLoginRedirect,
+} from "@/utils/postLoginRedirect";
+import {
   InputOTP,
   InputOTPGroup,
   InputOTPSlot,
@@ -87,7 +92,7 @@ export default function Login() {
   const state = (location.state as
     | { mode?: "login" | "register"; redirectTo?: string }
     | null) ?? { mode: "login", redirectTo: "/" };
-  const redirectTo = state.redirectTo || "/";
+  const redirectTo = resolvePostLoginRedirect(state.redirectTo || "/");
 
   const [step, setStep] = useState<LoginStep>("entry");
   const [loading, setLoading] = useState(false);
@@ -116,7 +121,7 @@ export default function Login() {
   // });
 
   const navigateAfterLogin = () => {
-    navigate(redirectTo, { replace: true });
+    navigate(consumePostLoginRedirect(redirectTo), { replace: true });
   };
 
   // const rememberPhone = (rawPhone: string) => {
@@ -126,6 +131,10 @@ export default function Login() {
   //     localStorage.setItem("login:lastPhone", normalized);
   //   }
   // };
+
+  useEffect(() => {
+    setPostLoginRedirect(redirectTo);
+  }, [redirectTo]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -169,6 +178,7 @@ export default function Login() {
 
   const handleGoogle = () => {
     setLoading(true);
+    setPostLoginRedirect(redirectTo);
     const callbackUrl = `${window.location.origin}/oauth-callback`;
     window.location.href = `${API_BASE_URL}/api/auth/google/redirect?callback=${encodeURIComponent(
       callbackUrl,

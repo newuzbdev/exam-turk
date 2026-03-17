@@ -59,6 +59,7 @@ interface TestModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   selectedTest: TurkishTest;
+  isSpeakingPackage?: boolean;
   writingTests: WritingTest[];
   speakingTests: SpeakingTest[];
   listeningTests: ListeningTest[];
@@ -70,6 +71,7 @@ const TestModal = ({
   open,
   onOpenChange,
   selectedTest,
+  isSpeakingPackage = false,
   writingTests,
   speakingTests,
   listeningTests,
@@ -86,12 +88,17 @@ const TestModal = ({
   // Reset selection when modal opens
   useEffect(() => {
     if (open) {
-      setSelectedSkills([]);
+      if (isSpeakingPackage && speakingTests.length > 0) {
+        setSelectedSkills(["speaking"]);
+      } else {
+        setSelectedSkills([]);
+      }
       setShowConfirmationModal(false);
     }
-  }, [open]);
+  }, [open, isSpeakingPackage, speakingTests.length]);
 
   const toggleSkill = (skillId: string) => {
+    if (isSpeakingPackage) return;
     setSelectedSkills(prev => 
       prev.includes(skillId) 
         ? prev.filter(id => id !== skillId) 
@@ -153,20 +160,33 @@ const TestModal = ({
       icon: MessageCircle 
     },
   ];
+  const visibleSkillsData = isSpeakingPackage
+    ? skillsData.filter((skill) => skill.id === "speaking")
+    : skillsData;
 
   const totalCost = useMemo(() => {
     return selectedSkills.reduce((total, skillId) => {
       const skill = skillsData.find(s => s.id === skillId);
       return total + (skill ? skill.cost : 0);
     }, 0);
-  }, [selectedSkills]);
+  }, [selectedSkills, skillsData]);
+  const hasAvailableSelectedSkill = selectedSkills.some((skillId) => {
+    const skill = skillsData.find((item) => item.id === skillId);
+    return skill ? skill.testCount !== "0 test" : false;
+  });
   const missingCredits = Math.max(0, totalCost - (user?.coin ?? 0));
   const isStartDisabled =
-    selectedSkills.length === 0 || (isAuthenticated && missingCredits > 0);
+    selectedSkills.length === 0 ||
+    !hasAvailableSelectedSkill ||
+    (isAuthenticated && missingCredits > 0);
 
   const handleCta = () => {
     if (selectedSkills.length === 0) {
-      toast.error("Lütfen en az bir test bölümü seçin");
+      toast.error(isSpeakingPackage ? "Bu pakette konuşma testi henüz hazır değil." : "Lütfen en az bir test bölümü seçin");
+      return;
+    }
+    if (!hasAvailableSelectedSkill) {
+      toast.error("Seçilen test bölümü şu anda hazır değil.");
       return;
     }
 
@@ -391,7 +411,9 @@ const TestModal = ({
                   <div className="flex-1 min-w-0">
                     <h2 className="font-serif text-xl sm:text-2xl font-bold text-gray-900 break-words">{selectedTest.title}</h2>
                     <p className="text-xs sm:text-sm text-gray-500 mt-1">
-                      Lütfen katılmak istediğiniz test bölümlerini seçiniz.
+                      {isSpeakingPackage
+                        ? "Bu paket yalnızca konuşma bölümünü içerir."
+                        : "Lütfen katılmak istediğiniz test bölümlerini seçiniz."}
                     </p>
                   </div>
                   <button 
@@ -406,19 +428,20 @@ const TestModal = ({
               
               {/* Modal Body */}
               <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-4 overflow-y-auto flex-1 min-h-0">
-                {skillsData.map((skill) => {
+                {visibleSkillsData.map((skill) => {
                   const isSelected = selectedSkills.includes(skill.id);
                   const isAvailable = skill.testCount !== '0 test';
+                  const isLocked = isSpeakingPackage && skill.id === "speaking" && isAvailable;
                   
                   return (
                     <div 
                       key={skill.id}
-                      onClick={() => isAvailable && toggleSkill(skill.id)}
+                      onClick={() => isAvailable && !isLocked && toggleSkill(skill.id)}
                       className={`group p-4 sm:p-5 rounded-2xl border-2 flex flex-col justify-between gap-4 transition-all duration-300 min-h-[140px] ${
                         !isAvailable
                           ? 'opacity-50 cursor-not-allowed bg-gray-100/70 border-gray-200'
                           : isSelected
-                            ? 'bg-red-600/10 border-red-600 text-red-600 cursor-pointer shadow-xl shadow-red-600/10 -translate-y-1'
+                            ? `bg-red-600/10 border-red-600 text-red-600 ${isLocked ? "cursor-default" : "cursor-pointer"} shadow-xl shadow-red-600/10 -translate-y-1`
                             : 'bg-gray-50/80 border-gray-300 text-gray-900 cursor-pointer hover:border-red-600 hover:shadow-2xl hover:-translate-y-1'
                       }`}
                     >
@@ -445,6 +468,9 @@ const TestModal = ({
                           <p className={`text-xs font-medium ${isSelected ? 'text-red-600/80' : 'text-gray-500 group-hover:text-red-600/80'}`}>
                             {skill.duration} • {skill.testCount}
                           </p>
+                          {isLocked && (
+                            <p className="mt-1 text-[11px] font-semibold text-red-700">Otomatik seçildi</p>
+                          )}
                         </div>
                       </div>
                       <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs sm:text-sm font-semibold border-2 flex-shrink-0 ${isSelected ? 'bg-red-600/15 text-red-600 border-red-300' : 'bg-gray-50 text-gray-700 border-gray-300 group-hover:border-red-300 group-hover:text-red-600 group-hover:bg-red-600/5'}`}>
@@ -526,7 +552,3 @@ const TestModal = ({
 };
 
 export default TestModal;
-
-
-
-

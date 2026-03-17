@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import axiosPrivate from "@/config/api";
 import { toast } from "sonner";
 import TestModal from "./components/TestModal";
@@ -65,6 +65,27 @@ interface TurkishTestResponse {
 }
 
 type TestType = "all" | "listening" | "speaking" | "reading" | "writing";
+type PackageTab = "cefr" | "speaking";
+
+const normalizePackageTitle = (value: string) =>
+  String(value || "")
+    .toUpperCase()
+    .replace(/Ğ/g, "G")
+    .replace(/Ü/g, "U")
+    .replace(/Ş/g, "S")
+    .replace(/İ/g, "I")
+    .replace(/Ö/g, "O")
+    .replace(/Ç/g, "C")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const getPackageTab = (title: string): PackageTab => {
+  const normalized = normalizePackageTitle(title);
+  if (normalized.includes("KONUSMA") || normalized.includes("SPEAKING")) {
+    return "speaking";
+  }
+  return "cefr";
+};
 
 const TestPage = () => {
   const [turkishTestData, setTurkishTestData] = useState<TurkishTestResponse | null>(null);
@@ -73,6 +94,7 @@ const TestPage = () => {
   const [_selectedTestType, setSelectedTestType] = useState<TestType>("all");
   const [showTestModal, setShowTestModal] = useState(false);
   const [currentTestForModal, setCurrentTestForModal] = useState<TurkishTest | null>(null);
+  const [selectedPackageTab, setSelectedPackageTab] = useState<PackageTab>("cefr");
   const location = useLocation();
 
   useEffect(() => {
@@ -117,6 +139,32 @@ const TestPage = () => {
     };
   };
 
+  const sortedPackages = useMemo(() => {
+    const list = turkishTestData?.ieltsData || [];
+    return [...list].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+  }, [turkishTestData?.ieltsData]);
+
+  const cefrPackages = useMemo(
+    () => sortedPackages.filter((test) => getPackageTab(test.title) === "cefr"),
+    [sortedPackages],
+  );
+  const speakingPackages = useMemo(
+    () => sortedPackages.filter((test) => getPackageTab(test.title) === "speaking"),
+    [sortedPackages],
+  );
+
+  useEffect(() => {
+    if (selectedPackageTab === "cefr" && cefrPackages.length === 0 && speakingPackages.length > 0) {
+      setSelectedPackageTab("speaking");
+      return;
+    }
+    if (selectedPackageTab === "speaking" && speakingPackages.length === 0 && cefrPackages.length > 0) {
+      setSelectedPackageTab("cefr");
+    }
+  }, [selectedPackageTab, cefrPackages.length, speakingPackages.length]);
+
   const handleTestModalOpen = (test: TurkishTest) => {
     setCurrentTestForModal(test);
     setShowTestModal(true);
@@ -125,6 +173,9 @@ const TestPage = () => {
   const handleTestTypeClick = (testType: string, tests: any[]) => {
     console.log(`Selected test type: ${testType}`, tests);
   };
+
+  const activePackages = selectedPackageTab === "cefr" ? cefrPackages : speakingPackages;
+  const hasAnyPackages = sortedPackages.length > 0;
 
   // --- Loading Skeleton ---
   if (loading) {
@@ -181,14 +232,36 @@ const TestPage = () => {
       {/* Tests Grid Section */}
       <section className="py-16 bg-gray-50 border-y border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {hasAnyPackages && (
+            <div className="mb-6 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedPackageTab("cefr")}
+                className={`rounded-lg border px-4 py-2 text-sm font-semibold transition-colors ${
+                  selectedPackageTab === "cefr"
+                    ? "border-red-600 bg-red-50 text-red-700"
+                    : "border-gray-300 bg-white text-gray-700 hover:border-red-300 hover:text-red-600"
+                }`}
+              >
+                CEFR Paketleri ({cefrPackages.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedPackageTab("speaking")}
+                className={`rounded-lg border px-4 py-2 text-sm font-semibold transition-colors ${
+                  selectedPackageTab === "speaking"
+                    ? "border-red-600 bg-red-50 text-red-700"
+                    : "border-gray-300 bg-white text-gray-700 hover:border-red-300 hover:text-red-600"
+                }`}
+              >
+                Konuşma Paketleri ({speakingPackages.length})
+              </button>
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {turkishTestData?.ieltsData && turkishTestData.ieltsData.length > 0 ? (
-              [...turkishTestData.ieltsData]
-                .sort(
-                  (a, b) =>
-                    new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-                )
-                .map((test) => {
+            {hasAnyPackages ? (
+              activePackages.length > 0 ? (
+                activePackages.map((test) => {
                 const availableTypes = getAvailableTestTypes(test.id);
                 const hasTests =
                   availableTypes.writing.length > 0 ||
@@ -247,6 +320,15 @@ const TestPage = () => {
                   </button>
                 );
               })
+              ) : (
+                <div className="col-span-full rounded-2xl border border-dashed border-gray-300 bg-white/80 p-8 text-center">
+                  <p className="text-base font-semibold text-gray-700">
+                    {selectedPackageTab === "cefr"
+                      ? "CEFR paketi bulunamadı."
+                      : "Konuşma paketi bulunamadı."}
+                  </p>
+                </div>
+              )
             ) : (
               <div className="col-span-full">
                  <EmptyState selectedTestType="all" isMainTestSelection={true} />
@@ -262,6 +344,7 @@ const TestPage = () => {
           open={showTestModal}
           onOpenChange={setShowTestModal}
           selectedTest={currentTestForModal}
+          isSpeakingPackage={getPackageTab(currentTestForModal.title) === "speaking"}
           writingTests={turkishTestData?.writingTests.filter(t => t.ieltsId === currentTestForModal.id) || []}
           speakingTests={turkishTestData?.speakingTests.filter(t => t.ieltsId === currentTestForModal.id) || []}
           listeningTests={turkishTestData?.listeningTests.filter(t => t.ieltsId === currentTestForModal.id) || []}

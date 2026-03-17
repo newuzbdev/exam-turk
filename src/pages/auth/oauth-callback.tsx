@@ -1,7 +1,12 @@
-import { useEffect } from "react";
+﻿import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { toast } from "@/utils/toast";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  consumePostLoginRedirect,
+  resolvePostLoginRedirect,
+  setPostLoginRedirect,
+} from "@/utils/postLoginRedirect";
 
 const OAuthCallback = () => {
   const navigate = useNavigate();
@@ -11,33 +16,35 @@ const OAuthCallback = () => {
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        // Get URL parameters - backend sends 'accessToken' not 'token'
         const accessToken = searchParams.get("accessToken");
         const refreshToken = searchParams.get("refreshToken");
+        const returnTo = searchParams.get("returnTo") || "/";
         const error = searchParams.get("error");
 
         if (error) {
           toast.error("Google ile giriş başarısız: " + error);
-          navigate("/login", { replace: true });
+          const fallback = resolvePostLoginRedirect(returnTo);
+          setPostLoginRedirect(fallback);
+          navigate("/login", { replace: true, state: { mode: "login", redirectTo: fallback } });
           return;
         }
 
         if (accessToken) {
-          // Use the auth context to handle login
           await login(accessToken, refreshToken || undefined);
-
           toast.success("Google ile giriş başarılı!");
-
-          // Navigate to home page
-          navigate("/", { replace: true });
+          navigate(consumePostLoginRedirect(returnTo), { replace: true });
         } else {
           toast.error("Giriş başarısız: Token bulunamadı");
-          navigate("/login", { replace: true });
+          const fallback = resolvePostLoginRedirect(returnTo);
+          setPostLoginRedirect(fallback);
+          navigate("/login", { replace: true, state: { mode: "login", redirectTo: fallback } });
         }
       } catch (error) {
         console.error("OAuth callback error:", error);
         toast.error("Giriş sırasında bir hata oluştu");
-        navigate("/login", { replace: true });
+        const fallback = resolvePostLoginRedirect(searchParams.get("returnTo") || "/");
+        setPostLoginRedirect(fallback);
+        navigate("/login", { replace: true, state: { mode: "login", redirectTo: fallback } });
       }
     };
 

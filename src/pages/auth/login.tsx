@@ -104,11 +104,6 @@ export default function Login() {
   const [telegramBotLink, setTelegramBotLink] = useState<string | null>(null);
   // const [verifiedPhoneNumber, setVerifiedPhoneNumber] = useState("");
 
-  // const [credentials, setCredentials] = useState({
-  //   identifier: "",
-  //   password: "",
-  // });
-
   // const [phoneSetup, setPhoneSetup] = useState({
   //   userName: "",
   //   password: "",
@@ -170,7 +165,7 @@ export default function Login() {
     if (step === "password")
       return "Daha önce kayıt olduysan kullanıcı adı/telefon ve şifre ile gir.";
     if (step === "telegramOtp")
-      return "Botta gelen 4 veya 6 haneli kodu girin.";
+      return "Telegram botundaki giriş kodunu buraya yazın.";
     if (step === "resetPhone") return "Telefon numaranızı girin.";
     if (step === "resetOtp") return "OTP ve yeni şifre girin.";
     return "";
@@ -514,7 +509,6 @@ export default function Login() {
           </form>
         ) : null}
         */}
-
         {step === "telegramOtp" ? (
           <form onSubmit={handleTelegramVerify} className="mt-8 w-full max-w-md space-y-4">
             {telegramBotLink ? (
@@ -524,7 +518,7 @@ export default function Login() {
                 rel="noreferrer"
                 className="block text-center text-sm text-[#229ED9] underline"
               >
-                Botu aç (@{TELEGRAM_BOT_USERNAME}, kod burada görünecek)
+                Botu aç (@{TELEGRAM_BOT_USERNAME}, giriş kodu orada görünecek)
               </a>
             ) : (
               <p className="text-center text-sm text-gray-500">

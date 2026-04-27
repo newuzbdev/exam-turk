@@ -531,7 +531,7 @@ export const authService = {
     try {
       const trimmed = String(code || "").trim();
       if (!/^\d{4,6}$/.test(trimmed)) {
-        toast.error("4 veya 6 haneli kodu girin");
+        toast.error("Telegram botundaki giriş kodunu girin");
         return { success: false };
       }
 

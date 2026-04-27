@@ -11,6 +11,7 @@ export const authEndPoint = {
   logout: "/api/auth/logout",
   telegramInit: "/api/auth/telegram/init",
   telegramVerifyCode: "/api/auth/telegram/verify-code",
+  telegramWidget: "/api/auth/telegram/widget",
 };
 
 export const writingEndPoint = {
@@ -33,4 +34,13 @@ export const bannerEndPoint = {
   getById: (id: string) => `/api/banner/${id}`,
   update: (id: string) => `/api/banner/${id}`,
   delete: (id: string) => `/api/banner/${id}`,
+}
+
+export const readingPracticeEndPoint = {
+  getAll: "/api/reading-practice",
+  getById: (id: string) => `/api/reading-practice/${id}`,
+  start: (id: string) => `/api/reading-practice/${id}/start`,
+  submit: (id: string) => `/api/reading-practice/${id}/submit`,
+  getAttempt: (attemptId: string) => `/api/reading-practice/attempt/${attemptId}`,
+  aiHelp: (id: string) => `/api/reading-practice/${id}/ai-help`,
 }

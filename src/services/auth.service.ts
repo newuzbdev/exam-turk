@@ -1,5 +1,6 @@
 import axiosPrivate from "@/config/api";
 import { authEndPoint } from "@/config/endpoint";
+import { API_BASE_URL } from "@/config/runtime";
 import { toast } from "@/utils/toast";
 import { SecureStorage } from "@/utils/secureStorage";
 
@@ -53,6 +54,16 @@ export interface AuthResult {
     phoneNumber?: string;
     telegramId?: string | number;
   };
+}
+
+export interface TelegramWidgetAuthPayload {
+  id: string;
+  first_name: string;
+  last_name?: string;
+  username?: string;
+  photo_url?: string;
+  auth_date: string;
+  hash: string;
 }
 
 // Global variable to track ongoing user fetch requests
@@ -665,6 +676,55 @@ export const authService = {
       };
     } catch (error: unknown) {
       toast.error(getApiErrorMessage(error, "Telegram kodi tasdiqlanmadi"));
+      return { success: false };
+    }
+  },
+
+  loginWithTelegramWidget: async (
+    payload: TelegramWidgetAuthPayload,
+  ): Promise<AuthResult> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}${authEndPoint.telegramWidget}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      let data: any = {};
+      try {
+        data = await response.json();
+      } catch {
+        data = {};
+      }
+
+      if (!response.ok) {
+        const message =
+          (typeof data?.message === "string" && data.message) ||
+          "Telegram girişi doğrulanamadı";
+        toast.error(message);
+        return { success: false, message };
+      }
+
+      const { accessToken, refreshToken } = extractTokens(data);
+      if (!accessToken) {
+        const message =
+          (typeof data?.message === "string" && data.message) ||
+          "Telegram girişi tamamlanamadı";
+        toast.error(message);
+        return { success: false, message };
+      }
+
+      toast.success("Telegram ile giriş tamamlandı");
+      return {
+        success: true,
+        accessToken,
+        refreshToken,
+        message: "Telegram ile giriş tamamlandı",
+      };
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, "Telegram girişi doğrulanamadı"));
       return { success: false };
     }
   },

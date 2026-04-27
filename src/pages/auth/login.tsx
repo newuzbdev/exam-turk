@@ -1,33 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { ArrowLeft } from "lucide-react";
-import { REGEXP_ONLY_DIGITS_AND_CHARS } from "input-otp";
 
 import { Button } from "@/components/ui/button";
-import { toast } from "@/utils/toast";
-import { authService } from "@/services/auth.service";
-import { API_BASE_URL } from "@/config/runtime";
+import TelegramLoginWidget from "@/components/auth/TelegramLoginWidget";
+import type { TelegramWidgetUser } from "@/components/auth/TelegramLoginWidget";
 import { useAuth } from "@/contexts/AuthContext";
+import { API_BASE_URL } from "@/config/runtime";
+import { authService } from "@/services/auth.service";
 import {
   consumePostLoginRedirect,
   resolvePostLoginRedirect,
   setPostLoginRedirect,
 } from "@/utils/postLoginRedirect";
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "@/components/ui/input-otp";
 
-type LoginStep =
-  | "entry"
-  | "phone"
-  | "phoneOtp"
-  | "phoneSetup"
-  | "password"
-  | "telegramOtp"
-  | "resetPhone"
-  | "resetOtp";
+type LoginStep = "entry" | "telegramWidget";
+
+const TELEGRAM_BOT_USERNAME =
+  import.meta.env.VITE_TELEGRAM_BOT_USERNAME || "turkishmockbot";
 
 const GoogleLogo = () => (
   <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
@@ -60,30 +50,6 @@ const TelegramLogo = () => (
   </svg>
 );
 
-const TELEGRAM_BOT_USERNAME =
-  import.meta.env.VITE_TELEGRAM_BOT_USERNAME || "turkishmockbot";
-
-// const formatPhoneForInput = (value: string) => {
-//   let input = value || "";
-//   if (input.startsWith("+")) {
-//     input = "+" + input.slice(1).replace(/\D/g, "");
-//   } else {
-//     input = input.replace(/\D/g, "");
-//   }
-//   let digits = input.replace(/\D/g, "");
-//   if (!digits.length) return "+998 ";
-//   if (!digits.startsWith("998")) {
-//     digits = digits.startsWith("8") ? `99${digits}` : `998${digits}`;
-//   }
-//   digits = digits.slice(0, 12);
-//   let formatted = "+998";
-//   if (digits.length > 3) formatted += ` ${digits.slice(3, 5)}`;
-//   if (digits.length > 5) formatted += ` ${digits.slice(5, 8)}`;
-//   if (digits.length > 8) formatted += ` ${digits.slice(8, 10)}`;
-//   if (digits.length > 10) formatted += ` ${digits.slice(10, 12)}`;
-//   return formatted;
-// };
-
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -97,35 +63,9 @@ export default function Login() {
   const [step, setStep] = useState<LoginStep>("entry");
   const [loading, setLoading] = useState(false);
 
-  // const [phone, setPhone] = useState("+998 ");
-  // const [phoneOtp, setPhoneOtp] = useState("");
-  const [telegramOtp, setTelegramOtp] = useState("");
-  const [telegramSessionToken, setTelegramSessionToken] = useState<string | null>(null);
-  const [telegramBotLink, setTelegramBotLink] = useState<string | null>(null);
-  // const [verifiedPhoneNumber, setVerifiedPhoneNumber] = useState("");
-
-  // const [phoneSetup, setPhoneSetup] = useState({
-  //   userName: "",
-  //   password: "",
-  // });
-
-  // const [resetForm, setResetForm] = useState({
-  //   phone: "+998 ",
-  //   otp: "",
-  //   newPassword: "",
-  // });
-
   const navigateAfterLogin = () => {
     navigate(consumePostLoginRedirect(redirectTo), { replace: true });
   };
-
-  // const rememberPhone = (rawPhone: string) => {
-  //   if (typeof window === "undefined") return;
-  //   const normalized = authService.formatPhoneNumber(rawPhone);
-  //   if (normalized) {
-  //     localStorage.setItem("login:lastPhone", normalized);
-  //   }
-  // };
 
   useEffect(() => {
     setPostLoginRedirect(redirectTo);
@@ -137,38 +77,16 @@ export default function Login() {
     }
   }, [isAuthenticated]);
 
-  // useEffect(() => {
-  //   if (typeof window === "undefined") return;
-  //   const storedPhone = localStorage.getItem("login:lastPhone");
-  //   if (!storedPhone) return;
-  //   const formatted = formatPhoneForInput(storedPhone);
-  //   setResetForm((prev) => ({ ...prev, phone: formatted }));
-  // }, []);
-
   const title = useMemo(() => {
-    if (step === "phoneOtp") return "SMS Kodu";
-    if (step === "phoneSetup") return "Hesabı Tamamla";
-    if (step === "password") return "Kullanıcı Girişi";
-    if (step === "telegramOtp") return "Telegram Kodu";
-    if (step === "resetPhone") return "Şifre Sıfırlama";
-    if (step === "resetOtp") return "Yeni Şifre";
+    if (step === "telegramWidget") return "Telegram ile Giriş";
     return "TURKISHMOCK'A HOŞ GELDİNİZ";
   }, [step]);
 
   const subtitle = useMemo(() => {
-    if (step === "entry")
-      return "Yöntem seçin, hesap yoksa otomatik oluşturulur.";
-    if (step === "phone") return "Telefon numaranızı girip devam edin.";
-    if (step === "phoneOtp") return "Numaranıza gelen 4 haneli kodu girin.";
-    if (step === "phoneSetup")
-      return "İlk giriş için kullanıcı adı ve şifre oluşturun.";
-    if (step === "password")
-      return "Daha önce kayıt olduysan kullanıcı adı/telefon ve şifre ile gir.";
-    if (step === "telegramOtp")
-      return "Telegram botundaki giriş kodunu buraya yazın.";
-    if (step === "resetPhone") return "Telefon numaranızı girin.";
-    if (step === "resetOtp") return "OTP ve yeni şifre girin.";
-    return "";
+    if (step === "telegramWidget") {
+      return "Resmi Telegram penceresinde hesabınızı onaylayın. Kod girmeniz gerekmez.";
+    }
+    return "Yöntem seçin, hesap yoksa otomatik oluşturulur.";
   }, [step]);
 
   const handleGoogle = () => {
@@ -180,100 +98,24 @@ export default function Login() {
     )}`;
   };
 
-  const handleTelegramStart = async () => {
+  const handleTelegramAuth = async (telegramUser: TelegramWidgetUser) => {
     setLoading(true);
-    const result = await authService.initTelegramAuth();
-    setLoading(false);
-    if (result) {
-      setTelegramSessionToken(result.sessionToken);
-      setTelegramBotLink(result.botLink);
-      setTelegramOtp("");
-      setStep("telegramOtp");
-      if (result.botLink) window.open(result.botLink, "_blank", "noopener,noreferrer");
-    }
-  };
+    const result = await authService.loginWithTelegramWidget({
+      id: String(telegramUser.id),
+      first_name: String(telegramUser.first_name || ""),
+      last_name: telegramUser.last_name ? String(telegramUser.last_name) : undefined,
+      username: telegramUser.username ? String(telegramUser.username) : undefined,
+      photo_url: telegramUser.photo_url ? String(telegramUser.photo_url) : undefined,
+      auth_date: String(telegramUser.auth_date),
+      hash: String(telegramUser.hash || ""),
+    });
 
-  // const handleSendPhoneOtp = async (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   setLoading(true);
-  //   const result = await authService.sendOtpRequest(phone);
-  //   if (result.success) {
-  //     rememberPhone(phone);
-  //     setStep("phoneOtp");
-  //     setPhoneOtp("");
-  //   }
-  //   setLoading(false);
-  // };
-
-  // const handleVerifyPhoneOtp = async (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   if (phoneOtp.length !== 4) return;
-
-  //   setLoading(true);
-  //   const result = await authService.verifyOtpForLogin(
-  //     phone,
-  //     phoneOtp,
-  //     () => {
-  //       toast.info("Hesabınız bulundu, giriş yapılıyor...");
-  //       rememberPhone(phone);
-  //       navigateAfterLogin();
-  //     },
-  //   );
-
-  //   if (result?.shouldShowRegister) {
-  //     setVerifiedPhoneNumber(
-  //       result.phoneNumber || authService.formatPhoneNumber(phone),
-  //     );
-  //     setPhoneSetup({ userName: "", password: "" });
-  //     setStep("phoneSetup");
-  //   }
-  //   setLoading(false);
-  // };
-
-  // const handleCompletePhoneSetup = async (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   if (!phoneSetup.userName.trim()) {
-  //     toast.error("Kullanıcı adı girin");
-  //     return;
-  //   }
-  //   if (phoneSetup.password.trim().length < 6) {
-  //     toast.error("Şifre en az 6 karakter olmalı");
-  //     return;
-  //   }
-
-  //   const phoneNumber =
-  //     verifiedPhoneNumber || authService.formatPhoneNumber(phone);
-
-  //   setLoading(true);
-  //   await authService.registerUser(
-  //     {
-  //       name: phoneSetup.userName.trim(),
-  //       userName: phoneSetup.userName.trim(),
-  //       password: phoneSetup.password,
-  //       phoneNumber,
-  //       avatarUrl: "",
-  //       accountType: "STUDENT",
-  //     },
-  //     () => navigateAfterLogin(),
-  //   );
-  //   setLoading(false);
-  // };
-
-  const handleTelegramVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const codeLen = telegramOtp.length;
-    if (codeLen < 4 || codeLen > 6) return;
-    if (!telegramSessionToken) {
-      toast.error("Önce \"Telegram ile giriş\"e tıklayıp bot linkini açın.");
-      return;
-    }
-
-    setLoading(true);
-    const result = await authService.verifyTelegramCode(telegramOtp, telegramSessionToken);
     if (result.success && result.accessToken) {
       authService.storeTokens(result.accessToken, result.refreshToken);
       navigateAfterLogin();
+      return;
     }
+
     setLoading(false);
   };
 
@@ -316,339 +158,46 @@ export default function Login() {
             </Button>
             <Button
               type="button"
-              onClick={handleTelegramStart}
+              onClick={() => setStep("telegramWidget")}
               disabled={loading}
               className="h-11 w-full justify-center gap-2 border border-gray-300 bg-white text-gray-900 hover:bg-gray-100"
             >
               <TelegramLogo />
               Telegram ile Devam Et
             </Button>
-            {/* Login with phone - commented out
-            <Button
-              type="button"
-              onClick={() => setStep("phone")}
-              disabled={loading}
-              className="h-11 w-full justify-center gap-2 border border-gray-300 bg-white text-gray-900 hover:bg-gray-100"
-            >
-              <Phone className="h-5 w-5" />
-              Telefon ile Devam Et
-            </Button>
-            */}
-            {/* Username/password login - commented out
-            <div className="relative py-1">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center">
-                <span className="bg-white px-3 text-xs uppercase tracking-wide text-gray-500">ya da</span>
-              </div>
-            </div>
-            <Button
-              type="button"
-              onClick={() => setStep("password")}
-              className="h-11 w-full justify-center gap-2 border border-gray-300 bg-white text-gray-900 hover:bg-gray-100"
-            >
-              <User className="h-5 w-5" />
-              Kullanıcı adı ile devam edin
-            </Button>
-            <p className="text-center text-xs text-gray-500">
-              Daha önce kayıt olduysanız bu yöntemle giriş yapın.
-            </p>
-            */}
           </div>
         ) : null}
 
-        {/* Login with phone - commented out
-        {step === "phone" ? (
+        {step === "telegramWidget" ? (
           <div className="mt-8 w-full max-w-md space-y-4">
-            <form onSubmit={handleSendPhoneOtp} className="space-y-3">
-              <Input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(formatPhoneForInput(e.target.value))}
-                className="h-11"
-                placeholder="+998 90 123 45 67"
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <Button type="button" variant="outline" onClick={() => setStep("entry")}>
-                  Geri
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={loading || !isPhoneReadyForOtp}
-                  className="bg-red-600 text-white hover:bg-red-700 disabled:bg-red-300 disabled:text-white"
-                >
-                  {loading ? "Gönderiliyor..." : "Devam Et"}
-                </Button>
-              </div>
-            </form>
-          </div>
-        ) : null}
-
-        {step === "phoneOtp" ? (
-          <form onSubmit={handleVerifyPhoneOtp} className="mt-8 w-full max-w-md space-y-4">
-            <p className="text-center text-sm text-gray-500">{phone}</p>
-            <div className="flex justify-center">
-              <InputOTP
-                maxLength={4}
-                pattern={REGEXP_ONLY_DIGITS_AND_CHARS}
-                value={phoneOtp}
-                onChange={setPhoneOtp}
-              >
-                <InputOTPGroup className="gap-2">
-                  <InputOTPSlot index={0} className="h-12 w-12" />
-                  <InputOTPSlot index={1} className="h-12 w-12" />
-                  <InputOTPSlot index={2} className="h-12 w-12" />
-                  <InputOTPSlot index={3} className="h-12 w-12" />
-                </InputOTPGroup>
-              </InputOTP>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Button type="button" variant="outline" onClick={() => setStep("phone")}>
-                Geri
-              </Button>
-              <Button
-                type="submit"
-                disabled={loading || phoneOtp.length !== 4}
-                className="bg-red-600 text-white hover:bg-red-700 disabled:bg-red-300 disabled:text-white"
-              >
-                {loading ? "Doğrulanıyor..." : "Devam Et"}
-              </Button>
-            </div>
-          </form>
-        ) : null}
-
-        {step === "phoneSetup" ? (
-          <form
-            onSubmit={handleCompletePhoneSetup}
-            className="mt-8 w-full max-w-md space-y-4"
-          >
-            <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
-              Telefon: {verifiedPhoneNumber || authService.formatPhoneNumber(phone)}
-            </div>
-            <Input
-              type="text"
-              value={phoneSetup.userName}
-              onChange={(e) =>
-                setPhoneSetup((prev) => ({ ...prev, userName: e.target.value }))
-              }
-              className="h-11"
-              placeholder="Kullanıcı adı"
+            <TelegramLoginWidget
+              botUsername={TELEGRAM_BOT_USERNAME}
+              onAuth={handleTelegramAuth}
             />
-            <Input
-              type="password"
-              value={phoneSetup.password}
-              onChange={(e) =>
-                setPhoneSetup((prev) => ({ ...prev, password: e.target.value }))
-              }
-              className="h-11"
-              placeholder="Şifre (en az 6 karakter)"
-            />
-            <div className="grid grid-cols-2 gap-2">
-              <Button type="button" variant="outline" onClick={() => setStep("phoneOtp")}>
-                Geri
-              </Button>
-              <Button type="submit" disabled={loading}>
-                {loading ? "Oluşturuluyor..." : "Hesabı Tamamla"}
-              </Button>
-            </div>
-          </form>
-        ) : null}
-        */}
 
-        {/* Username/password login - commented out
-        {step === "password" ? (
-          <form onSubmit={handleCredentialLogin} className="mt-8 w-full max-w-md space-y-4">
-            <Input
-              type="text"
-              value={credentials.identifier}
-              onChange={(e) =>
-                setCredentials((prev) => ({
-                  ...prev,
-                  identifier: e.target.value,
-                }))
-              }
-              className="h-11"
-              placeholder="Kullanıcı adı veya telefon"
-            />
-            <Input
-              type="password"
-              value={credentials.password}
-              onChange={(e) =>
-                setCredentials((prev) => ({
-                  ...prev,
-                  password: e.target.value,
-                }))
-              }
-              className="h-11"
-              placeholder="Şifre"
-            />
-            <div className="grid grid-cols-2 gap-2">
-              <Button type="button" variant="outline" onClick={() => setStep("entry")}>
-                Geri
-              </Button>
-              <Button
-                type="submit"
-                disabled={
-                  loading ||
-                  !credentials.identifier.trim() ||
-                  !credentials.password.trim()
-                }
-                className="bg-red-600 text-white hover:bg-red-700 disabled:bg-red-300 disabled:text-white"
-              >
-                {loading ? "Giriş yapılıyor..." : "Giriş Yap"}
-              </Button>
-            </div>
-            <button
-              type="button"
-              className="w-full text-right text-xs text-gray-500 hover:text-gray-800"
-              onClick={() => setStep("resetPhone")}
-            >
-              Şifremi unuttum
-            </button>
-          </form>
-        ) : null}
-        */}
-        {step === "telegramOtp" ? (
-          <form onSubmit={handleTelegramVerify} className="mt-8 w-full max-w-md space-y-4">
-            {telegramBotLink ? (
-              <a
-                href={telegramBotLink || `https://t.me/${TELEGRAM_BOT_USERNAME}`}
-                target="_blank"
-                rel="noreferrer"
-                className="block text-center text-sm text-[#229ED9] underline"
-              >
-                Botu aç (@{TELEGRAM_BOT_USERNAME}, giriş kodu orada görünecek)
-              </a>
-            ) : (
-              <p className="text-center text-sm text-gray-500">
-                Telegram ile giriş başlatıldığında bot linki açılır.
-              </p>
-            )}
-
-            <div className="flex justify-center">
-              <InputOTP
-                maxLength={6}
-                pattern={REGEXP_ONLY_DIGITS_AND_CHARS}
-                value={telegramOtp}
-                onChange={setTelegramOtp}
-              >
-                <InputOTPGroup className="gap-2">
-                  <InputOTPSlot index={0} className="h-12 w-12" />
-                  <InputOTPSlot index={1} className="h-12 w-12" />
-                  <InputOTPSlot index={2} className="h-12 w-12" />
-                  <InputOTPSlot index={3} className="h-12 w-12" />
-                  <InputOTPSlot index={4} className="h-12 w-12" />
-                  <InputOTPSlot index={5} className="h-12 w-12" />
-                </InputOTPGroup>
-              </InputOTP>
-            </div>
+            <p className="text-center text-sm text-gray-500">
+              Telegram hesabınızı seçip onay verdiğiniz anda giriş tamamlanır.
+            </p>
 
             <div className="grid grid-cols-2 gap-2">
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => {
-                  setStep("entry");
-                  setTelegramSessionToken(null);
-                  setTelegramBotLink(null);
-                }}
+                onClick={() => setStep("entry")}
+                disabled={loading}
               >
                 Geri
               </Button>
               <Button
-                type="submit"
-                disabled={
-                  loading ||
-                  telegramOtp.length < 4 ||
-                  telegramOtp.length > 6 ||
-                  !telegramSessionToken
-                }
+                type="button"
+                disabled
                 className="bg-red-600 text-white hover:bg-red-700 disabled:bg-red-300 disabled:text-white"
               >
-                {loading ? "Doğrulanıyor..." : "Doğrula"}
+                {loading ? "Giriş tamamlanıyor..." : "Telegram onayı bekleniyor"}
               </Button>
             </div>
-          </form>
+          </div>
         ) : null}
-
-        {/* Password reset - commented out (requires username login)
-        {step === "resetPhone" ? (
-          <form onSubmit={handleSendResetOtp} className="mt-8 w-full max-w-md space-y-4">
-            <Input
-              type="tel"
-              value={resetForm.phone}
-              onChange={(e) =>
-                setResetForm((prev) => ({
-                  ...prev,
-                  phone: formatPhoneForInput(e.target.value),
-                }))
-              }
-              className="h-11"
-              placeholder="+998 90 123 45 67"
-            />
-            <div className="grid grid-cols-2 gap-2">
-              <Button type="button" variant="outline" onClick={() => setStep("password")}>
-                Geri
-              </Button>
-              <Button
-                type="submit"
-                disabled={loading || !isResetPhoneReadyForOtp}
-                className="bg-red-600 text-white hover:bg-red-700 disabled:bg-red-300 disabled:text-white"
-              >
-                {loading ? "Gönderiliyor..." : "Kod Gönder"}
-              </Button>
-            </div>
-          </form>
-        ) : null}
-
-        {step === "resetOtp" ? (
-          <form onSubmit={handleConfirmReset} className="mt-8 w-full max-w-md space-y-4">
-            <p className="text-center text-sm text-gray-500">{resetForm.phone}</p>
-            <div className="flex justify-center">
-              <InputOTP
-                maxLength={4}
-                pattern={REGEXP_ONLY_DIGITS_AND_CHARS}
-                value={resetForm.otp}
-                onChange={(value) =>
-                  setResetForm((prev) => ({ ...prev, otp: value }))
-                }
-              >
-                <InputOTPGroup className="gap-2">
-                  <InputOTPSlot index={0} className="h-12 w-12" />
-                  <InputOTPSlot index={1} className="h-12 w-12" />
-                  <InputOTPSlot index={2} className="h-12 w-12" />
-                  <InputOTPSlot index={3} className="h-12 w-12" />
-                </InputOTPGroup>
-              </InputOTP>
-            </div>
-            <Input
-              type="password"
-              value={resetForm.newPassword}
-              onChange={(e) =>
-                setResetForm((prev) => ({
-                  ...prev,
-                  newPassword: e.target.value,
-                }))
-              }
-              className="h-11"
-              placeholder="Yeni şifre"
-            />
-            <div className="grid grid-cols-2 gap-2">
-              <Button type="button" variant="outline" onClick={() => setStep("resetPhone")}>
-                Geri
-              </Button>
-              <Button
-                type="submit"
-                disabled={loading || !isResetOtpReady}
-                className="bg-red-600 text-white hover:bg-red-700 disabled:bg-red-300 disabled:text-white"
-              >
-                {loading ? "Güncelleniyor..." : "Şifreyi Güncelle"}
-              </Button>
-            </div>
-          </form>
-        ) : null}
-        */}
       </main>
     </div>
   );

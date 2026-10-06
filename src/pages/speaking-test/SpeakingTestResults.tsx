@@ -1,11 +1,36 @@
-﻿import { ArrowLeft, Download } from "lucide-react";
-import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+﻿import { ArrowLeft, Download, Loader2, PlayCircle, Volume2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { useRef } from "react";
+import { useLayoutEffect } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import speakingSubmissionService from "@/services/speakingSubmission.service";
+import { createSpeakingAudioReplayUrl } from "@/services/speakingAudioReplay";
 import axiosPrivate from "@/config/api";
 import { overallTestService, overallTestFlowStore } from "@/services/overallTest.service";
+import {
+  resolveSpeakingSubmissionTransition,
+  shouldRefreshOverallEvaluation,
+} from "@/services/speakingSubmissionRecovery";
 import { normalizeDisplayText } from "@/utils/text";
+import SpeakingDeepReview, {
+  extractSpeakingDiscussionPoints,
+  isExplicitSingleRecordingCombinedPrompt,
+  readLegacySpeakingSessionFallback,
+  resolveSpeakingResultFeedback,
+  type SpeakingDeepReviewSection,
+} from "@/components/speaking/SpeakingDeepReview";
+import SpeakingFlowAudioPlayer from "@/components/speaking/SpeakingFlowAudioPlayer";
+import { resolveSpeakingResultDisplay } from "@/components/speaking/speaking-result-display";
+import { regroupSpeakingAnswersByExpectedLayout } from "@/components/speaking/speaking-result-section-layout";
+import { sanitizeSpeakingLearnerCopy } from "@/components/speaking/speaking-learner-copy";
+import {
+  normalizeSpeakingSpeechEvidence,
+  type SpeakingFlowTimeRange,
+  type SpeakingSpeechEvidence,
+} from "@/components/speaking/speaking-speech-evidence";
+import { useResultScreenProtection } from "@/hooks/use-result-screen-protection";
+import { clearExamPresentation } from "@/utils/examFullscreen";
 
 interface SpeakingAIFeedback {
   taskAchievement?: string;
@@ -31,17 +56,39 @@ interface SpeakingAnswer {
   questionText: string;
   userAnswer: string | null;
   questionOrder?: number;
+  sectionKey?: string | null;
+  partKey?: string | null;
+  question?: any;
+  audio?: SpeakingAudioMeta;
+  visuals?: string[];
+  visualContext?: "question" | "combined-prompt";
+}
+
+interface SpeakingAudioMeta {
+  audioId?: string | null;
+  hasAudio?: boolean;
+  sectionKey?: string | null;
+  mimeType?: string | null;
+  sizeBytes?: number | null;
+  durationSeconds?: number | null;
+  allottedDurationSeconds?: number | null;
+  retentionUntil?: string | null;
+  speechEvidence?: SpeakingSpeechEvidence;
 }
 
 interface SpeakingResult {
   id: string;
   userId: string;
   speakingTestId: string;
+  overallTestId?: string;
+  overallId?: string;
+  overallTestResultId?: string;
   score?: number;
   aiFeedback?: SpeakingAIFeedback;
   submittedAt?: string;
   createdAt?: string;
   updatedAt?: string;
+  evaluationStatus?: string;
   speaking?: any;
   parts?: any[];
   answers?: SpeakingAnswer[];
@@ -57,14 +104,100 @@ interface OverallTestResult {
   [key: string]: any;
 }
 
+const resolveOfficialSpeakingDisplay = (
+  status: unknown,
+  score: unknown,
+  storedLevel?: string | null,
+) => {
+  const normalizedStatus = String(status || "").trim().toUpperCase();
+  return resolveSpeakingResultDisplay({
+    status: normalizedStatus === "PROCESSING" ? "PENDING" : normalizedStatus,
+    score:
+      typeof score === "number" || typeof score === "string"
+        ? score
+        : null,
+    storedLevel,
+  });
+};
+
+const sanitizeSpeakingFallbackFields = (
+  source: Record<string, unknown>,
+) => {
+  return {
+    part1: sanitizeSpeakingLearnerCopy(source.part1),
+    part2: sanitizeSpeakingLearnerCopy(source.part2),
+    part3: sanitizeSpeakingLearnerCopy(source.part3),
+    part4: sanitizeSpeakingLearnerCopy(source.part4),
+    coherence: sanitizeSpeakingLearnerCopy(source.coherence),
+    grammar: sanitizeSpeakingLearnerCopy(source.grammar),
+    lexical: sanitizeSpeakingLearnerCopy(source.lexical),
+    achievement: sanitizeSpeakingLearnerCopy(source.achievement),
+  };
+};
+
+const DEBUG_SPEAKING_RESULTS = import.meta.env.VITE_DEBUG_API === "true";
+
+const debugSpeakingResults = (event: string, details?: Record<string, unknown>) => {
+  if (DEBUG_SPEAKING_RESULTS) console.debug("[speaking-results]", event, details || {});
+};
+
+const firstNonEmptyString = (...values: unknown[]) => {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+  return undefined;
+};
+
+const getSpeakingOverallResultId = (value: unknown) => {
+  if (!value || typeof value !== "object") return undefined;
+  const source = value as Record<string, any>;
+  return firstNonEmptyString(
+    source.overallTestId,
+    source.overallId,
+    source.overallTestResultId,
+    source.speaking?.overallTestId,
+    source.speaking?.overallId,
+    source.speaking?.overallTestResultId,
+    source.id && source.speaking ? source.id : undefined,
+  );
+};
+
+const isSpeakingEvaluationPending = (status: unknown) =>
+  ["PENDING", "PROCESSING"].includes(
+    String(status || "").trim().toUpperCase(),
+  );
+
 export default function SpeakingTestResults() {
+  useResultScreenProtection();
   const { resultId } = useParams<{ resultId: string }>();
+  const location = useLocation();
+  const currentPath = location.pathname;
   const navigate = useNavigate();
   const [result, setResult] = useState<SpeakingResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [activePart, setActivePart] = useState(0);
   const [activeQuestion, setActiveQuestion] = useState(0);
   const [downloadingPDF, setDownloadingPDF] = useState(false);
+  const [audioUrls, setAudioUrls] = useState<Record<string, { url: string; expiresAt: number }>>({});
+  const [audioLoading, setAudioLoading] = useState<Record<string, boolean>>({});
+  const [audioErrors, setAudioErrors] = useState<Record<string, string>>({});
+  const audioElementRefs = useRef(new Map<string, HTMLAudioElement>());
+  const audioObjectUrlsRef = useRef(new Map<string, string>());
+  const pendingAudioSeek = useRef(new Map<string, number>());
+
+  useLayoutEffect(() => {
+    void clearExamPresentation();
+  }, []);
+
+  useEffect(
+    () => () => {
+      audioObjectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+      audioObjectUrlsRef.current.clear();
+    },
+    [],
+  );
 
   const handleDownloadPDF = async () => {
     // Try to get overall test result ID from session storage, otherwise use individual result ID
@@ -74,18 +207,22 @@ export default function SpeakingTestResults() {
     setDownloadingPDF(true);
     try {
       await overallTestService.downloadPDF(overallId, `speaking-certificate-${overallId}.pdf`);
-    } catch (error) {
-      console.error("Error downloading PDF:", error);
+    } catch (error: any) {
+      debugSpeakingResults("download-pdf-error", {
+        status: error?.response?.status,
+        code: error?.code,
+      });
     } finally {
       setDownloadingPDF(false);
     }
   };
 
-  useEffect(() => {
+  const loadResult = useCallback(async (showLoading = true) => {
     if (!resultId) {
-      navigate("/test");
+      navigate("/app/test");
       return;
     }
+    if (showLoading) setLoading(true);
 
     const extractSpeakingSubmissionId = (overallData: any): string | null => {
       const candidates = [
@@ -109,46 +246,145 @@ export default function SpeakingTestResults() {
       }
     };
 
-    (async () => {
+    const navigateToOverallReport = (
+      payload: SpeakingResult | OverallTestResult | null | undefined,
+      fallbackOverallTestId?: string,
+    ) => {
+      const overallTestId =
+        getSpeakingOverallResultId(payload) || fallbackOverallTestId;
+      if (!overallTestId) return false;
+      const resultTransition = resolveSpeakingSubmissionTransition(
+        {
+          success: true,
+          submissionId:
+            firstNonEmptyString(
+              (payload as SpeakingResult | undefined)?.id,
+              resultId,
+            ) || resultId,
+          overallTestId,
+          evaluationStatus:
+            isSpeakingEvaluationPending(
+              (payload as SpeakingResult | undefined)?.evaluationStatus ||
+                (payload as any)?.speaking?.evaluationStatus,
+            )
+              ? "PENDING"
+              : (payload as SpeakingResult | undefined)?.evaluationStatus ||
+                (payload as any)?.speaking?.evaluationStatus,
+        },
+        overallTestId,
+      );
+      if (resultTransition?.path && resultTransition.path !== currentPath) {
+        navigate(resultTransition.path, { replace: true });
+        return true;
+      }
+      return false;
+    };
+
+    try {
+      // Speaking result pages usually receive a speaking submission id. Try that
+      // first so the normal path does not log an expected overall-result 400.
+      const directData = await fetchSpeakingSubmission(resultId);
+      if (directData) {
+        if (navigateToOverallReport(directData)) return;
+        setResult(directData);
+        return;
+      }
+
+      // If direct speaking lookup fails, try as overall test result.
       try {
-        // Try to fetch as overall test result first
-        try {
-          const overallRes = await axiosPrivate.get(`/api/overal-test-result/${resultId}/results`);
-          const overallData = (overallRes?.data?.data || overallRes?.data) as OverallTestResult;
-          
-          if (overallData?.speaking) {
-            // Overall endpoint may omit detailed answers; hydrate from speaking submission when possible.
-            const speakingId = extractSpeakingSubmissionId(overallData);
-            if (speakingId) {
-              const detailed = await fetchSpeakingSubmission(speakingId);
-              if (detailed) {
-                setResult({
-                  ...overallData.speaking,
-                  ...detailed,
-                  answers: detailed.answers || overallData.speaking.answers || [],
-                });
+        const overallRes = await axiosPrivate.get(`/api/overal-test-result/${resultId}/results`);
+        const overallData = (overallRes?.data?.data || overallRes?.data) as OverallTestResult;
+
+        if (overallData?.speaking) {
+          // Overall endpoint may omit detailed answers; hydrate from speaking submission when possible.
+          const speakingId = extractSpeakingSubmissionId(overallData);
+          if (speakingId) {
+            const detailed = await fetchSpeakingSubmission(speakingId);
+            if (detailed) {
+              const hydratedResult = {
+                ...overallData.speaking,
+                ...detailed,
+                overallTestId: getSpeakingOverallResultId(overallData),
+                answers: detailed.answers || overallData.speaking.answers || [],
+              };
+              if (
+                navigateToOverallReport(
+                  hydratedResult,
+                  getSpeakingOverallResultId(overallData),
+                )
+              ) {
                 return;
               }
+              setResult(hydratedResult);
+              return;
             }
-            setResult(overallData.speaking);
+          }
+          if (
+            navigateToOverallReport(
+              overallData.speaking,
+              getSpeakingOverallResultId(overallData),
+            )
+          ) {
             return;
           }
-        } catch (e) {
-          // If it fails, try as direct speaking submission
-          console.log("Not an overall test result, trying direct submission...");
+          setResult({
+            ...overallData.speaking,
+            overallTestId: getSpeakingOverallResultId(overallData),
+          });
+          return;
         }
-
-        // Try direct speaking submission
-        const data = await speakingSubmissionService.getById(resultId);
-        setResult(data);
-      } catch (e) {
-        console.error("Error loading speaking result:", e);
-        navigate("/test");
-      } finally {
-        setLoading(false);
+      } catch (e: any) {
+        // If it fails, use the final direct speaking submission fallback below.
+        debugSpeakingResults("overall-result-fallback", {
+          status: e?.response?.status,
+          code: e?.code,
+        });
       }
-    })();
-  }, [resultId, navigate]);
+
+      const data = await speakingSubmissionService.getById(resultId);
+      if (!data) {
+        if (showLoading) setResult(null);
+        return;
+      }
+      if (navigateToOverallReport(data)) return;
+      setResult(data);
+    } catch (e: any) {
+      debugSpeakingResults("load-result-error", {
+        status: e?.response?.status,
+        code: e?.code,
+      });
+      if (showLoading) setResult(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPath, navigate, resultId]);
+
+  useEffect(() => {
+    void loadResult();
+  }, [loadResult]);
+
+  const speakingEvaluationStatus =
+    result?.evaluationStatus ||
+    (result?.speaking as any)?.evaluationStatus ||
+    "";
+  const pendingSpeakingEvaluation = isSpeakingEvaluationPending(
+    speakingEvaluationStatus,
+  );
+  const shouldRefreshEvaluation = shouldRefreshOverallEvaluation({
+    speakingStatus: pendingSpeakingEvaluation
+      ? "PENDING"
+      : speakingEvaluationStatus,
+  });
+
+  useEffect(() => {
+    if (!shouldRefreshEvaluation) return;
+
+    const refreshInterval = window.setInterval(() => {
+      void loadResult(false);
+    }, 2_500);
+
+    return () => window.clearInterval(refreshInterval);
+  }, [loadResult, shouldRefreshEvaluation]);
 
   // Keep hook order stable across loading/result branches.
   useEffect(() => {
@@ -171,9 +407,86 @@ export default function SpeakingTestResults() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-600">Sonuç bulunamadı</p>
-          <Button onClick={() => navigate("/test")} className="mt-4">
+          <Button onClick={() => navigate("/app/test")} className="mt-4">
             Testlere Dön
           </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (pendingSpeakingEvaluation) {
+    return (
+      <div
+        data-speaking-result-shell="true"
+        className="min-h-screen bg-neutral-50"
+      >
+        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+          <div className="mb-6 flex items-center gap-3">
+            <Button
+              variant="ghost"
+              onClick={() => navigate("/app/test")}
+              className="h-10 w-10 rounded-md p-0"
+              aria-label="Testlere dön"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-xl font-semibold tracking-normal text-neutral-950 sm:text-2xl">
+                Konuşma sonucu
+              </h1>
+              <p className="mt-1 text-sm text-neutral-600">
+                Kayıtlarınız değerlendiriliyor.
+              </p>
+            </div>
+          </div>
+
+          <div className="mb-5 grid gap-3 sm:grid-cols-2">
+            <section
+              data-speaking-result-score-placeholder="true"
+              className="flex min-h-[96px] flex-col justify-between rounded-[8px] border border-[#c9d8e6] bg-[#f4f8fc] px-5 py-4 shadow-[var(--tm-shadow-card)]"
+            >
+              <span className="text-[13px] font-semibold leading-5 text-[#315b7d]">
+                Konuşma puanı
+              </span>
+              <span className="self-end text-right text-[18px] font-semibold leading-6 text-[#315b7d]">
+                Değerlendiriliyor
+              </span>
+            </section>
+            <section
+              data-speaking-evaluation-placeholder="true"
+              className="flex min-h-[96px] flex-col justify-between rounded-[8px] border border-[#d7c9de] bg-[var(--tm-cat-goal-bg)] px-5 py-4 shadow-[var(--tm-shadow-card)]"
+            >
+              <span className="text-[13px] font-semibold leading-5 text-[var(--tm-cat-goal-fg)]">
+                CEFR seviyesi
+              </span>
+              <span className="self-end text-right text-[36px] font-semibold leading-none text-[var(--tm-cat-goal-fg)]">
+                —
+              </span>
+            </section>
+          </div>
+
+          <div
+            data-speaking-evaluation-pending="true"
+            role="status"
+            aria-live="polite"
+            aria-busy="true"
+            className="flex min-h-[260px] items-center justify-center rounded-[8px] border border-[var(--tm-border-subtle)] bg-white px-5 py-8 text-center shadow-[var(--tm-shadow-card)] animate-in fade-in duration-300"
+          >
+            <div className="max-w-md">
+              <Loader2
+                aria-hidden="true"
+                strokeWidth={1.75}
+                className="mx-auto h-7 w-7 animate-spin text-[var(--tm-cat-speaking-fg)] motion-reduce:animate-none"
+              />
+              <h1 className="mt-4 text-[17px] font-semibold leading-6 text-[var(--tm-text-primary)]">
+                Konuşmanız değerlendiriliyor
+              </h1>
+              <p className="mt-1 text-[14px] leading-6 text-[var(--tm-text-secondary)]">
+                Sonuç hazır olduğunda otomatik olarak gösterilecek.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -188,35 +501,11 @@ export default function SpeakingTestResults() {
     speakingData?.assessment ??
     null;
 
-  const parseJsonCandidate = (value: unknown): unknown => {
-    if (typeof value !== "string") return value;
-    const trimmed = value.trim();
-    if (!trimmed) return value;
-    const cleaned = trimmed.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
-    if (!(cleaned.startsWith("{") || cleaned.startsWith("["))) return value;
-    try {
-      return JSON.parse(cleaned);
-    } catch {
-      return value;
-    }
-  };
-
-  const unwrapAiFeedback = (value: unknown): unknown => {
-    let current: any = parseJsonCandidate(value);
-    for (let i = 0; i < 3; i += 1) {
-      if (!current || typeof current !== "object") break;
-      const next =
-        current?.aiFeedback ??
-        current?.ai_feedback ??
-        current?.feedback ??
-        current?.assessment;
-      if (!next || next === current) break;
-      current = parseJsonCandidate(next);
-    }
-    return current;
-  };
-
-  const aiFeedback: any = unwrapAiFeedback(rawAiFeedback);
+  const aiFeedback: any = resolveSpeakingResultFeedback(rawAiFeedback);
+  const canonicalAssessment =
+    aiFeedback?.assessmentVersion === "speaking-canonical-v1"
+      ? aiFeedback
+      : null;
 
   const normalizeQuestionRefs = (text: string): string =>
     text
@@ -253,14 +542,16 @@ export default function SpeakingTestResults() {
     return "";
   };
 
-  const generalFeedbackText = cleanText(
-    pickFirstText(
-      (aiFeedback as any)?.genel_degerlendirme,
-      (aiFeedback as any)?.genelDegerlendirme,
-      (aiFeedback as any)?.general,
-      (aiFeedback as any)?.generalFeedback,
-      (aiFeedback as any)?.egitmen_notu,
-      (aiFeedback as any)?.teacher_note,
+  const generalFeedbackText = sanitizeSpeakingLearnerCopy(
+    cleanText(
+      pickFirstText(
+        (aiFeedback as any)?.genel_degerlendirme,
+        (aiFeedback as any)?.genelDegerlendirme,
+        (aiFeedback as any)?.general,
+        (aiFeedback as any)?.generalFeedback,
+        (aiFeedback as any)?.egitmen_notu,
+        (aiFeedback as any)?.teacher_note,
+      ),
     ),
   );
 
@@ -272,7 +563,10 @@ export default function SpeakingTestResults() {
 
     if (!raw || typeof raw !== "object") return null;
     const src: any = raw;
-    const clean = (value: any) => cleanText(typeof value === "string" ? value : "");
+    const clean = (value: any) =>
+      sanitizeSpeakingLearnerCopy(
+        cleanText(typeof value === "string" ? value : ""),
+      );
 
     const structured: StructuredGeneralFeedback = {
       ozet: clean(src?.ozet),
@@ -361,12 +655,94 @@ export default function SpeakingTestResults() {
   };
 
   const parsePartKey = (value: unknown): SpeakingPartKey | undefined => {
-    const raw = String(value || "").toLowerCase().replace(/\s+/g, "");
+    const raw = String(value || "")
+      .toLocaleLowerCase("tr-TR")
+      .replace(/\s+/g, "");
     if (!raw) return undefined;
-    if (raw.includes("bolum_1_1") || raw.includes("bölüm_1_1") || raw.includes("part1.1")) return "bolum_1_1";
-    if (raw.includes("bolum_1_2") || raw.includes("bölüm_1_2") || raw.includes("part1.2")) return "bolum_1_2";
-    if (raw.includes("bolum_2") || raw.includes("bölüm_2") || raw === "part2") return "bolum_2";
-    if (raw.includes("bolum_3") || raw.includes("bölüm_3") || raw === "part3") return "bolum_3";
+    if (
+      raw.includes("bolum_1_1") ||
+      raw.includes("bölüm_1_1") ||
+      raw.includes("bolum1.1") ||
+      raw.includes("bölüm1.1") ||
+      raw.includes("part1.1")
+    ) return "bolum_1_1";
+    if (
+      raw.includes("bolum_1_2") ||
+      raw.includes("bölüm_1_2") ||
+      raw.includes("bolum1.2") ||
+      raw.includes("bölüm1.2") ||
+      raw.includes("part1.2")
+    ) return "bolum_1_2";
+    if (
+      raw.includes("bolum_2") ||
+      raw.includes("bölüm_2") ||
+      raw.includes("bolum2") ||
+      raw.includes("bölüm2") ||
+      raw.includes("part_2") ||
+      raw === "part2"
+    ) return "bolum_2";
+    if (
+      raw.includes("bolum_3") ||
+      raw.includes("bölüm_3") ||
+      raw.includes("bolum3") ||
+      raw.includes("bölüm3") ||
+      raw.includes("part_3") ||
+      raw === "part3"
+    ) return "bolum_3";
+    return undefined;
+  };
+
+  const resolvePartKeyFromQuestionMeta = (question: any): SpeakingPartKey | undefined => {
+    if (!question || typeof question !== "object") return undefined;
+
+    const directCandidates = [
+      question?.partKey,
+      question?.sectionKey,
+      question?.section?.key,
+      question?.section?.type,
+      question?.section?.title,
+      question?.subPart?.key,
+      question?.subPart?.label,
+      question?.subPart?.section?.key,
+      question?.subPart?.section?.type,
+      question?.subPart?.section?.title,
+    ];
+
+    for (const candidate of directCandidates) {
+      const parsed = parsePartKey(candidate);
+      if (parsed) return parsed;
+    }
+
+    const sectionType = String(
+      question?.section?.type || question?.subPart?.section?.type || "",
+    ).toUpperCase();
+    const subPartLabel = String(question?.subPart?.label || "")
+      .toLocaleLowerCase("tr-TR")
+      .replace(/\s+/g, "");
+
+    if (sectionType.includes("PART1")) {
+      if (subPartLabel.includes("1.2") || subPartLabel.includes("1_2")) {
+        return "bolum_1_2";
+      }
+      return "bolum_1_1";
+    }
+    if (sectionType.includes("PART2")) return "bolum_2";
+    if (sectionType.includes("PART3")) return "bolum_3";
+
+    const sectionOrder = Number(
+      question?.section?.order ?? question?.subPart?.section?.order,
+    );
+    if (Number.isFinite(sectionOrder)) {
+      if (sectionOrder === 1) {
+        if (subPartLabel.includes("1.2") || subPartLabel.includes("1_2")) {
+          return "bolum_1_2";
+        }
+        return "bolum_1_1";
+      }
+      if (sectionOrder === 2) return "bolum_2";
+      if (sectionOrder >= 3) return "bolum_3";
+    }
+
     return undefined;
   };
 
@@ -380,10 +756,48 @@ export default function SpeakingTestResults() {
     );
   };
 
+  const normalizeAudioMeta = (answer: any): SpeakingAudioMeta | undefined => {
+    const candidate =
+      answer?.audio && typeof answer.audio === "object"
+        ? answer.audio
+        : Array.isArray(answer?.audios) && answer.audios[0]
+          ? answer.audios[0]
+          : answer;
+    const audioId =
+      typeof candidate?.audioId === "string" && candidate.audioId.trim()
+        ? candidate.audioId.trim()
+        : typeof candidate?.id === "string" && candidate?.hasAudio
+          ? candidate.id.trim()
+          : "";
+    if (!audioId) return undefined;
+    return {
+      audioId,
+      hasAudio: candidate?.hasAudio !== false,
+      mimeType: typeof candidate?.mimeType === "string" ? candidate.mimeType : null,
+      sizeBytes: typeof candidate?.sizeBytes === "number" ? candidate.sizeBytes : null,
+      durationSeconds:
+        typeof candidate?.durationSeconds === "number" ? candidate.durationSeconds : null,
+      allottedDurationSeconds:
+        typeof candidate?.allottedDurationSeconds === "number"
+          ? candidate.allottedDurationSeconds
+          : null,
+      retentionUntil:
+        typeof candidate?.retentionUntil === "string" ? candidate.retentionUntil : null,
+      sectionKey:
+        typeof candidate?.sectionKey === "string" ? candidate.sectionKey : null,
+      speechEvidence: normalizeSpeakingSpeechEvidence(candidate?.speechEvidence),
+    };
+  };
+
+  const hasAudioMeta = (item?: { audio?: SpeakingAudioMeta }) =>
+    Boolean(item?.audio?.hasAudio && item.audio.audioId);
+
   const normalizeAnswerItem = (
     answer: any,
     index: number,
     partHint?: SpeakingPartKey,
+    visualRefs?: unknown,
+    visualContext: "question" | "combined-prompt" = "question",
   ): NormalizedSpeakingAnswer => {
     const questionOrder =
       parseQuestionOrder(answer?.questionOrder) ??
@@ -396,7 +810,10 @@ export default function SpeakingTestResults() {
       partHint ??
       parsePartKey(answer?.partKey) ??
       parsePartKey(answer?.sectionKey) ??
+      parsePartKey(answer?.audio?.sectionKey) ??
+      parsePartKey(answer?.audios?.[0]?.sectionKey) ??
       parsePartKey(answer?.section?.key) ??
+      resolvePartKeyFromQuestionMeta(answer?.question) ??
       resolvePartKeyByOrder(questionOrder);
 
     return {
@@ -419,7 +836,23 @@ export default function SpeakingTestResults() {
         ) || `Soru ${index + 1}`,
       userAnswer: toAnswerText(answer) || null,
       questionOrder,
+      sectionKey:
+        typeof answer?.sectionKey === "string"
+          ? answer.sectionKey
+          : typeof answer?.audio?.sectionKey === "string"
+            ? answer.audio.sectionKey
+            : typeof answer?.audios?.[0]?.sectionKey === "string"
+              ? answer.audios[0].sectionKey
+              : null,
       partKey: inferredPartKey,
+      audio: normalizeAudioMeta(answer),
+      visuals: Array.isArray(visualRefs)
+        ? visualRefs.filter(
+            (visual): visual is string =>
+              typeof visual === "string" && Boolean(visual.trim()),
+          )
+        : undefined,
+      visualContext,
     };
   };
 
@@ -434,7 +867,11 @@ export default function SpeakingTestResults() {
       }
       const existingLen = String(existing.userAnswer || "").trim().length;
       const nextLen = String(item.userAnswer || "").trim().length;
-      if (nextLen > existingLen || (nextLen === existingLen && index > 0)) {
+      if (
+        nextLen > existingLen ||
+        (!hasAudioMeta(existing) && hasAudioMeta(item)) ||
+        (nextLen === existingLen && index > 0)
+      ) {
         byKey.set(key, item);
       }
     });
@@ -469,8 +906,10 @@ export default function SpeakingTestResults() {
     return grouped;
   };
 
-  const splitPart1Questions = (rawQuestions: any[]) => {
-    const normalized = rawQuestions.map((item, index) => normalizeAnswerItem(item, index));
+  const splitPart1Questions = (rawQuestions: any[], visualRefs?: unknown) => {
+    const normalized = rawQuestions.map((item, index) =>
+      normalizeAnswerItem(item, index, undefined, visualRefs),
+    );
     const grouped = groupAnswersByParts(normalized);
     return {
       part11: grouped.bolum_1_1.map((item) => ({ ...item, partKey: "bolum_1_1" as SpeakingPartKey })),
@@ -482,9 +921,18 @@ export default function SpeakingTestResults() {
     target: NormalizedSpeakingAnswer[],
     rawQuestions: any[],
     key: SpeakingPartKey,
+    visualRefs?: unknown,
   ) => {
     rawQuestions.forEach((question, index) => {
-      target.push(normalizeAnswerItem(question, target.length + index, key));
+      target.push(
+        normalizeAnswerItem(
+          question,
+          target.length + index,
+          key,
+          visualRefs,
+          key === "bolum_2" ? "combined-prompt" : "question",
+        ),
+      );
     });
   };
 
@@ -498,23 +946,24 @@ export default function SpeakingTestResults() {
       sections.forEach((section: any) => {
         const subParts = Array.isArray(section?.subParts) ? section.subParts : [];
         if (subParts.length >= 2) {
-          appendPartQuestions(collected, Array.isArray(subParts[0]?.questions) ? subParts[0].questions : [], "bolum_1_1");
-          appendPartQuestions(collected, Array.isArray(subParts[1]?.questions) ? subParts[1].questions : [], "bolum_1_2");
+          appendPartQuestions(collected, Array.isArray(subParts[0]?.questions) ? subParts[0].questions : [], "bolum_1_1", subParts[0]?.images);
+          appendPartQuestions(collected, Array.isArray(subParts[1]?.questions) ? subParts[1].questions : [], "bolum_1_2", subParts[1]?.images);
           for (let i = 2; i < subParts.length; i += 1) {
             appendPartQuestions(
               collected,
               Array.isArray(subParts[i]?.questions) ? subParts[i].questions : [],
               "bolum_1_2",
+              subParts[i]?.images,
             );
           }
         } else if (subParts.length === 1) {
-          const split = splitPart1Questions(Array.isArray(subParts[0]?.questions) ? subParts[0].questions : []);
+          const split = splitPart1Questions(Array.isArray(subParts[0]?.questions) ? subParts[0].questions : [], subParts[0]?.images);
           collected.push(...split.part11, ...split.part12);
         }
 
         const directQuestions = Array.isArray(section?.questions) ? section.questions : [];
         if (directQuestions.length > 0) {
-          const split = splitPart1Questions(directQuestions);
+          const split = splitPart1Questions(directQuestions, section?.images);
           collected.push(...split.part11, ...split.part12);
         }
       });
@@ -524,17 +973,17 @@ export default function SpeakingTestResults() {
       if (!partNode || typeof partNode !== "object") return;
       const sections = Array.isArray(partNode?.sections) ? partNode.sections : [];
       sections.forEach((section: any) => {
-        appendPartQuestions(collected, Array.isArray(section?.questions) ? section.questions : [], key);
+        appendPartQuestions(collected, Array.isArray(section?.questions) ? section.questions : [], key, section?.images);
         const subParts = Array.isArray(section?.subParts) ? section.subParts : [];
         subParts.forEach((subPart: any) => {
-          appendPartQuestions(collected, Array.isArray(subPart?.questions) ? subPart.questions : [], key);
+          appendPartQuestions(collected, Array.isArray(subPart?.questions) ? subPart.questions : [], key, subPart?.images);
         });
       });
 
-      appendPartQuestions(collected, Array.isArray(partNode?.questions) ? partNode.questions : [], key);
+      appendPartQuestions(collected, Array.isArray(partNode?.questions) ? partNode.questions : [], key, partNode?.images);
       const topSubParts = Array.isArray(partNode?.subParts) ? partNode.subParts : [];
       topSubParts.forEach((subPart: any) => {
-        appendPartQuestions(collected, Array.isArray(subPart?.questions) ? subPart.questions : [], key);
+        appendPartQuestions(collected, Array.isArray(subPart?.questions) ? subPart.questions : [], key, subPart?.images);
       });
     };
 
@@ -570,7 +1019,7 @@ export default function SpeakingTestResults() {
   };
 
   const scores = {
-    overall: speakingData?.score || 0,
+    overall: canonicalAssessment?.standardScore ?? speakingData?.score ?? null,
     coherence: extractScoreFromFeedback(aiFeedback?.coherenceAndCohesion) || 0,
     grammar: extractScoreFromFeedback(aiFeedback?.grammaticalRangeAndAccuracy) || 0,
     lexical: extractScoreFromFeedback(aiFeedback?.lexicalResource) || 0,
@@ -648,6 +1097,11 @@ export default function SpeakingTestResults() {
     return collected;
   };
 
+  const legacySessionAnswers = readLegacySpeakingSessionFallback(
+    aiFeedback,
+    extractSessionAnswers,
+  );
+
   const mappedAnswers =
     extractObjectMappedAnswers(speakingData?.answers).length > 0
       ? extractObjectMappedAnswers(speakingData?.answers)
@@ -666,14 +1120,14 @@ export default function SpeakingTestResults() {
         ? result.answers
         : mappedAnswers.length > 0
           ? mappedAnswers
-          : extractSessionAnswers();
+          : legacySessionAnswers;
 
   const normalizedFromFlat = dedupeAnswers(
     flatRawAnswers.map((answer: any, index: number) => normalizeAnswerItem(answer, index)),
   );
   const normalizedFromStructured = extractStructuredAnswers();
   const normalizedFromSession = dedupeAnswers(
-    extractSessionAnswers().map((answer: any, index: number) => normalizeAnswerItem(answer, index)),
+    legacySessionAnswers.map((answer: any, index: number) => normalizeAnswerItem(answer, index)),
   );
 
   const isGenericQuestionText = (value?: string | null) => {
@@ -764,6 +1218,7 @@ export default function SpeakingTestResults() {
           ...item,
           questionText,
           userAnswer: finalText || item.userAnswer || null,
+          audio: item.audio,
           questionOrder,
           partKey,
         };
@@ -850,23 +1305,6 @@ export default function SpeakingTestResults() {
           { source: "session", items: hydratedSession },
         ]);
 
-  const regroupByExpectedLayout = (items: NormalizedSpeakingAnswer[]) => {
-    const regrouped = createEmptyPartGroups();
-    const sorted = [...items].sort((a, b) => (a.questionOrder || 0) - (b.questionOrder || 0));
-    sorted.forEach((item, index) => {
-      let target: SpeakingPartKey;
-      if (index < 3) target = "bolum_1_1";
-      else if (index < 6) target = "bolum_1_2";
-      else if (index === 6) target = "bolum_2";
-      else target = "bolum_3";
-      regrouped[target].push({
-        ...item,
-        partKey: target,
-      });
-    });
-    return regrouped;
-  };
-
   const groupedBySource = groupAnswersByParts(answers);
   const shouldRegroupByExpectedLayout = (() => {
     const total = answers.length;
@@ -878,13 +1316,21 @@ export default function SpeakingTestResults() {
   })();
 
   const groupedPartsRaw = shouldRegroupByExpectedLayout
-    ? regroupByExpectedLayout(answers)
+    ? regroupSpeakingAnswersByExpectedLayout(answers)
     : groupedBySource;
 
   const repairGroupedParts = (
     base: Record<SpeakingPartKey, NormalizedSpeakingAnswer[]>,
   ) => {
     const baseQuestionToPart = new Map<string, SpeakingPartKey>();
+    const audioByQuestionId = new Map<string, SpeakingAudioMeta>();
+    const audioByPartAndOrder = new Map<string, SpeakingAudioMeta>();
+    const audioByPartIndex: Record<SpeakingPartKey, SpeakingAudioMeta[]> = {
+      bolum_1_1: [],
+      bolum_1_2: [],
+      bolum_2: [],
+      bolum_3: [],
+    };
     partOrderKeys.forEach((partKey) => {
       base[partKey].forEach((item) => {
         const qid = String(item.questionId || "").trim();
@@ -899,6 +1345,34 @@ export default function SpeakingTestResults() {
       ...hydratedFlat,
       ...hydratedSession,
     ]);
+
+    allSources.forEach((item) => {
+      const qid = String(item.questionId || "").trim();
+      if (qid && hasAudioMeta(item) && !audioByQuestionId.has(qid)) {
+        audioByQuestionId.set(qid, item.audio as SpeakingAudioMeta);
+      }
+      const partKey = item.partKey || (qid ? baseQuestionToPart.get(qid) : undefined);
+      const order =
+        typeof item.questionOrder === "number" && Number.isFinite(item.questionOrder)
+          ? Math.floor(item.questionOrder)
+          : null;
+      if (partKey && order && hasAudioMeta(item)) {
+        const partOrderKey = `${partKey}:${order}`;
+        if (!audioByPartAndOrder.has(partOrderKey)) {
+          audioByPartAndOrder.set(partOrderKey, item.audio as SpeakingAudioMeta);
+        }
+      }
+    });
+    partOrderKeys.forEach((partKey) => {
+      audioByPartIndex[partKey] = allSources
+        .filter((item) => {
+          const qid = String(item.questionId || "").trim();
+          const itemPartKey = item.partKey || (qid ? baseQuestionToPart.get(qid) : undefined);
+          return itemPartKey === partKey && hasAudioMeta(item);
+        })
+        .sort((a, b) => (a.questionOrder || 0) - (b.questionOrder || 0))
+        .map((item) => item.audio as SpeakingAudioMeta);
+    });
 
     const byQuestionId = new Map<string, string>();
     const byPartKey: Record<SpeakingPartKey, string[]> = {
@@ -932,11 +1406,22 @@ export default function SpeakingTestResults() {
     const repaired = createEmptyPartGroups();
 
     partOrderKeys.forEach((partKey) => {
-      repaired[partKey] = base[partKey].map((item) => {
+      repaired[partKey] = base[partKey].map((item, index) => {
         const existing = String(item.userAnswer || "").trim();
-        if (isMeaningfulSpeakingAnswer(existing)) return item;
 
         const qid = String(item.questionId || "").trim();
+        const order =
+          typeof item.questionOrder === "number" && Number.isFinite(item.questionOrder)
+            ? Math.floor(item.questionOrder)
+            : null;
+        const audio =
+          (hasAudioMeta(item) ? item.audio : undefined) ||
+          (qid ? audioByQuestionId.get(qid) : undefined) ||
+          (order ? audioByPartAndOrder.get(`${partKey}:${order}`) : undefined) ||
+          audioByPartIndex[partKey][index];
+        if (isMeaningfulSpeakingAnswer(existing)) {
+          return audio && !hasAudioMeta(item) ? { ...item, audio } : item;
+        }
 
         let replacement = "";
         if (qid && byQuestionId.has(qid) && !usedQuestionIds.has(qid)) {
@@ -954,8 +1439,10 @@ export default function SpeakingTestResults() {
           }
         }
 
-        if (!replacement) return item;
-        return { ...item, userAnswer: replacement };
+        if (!replacement) {
+          return audio && !hasAudioMeta(item) ? { ...item, audio } : item;
+        }
+        return { ...item, userAnswer: replacement, audio };
       });
     });
 
@@ -979,10 +1466,14 @@ export default function SpeakingTestResults() {
       const feedbackKey = speakingPartMeta[partKey].feedbackKey;
       const bolumler = (aiFeedback as any)?.bolumler || (aiFeedback as any)?.["bölümler"] || {};
       const sectionFeedback = bolumler?.[partKey]?.degerlendirme || bolumler?.[partKey]?.["değerlendirme"];
-      const partFeedbackRaw = sectionFeedback || (aiFeedback as any)?.[feedbackKey] ||
-                           aiFeedback?.taskAchievement ||
-                           `${speakingPartMeta[partKey].labelMain} geri bildirimi burada gösterilecek`;
-      const partFeedback = cleanText(partFeedbackRaw);
+      const partFeedbackRaw =
+        sectionFeedback ||
+        (aiFeedback as any)?.[feedbackKey] ||
+        aiFeedback?.taskAchievement ||
+        "";
+      const partFeedback = sanitizeSpeakingLearnerCopy(
+        cleanText(partFeedbackRaw),
+      );
       const answerText = toAnswerText(currentAnswer);
       
       return {
@@ -990,18 +1481,300 @@ export default function SpeakingTestResults() {
         answer: isMeaningfulSpeakingAnswer(answerText)
           ? cleanText(answerText)
           : "Cevap verilmedi",
-        comment: partFeedback
+        comment: partFeedback,
+        audio: currentAnswer?.audio,
       };
     }
     
     return {
       question: "Soru metni burada gösterilecek",
       answer: "Cevap verilmedi",
-      comment: cleanText((aiFeedback as any)?.genel_degerlendirme || (aiFeedback as any)?.general || aiFeedback?.part1 || aiFeedback?.taskAchievement || "Geri bildirim mevcut değil")
+      comment: sanitizeSpeakingLearnerCopy(
+        cleanText(
+          (aiFeedback as any)?.genel_degerlendirme ||
+            (aiFeedback as any)?.general ||
+            aiFeedback?.part1 ||
+            aiFeedback?.taskAchievement ||
+            "",
+        ),
+      ),
+      audio: undefined,
     };
   };
+  const speakingDisplay = resolveOfficialSpeakingDisplay(
+    speakingData?.evaluationStatus ?? aiFeedback?.evaluationStatus,
+    scores.overall,
+    canonicalAssessment?.cefrLevel ?? aiFeedback?.seviye,
+  );
 
   const currentData = getCurrentQuestionAndAnswer();
+
+  const formatAudioDuration = (seconds?: number | null) => {
+    if (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds <= 0) return "";
+    const rounded = Math.max(1, Math.round(seconds));
+    const min = Math.floor(rounded / 60);
+    const sec = rounded % 60;
+    return min > 0 ? `${min}:${String(sec).padStart(2, "0")}` : `${sec} sn`;
+  };
+
+  const loadAudioUrl = async (audioId: string) => {
+    const cached = audioUrls[audioId];
+    if (cached && cached.expiresAt > Date.now() + 30_000) return cached.url;
+
+    setAudioErrors((prev) => ({ ...prev, [audioId]: "" }));
+    setAudioLoading((prev) => ({ ...prev, [audioId]: true }));
+    try {
+      const response = await axiosPrivate.get(`/api/speaking-submission/audio/${audioId}/url`);
+      const payload = response?.data?.data || response?.data || {};
+      const url = typeof payload?.url === "string" ? payload.url : "";
+      if (!url) throw new Error("AUDIO_URL_MISSING");
+      const replayUrl = await createSpeakingAudioReplayUrl({
+        streamUrl: url,
+        loadBlob: async (privateStreamUrl) => {
+          const audioResponse = await axiosPrivate.get<Blob>(privateStreamUrl, {
+            responseType: "blob",
+            timeout: 30_000,
+          });
+          return audioResponse.data;
+        },
+      });
+      const previousObjectUrl = audioObjectUrlsRef.current.get(audioId);
+      if (previousObjectUrl) URL.revokeObjectURL(previousObjectUrl);
+      audioObjectUrlsRef.current.set(audioId, replayUrl);
+      setAudioUrls((prev) => ({
+        ...prev,
+        [audioId]: {
+          url: replayUrl,
+          expiresAt: Number.POSITIVE_INFINITY,
+        },
+      }));
+      return replayUrl;
+    } catch {
+      setAudioErrors((prev) => ({
+        ...prev,
+        [audioId]: "Ses kaydı şu anda yüklenemedi.",
+      }));
+      return null;
+    } finally {
+      setAudioLoading((prev) => ({ ...prev, [audioId]: false }));
+    }
+  };
+
+  const applyPendingAudioSeek = (
+    audioId: string,
+    player = audioElementRefs.current.get(audioId),
+  ) => {
+    const startSeconds = pendingAudioSeek.current.get(audioId);
+    if (!player || startSeconds === undefined || player.readyState < 1) return;
+    const maximum = Number.isFinite(player.duration)
+      ? Math.max(0, player.duration - 0.05)
+      : startSeconds;
+    player.currentTime = Math.min(Math.max(0, startSeconds), maximum);
+    pendingAudioSeek.current.delete(audioId);
+    void player.play().catch(() => {});
+  };
+
+  const seekSpeakingAudio = async (
+    audio: SpeakingAudioMeta,
+    startSeconds: number,
+  ) => {
+    const audioId = audio.audioId;
+    if (!audioId || !Number.isFinite(startSeconds)) return;
+    pendingAudioSeek.current.set(audioId, Math.max(0, startSeconds));
+    const url = await loadAudioUrl(audioId);
+    if (!url) {
+      pendingAudioSeek.current.delete(audioId);
+      return;
+    }
+    if (typeof window !== "undefined") {
+      window.requestAnimationFrame(() => applyPendingAudioSeek(audioId));
+    }
+  };
+
+  const renderAudioReplay = (
+    audio?: SpeakingAudioMeta,
+    options?: {
+      variant: "flow";
+      issueTimeRanges?: SpeakingFlowTimeRange[];
+    },
+  ) => {
+    if (!audio?.hasAudio || !audio.audioId) return null;
+    const signed = audioUrls[audio.audioId];
+    const isLoading = Boolean(audioLoading[audio.audioId]);
+    const error = audioErrors[audio.audioId];
+
+    if (options?.variant === "flow") {
+      return (
+        <SpeakingFlowAudioPlayer
+          audio={{ ...audio, audioId: audio.audioId }}
+          sourceUrl={signed?.url}
+          isLoading={isLoading}
+          error={error}
+          issueTimeRanges={options.issueTimeRanges}
+          onEnsureSource={() => loadAudioUrl(audio.audioId!)}
+          onRegisterPlayer={(element) => {
+            if (element) {
+              audioElementRefs.current.set(audio.audioId!, element);
+              applyPendingAudioSeek(audio.audioId!, element);
+            } else {
+              audioElementRefs.current.delete(audio.audioId!);
+            }
+          }}
+          onLoadedMetadata={(element) =>
+            applyPendingAudioSeek(audio.audioId!, element)
+          }
+          onPlaybackStart={() =>
+            setAudioErrors((prev) => ({ ...prev, [audio.audioId!]: "" }))
+          }
+          onPlaybackError={() =>
+            setAudioErrors((prev) => ({
+              ...prev,
+              [audio.audioId!]: "Ses kaydı şu anda oynatılamadı.",
+            }))
+          }
+          onSeekRequest={(seconds) => void seekSpeakingAudio(audio, seconds)}
+        />
+      );
+    }
+
+    const durationLabel = formatAudioDuration(audio.durationSeconds);
+
+    return (
+      <div data-speaking-audio-replay className="flex flex-col gap-2 py-1">
+        <div className="flex min-h-10 flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-[13px] text-[var(--tm-text-secondary)]">
+            <Volume2 className="h-4 w-4 text-[var(--tm-text-tertiary)]" />
+            <span className="font-semibold text-[var(--tm-text-primary)]">Ses kaydı</span>
+            {durationLabel && <span>· {durationLabel}</span>}
+          </div>
+          {!signed && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => loadAudioUrl(audio.audioId!)}
+              disabled={isLoading}
+              className="h-8 rounded-[6px] px-2.5 text-[12px] sm:w-auto"
+            >
+              {isLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <PlayCircle className="mr-2 h-4 w-4" />
+              )}
+              Dinle
+            </Button>
+          )}
+        </div>
+        {signed && (
+          <audio
+            ref={(element) => {
+              if (element) {
+                audioElementRefs.current.set(audio.audioId!, element);
+                applyPendingAudioSeek(audio.audioId!, element);
+              } else {
+                audioElementRefs.current.delete(audio.audioId!);
+              }
+            }}
+            className="h-9 w-full"
+            src={signed.url}
+            controls
+            preload="metadata"
+            controlsList="nodownload"
+            onLoadedMetadata={(event) =>
+              applyPendingAudioSeek(audio.audioId!, event.currentTarget)
+            }
+            onError={() =>
+              setAudioErrors((prev) => ({
+                ...prev,
+                [audio.audioId!]: "Ses kaydı şu anda oynatılamadı.",
+              }))
+            }
+          />
+        )}
+        {error && <p className="text-[12px] text-red-600">{error}</p>}
+      </div>
+    );
+  };
+
+  const speakingDiscussionPoints = extractSpeakingDiscussionPoints(speakingData);
+  const deepReviewSections: SpeakingDeepReviewSection[] = visibleParts.map(
+    (partEntry) => {
+      const sectionQuestions = partEntry.questions.map(
+        (question, questionIndex) => ({
+          id: question.questionId || `${partEntry.key}-${questionIndex}`,
+          question: cleanText(
+            question.questionText ||
+              `${partEntry.meta.labelMain} Sorusu ${questionIndex + 1}`,
+          ),
+          transcript: isMeaningfulSpeakingAnswer(toAnswerText(question))
+            ? cleanText(toAnswerText(question))
+            : null,
+          audio: question.audio,
+          visuals: question.visuals,
+          visualContext: question.visualContext,
+        }),
+      );
+      return {
+        key: partEntry.key,
+        label: partEntry.meta.labelMain,
+        discussionPoints:
+          partEntry.key === "bolum_3" ? speakingDiscussionPoints : undefined,
+        singleRecordingCombinedPrompt:
+          isExplicitSingleRecordingCombinedPrompt(
+            partEntry.key,
+            sectionQuestions,
+          ),
+        questions: sectionQuestions,
+      };
+    },
+  );
+
+  if (deepReviewSections.length > 0) {
+    return (
+      <div className="min-h-screen bg-neutral-50">
+        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+          <div className="mb-6 flex items-center gap-3">
+            <Button
+              variant="ghost"
+              onClick={() => navigate("/app/test")}
+              className="h-10 w-10 rounded-md p-0"
+              aria-label="Testlere dön"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-xl font-semibold tracking-normal text-neutral-950 sm:text-2xl">
+                Konuşma sonucu
+              </h1>
+              <p className="mt-1 text-sm text-neutral-600">
+                Kayıtlarınızı ve bölüm değerlendirmelerini inceleyin.
+              </p>
+            </div>
+          </div>
+
+          <SpeakingDeepReview
+            aiFeedback={aiFeedback}
+            officialResult={speakingData as Record<string, unknown>}
+            sections={deepReviewSections}
+            submissionId={result.id}
+            score={speakingDisplay.score}
+            level={speakingDisplay.level}
+            evaluationStatus={
+              speakingData?.evaluationStatus ?? aiFeedback?.evaluationStatus
+            }
+            renderAudioReplay={renderAudioReplay}
+            onSeekAudioEvidence={seekSpeakingAudio}
+          />
+
+          <div className="mt-6 flex justify-end">
+            <Button onClick={() => navigate("/app/test")} variant="outline">
+              Testlere Dön
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
@@ -1011,7 +1784,7 @@ export default function SpeakingTestResults() {
           <div className="flex items-center gap-4 mb-6">
             <Button
               variant="ghost"
-              onClick={() => navigate("/test")}
+              onClick={() => navigate("/app/test")}
               className="p-2 hover:bg-white/80 rounded-full transition-colors"
             >
               <ArrowLeft className="h-5 w-5" />
@@ -1030,7 +1803,9 @@ export default function SpeakingTestResults() {
                 <p className="text-gray-600">Konuşma testi performansınız</p>
               </div>
               <div className="text-right">
-                <div className="text-4xl font-bold text-red-600">{scores.overall}</div>
+                <div className="text-4xl font-bold text-red-600">
+                  {speakingDisplay.score ?? "—"}
+                </div>
                 <div className="text-sm text-gray-500">Bant Puanı</div>
               </div>
             </div>
@@ -1038,11 +1813,28 @@ export default function SpeakingTestResults() {
         </div>
 
         {/* Scoring Categories Grid */}
-        {aiFeedback && (() => {
+        {aiFeedback ? (() => {
           const feedback = aiFeedback as any;
-          const hasPartFeedback = feedback.part1 || feedback.part2 || feedback.part3 || feedback.part4;
-          const hasIELTSFeedback = feedback.coherenceAndCohesion || feedback.grammaticalRangeAndAccuracy || 
-                                   feedback.lexicalResource || feedback.taskAchievement;
+          const safeFeedback = sanitizeSpeakingFallbackFields({
+            part1: feedback.part1,
+            part2: feedback.part2,
+            part3: feedback.part3,
+            part4: feedback.part4,
+            coherence: feedback.coherenceAndCohesion,
+            grammar: feedback.grammaticalRangeAndAccuracy,
+            lexical: feedback.lexicalResource,
+            achievement: feedback.taskAchievement,
+          });
+          const hasPartFeedback =
+            safeFeedback.part1 ||
+            safeFeedback.part2 ||
+            safeFeedback.part3 ||
+            safeFeedback.part4;
+          const hasIELTSFeedback =
+            safeFeedback.coherence ||
+            safeFeedback.grammar ||
+            safeFeedback.lexical ||
+            safeFeedback.achievement;
           
           if (!hasPartFeedback && !hasIELTSFeedback) {
             return null;
@@ -1050,102 +1842,102 @@ export default function SpeakingTestResults() {
           
           return (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              {feedback.part1 && (
+              {safeFeedback.part1 ? (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="font-semibold text-gray-900">Bölüm 1</h3>
                     <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
                   </div>
                   <p className="text-sm text-gray-600 leading-relaxed">
-                    {cleanText(feedback.part1)}
+                    {safeFeedback.part1}
                   </p>
                 </div>
-              )}
-              {feedback.part2 && (
+              ) : null}
+              {safeFeedback.part2 ? (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="font-semibold text-gray-900">Bölüm 2</h3>
                     <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                   </div>
                   <p className="text-sm text-gray-600 leading-relaxed">
-                    {cleanText(feedback.part2)}
+                    {safeFeedback.part2}
                   </p>
                 </div>
-              )}
-              {feedback.part3 && (
+              ) : null}
+              {safeFeedback.part3 ? (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="font-semibold text-gray-900">Bölüm 3</h3>
                     <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
                   </div>
                   <p className="text-sm text-gray-600 leading-relaxed">
-                    {cleanText(feedback.part3)}
+                    {safeFeedback.part3}
                   </p>
                 </div>
-              )}
-              {feedback.part4 && (
+              ) : null}
+              {safeFeedback.part4 ? (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="font-semibold text-gray-900">Bölüm 4</h3>
                     <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
                   </div>
                   <p className="text-sm text-gray-600 leading-relaxed">
-                    {cleanText(feedback.part4)}
+                    {safeFeedback.part4}
                   </p>
                 </div>
-              )}
+              ) : null}
               {/* Fallback to IELTS-style feedback if part1-4 not available */}
               {!hasPartFeedback && hasIELTSFeedback && (
                 <>
-                  {feedback.coherenceAndCohesion && (
+                  {safeFeedback.coherence ? (
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                       <div className="flex items-center justify-between mb-3">
                         <h3 className="font-semibold text-gray-900">Tutarlılık ve Bağlılık</h3>
                         <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
                       </div>
                       <p className="text-sm text-gray-600 leading-relaxed">
-                        {cleanText(feedback.coherenceAndCohesion)}
+                        {safeFeedback.coherence}
                       </p>
                     </div>
-                  )}
-                  {feedback.grammaticalRangeAndAccuracy && (
+                  ) : null}
+                  {safeFeedback.grammar ? (
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                       <div className="flex items-center justify-between mb-3">
                         <h3 className="font-semibold text-gray-900">Dil Bilgisi</h3>
                         <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                       </div>
                       <p className="text-sm text-gray-600 leading-relaxed">
-                        {cleanText(feedback.grammaticalRangeAndAccuracy)}
+                        {safeFeedback.grammar}
                       </p>
                     </div>
-                  )}
-                  {feedback.lexicalResource && (
+                  ) : null}
+                  {safeFeedback.lexical ? (
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                       <div className="flex items-center justify-between mb-3">
                         <h3 className="font-semibold text-gray-900">Kelime Kaynağı</h3>
                         <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
                       </div>
                       <p className="text-sm text-gray-600 leading-relaxed">
-                        {cleanText(feedback.lexicalResource)}
+                        {safeFeedback.lexical}
                       </p>
                     </div>
-                  )}
-                  {feedback.taskAchievement && (
+                  ) : null}
+                  {safeFeedback.achievement ? (
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                       <div className="flex items-center justify-between mb-3">
                         <h3 className="font-semibold text-gray-900">Görev Başarısı</h3>
                         <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
                       </div>
                       <p className="text-sm text-gray-600 leading-relaxed">
-                        {cleanText(feedback.taskAchievement)}
+                        {safeFeedback.achievement}
                       </p>
                     </div>
-                  )}
+                  ) : null}
                 </>
               )}
             </div>
           );
-        })()}
+        })() : null}
 
         {/* Part Navigation - Redesigned */}
         {visibleParts.length > 0 && (
@@ -1222,6 +2014,7 @@ export default function SpeakingTestResults() {
             </div>
             <div className="bg-gray-50 rounded-lg p-4">
               <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{currentData.answer}</p>
+              {renderAudioReplay(currentData.audio)}
             </div>
           </div>
 
@@ -1329,6 +2122,7 @@ export default function SpeakingTestResults() {
           )}
 
           {/* Comment Section */}
+          {currentData.comment ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -1340,6 +2134,7 @@ export default function SpeakingTestResults() {
               <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{currentData.comment}</p>
             </div>
           </div>
+          ) : null}
         </div>
 
         {/* Action Buttons */}
@@ -1353,7 +2148,7 @@ export default function SpeakingTestResults() {
             {downloadingPDF ? "İndiriliyor..." : "Sertifikayı İndir (PDF)"}
           </Button>
           <Button
-            onClick={() => navigate("/test")}
+            onClick={() => navigate("/app/test")}
             variant="outline"
             className="px-8 py-3 rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200"
           >

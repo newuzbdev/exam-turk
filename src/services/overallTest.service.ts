@@ -1,10 +1,16 @@
+import { reportMockAccessFailure } from '@/utils/mock-access-recovery';
+import { notifyAccessAllowanceChanged } from '@/utils/access-events';
+import { assertContentAccessEnabled } from '@/services/access-request-guard';
 import axiosPrivate from "@/config/api";
 import { SecureStorage } from "@/utils/secureStorage";
 import { toast } from "sonner";
+import { requestReauthentication } from "@/utils/authSessionRecovery";
 
 export type TestType = "READING" | "LISTENING" | "WRITING" | "SPEAKING";
+export type MockSubmitMode = "MANUAL" | "AUTO";
 
 export interface StartOverallRequest {
+  accessContextId?: string;
   readingId?: string;
   listeningId?: string;
   writingId?: string;
@@ -28,6 +34,85 @@ export interface StartOverallResponse {
   overallTestResultId?: string;
 }
 
+export interface OverallSectionTimerResponse {
+  serverNow: string;
+  startedAt: string | null;
+  expiresAt: string | null;
+  remainingSeconds: number;
+  durationSeconds: number | null;
+  graceSeconds: number;
+  testType: TestType;
+  status: "NOT_STARTED" | "IN_PROGRESS" | "SUBMITTED" | "EXPIRED";
+  phase?: "AUDIO" | "REVIEW";
+  audioStartedAt?: string | null;
+  audioEndsAt?: string | null;
+  audioDurationSeconds?: number | null;
+  reviewStartedAt?: string | null;
+  reviewExpiresAt?: string | null;
+  reviewDurationSeconds?: number | null;
+  remainingAudioSeconds?: number | null;
+  remainingReviewSeconds?: number | null;
+  durationMissingLegacyMode?: boolean;
+}
+
+export interface OverallSectionPrepareResponse {
+  serverNow: string;
+  testType: TestType;
+  status: "NOT_STARTED" | "IN_PROGRESS" | "SUBMITTED" | "EXPIRED";
+  requiresStart: boolean;
+  startedAt?: string | null;
+  expiresAt?: string | null;
+  remainingSeconds?: number;
+  durationSeconds?: number | null;
+  graceSeconds?: number;
+  phase?: "AUDIO" | "REVIEW";
+  audioStartedAt?: string | null;
+  audioEndsAt?: string | null;
+  audioDurationSeconds?: number | null;
+  reviewStartedAt?: string | null;
+  reviewExpiresAt?: string | null;
+  reviewDurationSeconds?: number | null;
+  remainingAudioSeconds?: number | null;
+  remainingReviewSeconds?: number | null;
+  durationMissingLegacyMode?: boolean;
+}
+
+export interface BackendSyncedTimerState {
+  expiresAtMs: number | null;
+  serverNowMs: number | null;
+  receivedAtMs: number;
+  initialRemainingSeconds: number;
+}
+
+export interface ListeningEvidenceAudioResponse {
+  startMs: number;
+  endMs: number;
+  streamPath: string;
+}
+
+export interface CurrentOverallSession {
+  id: string;
+  status: string;
+  isCompleted: boolean;
+  startedAt?: string | null;
+  serverNow?: string;
+  canResume?: boolean;
+  canChangeSelection?: boolean;
+  recoveryWindowSeconds?: number;
+  recoveryExpiresAt?: string | null;
+  activeSection?: {
+    testType: TestType;
+    testId: string;
+    status: "NOT_STARTED" | "IN_PROGRESS" | "SUBMITTED" | "EXPIRED";
+  } | null;
+  sections?: Array<{
+    testType: TestType;
+    testId: string;
+    token: string;
+    status: "NOT_STARTED" | "IN_PROGRESS" | "SUBMITTED" | "EXPIRED";
+  }>;
+}
+
 const tokenKeyByTestId = (testId: string) => `overall.sessionToken.byTestId.${testId}`;
 const tokenKey = (type: TestType, testId: string) => `overall.sessionToken.${type}.${testId}`;
 const flowQueueKey = "overall.flow.queue";
@@ -35,6 +120,130 @@ const flowQueueCountKey = "overall.flow.queue.count";
 const overallIdKey = "overall.flow.id";
 const overallCompletedKey = "overall.flow.completed";
 const pendingNextSectionKey = "overall.flow.pendingNextSection";
+
+const OVERALL_SECTION_TIMER_ERROR_CODES = [
+  "SECTION_NOT_STARTED",
+  "TEST_TIME_EXPIRED",
+  "SECTION_ALREADY_SUBMITTED",
+  "SESSION_RECOVERY_EXPIRED",
+  "SESSION_TOKEN_REQUIRED",
+  "LISTENING_AUDIO_IN_PROGRESS",
+  "LISTENING_AUDIO_DURATION_REQUIRED",
+] as const;
+
+export type OverallSectionTimerErrorCode =
+  (typeof OVERALL_SECTION_TIMER_ERROR_CODES)[number];
+
+const isOverallSectionTimerErrorCode = (
+  value: string,
+): value is OverallSectionTimerErrorCode =>
+  OVERALL_SECTION_TIMER_ERROR_CODES.some((code) => value.includes(code));
+
+export const getOverallSectionTimerErrorCode = (
+  error: unknown,
+): OverallSectionTimerErrorCode | null => {
+  const visited = new Set<unknown>();
+
+  const findCode = (
+    value: unknown,
+    depth: number,
+  ): OverallSectionTimerErrorCode | null => {
+    if (value == null || depth > 6) return null;
+
+    if (typeof value === "string") {
+      return (
+        OVERALL_SECTION_TIMER_ERROR_CODES.find((code) =>
+          value.includes(code),
+        ) || null
+      );
+    }
+
+    if (typeof value !== "object" || visited.has(value)) return null;
+    visited.add(value);
+
+    const record = value as Record<string, unknown>;
+    for (const key of [
+      "code",
+      "error",
+      "message",
+      "detail",
+      "data",
+      "response",
+    ]) {
+      const code = findCode(record[key], depth + 1);
+      if (code) return code;
+    }
+
+    return null;
+  };
+
+  return findCode(error, 0);
+};
+
+export const getOverallSectionTimerErrorMessage = (error: unknown): string => {
+  const response = (error as any)?.response;
+  const code = getOverallSectionTimerErrorCode(error);
+  if (code === "TEST_TIME_EXPIRED") {
+    return "Bu bölümün süresi doldu.";
+  }
+  if (code === "SECTION_NOT_STARTED") {
+    return "Bu bölüm başlatılmadı. Lütfen testi yeniden başlat.";
+  }
+  if (code === "SESSION_TOKEN_REQUIRED") {
+    return "Bu sınav oturumu başlatılmadı. Lütfen testi yeniden başlat.";
+  }
+  if (code === "SECTION_ALREADY_SUBMITTED") {
+    return "Bu bölüm daha önce gönderildi.";
+  }
+  if (code === "SESSION_RECOVERY_EXPIRED") {
+    return "Sınava dönmek için ayrılan 5 dakikalık süre doldu.";
+  }
+  if (code === "LISTENING_AUDIO_IN_PROGRESS") {
+    return "Sesli metin tamamlandıktan sonra cevaplarınızı gönderebilirsiniz.";
+  }
+  if (code === "LISTENING_AUDIO_DURATION_REQUIRED") {
+    return "Bu dinleme testi şu anda hazır değil.";
+  }
+  const payload = response?.data;
+  const payloadMessage =
+    typeof payload?.message === "string"
+      ? payload.message
+      : typeof payload?.error === "string" &&
+          !isOverallSectionTimerErrorCode(payload.error)
+        ? payload.error
+        : typeof payload?.error?.message === "string"
+          ? payload.error.message
+          : null;
+  return (
+    payloadMessage ||
+    (error as any)?.message ||
+    "Bölüm başlatılamadı. Lütfen tekrar deneyin."
+  );
+};
+
+export const createBackendSyncedTimerState = (
+  timer: OverallSectionTimerResponse
+): BackendSyncedTimerState => {
+  const expiresAtMs = timer.expiresAt ? new Date(timer.expiresAt).getTime() : NaN;
+  const serverNowMs = timer.serverNow ? new Date(timer.serverNow).getTime() : NaN;
+  return {
+    expiresAtMs: Number.isFinite(expiresAtMs) ? expiresAtMs : null,
+    serverNowMs: Number.isFinite(serverNowMs) ? serverNowMs : null,
+    receivedAtMs: Date.now(),
+    initialRemainingSeconds: Math.max(0, Math.round(Number(timer.remainingSeconds || 0))),
+  };
+};
+
+export const getBackendSyncedRemainingSeconds = (
+  state: BackendSyncedTimerState | null
+): number | null => {
+  if (!state) return null;
+  if (state.expiresAtMs !== null && state.serverNowMs !== null) {
+    const syntheticServerNow = state.serverNowMs + (Date.now() - state.receivedAtMs);
+    return Math.max(0, Math.floor((state.expiresAtMs - syntheticServerNow) / 1000));
+  }
+  return state.initialRemainingSeconds;
+};
 
 export const overallTestTokenStore = {
   set: (type: TestType, testId: string, token: string) => {
@@ -68,20 +277,6 @@ export const overallTestFlowStore = {
       }
       // reset completion marker on new queue
       sessionStorage.removeItem(overallCompletedKey);
-      // Ensure exam mode is active when starting overall test
-      if (typeof document !== "undefined") {
-        document.body.classList.add("exam-mode");
-        // Also enter fullscreen for overall test
-        const enterFullscreen = async () => {
-          try {
-            const el: any = document.documentElement as any;
-            if (el.requestFullscreen) await el.requestFullscreen();
-            else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
-            else if (el.msRequestFullscreen) await el.msRequestFullscreen();
-          } catch {}
-        };
-        enterFullscreen();
-      }
     } catch {}
   },
   getQueue: (): FlowItem[] => {
@@ -140,8 +335,7 @@ export const overallTestFlowStore = {
     const remaining = queue.filter((q) => q.testId !== testId);
     // update remaining queue without touching the initial count
     try { sessionStorage.setItem(flowQueueKey, JSON.stringify(remaining || [])); } catch {}
-    // Ensure exam mode stays active for next test
-    if (next && typeof document !== "undefined") {
+    if (next) {
       const totalCount = Math.max(overallTestFlowStore.getInitialCount(), queue.length);
       const completedCount = Math.max(0, totalCount - remaining.length);
       overallTestFlowStore.setPendingNextSection({
@@ -150,11 +344,10 @@ export const overallTestFlowStore = {
         totalCount,
         completedCount,
       });
-      document.body.classList.add("exam-mode");
       return "/overall-section-ready";
     }
     overallTestFlowStore.clearPendingNextSection();
-    return next?.path || null;
+    return null;
   },
   hasActive: (): boolean => {
     return overallTestFlowStore.getQueue().length > 0;
@@ -177,7 +370,184 @@ export const overallTestFlowStore = {
   },
 };
 
+const recoverExamEntryAuthentication = (error: unknown): boolean => {
+  if ((error as { response?: { status?: number } })?.response?.status !== 401) return false;
+  toast.error("Oturumunuz yenilenemedi. Sınava başlamak için yeniden giriş yapın.");
+  requestReauthentication();
+  return true;
+};
+
 export const overallTestService = {
+  getCurrentSession: async (): Promise<
+    CurrentOverallSession | null | undefined
+  > => {
+    try {
+      const response = await axiosPrivate.get<CurrentOverallSession | null>(
+        "/api/overal-test-result/current",
+      );
+      return response.data ?? null;
+    } catch (error) {
+      recoverExamEntryAuthentication(error);
+      return undefined;
+    }
+  },
+
+  restoreCurrentSession: (
+    session: CurrentOverallSession,
+  ): string | null => {
+    if (!session?.canResume || !session.id || !session.sections?.length) {
+      return null;
+    }
+
+    const orderedTypes: TestType[] = [
+      "LISTENING",
+      "READING",
+      "WRITING",
+      "SPEAKING",
+    ];
+    const pendingSections = [...session.sections]
+      .filter(
+        (section) =>
+          section.status === "NOT_STARTED" ||
+          section.status === "IN_PROGRESS",
+      )
+      .sort(
+        (left, right) =>
+          orderedTypes.indexOf(left.testType) -
+          orderedTypes.indexOf(right.testType),
+      );
+    if (pendingSections.length === 0) return null;
+
+    const toPath = (testType: TestType, testId: string) => {
+      if (testType === "LISTENING") return `/listening-test/${testId}`;
+      if (testType === "READING") return `/reading-test/${testId}`;
+      if (testType === "WRITING") return `/writing-test/${testId}`;
+      return `/speaking-test/${testId}`;
+    };
+    const queue = pendingSections.map((section) => ({
+      testType: section.testType,
+      testId: section.testId,
+      path: toPath(section.testType, section.testId),
+    }));
+
+    overallTestFlowStore.clear();
+    pendingSections.forEach((section) => {
+      overallTestTokenStore.set(
+        section.testType,
+        section.testId,
+        section.token,
+      );
+    });
+    overallTestFlowStore.setOverallId(session.id);
+    overallTestFlowStore.setQueue(queue);
+
+    const first = pendingSections[0];
+    if (first.status === "NOT_STARTED") {
+      const completedCount = session.sections.filter(
+        (section) => section.status === "SUBMITTED",
+      ).length;
+      overallTestFlowStore.setPendingNextSection({
+        fromTestType: first.testType,
+        next: queue[0],
+        totalCount: session.sections.length,
+        completedCount,
+      });
+      return "/overall-section-ready";
+    }
+
+    overallTestFlowStore.clearPendingNextSection();
+    return queue[0]?.path || null;
+  },
+
+  heartbeatSectionForTest: async (
+    testId: string,
+  ): Promise<{
+    serverNow: string;
+    status: string;
+    recoveryExpiresAt?: string;
+  } | null> => {
+    const sessionToken = overallTestTokenStore.getByTestId(testId);
+    if (!sessionToken) return null;
+
+    const response = await axiosPrivate.post(
+      "/api/overal-test-result/section/heartbeat",
+      { sessionToken },
+    );
+    return response.data;
+  },
+
+  getListeningEvidenceAudio: async (
+    resultId: string,
+    questionId: string,
+  ): Promise<ListeningEvidenceAudioResponse> => {
+    const response = await axiosPrivate.get<ListeningEvidenceAudioResponse>(
+      `/api/exam/results/${encodeURIComponent(resultId)}/evidence-audio/${encodeURIComponent(questionId)}`,
+    );
+    const payload = response.data as ListeningEvidenceAudioResponse & {
+      data?: ListeningEvidenceAudioResponse;
+    };
+    return payload.data || payload;
+  },
+
+  getListeningEvidenceAudioBlob: async (
+    resultId: string,
+    questionId: string,
+  ): Promise<Blob> => {
+    const response = await axiosPrivate.get(
+      `/api/exam/results/${encodeURIComponent(resultId)}/evidence-audio/${encodeURIComponent(questionId)}/stream`,
+      { responseType: "blob" },
+    );
+    return response.data as Blob;
+  },
+
+  startSectionTimerForTest: async (
+    testId: string
+  ): Promise<OverallSectionTimerResponse | null> => {
+    const sessionToken = overallTestTokenStore.getByTestId(testId);
+    if (!sessionToken) return null;
+
+    const res = await axiosPrivate.post<OverallSectionTimerResponse>(
+      "/api/overal-test-result/section/start",
+      { sessionToken }
+    ).catch(error => {
+      const section = overallTestFlowStore.getQueue().find(item => item.testId === testId);
+      if (section) reportMockAccessFailure(error, { scope: `MOCK_${section.testType}`, targetId: testId });
+      throw error;
+    }).finally(notifyAccessAllowanceChanged);
+    return res.data;
+  },
+
+  prepareSectionForTest: async (
+    testId: string,
+  ): Promise<OverallSectionPrepareResponse | null> => {
+    const sessionToken = overallTestTokenStore.getByTestId(testId);
+    if (!sessionToken) return null;
+
+    const response = await axiosPrivate.post<OverallSectionPrepareResponse>(
+      "/api/overal-test-result/section/prepare",
+      { sessionToken },
+    ).catch(error => {
+      const section = overallTestFlowStore.getQueue().find(item => item.testId === testId);
+      if (section) reportMockAccessFailure(error, { scope: `MOCK_${section.testType}`, targetId: testId });
+      throw error;
+    });
+    return response.data;
+  },
+
+  preloadListeningAudioForTest: async (
+    testId: string,
+  ): Promise<Blob | null> => {
+    const sessionToken = overallTestTokenStore.getByTestId(testId);
+    if (!sessionToken) return null;
+
+    const response = await axiosPrivate.post(
+      "/api/overal-test-result/section/listening-audio/preload",
+      { sessionToken },
+      { responseType: "blob" },
+    );
+    return response.data as Blob;
+  },
+
   submitPendingLocalSections: async (): Promise<{
     ok: boolean;
     failed: string[];
@@ -434,7 +804,7 @@ export const overallTestService = {
       const submit = await overallTestService.submitPendingLocalSections();
       if (!submit.ok) {
         toast.error(
-          `Bazi bolumler gonderilemedi: ${submit.failed.join(", ")}. Lutfen tekrar deneyin.`
+          "Bazı bölümler şu anda gönderilemedi. Lütfen biraz sonra tekrar deneyin."
         );
         return false;
       }
@@ -444,13 +814,31 @@ export const overallTestService = {
         refundUnattemptedSections: true,
       };
       await axiosPrivate.patch(`/api/overal-test-result/${overallId}/complete`, payload);
+      notifyAccessAllowanceChanged();
       overallTestFlowStore.markCompleted();
       return true;
     } catch (error: any) {
       console.error("Error finalizing early exit:", error);
       const message =
         error?.response?.data?.message ||
-        "Sinav sonlandirilamadi. Lutfen tekrar deneyin.";
+        "Sınavdan çıkış tamamlanamadı. Lütfen tekrar deneyin.";
+      toast.error(message);
+      return false;
+    }
+  },
+
+  abandonStaleSession: async (overallId: string): Promise<boolean> => {
+    try {
+      await axiosPrivate.patch(`/api/overal-test-result/${overallId}/complete`, {
+        earlyExit: true,
+        refundUnattemptedSections: true,
+      });
+      overallTestFlowStore.clear();
+      return true;
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        "Önceki sınav oturumu kapatılamadı. Lütfen tekrar deneyin.";
       toast.error(message);
       return false;
     }
@@ -458,6 +846,7 @@ export const overallTestService = {
 
   start: async (payload: StartOverallRequest): Promise<StartOverallResponse | null> => {
     try {
+      await assertContentAccessEnabled(payload);
       const res = await axiosPrivate.post<StartOverallResponse>(
         "/api/overal-test-result/start",
         payload
@@ -489,21 +878,35 @@ export const overallTestService = {
 
       return data;
     } catch (error: any) {
+      if (recoverExamEntryAuthentication(error)) return null;
+      const responseData = error?.response?.data;
+      const nestedData =
+        responseData?.data && typeof responseData.data === "object"
+          ? responseData.data
+          : null;
+      const nestedError =
+        responseData?.error && typeof responseData.error === "object"
+          ? responseData.error
+          : null;
       const message =
-        error?.response?.data?.message ||
-        (error?.response?.status === 400 ? "Insufficient coins" : "Failed to start overall test");
+        (typeof responseData?.message === "string" && responseData.message) ||
+        (typeof responseData?.error === "string" && responseData.error) ||
+        (typeof nestedData?.message === "string" && nestedData.message) ||
+        (typeof nestedError?.message === "string" && nestedError.message) ||
+        (error?.response?.status === 400
+          ? "Yetersiz kredi."
+          : error?.response?.status === 409
+            ? "Devam eden sınav oturumu kapatılmadan yeni sınav başlatılamaz."
+            : "Sınav başlatılamadı. Lütfen tekrar deneyin.");
       toast.error(message);
       return null;
     }
   },
   complete: async (overallId: string): Promise<boolean> => {
     try {
-      console.log("Completing overall test with ID:", overallId);
-      const res = await axiosPrivate.patch(`/api/overal-test-result/${overallId}/complete`, {});
-      console.log("Overall test completion response:", res.data);
+      await axiosPrivate.patch(`/api/overal-test-result/${overallId}/complete`, {});
       return true;
-    } catch (e) {
-      console.error("Error completing overall test:", e);
+    } catch {
       // non-fatal for UX; still allow navigation to results
       return false;
     }
@@ -548,12 +951,14 @@ export const overallTestService = {
   getRecentQualifiedOverallTests: async (
     limit: number = 15,
     levels?: string[],
-    uniqueUsers: boolean = true
+    uniqueUsers: boolean = true,
+    scope: "ALL" | "LISTENING" | "READING" | "WRITING" | "SPEAKING" | "FULL" = "ALL"
   ): Promise<any[]> => {
     try {
       const params: Record<string, any> = {
         limit,
         uniqueUsers,
+        scope,
       };
       if (levels && levels.length > 0) {
         params.levels = levels.join(",");

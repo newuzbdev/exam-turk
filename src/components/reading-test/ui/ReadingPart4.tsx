@@ -1,7 +1,17 @@
 ﻿import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import {
+  getReadingReviewOptionState,
+  ReadingReviewAnswerNote,
+  ReadingReviewQuestionExplanation,
+  useReadingReviewContext,
+} from "@/components/results/ReadingReviewContext";
 import HighlightableText from "@/pages/reading-test/components/HighlightableText";
+import officialReadingInstructions from "@/data/official-reading-instructions.json";
 import { fixMojibake } from "@/utils/text";
 import { MoveVertical } from "lucide-react";
+import ReadingMultipleChoiceOption from "./ReadingMultipleChoiceOption";
+import ReadingQuestionNumber from "./ReadingQuestionNumber";
+import ReadingSplitHandle from "./ReadingSplitHandle";
 
 interface ReadingPart4Props {
   testData: any;
@@ -11,12 +21,12 @@ interface ReadingPart4Props {
 }
 
 export default function ReadingPart4({ testData, answers, onAnswerChange, partNumber }: ReadingPart4Props) {
+  const review = useReadingReviewContext();
   const part4 = (testData.parts || []).find((p: any) => (p.number || 0) === 4) || (testData.parts || [])[3];
   const section4 = part4?.sections && part4.sections[0];
   const content = fixMojibake(section4?.content || "");
-  const [titleLine, ...bodyLines] = String(content).split(/\r?\n/);
-  const contentTitle = (titleLine || "").trim();
-  const contentBody = bodyLines.join("\n").trim();
+  const contentTitle = fixMojibake(section4?.title || "").trim();
+  const contentBody = String(content).trim();
   const questions = (section4?.questions || []);
   const orderedQuestions = [...questions].sort((a: any, b: any) => {
     const aNum = typeof a.number === "number" ? a.number : 0;
@@ -28,7 +38,7 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
   const getQuestionOptions = (question: any) => {
     const options = (question.answers || []).map((a: any) => ({
       variantText: fixMojibake(String(a.variantText || "")).trim(),
-      answer: fixMojibake(String(a.answer || "")).trim(),
+      answer: fixMojibake(String(a.displayText ?? a.answer ?? "")).trim(),
       correct: a.correct
     }));
     return options.sort((a: any, b: any) => a.variantText.localeCompare(b.variantText));
@@ -41,14 +51,13 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
         <ResizablePanelGroup direction="vertical" className="h-full reading-surface">
           <ResizablePanel defaultSize={45} minSize={25} maxSize={75} className="reading-surface min-h-0">
             <div className="h-full p-4 border-b border-gray-200 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent reading-scroll">
-              <div className="text-sm reading-strong-title text-slate-800 mb-3">Metin</div>
+              {contentTitle && (
+                <div className="reading-passage-title mb-3">
+                  <HighlightableText text={contentTitle} partNumber={partNumber} />
+                </div>
+              )}
               <div className="space-y-4 leading-relaxed">
-                <div className="reading-text font-sans leading-relaxed">
-                  {contentTitle && (
-                    <div className="reading-strong-title text-slate-800 mb-3">
-                      <HighlightableText text={contentTitle} partNumber={partNumber} />
-                    </div>
-                  )}
+                <div className="reading-text reading-primary-copy font-sans leading-relaxed">
                   {contentBody && <HighlightableText text={contentBody} partNumber={partNumber} />}
                 </div>
               </div>
@@ -76,7 +85,9 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
             {/* Instructions for Questions 21-24 */}
             <div className="p-2 mb-2">
               <p className="text-sm font-semibold leading-relaxed">
-                Sorular 21-24. Metne göre doğru seçeneği (A, B, C veya D) işaretleyiniz.
+                {review
+                  ? "Sorular 21–24. Metne göre doğru seçeneği ve verdiğiniz cevabı karşılaştırın."
+                  : `${officialReadingInstructions.groups["21-24"].heading}. ${officialReadingInstructions.groups["21-24"].description}`}
               </p>
             </div>
             
@@ -111,12 +122,14 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
                   {isTrueFalseQuestion && questionNumber === 25 && (
                     <div className="p-2 mb-2 bg-gray-50">
                       <p className="reading-text font-semibold mb-1">
-                         Sorular 25-29. Sorulardaki cümleler metne göre DOĞRU, YANLIŞ ya da VERİLMEMİŞ olabilir. İlgili seçeneği işaretleyiniz.
+                        {review
+                          ? "Sorular 25–29. Her ifadenin metne göre doğru, yanlış veya verilmemiş olma durumunu inceleyin."
+                          : `${officialReadingInstructions.groups["25-29"].heading}. ${officialReadingInstructions.groups["25-29"].description}`}
                       </p>
                       <div className="reading-text space-y-0.5 font-sans text-[12px]">
-                        <p><span className="font-bold">DOĞRU</span> – cümle, metindeki bilgilerle uygun ve/veya tutarlıysa,</p>
-                        <p><span className="font-bold">YANLIŞ</span> – cümle, metindeki bilgilerle tutarsız ve/veya çelişkiliyse,</p>
-                        <p><span className="font-bold">VERİLMEMİŞ</span> – cümle, metindeki bilgilerde yer almıyor ve/veya belirtilmemişse.</p>
+                        <p><span className="font-bold">DOĞRU</span> – {officialReadingInstructions.definitions["DOĞRU"]}</p>
+                        <p><span className="font-bold">YANLIŞ</span> – {officialReadingInstructions.definitions["YANLIŞ"]}</p>
+                        <p><span className="font-bold">VERİLMEMİŞ</span> – {officialReadingInstructions.definitions["VERİLMEMİŞ"]}</p>
                       </div>
                     </div>
                   )}
@@ -132,26 +145,87 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
                         />
                       </span>
                     </div>
+                    <ReadingReviewAnswerNote
+                      questionId={q.id}
+                      blankOnly
+                    />
                     <div className={`${isTrueFalseQuestion ? 'flex flex-col gap-0.5' : 'flex flex-col gap-0.5'}`}>
-                      {orderedOptions.map((opt: any) => (
-                        <div
-                          key={opt.variantText}
-                          className={`flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-50 cursor-pointer ${isTrueFalseQuestion ? 'min-w-[140px]' : ''}`}
-                          onClick={() => onAnswerChange(q.id, opt.variantText)}
-                        >
-                          <div className={`relative overflow-hidden w-5 h-5 rounded-full border-[1.75px] flex items-center justify-center flex-shrink-0 transition-all duration-150 ease-out ${
-                            answers[q.id] === opt.variantText ? "border-[#438553] scale-[1.02]" : "border-gray-400 scale-100"
-                          }`}>
-                            <div className={`w-4 h-4 rounded-full transition-all duration-150 ease-out ${
-                              answers[q.id] === opt.variantText ? "bg-[#438553] scale-100 opacity-100" : "bg-transparent scale-75 opacity-0"
-                            }`} />
-                          </div>
-                          <div className="flex items-center gap-1 reading-text text-slate-600 text-[12px]">
-                            <span className="font-semibold">{opt.variantText}.</span>
-                            <span className="font-normal">{opt.answer}</span>
+                      {orderedOptions.map((opt: any) => {
+                        const reviewState = getReadingReviewOptionState(
+                          review,
+                          q.id,
+                          opt.variantText,
+                        );
+                        const selected =
+                          answers[q.id] === opt.variantText;
+                        return (
+                        <div key={opt.variantText}>
+                          <div
+                            data-reading-review-option-state={reviewState}
+                            className={`flex w-full items-center gap-2 rounded-md px-2 py-2 text-left transition-colors ${
+                              reviewState === "correct"
+                                ? "text-[#2f6f3d]"
+                                : reviewState === "incorrect"
+                                  ? "text-[#a33737]"
+                                  : selected
+                                    ? "bg-[#f7f7f5] text-[#37352f]"
+                                    : "text-[#37352f]"
+                            } ${isTrueFalseQuestion ? 'min-w-[140px]' : ''}`}
+                          >
+                            <button
+                              type="button"
+                              role="radio"
+                              aria-checked={selected}
+                              aria-label={`${opt.variantText}. ${fixMojibake(String(opt.answer || ""))}`}
+                              data-answer-control="true"
+                              onClick={() =>
+                                onAnswerChange(q.id, opt.variantText)
+                              }
+                              className="reading-option-radio-slot shrink-0 rounded transition-colors hover:bg-[#eeeeeb] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8a8881] focus-visible:ring-offset-1"
+                            >
+                              <span
+                                aria-hidden="true"
+                                className={`reading-option-radio-ring rounded-full border-[1.5px] transition-colors ${
+                                  selected
+                                    ? reviewState === "correct"
+                                      ? "border-[#438553]"
+                                      : "border-[#5f5e5a]"
+                                    : "border-[#a9a7a1]"
+                                }`}
+                              >
+                                <span
+                                  className={`reading-option-radio-dot rounded-full transition-colors ${
+                                    selected
+                                      ? reviewState === "correct"
+                                        ? "bg-[#438553]"
+                                        : "bg-[#5f5e5a]"
+                                      : "bg-transparent"
+                                  }`}
+                                />
+                              </span>
+                            </button>
+                            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1 reading-text text-[12px]">
+                              <span className="font-semibold">{opt.variantText}.</span>
+                              <span className="font-normal">
+                                <HighlightableText
+                                  text={fixMojibake(String(opt.answer || ""))}
+                                  partNumber={partNumber}
+                                  onPlainClick={() =>
+                                    onAnswerChange(q.id, opt.variantText)
+                                  }
+                                  as="span"
+                                  wrapperAs="span"
+                                />
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
+                      <ReadingReviewQuestionExplanation
+                        questionId={q.id}
+                        className="mt-2"
+                      />
                     </div>
                   </div>
                 </div>
@@ -164,14 +238,14 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
 
       {/* Desktop Layout - Fixed Left, Resizable Right */}
       <div className="hidden lg:block h-full">
-        <ResizablePanelGroup direction="horizontal" className="rounded-lg border border-gray-200 shadow-lg h-full">
+        <ResizablePanelGroup direction="horizontal" className="h-full overflow-hidden border-y border-[#e5e5e2]">
           {/* Left: Passage - Fixed Size */}
           <ResizablePanel defaultSize={60} minSize={50} maxSize={70} className="reading-surface">
             <div className="h-full p-8 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent pb-32 reading-scroll">
               <div className="space-y-6 leading-relaxed">
-                <div className="reading-text font-sans leading-relaxed">
+                <div className="reading-text reading-passage-copy font-sans leading-relaxed">
                   {contentTitle && (
-                    <div className="reading-strong-title text-slate-800 mb-3">
+                    <div className="reading-passage-title mb-3">
                       <HighlightableText text={contentTitle} partNumber={partNumber} />
                     </div>
                   )}
@@ -181,42 +255,63 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
             </div>
           </ResizablePanel>
 
-          <ResizableHandle withHandle={true} className="bg-gray-200/40 hover:bg-gray-300/60 transition-colors w-px" />
+          <ReadingSplitHandle />
 
           {/* Right: Answers - Resizable */}
           <ResizablePanel defaultSize={40} minSize={30} maxSize={50} className="reading-surface-alt min-h-0">
-            <div className="h-full p-6 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent reading-scroll">
+            <div className="h-full px-6 pt-8 pb-6 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent reading-scroll">
               {/* Instructions for Questions 21-24 */}
-              <div className="bg-gray-50 border border-gray-200/60 p-3 mb-3 rounded-lg">
-                <p className="text-sm font-semibold font-sans leading-relaxed text-slate-700">
-                  Sorular 21-24. Metne göre doğru seçeneği (A, B, C veya D) işaretleyiniz.
+              <div className="reading-question-instruction">
+                <p className="reading-question-instruction-heading">
+                  {officialReadingInstructions.groups["21-24"].heading}
+                </p>
+                <p className="reading-question-instruction-copy">
+                  {review ? (
+                    <>Metne göre doğru seçeneği ve verdiğiniz cevabı karşılaştırın.</>
+                  ) : (
+                    <>{officialReadingInstructions.groups["21-24"].description}</>
+                  )}
                 </p>
               </div>
 
-              <div className="space-y-4 mb-8">
+              <div className="mb-8">
                 {orderedQuestions.map((q: any, idx: number) => {
                   const questionNumber = q.number || (idx + 21);
                   const isTrueFalseQuestion = questionNumber >= 25;
                   
                   return (
-                    <div key={q.id} className="rounded-lg border border-gray-200/60 bg-white/90 p-3">
+                    <div
+                      key={q.id}
+                      id={`reading-question-desktop-${questionNumber}`}
+                      className="border-b border-[#e5e5e2] py-5 first:pt-2 last:border-b-0"
+                    >
                       {/* Show instructions for questions 25-29 before the first True/False question */}
                       {isTrueFalseQuestion && questionNumber === 25 && (
-                        <div className="bg-gray-50 border border-gray-200/60 p-4 mb-3 rounded-lg">
-                          <p className="text-sm font-semibold mb-2 font-sans text-slate-700">
-                             Sorular 25-29. Sorulardaki cümleler metne göre DOĞRU, YANLIŞ ya da VERİLMEMİŞ olabilir. İlgili seçeneği işaretleyiniz.
+                        <div className="reading-question-instruction mb-5">
+                          <p className="reading-question-instruction-heading">
+                            {officialReadingInstructions.groups["25-29"].heading}
                           </p>
-                          <div className="text-sm space-y-1 font-sans text-slate-600">
-                            <p><span className="font-semibold">DOĞRU</span> – cümle, metindeki bilgilerle uygun ve/veya tutarlıysa,</p>
-                            <p><span className="font-semibold">YANLIŞ</span> – cümle, metindeki bilgilerle tutarsız ve/veya çelişkiliyse,</p>
-                            <p><span className="font-semibold">VERİLMEMİŞ</span> – cümle, metindeki bilgilerde yer almıyor ve/veya belirtilmemişse.</p>
+                          <p className="reading-question-instruction-copy">
+                            {review ? (
+                              <>Her ifadenin metne göre doğru, yanlış veya verilmemiş olma durumunu inceleyin.</>
+                            ) : (
+                              <>{officialReadingInstructions.groups["25-29"].description}</>
+                            )}
+                          </p>
+                          <div className="reading-question-definition-list">
+                            <span className="reading-question-definition-term">DOĞRU</span>
+                            <span className="reading-question-definition-copy">{officialReadingInstructions.definitions["DOĞRU"]}</span>
+                            <span className="reading-question-definition-term">YANLIŞ</span>
+                            <span className="reading-question-definition-copy">{officialReadingInstructions.definitions["YANLIŞ"]}</span>
+                            <span className="reading-question-definition-term">VERİLMEMİŞ</span>
+                            <span className="reading-question-definition-copy">{officialReadingInstructions.definitions["VERİLMEMİŞ"]}</span>
                           </div>
                         </div>
                       )}
                       <div className="space-y-2">
-                        <div className="font-medium font-sans reading-text text-slate-800">
-                          <span className="font-bold">S{questionNumber}.</span>{" "}
-                          <span className="font-normal">
+                        <div className="flex items-baseline gap-2.5 font-sans reading-text text-slate-800">
+                          <ReadingQuestionNumber number={questionNumber} />
+                          <span className="reading-primary-copy min-w-0 !leading-6">
                             <HighlightableText
                               text={fixMojibake(q.text || q.question || "")}
                               partNumber={partNumber}
@@ -225,26 +320,36 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
                             />
                           </span>
                         </div>
-                        <div className={`${isTrueFalseQuestion ? 'flex gap-2 flex-wrap' : 'space-y-1'} mt-1`}>
-                          {getQuestionOptions(q).map((opt: any) => (
-                            <div
-                              key={opt.variantText}
-                              className={`flex items-center gap-3 p-2 rounded-md hover:bg-gray-50 cursor-pointer ${isTrueFalseQuestion ? 'flex-1 min-w-[140px]' : ''}`}
-                              onClick={() => onAnswerChange(q.id, opt.variantText)}
-                            >
-                              <div className="flex items-center gap-2 text-[15px] reading-text text-slate-600">
-                                <span className="font-semibold">{opt.variantText}.</span>
-                                <div className={`relative overflow-hidden w-5 h-5 rounded-full border-[1.75px] flex items-center justify-center flex-shrink-0 transition-all duration-150 ease-out ${
-                                  answers[q.id] === opt.variantText ? "border-[#438553] scale-[1.02]" : "border-gray-400 scale-100"
-                                }`}>
-                                  <div className={`w-4 h-4 rounded-full transition-all duration-150 ease-out ${
-                                    answers[q.id] === opt.variantText ? "bg-[#438553] scale-100 opacity-100" : "bg-transparent scale-75 opacity-0"
-                                  }`} />
-                                </div>
-                                <span className="font-normal">{opt.answer}</span>
+                        <ReadingReviewAnswerNote
+                          questionId={q.id}
+                          blankOnly
+                        />
+                        <div className="mt-1 space-y-1" role="radiogroup" aria-label={`Soru ${questionNumber}`}>
+                          {getQuestionOptions(q).map((opt: any) => {
+                            const reviewState = getReadingReviewOptionState(
+                              review,
+                              q.id,
+                              opt.variantText,
+                            );
+                            const selected =
+                              answers[q.id] === opt.variantText;
+                            return (
+                              <div key={opt.variantText}>
+                                <ReadingMultipleChoiceOption
+                                  letter={opt.variantText}
+                                  text={String(opt.answer || "")}
+                                  selected={selected}
+                                  reviewState={reviewState}
+                                  partNumber={partNumber}
+                                  onSelect={() => onAnswerChange(q.id, opt.variantText)}
+                                />
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
+                          <ReadingReviewQuestionExplanation
+                            questionId={q.id}
+                            className="mt-2"
+                          />
                         </div>
                       </div>
                     </div>

@@ -39,7 +39,7 @@ const renderPath = (from: LearningLocation, to: LearningLocation) => {
         y1={`${from.position.y}%`}
         x2={`${to.position.x}%`}
         y2={`${to.position.y}%`}
-        stroke={isActive ? "#8b5cf6" : "#e5e7eb"}
+        stroke={isActive ? "var(--tm-progress-active)" : "var(--tm-progress-track)"}
         strokeWidth={isActive ? "3" : "2"}
         strokeDasharray={isActive ? "none" : "6,4"}
         className="transition-all duration-500"
@@ -353,10 +353,10 @@ const ProfileLevelProgression = () => {
                                   <Button
                                     className={`ml-4 ${
                                       location.current
-                                        ? "bg-[#58cc02] hover:bg-[#76d91c] text-white"
+                                        ? "bg-[var(--tm-level-green)] hover:bg-[var(--tm-level-green-hover)] text-white"
                                         : location.completed
                                         ? "bg-green-100 hover:bg-green-200 text-green-700"
-                                        : "bg-[#58cc02] hover:bg-[#76d91c] text-white"
+                                        : "bg-[var(--tm-level-green)] hover:bg-[var(--tm-level-green-hover)] text-white"
                                     }`}
                                   >
                                     {location.current ? (
@@ -392,9 +392,9 @@ const ProfileLevelProgression = () => {
                                       <div
                                         className={`w-2 h-2 rounded-full ${
                                           location.completed
-                                            ? "bg-[#58cc02]"
+                                            ? "bg-[var(--tm-level-green)]"
                                             : location.current
-                                            ? "bg-[#76d91c]"
+                                            ? "bg-[var(--tm-level-green-hover)]"
                                             : "bg-gray-300"
                                         }`}
                                       />

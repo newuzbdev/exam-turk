@@ -1,10 +1,34 @@
-﻿import { useEffect, useRef, useState } from "react";
+﻿import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
+
+import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { StickyNote } from "lucide-react";
+import {
+  Eraser,
+  Highlighter,
+  Pencil,
+  StickyNote,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useReadingNotes } from "@/contexts/ReadingNotesContext";
+import {
+  ReadingReviewEvidenceText,
+  useReadingReviewContext,
+} from "@/components/results/ReadingReviewContext";
+import { useExamTextSelection } from "@/hooks/use-exam-text-selection";
+import {
+  getReadingSelectionEndRect,
+  getReadingSelectionToolbarPosition,
+} from "@/lib/reading-selection-toolbar-position";
 
 interface Highlight {
   id: string;
@@ -16,24 +40,37 @@ interface Highlight {
 interface HighlightableTextProps {
   text: string;
   partNumber?: number;
+  onPlainClick?: () => void;
   as?: "p" | "span";
   className?: string;
   wrapperAs?: "div" | "span";
+  reviewSourceText?: string;
+  reviewSourceOffset?: number;
 }
 
 export default function HighlightableText({
   text,
   partNumber,
+  onPlainClick,
   as = "p",
   className,
+  reviewSourceOffset,
+  reviewSourceText,
   wrapperAs = "div",
 }: HighlightableTextProps) {
+  const readingReview = useReadingReviewContext();
   const { notes, addNote, updateNote, deleteNote } = useReadingNotes();
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [highlights, setHighlights] = useState<Highlight[]>([]);
   const [tooltip, setTooltip] = useState<{
     x: number;
     y: number;
+    viewportX: number;
+    viewportTop: number;
+    viewportBottom: number;
+    viewportY: number;
+    boundaryLeft?: number;
+    boundaryRight?: number;
     start: number;
     end: number;
   } | null>(null);
@@ -50,10 +87,55 @@ export default function HighlightableText({
     highlightedText?: string; // For standalone notes with selected text
     selectionStart?: number; // Exact start position from tooltip
     selectionEnd?: number; // Exact end position from tooltip
+    anchorX?: number;
+    anchorY?: number;
+  } | null>(null);
+  const [noteEditorPosition, setNoteEditorPosition] = useState<{
+    left: number;
+    top: number;
   } | null>(null);
 
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
+  const noteEditorRef = useRef<HTMLDivElement>(null);
+  const answerGestureRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    dragged: boolean;
+  } | null>(null);
+  const suppressNextPlainClickRef = useRef(false);
+
+  const { previewSelection, selectionHandlers } = useExamTextSelection({
+    containerRef,
+    anchorAtSelectionEnd: true,
+    disabled: !!readingReview,
+    text,
+    onSelectionStart: () => setTooltip(null),
+    onSelection: (selection) => {
+      const containerRect = containerRef.current?.getBoundingClientRect();
+      const selectionBoundary =
+        containerRef.current?.closest(".reading-option-row") ||
+        containerRef.current;
+      const boundaryRect = selectionBoundary?.getBoundingClientRect();
+      setTooltip({
+        x: containerRect
+          ? selection.viewportX - containerRect.left
+          : selection.viewportX,
+        y: containerRect
+          ? selection.viewportTop - containerRect.top - 10
+          : selection.viewportTop,
+        viewportX: selection.viewportX,
+        viewportTop: selection.viewportTop,
+        viewportBottom: selection.viewportBottom,
+        viewportY: selection.viewportBottom + 8,
+        boundaryLeft: boundaryRect?.left,
+        boundaryRight: boundaryRect?.right,
+        start: selection.start,
+        end: selection.end,
+      });
+    },
+  });
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -129,14 +211,15 @@ export default function HighlightableText({
   }, [notes, text, partNumber]);
 
   useEffect(() => {
-    const handleMouseUp = () => {
+    const handleNativeTouchSelection = () => {
       const selection = window.getSelection();
       if (!selection || selection.rangeCount === 0) return;
 
       const range = selection.getRangeAt(0);
       if (
         !containerRef.current ||
-        !containerRef.current.contains(range.startContainer)
+        !containerRef.current.contains(range.startContainer) ||
+        !containerRef.current.contains(range.endContainer)
       ) {
         setTooltip(null);
         return;
@@ -144,6 +227,7 @@ export default function HighlightableText({
 
       const selectedText = selection.toString().trim();
       if (!selectedText) return;
+      suppressNextPlainClickRef.current = true;
 
       const preSelectionRange = range.cloneRange();
       preSelectionRange.selectNodeContents(containerRef.current);
@@ -153,35 +237,136 @@ export default function HighlightableText({
       const end = start + selectedText.length;
 
       const rect = range.getBoundingClientRect();
+      const endRect = getReadingSelectionEndRect(range);
       const containerRect = containerRef.current.getBoundingClientRect();
+      const selectionBoundary =
+        containerRef.current.closest(".reading-option-row") ||
+        containerRef.current;
+      const boundaryRect = selectionBoundary.getBoundingClientRect();
 
       setTooltip({
         x: rect.left - containerRect.left + rect.width / 2,
         y: rect.top - containerRect.top - 10,
+        viewportX: endRect.right,
+        viewportTop: endRect.top,
+        viewportBottom: endRect.bottom,
+        viewportY: endRect.bottom + 8,
+        boundaryLeft: boundaryRect.left,
+        boundaryRight: boundaryRect.right,
         start,
         end,
       });
     };
 
-    const handleTouchEnd = () => {
-      // Reuse same logic for mobile long-press selection
-      handleMouseUp();
-    };
-
-    document.addEventListener("mouseup", handleMouseUp);
-    document.addEventListener("touchend", handleTouchEnd, { passive: true });
+    document.addEventListener("touchend", handleNativeTouchSelection, {
+      passive: true,
+    });
     return () => {
-      document.removeEventListener("mouseup", handleMouseUp);
-      document.removeEventListener("touchend", handleTouchEnd);
+      document.removeEventListener("touchend", handleNativeTouchSelection);
     };
   }, []);
+
+  const handlePointerDown = (event: ReactPointerEvent<HTMLElement>) => {
+    if (event.pointerType !== "touch" && event.button === 0) {
+      answerGestureRef.current = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        dragged: false,
+      };
+    }
+    selectionHandlers.onPointerDown(event);
+  };
+
+  const handlePointerMove = (event: ReactPointerEvent<HTMLElement>) => {
+    const gesture = answerGestureRef.current;
+    if (
+      gesture &&
+      gesture.pointerId === event.pointerId &&
+      Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY) >=
+        6
+    ) {
+      gesture.dragged = true;
+    }
+    selectionHandlers.onPointerMove(event);
+  };
+
+  const handlePlainClick = (event: ReactMouseEvent<HTMLElement>) => {
+    event.stopPropagation();
+    const gesture = answerGestureRef.current;
+    answerGestureRef.current = null;
+
+    if (suppressNextPlainClickRef.current) {
+      suppressNextPlainClickRef.current = false;
+      return;
+    }
+    if (
+      gesture?.dragged ||
+      (event.target as Element).closest(
+        'mark,[data-exam-selection-ignore="true"]',
+      )
+    ) {
+      return;
+    }
+    onPlainClick?.();
+  };
+
+  useLayoutEffect(() => {
+    if (!noteDialog || isMobileViewport || typeof window === "undefined") {
+      setNoteEditorPosition(null);
+      return;
+    }
+
+    const positionEditor = () => {
+      const editor = noteEditorRef.current;
+      if (!editor) return;
+
+      const viewportMargin = 12;
+      const anchorX = noteDialog.anchorX ?? window.innerWidth / 2;
+      const anchorY = noteDialog.anchorY ?? window.innerHeight / 3;
+      const editorRect = editor.getBoundingClientRect();
+      const editorWidth = editorRect.width || 336;
+      const editorHeight = Math.min(
+        editorRect.height,
+        window.innerHeight - viewportMargin * 2,
+      );
+      const left = Math.min(
+        Math.max(viewportMargin, anchorX - editorWidth / 2),
+        window.innerWidth - editorWidth - viewportMargin,
+      );
+      const belowTop = anchorY;
+      const aboveTop = anchorY - editorHeight - 12;
+      const top =
+        belowTop + editorHeight <= window.innerHeight - viewportMargin
+          ? belowTop
+          : aboveTop >= viewportMargin
+            ? aboveTop
+            : Math.max(
+                viewportMargin,
+                window.innerHeight - editorHeight - viewportMargin,
+              );
+
+      setNoteEditorPosition({ left, top });
+    };
+
+    positionEditor();
+    window.addEventListener("resize", positionEditor);
+    return () => window.removeEventListener("resize", positionEditor);
+  }, [
+    isMobileViewport,
+    noteDialog?.anchorX,
+    noteDialog?.anchorY,
+    noteDialog?.highlightedText,
+  ]);
 
   useEffect(() => {
   const handleClickOutside = (event: MouseEvent | TouchEvent) => {
       if (!containerRef.current) return;
       const target = event.target as Node | null;
       if (!target) return;
-      const inTooltip = tooltipRef.current && tooltipRef.current.contains(target);
+      const inTooltip =
+        (tooltipRef.current && tooltipRef.current.contains(target)) ||
+        (noteEditorRef.current && noteEditorRef.current.contains(target));
       const inMark = (target as HTMLElement)?.closest?.("mark");
       // Clear when clicking anywhere that's not tooltip or a highlight
       if (!inTooltip && !inMark) {
@@ -205,13 +390,7 @@ export default function HighlightableText({
       (h) => h.start === tooltip.start && h.end === tooltip.end
     );
 
-    if (exists) {
-      setHighlights((prev) =>
-        prev.filter(
-          (h) => !(h.start === tooltip.start && h.end === tooltip.end)
-        )
-      );
-    } else {
+    if (!exists) {
       setHighlights((prev) => [
         ...prev,
         { id: Date.now().toString(), start: tooltip.start, end: tooltip.end },
@@ -219,6 +398,29 @@ export default function HighlightableText({
     }
 
     setTooltip(null);
+    window.getSelection()?.removeAllRanges();
+  };
+
+  const handleClearSelection = () => {
+    if (!tooltip) return;
+
+    const matchingHighlights = highlights.filter(
+      (highlight) =>
+        highlight.start === tooltip.start && highlight.end === tooltip.end
+    );
+
+    matchingHighlights.forEach((highlight) => {
+      if (highlight.noteId) deleteNote(highlight.noteId);
+    });
+
+    setHighlights((prev) =>
+      prev.filter(
+        (highlight) =>
+          highlight.start !== tooltip.start || highlight.end !== tooltip.end
+      )
+    );
+    setTooltip(null);
+    setNotePreview(null);
     window.getSelection()?.removeAllRanges();
   };
 
@@ -259,6 +461,10 @@ export default function HighlightableText({
       noteId: highlight.noteId,
       note: existingNote?.text || "",
       highlightedText: currentSelectedText || selectedText, // Always include the selected text
+      selectionStart: tooltip.start,
+      selectionEnd: tooltip.end,
+      anchorX: tooltip.viewportX,
+      anchorY: tooltip.viewportY,
     });
     setTooltip(null);
     window.getSelection()?.removeAllRanges();
@@ -301,6 +507,8 @@ export default function HighlightableText({
       highlightedText: selectedText || undefined,
       selectionStart,
       selectionEnd,
+      anchorX: tooltip?.viewportX,
+      anchorY: tooltip?.viewportY,
     });
     
     // Clear tooltip and selection after capturing
@@ -311,8 +519,7 @@ export default function HighlightableText({
   const handleSaveNote = () => {
     if (!noteDialog) return;
 
-    const textarea = document.getElementById("highlight-note-textarea") as HTMLTextAreaElement;
-    const noteText = textarea?.value.trim() || noteDialog.note.trim();
+    const noteText = noteDialog.note.trim();
     if (!noteText) {
       setNoteDialog(null);
       return;
@@ -468,16 +675,61 @@ export default function HighlightableText({
   const renderText = () => {
     const parts = [];
     let lastIndex = 0;
+    const activeSelection =
+      previewSelection ??
+      (tooltip &&
+      !highlights.some(
+        (highlight) =>
+          highlight.start === tooltip.start && highlight.end === tooltip.end,
+      )
+        ? { start: tooltip.start, end: tooltip.end }
+        : null);
+
+    const pushPlainText = (start: number, end: number, key: string) => {
+      if (end <= start) return;
+
+      if (
+        !activeSelection ||
+        activeSelection.end <= start ||
+        activeSelection.start >= end
+      ) {
+        parts.push(<span key={key}>{text.substring(start, end)}</span>);
+        return;
+      }
+
+      const selectedStart = Math.max(start, activeSelection.start);
+      const selectedEnd = Math.min(end, activeSelection.end);
+
+      if (selectedStart > start) {
+        parts.push(
+          <span key={`${key}-before`}>
+            {text.substring(start, selectedStart)}
+          </span>,
+        );
+      }
+      parts.push(
+        <span
+          key={`${key}-selected`}
+          data-exam-selection-preview
+          className="rounded-[2px] bg-[#dce8f5] text-inherit"
+        >
+          {text.substring(selectedStart, selectedEnd)}
+        </span>,
+      );
+      if (selectedEnd < end) {
+        parts.push(
+          <span key={`${key}-after`}>
+            {text.substring(selectedEnd, end)}
+          </span>,
+        );
+      }
+    };
 
     const sorted = [...highlights].sort((a, b) => a.start - b.start);
 
     for (const h of sorted) {
       if (h.start > lastIndex) {
-        parts.push(
-          <span key={`text-${lastIndex}`}>
-            {text.substring(lastIndex, h.start)}
-          </span>
-        );
+        pushPlainText(lastIndex, h.start, `text-${lastIndex}`);
       }
       const note = h.noteId ? notes.find((n) => n.id === h.noteId) : null;
       const hasNote = !!note;
@@ -485,26 +737,33 @@ export default function HighlightableText({
       parts.push(
         <mark
           key={h.id}
-          className={`${hasNote ? 'bg-yellow-400' : 'bg-yellow-300'} rounded-sm px-0.5 select-none cursor-pointer relative group`}
+          className={`relative cursor-pointer select-none rounded-[3px] px-0.5 text-inherit transition-colors ${
+            hasNote
+              ? "bg-[#edf3f7] underline decoration-[#8091a2] decoration-dashed decoration-1 underline-offset-[3px]"
+              : "bg-[#fff0a8]"
+          }`}
           onClick={(e) => {
-            // If clicking on the note icon, open note dialog directly
-            if ((e.target as HTMLElement).closest('.note-icon')) {
-              if (note) {
-                setNoteDialog({
-                  highlightId: h.id,
-                  noteId: h.noteId,
-                  note: note.text || "",
-                });
-              }
-              return;
-            }
-
-            const rect = (e.target as HTMLElement).getBoundingClientRect();
+            const target = e.target as HTMLElement;
+            const rect = target.getBoundingClientRect();
+            const lineRects = Array.from(target.getClientRects()).filter(
+              (lineRect) => lineRect.width > 0 || lineRect.height > 0,
+            );
+            const endRect = lineRects[lineRects.length - 1] || rect;
             const containerRect = containerRef.current!.getBoundingClientRect();
+            const selectionBoundary =
+              containerRef.current!.closest(".reading-option-row") ||
+              containerRef.current!;
+            const boundaryRect = selectionBoundary.getBoundingClientRect();
 
             setTooltip({
               x: rect.left - containerRect.left + rect.width / 2,
               y: rect.top - containerRect.top - 10,
+              viewportX: endRect.right,
+              viewportTop: endRect.top,
+              viewportBottom: endRect.bottom,
+              viewportY: endRect.bottom + 8,
+              boundaryLeft: boundaryRect.left,
+              boundaryRight: boundaryRect.right,
               start: h.start,
               end: h.end,
             });
@@ -512,10 +771,9 @@ export default function HighlightableText({
           onMouseEnter={(e) => {
             if (hasNote && note) {
               const rect = (e.target as HTMLElement).getBoundingClientRect();
-              const containerRect = containerRef.current!.getBoundingClientRect();
               setNotePreview({
-                x: rect.left - containerRect.left + rect.width / 2,
-                y: rect.top - containerRect.top - 10,
+                x: rect.left + rect.width / 2,
+                y: rect.bottom + 8,
                 noteText: note.text,
               });
             }
@@ -525,28 +783,13 @@ export default function HighlightableText({
           }}
         >
           {text.substring(h.start, h.end)}
-          {hasNote && (
-            <StickyNote 
-              className="note-icon inline-block ml-1 w-3 h-3 text-yellow-800 opacity-80 hover:opacity-100 cursor-pointer" 
-              onClick={(e) => {
-                e.stopPropagation();
-                if (note) {
-                  setNoteDialog({
-                    highlightId: h.id,
-                    noteId: h.noteId,
-                    note: note.text || "",
-                  });
-                }
-              }}
-            />
-          )}
         </mark>
       );
       lastIndex = h.end;
     }
 
     if (lastIndex < text.length) {
-      parts.push(<span key={`text-end`}>{text.substring(lastIndex)}</span>);
+      pushPlainText(lastIndex, text.length, "text-end");
     }
 
     return parts;
@@ -556,62 +799,104 @@ export default function HighlightableText({
     ? highlights.some((h) => h.start === tooltip.start && h.end === tooltip.end)
     : false;
 
+  const selectionToolbarStyle = (() => {
+    if (!tooltip || typeof window === "undefined" || isMobileViewport) {
+      return undefined;
+    }
+
+    return getReadingSelectionToolbarPosition({
+      anchorX: tooltip.viewportX,
+      selectionTop: tooltip.viewportTop,
+      selectionBottom: tooltip.viewportBottom,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      boundaryLeft: tooltip.boundaryLeft,
+      boundaryRight: tooltip.boundaryRight,
+      bottomReserved: 64,
+    });
+  })();
+
   const Component = as === "span" ? "span" : "p";
   const Wrapper = wrapperAs === "span" ? "span" : "div";
 
-  const handleContainerClick = (e: React.MouseEvent) => {
-    if (e.target === containerRef.current) {
-      setTooltip(null);
-      window.getSelection()?.removeAllRanges();
-    }
-  };
+  if (readingReview) {
+    return (
+      <ReadingReviewEvidenceText
+        text={text}
+        as={as}
+        className={className}
+        sourceOffset={reviewSourceOffset}
+        sourceText={reviewSourceText}
+        wrapperAs={wrapperAs}
+      />
+    );
+  }
 
   return (
-    <Wrapper ref={containerRef as any} className="relative select-text" onMouseDown={handleContainerClick}>
-      <Component className={`reading-text font-sans whitespace-pre-line ${className || ""}`}>
-        {renderText()}
-      </Component>
+    <>
+      <Wrapper
+        ref={containerRef as any}
+        className={`relative select-text lg:select-none ${onPlainClick ? "cursor-pointer" : ""}`}
+        translate="no"
+        {...selectionHandlers}
+        onClick={handlePlainClick}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+      >
+        <Component className={`reading-text font-sans whitespace-pre-line ${className || ""}`}>
+          {renderText()}
+        </Component>
+      </Wrapper>
 
-      {tooltip && (
+      {typeof document !== "undefined" && createPortal(
+        <>
+        {tooltip && (
         <div
           ref={tooltipRef}
           className={`${isMobileViewport
             ? "fixed bottom-[max(5rem,env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2"
-            : "absolute"
-          } bg-black text-white text-xs px-3 py-2 rounded shadow-lg flex items-center gap-2 z-[80] max-w-[calc(100vw-1rem)] flex-wrap justify-center`}
+            : "fixed"
+          } z-[80] flex w-[148px] max-w-[calc(100vw-1rem)] flex-col items-stretch gap-0.5 rounded-md border border-[#dededb] bg-white p-1 shadow-[0_8px_24px_rgba(15,23,42,0.12)]`}
           style={isMobileViewport
             ? undefined
-            : {
-                top: tooltip.y,
-                left: tooltip.x,
-                transform: "translate(-50%, -100%)",
-              }}
+            : selectionToolbarStyle}
+          role="toolbar"
+          aria-label="Metin araçları"
+          data-exam-selection-ignore="true"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
         >
-          <span>{isHighlighted ? `Kald\u0131r\u0131ls\u0131n m\u0131?` : `Vurgulans\u0131n m\u0131?`}</span>
           <Button
             size="sm"
-            className="bg-yellow-400 text-black hover:bg-yellow-500"
+            variant="ghost"
+            className="h-8 w-full justify-start gap-1.5 rounded px-2.5 text-sm font-medium text-[#37352f] hover:bg-[#f5f5f3]"
             onClick={handleHighlight}
+            disabled={isHighlighted}
+            title="Seçili metni vurgula"
           >
-            {isHighlighted ? `Kald\u0131r` : `Vurgula`}
+            <Highlighter className="h-4 w-4 text-[#9a7914]" />
+            Vurgula
           </Button>
-          {isHighlighted && (
-            <Button
-              size="sm"
-              className="bg-blue-500 text-white hover:bg-blue-600"
-              onClick={handleAddNote}
-            >
-              <StickyNote className="w-3 h-3 mr-1" />
-              Not
-            </Button>
-          )}
           <Button
             size="sm"
-            className="bg-green-500 text-white hover:bg-green-600"
-            onClick={handleAddStandaloneNote}
+            variant="ghost"
+            className="h-8 w-full justify-start gap-1.5 rounded px-2.5 text-sm font-medium text-[#37352f] hover:bg-[#f5f5f3] disabled:opacity-35"
+            onClick={handleClearSelection}
+            disabled={!isHighlighted}
+            title="Seçili işareti temizle"
           >
-            <StickyNote className="w-3 h-3 mr-1" />
-            Not Ekle
+            <Eraser className="h-4 w-4 text-[#6f6e69]" />
+            Temizle
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-full justify-start gap-1.5 rounded px-2.5 text-sm font-medium text-[#37352f] hover:bg-[#f5f5f3]"
+            onClick={isHighlighted ? handleAddNote : handleAddStandaloneNote}
+            title="Seçili metne not ekle"
+          >
+            <Pencil className="h-4 w-4 text-[#657789]" />
+            Not al
           </Button>
         </div>
       )}
@@ -619,17 +904,17 @@ export default function HighlightableText({
       {/* Note Preview Tooltip - Shows note content when hovering over highlighted text with note */}
       {notePreview && (
         <div
-          className="absolute bg-yellow-50 border-2 border-yellow-400 text-gray-800 text-xs px-3 py-2.5 rounded-lg shadow-xl z-50 max-w-xs pointer-events-none"
+          className="pointer-events-none fixed z-50 max-w-xs rounded-md border border-[#d9e0e6] bg-white px-3 py-2.5 text-xs text-[#37352f] shadow-[0_8px_24px_rgba(15,23,42,0.12)]"
           style={{
-            top: notePreview.y + 15,
+            top: notePreview.y,
             left: notePreview.x,
             transform: "translate(-50%, 0)",
           }}
         >
           <div className="flex items-start gap-2">
-            <StickyNote className="w-4 h-4 text-yellow-700 mt-0.5 flex-shrink-0" />
+            <StickyNote className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#657789]" />
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-yellow-800 mb-1.5 text-[11px] uppercase tracking-wide">Notunuz:</p>
+              <p className="mb-1 text-[11px] font-semibold text-[#657789]">Not</p>
               <p className="text-xs leading-relaxed whitespace-pre-wrap break-words">
                 {notePreview.noteText.length > 100 
                   ? notePreview.noteText.substring(0, 100) + "..." 
@@ -640,50 +925,99 @@ export default function HighlightableText({
         </div>
       )}
 
-      {/* Note Dialog */}
-      <Dialog open={!!noteDialog} onOpenChange={(open) => !open && setNoteDialog(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-          <DialogTitle>{`Not Ekle/D\u00fczenle`}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
+      {noteDialog && (
+        <div
+          ref={noteEditorRef}
+          role="dialog"
+          aria-label="Metin notu"
+          className={`fixed z-[90] flex max-h-[calc(100dvh-1.5rem)] flex-col overflow-hidden rounded-md border border-[#dededb] bg-white p-3 shadow-[0_12px_32px_rgba(15,23,42,0.16)] ${
+            isMobileViewport
+              ? "bottom-[max(5rem,env(safe-area-inset-bottom))] left-3 right-3"
+              : "w-[min(21rem,calc(100vw-1.5rem))]"
+          }`}
+          style={
+            isMobileViewport
+              ? undefined
+              : {
+                  left: noteEditorPosition?.left ?? 12,
+                  top: noteEditorPosition?.top ?? 12,
+                  visibility: noteEditorPosition ? "visible" : "hidden",
+                }
+          }
+        >
+          <div className="mb-2 flex shrink-0 items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <StickyNote className="h-4 w-4 shrink-0 text-[#657789]" />
+              <span className="text-sm font-semibold text-[#37352f]">
+                {noteDialog.noteId ? "Notu düzenle" : "Not ekle"}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setNoteDialog(null)}
+              className="flex h-7 w-7 items-center justify-center rounded text-[#787774] hover:bg-[#f1f1ef] hover:text-[#37352f]"
+              aria-label="Not panelini kapat"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          {noteDialog.highlightedText ? (
+            <blockquote className="reading-text mb-3 min-h-0 max-h-24 overflow-y-auto whitespace-pre-wrap border-l-2 border-[#b8b7b2] pl-3 pr-1 font-sans">
+              {noteDialog.highlightedText}
+            </blockquote>
+          ) : null}
+          <div className="shrink-0">
             <Textarea
               id="highlight-note-textarea"
               placeholder={`Notunuzu buraya yaz\u0131n...`}
-              defaultValue={noteDialog?.note || ""}
-              className="min-h-[100px]"
+              value={noteDialog.note}
+              onChange={(event) =>
+                setNoteDialog((current) =>
+                  current ? { ...current, note: event.target.value } : current
+                )
+              }
+              className="min-h-[84px] resize-none border-[#dededb] bg-white text-sm leading-relaxed shadow-none focus-visible:ring-1 focus-visible:ring-[#a8a8a3]"
               autoFocus
             />
           </div>
-          <DialogFooter className="flex gap-2">
-            {noteDialog?.noteId && (
+          <div className="mt-3 flex shrink-0 items-center justify-between gap-2">
+            {noteDialog.noteId ? (
               <Button
-                variant="destructive"
+                variant="ghost"
                 size="sm"
                 onClick={handleDeleteNote}
-                className="bg-red-600 hover:bg-red-700 text-white"
+                className="h-8 gap-1.5 px-2 text-xs text-[#9f3f3f] hover:bg-[#fff1f1] hover:text-[#8e3030]"
               >
+                <Trash2 className="h-3.5 w-3.5" />
                 Notu Sil
               </Button>
+            ) : (
+              <span />
             )}
-            <Button
-              size="sm"
-              onClick={() => setNoteDialog(null)}
-              variant="outline"
-              className="border-gray-300 text-gray-700 hover:bg-gray-50"
-            >
-              {`\u0130ptal`}
-            </Button>
-            <Button 
-              size="sm" 
-              onClick={handleSaveNote}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              {noteDialog?.isStandalone ? "Ekle" : "Kaydet"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </Wrapper>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                onClick={() => setNoteDialog(null)}
+                variant="ghost"
+                className="h-8 px-3 text-xs text-[#6f6e69] hover:bg-[#f5f5f3]"
+              >
+                İptal
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSaveNote}
+                disabled={!noteDialog.note.trim()}
+                className="h-8 bg-[#37352f] px-3 text-xs text-white hover:bg-[#262521] disabled:bg-[#d8d8d5]"
+              >
+                {noteDialog.noteId ? "Kaydet" : "Ekle"}
+              </Button>
+            </div>
+          </div>
+        </div>
+        )}
+        </>,
+        document.body,
+      )}
+    </>
   );
 }

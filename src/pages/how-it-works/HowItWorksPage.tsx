@@ -5,15 +5,12 @@ import {
   ArrowRight,
   BookOpen,
   CheckCircle2,
-  Clock,
   Coins,
   CreditCard,
   Headphones,
-  HelpCircle,
   Layout,
   Mic,
   PenTool,
-  ShieldCheck,
   Sparkles,
   Target,
   UserCheck,
@@ -44,84 +41,68 @@ const QUICK_FACTS = [
   {
     title: "Toplam Bölüm",
     value: "4",
-    description: "Okuma, Dinleme, Yazma, Konuşma",
+    description: "Okuma, Dinleme, Yazma ve Konuşma",
   },
   {
     title: "Bölüm Ücreti",
-    value: "3 Kredi",
-    description: "Her bölüm için ayrı ücretlendirme",
+    value: "3+ Kredi",
+    description: "Her beceri ayrı açılır, kullandığın kadar harcarsın",
   },
   {
     title: "Sonuç Hızı",
     value: "Anında",
-    description: "Bölüm tamamlanınca sonuç ekranı hazır",
+    description: "Seçtiğin akış tamamlanınca sonuç ekranı hazır olur",
   },
   {
     title: "Seviye Ölçeği",
     value: "B1-C1",
-    description: "CEFR uyumlu değerlendirme",
+    description: "CEFR uyumlu değerlendirme mantığı",
   },
 ];
 
 const PROCESS_STEPS: ProcessStep[] = [
   {
     id: 1,
-    title: "Giriş Yap ve Profilini Hazırla",
+    title: "Giriş Yap",
     description:
-      "Google veya Telegram ile birkaç saniyede giriş yaparsın. Profil adı ve hesap bilgilerini daha sonra güncelleyebilirsin.",
+      "Google veya Telegram ile hesabına giriş yap. Böylece kredi bakiyen, profilin ve sonuç geçmişin korunur.",
     icon: UserCheck,
     points: [
-      "Yeni hesap açmakla uğraşmadan direkt başla.",
-      "Profilindeki isim, sonuç sayfalarında görünür.",
-      "Hesabınla tekrar giriş yaptığında geçmişin korunur.",
+      "Yeni hesap açma süreciyle uğraşmazsın.",
+      "Sonuç geçmişin hesabında kalır.",
     ],
   },
   {
     id: 2,
-    title: "Kredi Yükle",
+    title: "Kredini Kontrol Et",
     description:
-      "Teste başlamadan önce kredi bakiyen yeterli olmalıdır. Ödeme tamamlanınca kredi hesabına otomatik eklenir.",
+      "Teste başlamadan önce yeterli kredin olmalı. İstersen sadece tek bir bölümü, istersen tüm akışı çözebilirsin.",
     icon: CreditCard,
     points: [
-      "Kredi satın alma işlemi birkaç adımda tamamlanır.",
-      "Bölüm seçimine göre sadece kullandığın kadar kredi harcarsın.",
-      "Bakiyeni üst menüden her zaman görebilirsin.",
+      "Kredi yükleme işlemi birkaç adımda tamamlanır.",
+      "Sadece açtığın bölümler kadar kredi kullanırsın.",
     ],
   },
   {
     id: 3,
-    title: "Sınav Bölümlerini Seç",
+    title: "Bölümünü Seç ve Sınava Başla",
     description:
-      "Tek bir bölümü çözebilir veya tam deneme için tüm bölümleri tamamlayabilirsin. Sistem seçimine göre seni yönlendirir.",
+      "Okuma, dinleme, yazma ve konuşma bölümleri ayrı ayrı ilerler. Her bölüm kendi akışına uygun talimatlarla başlar.",
     icon: Layout,
     points: [
-      "Okuma, dinleme, yazma ve konuşma bölümleri ayrı ayrı yönetilir.",
-      "Bölüm başlamadan önce talimatları görürsün.",
-      "Sınava geçmeden önce kontrol ekranı sunulur.",
+      "Bölüm başlamadan önce yönlendirme ekranı görürsün.",
+      "Masaüstünde özellikle okuma ve dinleme daha rahat ilerler.",
     ],
   },
   {
     id: 4,
-    title: "Sınavı Gerçek Ortamda Tamamla",
+    title: "Sonucunu İncele",
     description:
-      "Süre yönetimi, soru düzeni ve akış gerçek sınav mantığına yakın şekilde hazırlanmıştır.",
-    icon: Clock,
-    points: [
-      "Masaüstünde okuma ve dinleme için not alma araçları bulunur.",
-      "Cevaplama alanları sade tutulduğu için odak kaybı azalır.",
-      "Her bölüm kendi kurallarına uygun ilerler.",
-    ],
-  },
-  {
-    id: 5,
-    title: "Sonuçları ve Seviyeni İncele",
-    description:
-      "Sınav bittiğinde puanın, seviye karşılığı ve gelişim alanların ekranda görüntülenir. Sonuç geçmişine profilinden ulaşabilirsin.",
+      "Tek bölüm seçtiysen o bölüm bittiğinde, birden fazla bölüm seçtiysen seçtiğin akış tamamlandığında sonuç ekranı açılır. Sonuç geçmişine profilinden tekrar ulaşabilirsin.",
     icon: Target,
     points: [
-      "Puanlar ve seviyeler tek ekranda anlaşılır biçimde gösterilir.",
-      "Hangi beceride güçlü veya zayıf olduğunu görebilirsin.",
-      "Yeni denemelerde gelişimini karşılaştırabilirsin.",
+      "Puan ve seviye karşılığı birlikte sunulur.",
+      "Güçlü ve zayıf yönlerini daha net görürsün.",
     ],
   },
 ];
@@ -168,11 +149,11 @@ const FAQ_ITEMS = [
   },
   {
     q: "Sonuçlarımı nerede göreceğim?",
-    a: "Her bölümden sonra sonuç ekranı açılır. Ayrıca profil sayfandaki geçmiş alanından eski sonuçlarına tekrar ulaşabilirsin.",
+    a: "Tek bölüm seçtiysen o bölüm bittiğinde, birden fazla bölüm seçtiysen seçtiğin akış tamamlandığında sonuç ekranını görürsün. Ayrıca profil sayfandaki geçmiş alanından eski sonuçlarına tekrar ulaşabilirsin.",
   },
   {
     q: "Telefon ve bilgisayar arasında fark var mı?",
-    a: "Sınav her iki cihazda da çalışır. Masaüstünde ek not alma araçları bulunduğu için özellikle okuma ve dinlemede daha rahat bir deneyim sunar.",
+    a: "Sınav her iki cihazda da çalışır. Masaüstünde ek not alma araçları olduğu için özellikle okuma ve dinlemede daha rahat bir deneyim sunar.",
   },
   {
     q: "Kredi biterse sınavım silinir mi?",
@@ -191,13 +172,13 @@ const HowItWorksPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
-      <section className="relative overflow-hidden border-b border-gray-200 bg-white pb-16 pt-24">
+      <section className="relative overflow-hidden border-b border-gray-200 bg-white pb-14 pt-24">
         <div className="pointer-events-none absolute inset-0 opacity-70">
           <div className="absolute -top-20 -right-16 h-56 w-56 rounded-full bg-red-100 blur-3xl" />
           <div className="absolute bottom-0 left-0 h-44 w-44 rounded-full bg-orange-100 blur-3xl" />
         </div>
 
-        <div className="relative mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[1.2fr_0.8fr] lg:px-8">
+        <div className="relative mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[1.15fr_0.85fr] lg:px-8">
           <div>
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-red-100 bg-red-50 px-4 py-1.5">
               <Sparkles className="h-4 w-4 text-red-600" />
@@ -212,15 +193,14 @@ const HowItWorksPage = () => {
             </h1>
 
             <p className="mt-6 max-w-2xl text-base leading-relaxed text-gray-600 md:text-lg">
-              Bu sayfa, platformu ilk kez kullanan birinin bile hiçbir adımı
-              kaçırmadan sınava başlayabilmesi için hazırlandı. Kısa özet, adım
-              adım süreç ve sık sorulan soruların tamamı burada.
+              Platforma ilk kez giren bir kullanıcının en kısa yoldan sınava başlayabilmesi için
+              gerekli temel adımlar burada. Hesap, kredi, bölüm seçimi ve sonuç akışı tek sayfada özetlenir.
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <NavLink to="/test">
                 <Button className="h-12 rounded-xl bg-red-600 px-7 text-base font-semibold text-white hover:bg-red-700">
-                  Teste Başla
+                  Sınavlara Başla
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </NavLink>
@@ -246,12 +226,9 @@ const HowItWorksPage = () => {
               </span>
             </div>
 
-            <h2 className="text-lg font-semibold text-gray-900">
-              Hızlı Başlangıç
-            </h2>
+            <h2 className="text-lg font-semibold text-gray-900">Hızlı Başlangıç</h2>
             <p className="mt-2 text-sm leading-relaxed text-gray-600">
-              Giriş yap, kredini kontrol et ve sınav türünü seçerek hemen
-              başlayabilirsin.
+              Giriş yap, kredini doğrula ve çözmek istediğin bölümü seç.
             </p>
 
             <div className="mt-4 space-y-2.5">
@@ -261,7 +238,7 @@ const HowItWorksPage = () => {
               </div>
               <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
                 <CheckCircle2 className="h-4 w-4 text-red-600" />
-                Kredi bakiyeni doğrula
+                Kredi bakiyeni kontrol et
               </div>
               <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
                 <CheckCircle2 className="h-4 w-4 text-red-600" />
@@ -280,7 +257,11 @@ const HowItWorksPage = () => {
                   Kredi Satın Al
                 </Button>
               ) : (
-                <NavLink to="/login" state={{ mode: "login", redirectTo }} onClick={() => setPostLoginRedirect(redirectTo)}>
+                <NavLink
+                  to="/login"
+                  state={{ mode: "login", redirectTo }}
+                  onClick={() => setPostLoginRedirect(redirectTo)}
+                >
                   <Button className="h-11 w-full rounded-xl bg-red-600 text-sm font-semibold text-white hover:bg-red-700">
                     Giriş Yap ve Başla
                   </Button>
@@ -302,9 +283,7 @@ const HowItWorksPage = () => {
                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                   {fact.title}
                 </p>
-                <p className="mt-2 text-2xl font-bold text-gray-900">
-                  {fact.value}
-                </p>
+                <p className="mt-2 text-2xl font-bold text-gray-900">{fact.value}</p>
                 <p className="mt-1 text-sm text-gray-600">{fact.description}</p>
               </article>
             ))}
@@ -312,15 +291,15 @@ const HowItWorksPage = () => {
         </div>
       </section>
 
-      <section className="pb-20">
+      <section className="pb-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-8">
             <h2 className="text-3xl font-bold tracking-tight text-gray-900 md:text-4xl">
-              5 Adımda Tüm Süreç
+              4 Adımda Süreç
             </h2>
             <p className="mt-3 max-w-3xl text-base leading-relaxed text-gray-600">
-              Buradaki akış, platformu sıfırdan kullanan birinin en kısa yoldan
-              sınava girip sonucunu alması için tasarlandı.
+              Platformu ilk kez kullanıyorsan bu dört adım yeterli. Geri kalan ayrıntıları
+              ihtiyaç duydukça sonuç ve profil ekranlarında görebilirsin.
             </p>
           </div>
 
@@ -343,9 +322,7 @@ const HowItWorksPage = () => {
                     </div>
 
                     <div className="flex-1">
-                      <h3 className="text-xl font-semibold text-gray-900">
-                        {step.title}
-                      </h3>
+                      <h3 className="text-xl font-semibold text-gray-900">{step.title}</h3>
                       <p className="mt-2 text-sm leading-relaxed text-gray-600 md:text-base">
                         {step.description}
                       </p>
@@ -370,15 +347,15 @@ const HowItWorksPage = () => {
         </div>
       </section>
 
-      <section className="border-y border-gray-200 bg-white py-20">
+      <section className="border-y border-gray-200 bg-white py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-8 text-center">
             <h2 className="text-3xl font-bold tracking-tight text-gray-900 md:text-4xl">
               Bölümlere Göre Değerlendirme
             </h2>
             <p className="mx-auto mt-3 max-w-3xl text-base leading-relaxed text-gray-600">
-              Her bölüm ayrı beceriyi ölçer. Sonuç ekranında hem puan hem de
-              seviyene karşılık gelen yorumları görebilirsin.
+              Her bölüm farklı bir beceriyi ölçer. Sonuç ekranında puanı, seviye karşılığını
+              ve gerekiyorsa detaylı geri bildirimi görürsün.
             </p>
           </div>
 
@@ -397,9 +374,7 @@ const HowItWorksPage = () => {
                       <Icon className="h-6 w-6" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        {card.title}
-                      </h3>
+                      <h3 className="text-lg font-semibold text-gray-900">{card.title}</h3>
                       <p className="mt-1 text-sm leading-relaxed text-gray-600">
                         {card.detail}
                       </p>
@@ -420,46 +395,7 @@ const HowItWorksPage = () => {
         </div>
       </section>
 
-      <section className="bg-white py-20">
-        <div className="mx-auto grid max-w-7xl gap-6 px-4 sm:px-6 lg:grid-cols-3 lg:px-8">
-          <article className="rounded-2xl border border-gray-200 bg-gray-50 p-6">
-            <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-red-100 bg-red-50 text-red-600">
-              <ShieldCheck className="h-5 w-5" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900">Güvenli Hesap</h3>
-            <p className="mt-2 text-sm leading-relaxed text-gray-600">
-              Giriş yaptığında profil bilgilerin korunur ve geçmiş sonuçların
-              hesabında kalır.
-            </p>
-          </article>
-
-          <article className="rounded-2xl border border-gray-200 bg-gray-50 p-6">
-            <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-red-100 bg-red-50 text-red-600">
-              <Coins className="h-5 w-5" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900">
-              Esnek Kredi Kullanımı
-            </h3>
-            <p className="mt-2 text-sm leading-relaxed text-gray-600">
-              İstersen tek bölüm, istersen tüm bölümler için kredi kullanarak
-              kendi çalışma planına göre ilerleyebilirsin.
-            </p>
-          </article>
-
-          <article className="rounded-2xl border border-gray-200 bg-gray-50 p-6">
-            <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-red-100 bg-red-50 text-red-600">
-              <HelpCircle className="h-5 w-5" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900">Destek Süreci</h3>
-            <p className="mt-2 text-sm leading-relaxed text-gray-600">
-              Takıldığın noktada destek ekibine ulaşabilir, sınav akışı ve hesap
-              süreçleri hakkında hızlıca yardım alabilirsin.
-            </p>
-          </article>
-        </div>
-      </section>
-
-      <section className="bg-gray-50 py-20">
+      <section className="bg-gray-50 py-16">
         <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
           <h2 className="text-center text-3xl font-bold tracking-tight text-gray-900 md:text-4xl">
             Sık Sorulan Sorular
@@ -482,7 +418,7 @@ const HowItWorksPage = () => {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-red-600 py-20">
+      <section className="relative overflow-hidden bg-red-600 py-18">
         <div className="pointer-events-none absolute inset-0 opacity-10">
           <div className="absolute -top-20 right-0 h-64 w-64 rounded-full bg-white blur-3xl" />
           <div className="absolute -bottom-20 left-0 h-64 w-64 rounded-full bg-white blur-3xl" />
@@ -492,23 +428,22 @@ const HowItWorksPage = () => {
             Hazırsan Sınava Geçebilirsin
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-red-50 md:text-lg">
-            Artık tüm adımları biliyorsun. Hedef seviyeni görmek için hemen
-            teste başla.
+            Ana akışı artık biliyorsun. Sonraki adım, çözmek istediğin bölümü seçip başlaman.
           </p>
 
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
             <NavLink to="/test">
               <Button className="h-12 rounded-xl bg-white px-8 text-base font-semibold text-red-600 hover:bg-red-50">
-                Teste Başla
+                Sınavlara Başla
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </NavLink>
-            <NavLink to="/#contact">
+            <NavLink to="/price">
               <Button
                 variant="outline"
                 className="h-12 rounded-xl border-red-200 bg-transparent px-8 text-base font-semibold text-white hover:bg-red-700"
               >
-                Destek Al
+                Fiyatları Gör
               </Button>
             </NavLink>
           </div>

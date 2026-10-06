@@ -1,4 +1,5 @@
 ﻿import { useEffect } from "react";
+import { captureAccessLink } from '@/utils/access-link-context';
 import { useNavigate, useSearchParams } from "react-router";
 import { toast } from "@/utils/toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,7 +19,8 @@ const OAuthCallback = () => {
       try {
         const accessToken = searchParams.get("accessToken");
         const refreshToken = searchParams.get("refreshToken");
-        const returnTo = searchParams.get("returnTo") || "/";
+        const rawReturnTo = searchParams.get("returnTo");
+        const returnTo = rawReturnTo ? captureAccessLink(rawReturnTo).safeReturnTo : null;
         const error = searchParams.get("error");
 
         if (error) {
@@ -39,17 +41,16 @@ const OAuthCallback = () => {
           setPostLoginRedirect(fallback);
           navigate("/login", { replace: true, state: { mode: "login", redirectTo: fallback } });
         }
-      } catch (error) {
-        console.error("OAuth callback error:", error);
+      } catch {
         toast.error("Giriş sırasında bir hata oluştu");
-        const fallback = resolvePostLoginRedirect(searchParams.get("returnTo") || "/");
+        const fallback = resolvePostLoginRedirect(searchParams.get("returnTo"));
         setPostLoginRedirect(fallback);
         navigate("/login", { replace: true, state: { mode: "login", redirectTo: fallback } });
       }
     };
 
     handleCallback();
-  }, [navigate, searchParams]);
+  }, [login, navigate, searchParams]);
 
   return (
     <div className="min-h-screen flex items-center justify-center">

@@ -1,12 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Volume2, VolumeX, Play, Pause, CheckCircle } from 'lucide-react';
+import {
+  getSiteAudioUrl,
+  type SiteAudioKey,
+} from '@/services/siteMedia.service';
 
 interface InstructionModalProps {
   isOpen: boolean;
   onClose: () => void;
   instructionText: string;
-  audioPath: string;
+  audioKey: SiteAudioKey;
   sectionTitle: string;
 }
 
@@ -14,14 +18,40 @@ const InstructionModal: React.FC<InstructionModalProps> = ({
   isOpen,
   onClose,
   instructionText,
-  audioPath,
+  audioKey,
   sectionTitle
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [hasPlayed, setHasPlayed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [audioPath, setAudioPath] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setAudioPath(null);
+
+    if (!isOpen) return () => {
+      cancelled = true;
+    };
+
+    void getSiteAudioUrl(audioKey)
+      .then((url) => {
+        if (!cancelled) setAudioPath(url);
+      })
+      .catch((error) => {
+        console.error('Instruction audio could not be resolved:', error);
+        if (!cancelled) {
+          setIsLoading(false);
+          setHasPlayed(true);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [audioKey, isOpen]);
 
   useEffect(() => {
     if (isOpen && audioPath) {

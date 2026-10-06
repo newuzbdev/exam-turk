@@ -6,6 +6,7 @@ import { listeningSubmissionService, type TestResultData as ListeningTestResultD
 import { readingSubmissionService, type TestResultData as ReadingTestResultData } from "@/services/readingTest.service";
 import writingSubmissionService from "@/services/writingSubmission.service";
 import speakingSubmissionService from "@/services/speakingSubmission.service";
+import { useResultScreenProtection } from "@/hooks/use-result-screen-protection";
 
 interface OverallResultsData {
   listeningResultId?: string;
@@ -58,6 +59,7 @@ interface SpeakingResult {
 }
 
 export default function UnifiedTestResults() {
+  useResultScreenProtection();
   const { overallId } = useParams<{ overallId: string }>();
   const [overallData, setOverallData] = useState<OverallResultsData | null>(null);
   const [listeningData, setListeningData] = useState<ListeningTestResultData | null>(null);

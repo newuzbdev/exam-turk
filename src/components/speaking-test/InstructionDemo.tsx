@@ -52,7 +52,7 @@ const InstructionDemo: React.FC = () => {
           isOpen={showModal}
           onClose={handleClose}
           instructionText={currentInstruction.instructionText}
-          audioPath={currentInstruction.audioPath}
+          audioKey={currentInstruction.audioKey}
           sectionTitle={currentInstruction.sectionTitle}
         />
       )}

@@ -1,15 +1,68 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useContentAccessDecisions, useAccessCatalogSummary } from '@/hooks/use-content-access';
+import { isContentLocked, initialFreeGroup } from '@/utils/content-access';
+import { readDirectMockTarget } from '@/utils/access-direct-entry';
+import type { AccessTarget, CatalogMetadata } from '@/services/access.service';
+import { useAccessLink } from '@/hooks/use-access-link';
+import type { AccessEntry } from '@/utils/access-link-entry';
+import { INVALID_ACCESS_LINK_MESSAGE } from '@/utils/access-link-context';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import axiosPrivate from "@/config/api";
 import { toast } from "sonner";
 import TestModal from "./components/TestModal";
 import EmptyState from "./components/EmptyState";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { authService } from "@/services/auth.service";
+import { tm } from "@/components/tm";
+import {
+  overallTestFlowStore,
+  overallTestService,
+} from "@/services/overallTest.service";
+import { ArrowRight } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
+import { isSubscriptionBillingEnabled } from "@/config/billing";
+import { subscriptionService, subscriptionStatusQueryKey } from "@/services/subscription.service";
+import MembershipLockBadge from "@/components/subscription/MembershipLockBadge";
+import MembershipRequiredDialog from "@/components/subscription/MembershipRequiredDialog";
+import "./test.css";
+import {
+  categorySkill,
+  getAvailablePackageTabs,
+  getPackageTab,
+  packageTabs,
+  type MockPackageCategory,
+} from "./mock-package-categories";
 
-// --- Interfaces ---
-interface TurkishTest {
+function MockTestShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="mock-test-page" lang="tr">
+      <header className="mock-test-heading">
+        <h1>Deneme Sınavları</h1>
+        <p>Tam sınav veya çalışmak istediğiniz bölümü seçin.</p>
+      </header>
+      {children}
+    </div>
+  );
+}
+
+const sectionPillStyle = (section: string): { background: string; color: string } => {
+  const map: Record<string, string> = {
+    Dinleme: "listening",
+    Okuma: "reading",
+    Yazma: "writing",
+    Konuşma: "speaking",
+  };
+  const key = map[section];
+  if (!key) {
+    return { background: "var(--tm-bg-app)", color: "var(--tm-text-secondary)" };
+  }
+  return { background: `var(--tm-cat-${key}-bg)`, color: `var(--tm-cat-${key}-fg)` };
+};
+
+interface TurkishTest extends CatalogMetadata {
   id: string;
   title: string;
+  category?: MockPackageCategory;
   createdAt: string;
   updatedAt: string;
 }
@@ -64,57 +117,136 @@ interface TurkishTestResponse {
   readingTests: ReadingTest[];
 }
 
-type TestType = "all" | "listening" | "speaking" | "reading" | "writing";
-type PackageTab = "cefr" | "speaking";
+const loadTurkishTestCatalog = async (): Promise<TurkishTestResponse> => {
+  const limit = 50;
+  let page = 1;
+  let catalog: TurkishTestResponse | null = null;
 
-const normalizePackageTitle = (value: string) =>
-  String(value || "")
-    .toUpperCase()
-    .replace(/Ğ/g, "G")
-    .replace(/Ü/g, "U")
-    .replace(/Ş/g, "S")
-    .replace(/İ/g, "I")
-    .replace(/Ö/g, "O")
-    .replace(/Ç/g, "C")
-    .replace(/\s+/g, " ")
-    .trim();
-
-const getPackageTab = (title: string): PackageTab => {
-  const normalized = normalizePackageTitle(title);
-  if (normalized.includes("KONUSMA") || normalized.includes("SPEAKING")) {
-    return "speaking";
+  while (true) {
+    const { data } = await axiosPrivate.get<TurkishTestResponse>("/api/ielts", {
+      params: { page, limit },
+      timeout: 12_000,
+    });
+    if (!catalog) {
+      catalog = { ...data };
+    } else {
+      catalog.ieltsData.push(...data.ieltsData);
+      catalog.writingTests.push(...data.writingTests);
+      catalog.speakingTests.push(...data.speakingTests);
+      catalog.listeningTests.push(...data.listeningTests);
+      catalog.readingTests.push(...data.readingTests);
+    }
+    if (data.ieltsData.length < limit) return catalog;
+    page += 1;
   }
-  return "cefr";
 };
 
-const TestPage = () => {
+const TestPage = ({ workspaceMode = false }: { workspaceMode?: boolean }) => {
   const [turkishTestData, setTurkishTestData] = useState<TurkishTestResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [requestVersion, setRequestVersion] = useState(0);
   const [_selectedTest, setSelectedTest] = useState<TurkishTest | null>(null);
-  const [_selectedTestType, setSelectedTestType] = useState<TestType>("all");
+  const [_selectedTestType, setSelectedTestType] = useState<"all" | "listening" | "speaking" | "reading" | "writing">("all");
   const [showTestModal, setShowTestModal] = useState(false);
+  const [membershipRequiredOpen, setMembershipRequiredOpen] = useState(false);
   const [currentTestForModal, setCurrentTestForModal] = useState<TurkishTest | null>(null);
-  const [selectedPackageTab, setSelectedPackageTab] = useState<PackageTab>("cefr");
+  const [initialModalSkills, setInitialModalSkills] = useState<string[]>([]);
+  const [selectedPackageTab, setSelectedPackageTab] = useState<MockPackageCategory>("CEFR_MOCK");
+  const [, setSessionRevision] = useState(0);
   const location = useLocation();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { isAuthenticated, user } = useAuth();
+  const requestedPackageId = workspaceMode ? searchParams.get('package') : null;
+  const directSelection = useMemo(() => {
+    try { return { target: workspaceMode ? readDirectMockTarget(searchParams) : null, invalid: false }; }
+    catch { return { target: null, invalid: true }; }
+  }, [workspaceMode, searchParams]);
+  const directAccess = useAccessLink(directSelection.invalid ? null : directSelection.target ?? (requestedPackageId ? { scope: 'MOCK_PACKAGE', targetId: requestedPackageId } : null));
+  const [modalExactTarget, setModalExactTarget] = useState<AccessTarget | null>(null);
+  const [modalAccessEntry, setModalAccessEntry] = useState<AccessEntry | null>(null);
+  const modalSelectedSkills = useMemo(() => modalExactTarget ? [modalExactTarget.scope.slice(5).toLowerCase()] : initialModalSkills, [modalExactTarget, initialModalSkills]);
+  const [directError, setDirectError] = useState('');
+  const membership = useQuery({
+    queryKey: user?.id ? [...subscriptionStatusQueryKey, user.id] : subscriptionStatusQueryKey,
+    queryFn: subscriptionService.getStatus,
+    enabled: workspaceMode && isAuthenticated && isSubscriptionBillingEnabled,
+    retry: 1,
+  });
+  const access = useContentAccessDecisions((turkishTestData?.ieltsData || []).map(item => ({ scope: 'MOCK_PACKAGE', targetId: item.id })));
+  const summary = useAccessCatalogSummary();
+  const explicitTab = useRef(Boolean(searchParams.size || location.state));
+  const initialTabChosen = useRef(false);
+  useEffect(() => {
+    if (initialTabChosen.current || !summary.data) return;
+    initialTabChosen.current = true;
+    const free = initialFreeGroup(summary.data.groups.filter(group => group.scope === 'MOCK_PACKAGE'), explicitTab.current);
+    if (free?.category && packageTabs.some(tab => tab.value === free.category)) setSelectedPackageTab(free.category as MockPackageCategory);
+  }, [summary.data]);
+  const cardLocked = (test: TurkishTest) => access.pending ? true : access.enabled ? isContentLocked(access.decisionFor({ scope: 'MOCK_PACKAGE', targetId: test.id })) : membershipLocked;
+  const requiresMembership = workspaceMode && isSubscriptionBillingEnabled;
+  const membershipPending = requiresMembership && isAuthenticated && membership.isPending;
+  const membershipLocked = requiresMembership && !membership.data?.isActive;
+  const sessionExpired =
+    workspaceMode && searchParams.get("session") === "expired";
+
+  useEffect(() => {
+    if (!sessionExpired) return;
+
+    overallTestFlowStore.clear();
+    setSessionRevision((value) => value + 1);
+  }, [sessionExpired]);
+
+  useEffect(() => {
+    if (!workspaceMode || sessionExpired) return;
+
+    let mounted = true;
+    overallTestService.getCurrentSession().then((session) => {
+      if (!mounted || session === undefined) return;
+
+      if (session?.canResume) {
+        const restoredPath =
+          overallTestService.restoreCurrentSession(session);
+        if (restoredPath) {
+          setSessionRevision((value) => value + 1);
+        }
+        return;
+      }
+
+      if (overallTestFlowStore.hasActive()) {
+        overallTestFlowStore.clear();
+        setSessionRevision((value) => value + 1);
+      }
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, [sessionExpired, workspaceMode]);
 
   useEffect(() => {
     const fetchTurkishTestData = async () => {
+      setLoading(true);
+      setLoadError(false);
       try {
-        const response = await axiosPrivate.get("/api/ielts");
-        setTurkishTestData(response.data);
+        const catalog = await loadTurkishTestCatalog();
+        setTurkishTestData(catalog);
 
         if (location.state) {
-          const { selectedTestId, selectedTestType: navTestType } = location.state;
-          if (selectedTestId && navTestType && response.data) {
-            const test = response.data.ieltsData.find((t: TurkishTest) => t.id === selectedTestId);
+          const { selectedTestId, selectedTestType: navTestType } = location.state as any;
+          if (selectedTestId && navTestType) {
+            const test = catalog.ieltsData.find((t: TurkishTest) => t.id === selectedTestId);
             if (test) {
               setSelectedTest(test);
-              setSelectedTestType(navTestType as TestType);
+              setSelectedTestType(navTestType);
             }
           }
         }
       } catch (error: any) {
         console.error("Error fetching Turkish test data:", error);
+        setTurkishTestData(null);
+        setLoadError(true);
         const { accessToken } = authService.getStoredTokens();
         if (accessToken) {
           toast.error("Sınavlar yüklenirken bir sorun oluştu.");
@@ -125,234 +257,266 @@ const TestPage = () => {
     };
 
     fetchTurkishTestData();
-  }, [location.state]);
+  }, [
+    location.state,
+    requestVersion,
+  ]);
 
-  const getAvailableTestTypes = (testId: string) => {
-    if (!turkishTestData)
+  useEffect(() => {
+    if (directSelection.invalid) { setDirectError(INVALID_ACCESS_LINK_MESSAGE); return; }
+    if (!requestedPackageId || !turkishTestData || directAccess.loading || directAccess.error || (!directAccess.entry?.enabled && membershipPending)) return;
+    const requestedPackage = turkishTestData.ieltsData.find((test) => test.id === requestedPackageId);
+    if (!requestedPackage) { setDirectError(INVALID_ACCESS_LINK_MESSAGE); return; }
+    setSelectedPackageTab(getPackageTab(requestedPackage));
+    const actual = directAccess.entry?.target;
+    if (directSelection.target && (actual?.scope !== directSelection.target.scope || actual.targetId !== directSelection.target.targetId)) { setDirectError(INVALID_ACCESS_LINK_MESSAGE); return; }
+    if (actual?.scope === 'MOCK_PACKAGE' && actual.targetId !== requestedPackageId) { setDirectError(INVALID_ACCESS_LINK_MESSAGE); return; }
+    if (actual && actual.scope !== 'MOCK_PACKAGE') {
+      const skill = actual.scope.slice(5).toLowerCase();
+      const rows = { reading: turkishTestData.readingTests, listening: turkishTestData.listeningTests, writing: turkishTestData.writingTests, speaking: turkishTestData.speakingTests }[skill as 'reading' | 'listening' | 'writing' | 'speaking'];
+      if (!rows?.some(row => row.id === actual.targetId && row.ieltsId === requestedPackageId)) { setDirectError(INVALID_ACCESS_LINK_MESSAGE); return; }
+    }
+    if (!directAccess.entry?.enabled && membershipLocked) {
+      setMembershipRequiredOpen(true);
+    } else {
+      setModalAccessEntry(directAccess.entry);
+      setModalExactTarget(actual && actual.scope !== 'MOCK_PACKAGE' ? actual : null);
+      setInitialModalSkills(String(searchParams.get("skills") || "").split(",").map((skill) => skill.trim()).filter(Boolean));
+      setCurrentTestForModal(requestedPackage);
+      setShowTestModal(true);
+    }
+    navigate("/app/test", { replace: true });
+  }, [membershipLocked, membershipPending, navigate, searchParams, turkishTestData, requestedPackageId, directSelection, directAccess.loading, directAccess.error, directAccess.entry]);
+
+  const getAvailableTestTypes = (test: TurkishTest) => {
+    if (!turkishTestData) {
       return { writing: [], speaking: [], listening: [], reading: [] };
-
+    }
+    const category = getPackageTab(test);
     return {
-      writing: turkishTestData.writingTests.filter((t) => t.ieltsId === testId),
-      speaking: turkishTestData.speakingTests.filter((t) => t.ieltsId === testId),
-      listening: turkishTestData.listeningTests.filter((t) => t.ieltsId === testId),
-      reading: turkishTestData.readingTests.filter((t) => t.ieltsId === testId),
+      writing: turkishTestData.writingTests.filter((t) => t.ieltsId === test.id && (category === "CEFR_MOCK" || category === "WRITING")),
+      speaking: turkishTestData.speakingTests.filter((t) => t.ieltsId === test.id && (category === "CEFR_MOCK" || category === "SPEAKING")),
+      listening: turkishTestData.listeningTests.filter((t) => t.ieltsId === test.id && (category === "CEFR_MOCK" || category === "LISTENING")),
+      reading: turkishTestData.readingTests.filter((t) => t.ieltsId === test.id && (category === "CEFR_MOCK" || category === "READING")),
     };
   };
 
   const sortedPackages = useMemo(() => {
     const list = turkishTestData?.ieltsData || [];
-    return [...list].sort(
-      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-    );
-  }, [turkishTestData?.ieltsData]);
+    if (access.enabled) return list; // Already ordered globally before server pagination.
+    return [...list].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  }, [turkishTestData?.ieltsData, access.enabled]);
 
-  const cefrPackages = useMemo(
-    () => sortedPackages.filter((test) => getPackageTab(test.title) === "cefr"),
-    [sortedPackages],
-  );
-  const speakingPackages = useMemo(
-    () => sortedPackages.filter((test) => getPackageTab(test.title) === "speaking"),
-    [sortedPackages],
-  );
+  const availablePackageTabs = useMemo(() => getAvailablePackageTabs(sortedPackages, {
+    listening: turkishTestData?.listeningTests ?? [],
+    reading: turkishTestData?.readingTests ?? [],
+    writing: turkishTestData?.writingTests ?? [],
+    speaking: turkishTestData?.speakingTests ?? [],
+  }), [sortedPackages, turkishTestData]);
 
   useEffect(() => {
-    if (selectedPackageTab === "cefr" && cefrPackages.length === 0 && speakingPackages.length > 0) {
-      setSelectedPackageTab("speaking");
-      return;
+    if (!explicitTab.current && !availablePackageTabs.has(selectedPackageTab)) {
+      const firstAvailable = packageTabs.find((tab) => availablePackageTabs.has(tab.value));
+      if (firstAvailable) setSelectedPackageTab(firstAvailable.value);
     }
-    if (selectedPackageTab === "speaking" && speakingPackages.length === 0 && cefrPackages.length > 0) {
-      setSelectedPackageTab("cefr");
-    }
-  }, [selectedPackageTab, cefrPackages.length, speakingPackages.length]);
+  }, [selectedPackageTab, availablePackageTabs]);
 
   const handleTestModalOpen = (test: TurkishTest) => {
+    setModalAccessEntry(access.enabled ? { enabled: true, target: { scope: "MOCK_PACKAGE", targetId: test.id }, ownerId: user?.id } : null);
+    if (access.pending || (!access.enabled && membershipPending)) return;
+    const blocked = access.decisionFor({ scope: 'MOCK_PACKAGE', targetId: test.id })?.blockedReason;
+    if (cardLocked(test) && blocked !== 'AI_LIMIT' && blocked !== 'EXPIRED') {
+      setMembershipRequiredOpen(true);
+      return;
+    }
+    setModalExactTarget(null);
+    setInitialModalSkills([]);
     setCurrentTestForModal(test);
     setShowTestModal(true);
   };
 
-  const handleTestTypeClick = (testType: string, tests: any[]) => {
-    console.log(`Selected test type: ${testType}`, tests);
-  };
+  const handleTestTypeClick = (_testType: string, _tests: any[]) => {};
 
-  const activePackages = selectedPackageTab === "cefr" ? cefrPackages : speakingPackages;
-  const hasAnyPackages = sortedPackages.length > 0;
+  const activePackages = sortedPackages.filter((test) => getPackageTab(test) === selectedPackageTab);
+  const hasAnyPackages = availablePackageTabs.size > 0;
+  const activeFlowItem = overallTestFlowStore.getQueue()[0] ?? null;
+  const activeFlowResumePath = sessionExpired
+    ? null
+    : overallTestFlowStore.getPendingNextSection()
+      ? "/overall-section-ready"
+      : activeFlowItem?.path || null;
 
-  // --- Loading Skeleton ---
   if (loading) {
     return (
-      <div className="flex flex-col min-h-screen bg-white text-gray-900">
-        {/* Header Section */}
-        <div className="py-10 bg-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center max-w-xl mx-auto">
-              <div className="h-5 w-28 bg-gray-100 rounded-full mb-3 mx-auto animate-pulse"></div>
-              <div className="h-8 bg-gray-100 rounded w-36 mb-2 mx-auto animate-pulse"></div>
-              <div className="h-4 bg-gray-50 rounded w-72 mx-auto animate-pulse"></div>
+      <MockTestShell>
+        <div className="mock-test-grid" role="status" aria-label="Sınavlar yükleniyor">
+          {[...Array(6)].map((_, index) => (
+            <div key={index} className="mock-test-card animate-pulse" aria-hidden="true">
+              <div className="h-6 w-24 rounded bg-[var(--tm-bg-muted)]" />
+              <div className="mt-5 h-6 w-3/4 rounded bg-[var(--tm-bg-muted)]" />
+              <div className="mt-3 h-4 w-1/2 rounded bg-[var(--tm-bg-app)]" />
+              <div className="mt-5 flex gap-2">
+                <div className="h-7 w-20 rounded bg-[var(--tm-bg-app)]" />
+                <div className="h-7 w-20 rounded bg-[var(--tm-bg-app)]" />
+              </div>
             </div>
-          </div>
+          ))}
         </div>
-
-        {/* Tests Grid Section */}
-        <section className="py-16 bg-gray-50 border-y border-gray-100">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="bg-white rounded-3xl border border-gray-100 p-8 h-64 animate-pulse">
-                  <div className="h-8 bg-gray-100 rounded w-3/4 mb-3"></div>
-                  <div className="h-4 bg-gray-50 rounded w-1/2 mb-8"></div>
-                  <div className="mt-auto flex gap-2">
-                    <div className="h-7 w-20 bg-gray-50 rounded-lg"></div>
-                    <div className="h-7 w-20 bg-gray-50 rounded-lg"></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      </div>
+      </MockTestShell>
     );
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-white text-gray-900">
-      {/* Header Section */}
-      <div className="py-10 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-left max-w-2xl pl-8">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1.5">
-              Testler
-            </h1>
-            <p className="text-gray-600 text-[15px]">
-              Seviyenizi ölçmek için bir test paketi seçin
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Tests Grid Section */}
-      <section className="py-16 bg-gray-50 border-y border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {hasAnyPackages && (
-            <div className="mb-6 flex flex-wrap items-center gap-2">
+    <MockTestShell>
+      <>
+          {workspaceMode && !sessionExpired && activeFlowResumePath && (
+            <div className="mock-test-resume">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-[var(--tm-text-primary)]">
+                  Devam eden sınavınız var
+                </p>
+                <p className="mt-0.5 text-[13px] text-[var(--tm-text-secondary)]">
+                  Süre işlemeye devam ediyor. Beş dakika içinde aynı bölüme
+                  dönebilirsiniz.
+                </p>
+              </div>
               <button
                 type="button"
-                onClick={() => setSelectedPackageTab("cefr")}
-                className={`rounded-lg border px-4 py-2 text-sm font-semibold transition-colors ${
-                  selectedPackageTab === "cefr"
-                    ? "border-red-600 bg-red-50 text-red-700"
-                    : "border-gray-300 bg-white text-gray-700 hover:border-red-300 hover:text-red-600"
-                }`}
+                onClick={() => navigate(activeFlowResumePath)}
+                className={`${tm.darkButton} shrink-0`}
               >
-                CEFR Paketleri ({cefrPackages.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedPackageTab("speaking")}
-                className={`rounded-lg border px-4 py-2 text-sm font-semibold transition-colors ${
-                  selectedPackageTab === "speaking"
-                    ? "border-red-600 bg-red-50 text-red-700"
-                    : "border-gray-300 bg-white text-gray-700 hover:border-red-300 hover:text-red-600"
-                }`}
-              >
-                Konuşma Paketleri ({speakingPackages.length})
+                Sınava dön
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
           )}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+          {loadError ? (
+            <div className="mock-test-state" role="alert">
+              <p className="text-base font-semibold text-[var(--tm-text-primary)]">
+                Sınavlar şu anda yüklenemedi.
+              </p>
+              <p className="mt-2 text-sm text-[var(--tm-text-secondary)]">
+                Bağlantınızı kontrol edip yeniden deneyin.
+              </p>
+              <button
+                type="button"
+                onClick={() => setRequestVersion((value) => value + 1)}
+                className={`${tm.subtleButton} mt-5 inline-flex h-10 items-center justify-center px-4 text-sm font-semibold`}
+              >
+                Tekrar dene
+              </button>
+            </div>
+          ) : (
+            <>
+          <div className="mock-test-tabs" role="group" aria-label="Sınav türü">
+            {packageTabs.map((tab) => (
+              <button
+                key={tab.value}
+                type="button"
+                onClick={() => { explicitTab.current = true; setSelectedPackageTab(tab.value); }}
+                disabled={!availablePackageTabs.has(tab.value)}
+                className="mock-test-tab"
+                aria-pressed={selectedPackageTab === tab.value && availablePackageTabs.has(tab.value)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="mock-test-grid">
             {hasAnyPackages ? (
               activePackages.length > 0 ? (
                 activePackages.map((test) => {
-                const availableTypes = getAvailableTestTypes(test.id);
-                const hasTests =
-                  availableTypes.writing.length > 0 ||
-                  availableTypes.speaking.length > 0 ||
-                  availableTypes.listening.length > 0 ||
-                  availableTypes.reading.length > 0;
+                  const availableTypes = getAvailableTestTypes(test);
+                  const sections = [
+                    availableTypes.listening.length > 0 ? "Dinleme" : null,
+                    availableTypes.reading.length > 0 ? "Okuma" : null,
+                    availableTypes.writing.length > 0 ? "Yazma" : null,
+                    availableTypes.speaking.length > 0 ? "Konuşma" : null,
+                  ].filter(Boolean);
+                  const hasTests =
+                    availableTypes.writing.length > 0 ||
+                    availableTypes.speaking.length > 0 ||
+                    availableTypes.listening.length > 0 ||
+                    availableTypes.reading.length > 0;
 
-                return (
-                  <button
-                    key={test.id}
-                    onClick={() => hasTests && handleTestModalOpen(test)}
-                    disabled={!hasTests}
-                    className={`group relative flex flex-col justify-between items-start text-left bg-white rounded-3xl border p-8 transition-all duration-300 h-full ${
-                      hasTests
-                        ? "border-gray-200 hover:border-red-600 hover:ring-1 hover:ring-red-600 hover:shadow-2xl hover:-translate-y-1 cursor-pointer"
-                        : "border-gray-100 opacity-60 cursor-not-allowed bg-gray-50"
-                    }`}
-                  >
-                    <div className="w-full">
-                      {/* Title */}
-                      <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 group-hover:text-red-600 transition-colors">
-                        {test.title}
-                      </h2>
+                  return (
+                    <button
+                      key={test.id}
+                      type="button"
+                      onClick={() => hasTests && handleTestModalOpen(test)}
+                      disabled={!hasTests}
+                      className="mock-test-card"
+                      aria-busy={hasTests && (access.pending || (!access.enabled && membershipPending)) || undefined}
+                    >
+                      <h2 className={hasTests && cardLocked(test) && (access.pending || access.enabled || !membershipPending) ? "pr-8" : undefined}>{test.title}</h2>
+                      {hasTests && cardLocked(test) && (access.pending || access.enabled || !membershipPending) && <MembershipLockBadge />}
 
-                      {/* Description or Status */}
-                      <p className="text-sm text-gray-500 mb-4">
-                        {hasTests ? "Mevcut testler:" : "Hazırlanıyor..."}
-                      </p>
-                    </div>
-
-                    {/* Features / Badges */}
-                    {hasTests && (
-                      <div className="mt-auto flex flex-wrap gap-2 w-full">
-                        {availableTypes.listening.length > 0 && (
-                          <span className="px-3 py-1.5 rounded-lg bg-gray-50 text-gray-600 text-xs font-bold border border-gray-100 group-hover:bg-red-50 group-hover:text-red-600 group-hover:border-red-100 transition-colors">
-                            Dinleme
+                      {hasTests && getPackageTab(test) === "CEFR_MOCK" ? (
+                        <div className="mock-test-sections">
+                          {sections.map((section) => (
+                            <span
+                              key={section}
+                              className="mock-test-section"
+                              style={sectionPillStyle(section as string)}
+                            >
+                              {section}{access.enabled && access.decisionFor({ scope: 'MOCK_PACKAGE', targetId: test.id })?.publicFreeSkills?.includes(({ Dinleme: 'LISTENING', Okuma: 'READING', Yazma: 'WRITING', Konuşma: 'SPEAKING' } as const)[section as 'Dinleme' | 'Okuma' | 'Yazma' | 'Konuşma']) ? ' · Ücretsiz' : ''}
+                            </span>
+                          ))}
+                          <span className="mock-test-cefr-arrow" aria-hidden="true">
+                            <ArrowRight size={16} />
                           </span>
-                        )}
-                        {availableTypes.reading.length > 0 && (
-                          <span className="px-3 py-1.5 rounded-lg bg-gray-50 text-gray-600 text-xs font-bold border border-gray-100 group-hover:bg-red-50 group-hover:text-red-600 group-hover:border-red-100 transition-colors">
-                            Okuma
-                          </span>
-                        )}
-                        {availableTypes.writing.length > 0 && (
-                          <span className="px-3 py-1.5 rounded-lg bg-gray-50 text-gray-600 text-xs font-bold border border-gray-100 group-hover:bg-red-50 group-hover:text-red-600 group-hover:border-red-100 transition-colors">
-                            Yazma
-                          </span>
-                        )}
-                        {availableTypes.speaking.length > 0 && (
-                          <span className="px-3 py-1.5 rounded-lg bg-gray-50 text-gray-600 text-xs font-bold border border-gray-100 group-hover:bg-red-50 group-hover:text-red-600 group-hover:border-red-100 transition-colors">
-                            Konuşma
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </button>
-                );
-              })
+                        </div>
+                      ) : hasTests ? (
+                        <span className="mock-test-standalone-action">
+                          Teste başla{access.enabled && access.decisionFor({ scope: 'MOCK_PACKAGE', targetId: test.id })?.isPublicFree ? " · Ücretsiz" : ""}
+                          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                        </span>
+                      ) : (
+                        <p className="mock-test-unavailable">
+                          Hazırlanıyor…
+                        </p>
+                      )}
+                    </button>
+                  );
+                })
               ) : (
-                <div className="col-span-full rounded-2xl border border-dashed border-gray-300 bg-white/80 p-8 text-center">
-                  <p className="text-base font-semibold text-gray-700">
-                    {selectedPackageTab === "cefr"
-                      ? "CEFR paketi bulunamadı."
-                      : "Konuşma paketi bulunamadı."}
+                <div className="mock-test-state col-span-full">
+                  <p className="text-base font-semibold text-[var(--tm-text-primary)]">
+                    {packageTabs.find((tab) => tab.value === selectedPackageTab)?.label} paketi bulunamadı.
                   </p>
                 </div>
               )
             ) : (
               <div className="col-span-full">
-                 <EmptyState selectedTestType="all" isMainTestSelection={true} />
+                <EmptyState selectedTestType="all" isMainTestSelection={true} />
               </div>
             )}
           </div>
-        </div>
-      </section>
+            </>
+          )}
 
-      {/* Test Modal */}
+      <MembershipRequiredDialog open={membershipRequiredOpen} onOpenChange={setMembershipRequiredOpen} />
+      {(directAccess.error || directError) && <section role="alert" className="mt-4 rounded-lg border p-5"><p>{directAccess.error || directError}</p>{directAccess.error && !directAccess.invalid && <button type="button" onClick={directAccess.retry}>Tekrar dene</button>}<button type="button" onClick={() => { setDirectError(''); navigate('/app/test', { replace: true }); }}>Kataloğa dön</button></section>}
       {currentTestForModal && (
         <TestModal
           open={showTestModal}
           onOpenChange={setShowTestModal}
           selectedTest={currentTestForModal}
-          isSpeakingPackage={getPackageTab(currentTestForModal.title) === "speaking"}
-          writingTests={turkishTestData?.writingTests.filter(t => t.ieltsId === currentTestForModal.id) || []}
-          speakingTests={turkishTestData?.speakingTests.filter(t => t.ieltsId === currentTestForModal.id) || []}
-          listeningTests={turkishTestData?.listeningTests.filter(t => t.ieltsId === currentTestForModal.id) || []}
-          readingTests={turkishTestData?.readingTests.filter(t => t.ieltsId === currentTestForModal.id) || []}
+          workspaceMode={workspaceMode}
+          initialSelectedSkills={modalSelectedSkills}
+          accessEntry={modalAccessEntry ?? undefined}
+          singleSkill={modalExactTarget ? modalExactTarget.scope.slice(5).toLowerCase() as 'reading' | 'listening' | 'writing' | 'speaking' : categorySkill[getPackageTab(currentTestForModal)]}
+          writingTests={turkishTestData?.writingTests.filter((t) => t.ieltsId === currentTestForModal.id && (!modalExactTarget || (modalExactTarget.scope === 'MOCK_WRITING' && t.id === modalExactTarget.targetId))) || []}
+          speakingTests={turkishTestData?.speakingTests.filter((t) => t.ieltsId === currentTestForModal.id && (!modalExactTarget || (modalExactTarget.scope === 'MOCK_SPEAKING' && t.id === modalExactTarget.targetId))) || []}
+          listeningTests={turkishTestData?.listeningTests.filter((t) => t.ieltsId === currentTestForModal.id && (!modalExactTarget || (modalExactTarget.scope === 'MOCK_LISTENING' && t.id === modalExactTarget.targetId))) || []}
+          readingTests={turkishTestData?.readingTests.filter((t) => t.ieltsId === currentTestForModal.id && (!modalExactTarget || (modalExactTarget.scope === 'MOCK_READING' && t.id === modalExactTarget.targetId))) || []}
           onTestTypeClick={handleTestTypeClick}
         />
       )}
-    </div>
+      </>
+    </MockTestShell>
   );
 };
 

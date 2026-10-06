@@ -1,219 +1,89 @@
-﻿import { useEffect, useRef, useState, type MouseEvent, type TouchEvent } from "react";
-import { Instagram, Quote, Send } from "lucide-react";
+import { useEffect, useState } from "react";
+import { tm } from "@/components/tm";
+import { toApiUrl } from "@/config/runtime";
 
 const experts = [
   {
     name: "Muattar Mamatkarimova",
     role: "Türkçe Eğitmeni",
-    image: "/mattuqiz.jpg",
-    text: "Sınav öncesi öğrencilere gerçek seviyelerini gösterecek böyle bir platforma uzun zamandır ihtiyaç vardı. Artık sınava katılmak isteyenler bu yapıda rahatça çalışabilirler.",
-    telegram: "https://t.me/+HWz8P0XvqHNkMDUy",
-    instagram: "https://www.instagram.com/mattu_turkish/",
+    mediaKey: "expert/muattar-mamatkarimova",
+    text: "Sınav öncesi öğrencilere gerçek seviyelerini gösterecek böyle bir platforma uzun zamandır ihtiyaç vardı.",
   },
   {
     name: "Timur Makarov",
     role: "Platform Kurucusu ve Geliştiricisi",
-    image: "/tim%202.png",
-    text: "Bu platform, gerçek sınav deneyimini yaşamanız, seviyenizi ve gelişime açık yönlerinizi net şekilde görmeniz amacıyla hazırlanmıştır. Böylece sınava daha bilinçli ve etkili bir şekilde hazırlanabilirsiniz.",
-    telegram: "https://t.me/zargana_deus_ex_machina",
-    instagram: "https://www.instagram.com/timur_x_makarov/",
+    mediaKey: "expert/timur-makarov",
+    text: "Bu platform, gerçek sınav deneyimini yaşamanız, seviyenizi ve gelişime açık yönlerinizi net şekilde görmeniz amacıyla hazırlanmıştır.",
   },
 ];
 
-const AUTO_SLIDE_MS = 8000;
-const SWIPE_THRESHOLD = 50;
-
 const HomeExpertOpinions = () => {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const touchStartXRef = useRef<number | null>(null);
-  const touchEndXRef = useRef<number | null>(null);
-  const timeoutRef = useRef<number | null>(null);
+  const [expertImages, setExpertImages] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (timeoutRef.current !== null) {
-      window.clearTimeout(timeoutRef.current);
-    }
+    let active = true;
 
-    timeoutRef.current = window.setTimeout(() => {
-      setActiveIndex((prev) => (prev + 1) % experts.length);
-    }, AUTO_SLIDE_MS);
-
-    return () => {
-      if (timeoutRef.current !== null) {
-        window.clearTimeout(timeoutRef.current);
+    const loadExpertImages = async () => {
+      try {
+        const response = await fetch(
+          toApiUrl("/api/file/public/expert-media"),
+          {
+            cache: "no-store",
+            referrerPolicy: "no-referrer",
+          },
+        );
+        if (!response.ok) return;
+        const media = (await response.json()) as Record<string, string>;
+        if (active) setExpertImages(media);
+      } catch {
+        // The text remains usable when a media request is temporarily unavailable.
       }
     };
-  }, [activeIndex]);
 
-  const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
-    touchStartXRef.current = event.touches[0]?.clientX ?? null;
-    touchEndXRef.current = null;
-  };
-
-  const handleTouchMove = (event: TouchEvent<HTMLDivElement>) => {
-    touchEndXRef.current = event.touches[0]?.clientX ?? null;
-  };
-
-  const handleTouchEnd = () => {
-    const startX = touchStartXRef.current;
-    const endX = touchEndXRef.current;
-    if (startX === null || endX === null) return;
-
-    const delta = startX - endX;
-    if (Math.abs(delta) < SWIPE_THRESHOLD) return;
-
-    if (delta > 0) {
-      setActiveIndex((prev) => (prev + 1) % experts.length);
-    } else {
-      setActiveIndex((prev) => (prev - 1 + experts.length) % experts.length);
-    }
-  };
-
-  const stopLinkTouchPropagation = (event: TouchEvent<HTMLElement>) => {
-    event.stopPropagation();
-  };
-
-  const handleExternalLinkClick = (
-    event: MouseEvent<HTMLAnchorElement>,
-    url: string,
-  ) => {
-    event.preventDefault();
-    event.stopPropagation();
-
-    const openedWindow = window.open(url, "_blank", "noopener,noreferrer");
-    if (!openedWindow) {
-      // Fallback for mobile webviews/pop-up blockers.
-      window.location.assign(url);
-    }
-  };
+    void loadExpertImages();
+    const refreshTimer = window.setInterval(loadExpertImages, 45 * 60 * 1000);
+    return () => {
+      active = false;
+      window.clearInterval(refreshTimer);
+    };
+  }, []);
 
   return (
-    <section className="py-6 sm:py-8 lg:py-10 bg-white font-sans">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="max-w-2xl mb-4 sm:mb-5 text-center md:text-left">
-          <h2 className="text-xl sm:text-3xl font-medium text-gray-900 tracking-tight">
-            Uzmanlar Hakkımızda Ne Diyor?
+    <section className="bg-white py-8 sm:py-10" aria-labelledby="expert-opinions-title">
+      <div className={tm.container}>
+        <div className="mx-auto max-w-5xl border-t border-[var(--tm-border-default)] pt-8 sm:pt-10">
+          <h2 id="expert-opinions-title" className="mb-6 text-center text-lg font-semibold tracking-tight text-[var(--tm-text-primary)] sm:text-xl">
+            Platform üzerine görüşler
           </h2>
-        </div>
-
-        <article
-          className="relative overflow-hidden rounded-xl md:rounded-2xl border border-gray-200 bg-gray-50 shadow-sm"
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-        >
-          <div className="overflow-hidden">
-            <div
-              className="flex transition-transform duration-700 ease-out"
-              style={{ transform: `translateX(-${activeIndex * 100}%)` }}
-            >
-              {experts.map((expert) => (
-                <div key={expert.name} className="min-w-full p-3.5 sm:p-5 md:p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-[1fr_148px] gap-3 sm:gap-4 md:gap-6 items-center md:items-stretch">
-                    <div className="min-w-0 relative flex flex-col justify-between h-full pt-1 sm:pt-3 text-center md:text-left order-2 md:order-1">
-                      <Quote className="hidden md:block w-14 h-14 sm:w-16 sm:h-16 text-gray-300/30 absolute -top-8 -left-2 pointer-events-none z-0" />
-                      <Quote className="md:hidden w-6 h-6 text-gray-400 mx-auto mb-1" />
-                      <p className="text-sm sm:text-base md:text-lg leading-relaxed text-gray-700 italic font-medium relative z-10 max-w-[62ch] mx-auto md:mx-0">
-                        {expert.text}
-                      </p>
-
-                      <div className="mt-4 flex flex-col items-center md:items-start gap-1">
-                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 tracking-tight leading-tight">
-                          {expert.name}
-                        </h3>
-                        <p className="text-xs sm:text-sm tracking-[0.08em] text-gray-500 leading-tight">
-                          {expert.role.toLocaleUpperCase("tr-TR")}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col items-center justify-center md:justify-between gap-2.5 md:gap-3 h-full order-1 md:order-2">
-                      <img
-                        src={expert.image}
-                        alt={expert.name}
-                        className="w-24 h-24 sm:w-28 sm:h-28 md:w-36 md:h-36 rounded-full object-cover border-2 border-white shadow-md pointer-events-none select-none"
-                        draggable={false}
-                        onContextMenu={(event) => event.preventDefault()}
-                        onDragStart={(event) => event.preventDefault()}
-                      />
-                      <div className="flex items-center gap-2">
-                        {expert.instagram ? (
-                          <a
-                            href={expert.instagram}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-8 h-8 rounded-full border border-gray-400/50 text-gray-700 hover:bg-gray-200 transition-colors duration-300 inline-flex items-center justify-center"
-                            aria-label={`${expert.name} Instagram`}
-                            onClick={(event) => handleExternalLinkClick(event, expert.instagram)}
-                            onTouchStart={stopLinkTouchPropagation}
-                            onTouchEnd={stopLinkTouchPropagation}
-                          >
-                            <Instagram className="w-4 h-4" />
-                          </a>
-                        ) : (
-                          <span
-                            className="w-8 h-8 rounded-full border border-gray-300/70 text-gray-400 inline-flex items-center justify-center"
-                            aria-label="Instagram yakında"
-                          >
-                            <Instagram className="w-4 h-4" />
-                          </span>
-                        )}
-
-                        {expert.telegram ? (
-                          <a
-                            href={expert.telegram}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-8 h-8 rounded-full border border-gray-400/50 text-gray-700 hover:bg-gray-200 transition-colors duration-300 inline-flex items-center justify-center"
-                            aria-label={`${expert.name} Telegram`}
-                            onClick={(event) => handleExternalLinkClick(event, expert.telegram)}
-                            onTouchStart={stopLinkTouchPropagation}
-                            onTouchEnd={stopLinkTouchPropagation}
-                          >
-                            <Send className="w-4 h-4" />
-                          </a>
-                        ) : (
-                          <span
-                            className="w-8 h-8 rounded-full border border-gray-300/70 text-gray-400 inline-flex items-center justify-center"
-                            aria-label="Telegram yakında"
-                          >
-                            <Send className="w-4 h-4" />
-                          </span>
-                        )}
-                      </div>
-                    </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {experts.map((expert) => (
+              <figure key={expert.name} className="flex h-full flex-col rounded-xl border border-[var(--tm-border-default)] bg-[var(--tm-bg-page)] p-6 sm:p-7">
+                <blockquote className="flex-1 text-base leading-7 text-[var(--tm-text-primary)]">
+                  “{expert.text}”
+                </blockquote>
+                <figcaption className="mt-6 flex items-center gap-3">
+                  <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full bg-[var(--tm-bg-hover)]" data-protected-media="expert-photo" onContextMenu={(event) => event.preventDefault()} onDragStart={(event) => event.preventDefault()}>
+                    {expertImages[expert.mediaKey] ? (
+                      <img src={expertImages[expert.mediaKey]} alt="" className="pointer-events-none h-full w-full object-cover" crossOrigin="anonymous" decoding="async" draggable={false} referrerPolicy="no-referrer" onError={() => setExpertImages((current) => {
+                        const next = { ...current };
+                        delete next[expert.mediaKey];
+                        return next;
+                      })} />
+                    ) : (
+                      <span className="flex h-full items-center justify-center text-xs font-medium text-[var(--tm-text-secondary)]" aria-hidden="true">
+                        {expert.name.split(" ").slice(0, 2).map((part) => part[0]).join("")}
+                      </span>
+                    )}
                   </div>
-                </div>
-              ))}
-            </div>
+                  <div>
+                    <p className="text-sm font-semibold text-[var(--tm-text-primary)]">{expert.name}</p>
+                    <p className="mt-0.5 text-xs leading-5 text-[var(--tm-text-secondary)]">{expert.role}</p>
+                  </div>
+                </figcaption>
+              </figure>
+            ))}
           </div>
-
-          <div className="px-4 sm:px-6 pb-4 pt-1 flex items-center justify-center">
-            <div className="flex items-center gap-1.5 sm:hidden">
-              {experts.map((_, index) => (
-                <span
-                  key={`mobile-dot-${index}`}
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
-                    index === activeIndex ? "w-6 bg-gray-500" : "w-3 bg-gray-300"
-                  }`}
-                />
-              ))}
-            </div>
-            <div className="hidden sm:flex items-center gap-1.5">
-              {experts.map((_, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  onClick={() => setActiveIndex(index)}
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
-                    index === activeIndex ? "w-6 bg-gray-500" : "w-3 bg-gray-300 hover:bg-gray-400"
-                  }`}
-                  aria-label={`Uzman ${index + 1}`}
-                />
-              ))}
-            </div>
-          </div>
-        </article>
+        </div>
       </div>
     </section>
   );

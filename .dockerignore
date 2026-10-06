@@ -1,0 +1,14 @@
+**
+!Dockerfile
+!package.json
+!package-lock.json
+!index.html
+!vite.config.ts
+!speakingTestService.ts
+!tsconfig*.json
+!src/
+!src/**
+!public/
+!public/**
+!deploy/
+!deploy/nginx.conf

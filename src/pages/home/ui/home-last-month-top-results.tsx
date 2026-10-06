@@ -1,9 +1,12 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Calendar, Zap } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { overallTestService } from "@/services/overallTest.service";
 import { toApiUrl } from "@/config/runtime";
-import { Link } from "react-router-dom";
+import { SectionHeader, tm } from "@/components/tm";
+
+import { formatSectionScore } from "./home-results-data";
+import "./home-results.css";
 
 const TEST_SCOPE_OPTIONS = [
   { key: "ALL", label: "Hepsi" },
@@ -20,10 +23,10 @@ interface UserResult {
   name: string;
   avatarUrl?: string;
   date: string;
-  dinleme: number;
-  okuma: number;
-  yazma: number;
-  konusma: number;
+  dinleme: number | null;
+  okuma: number | null;
+  yazma: number | null;
+  konusma: number | null;
   overallScore: number;
   level: string;
 }
@@ -44,6 +47,7 @@ interface ApiResult {
   speakingScore?: number | null;
   overallScore: number;
   completedAt?: string | null;
+  updatedAt?: string;
   createdAt?: string;
 }
 
@@ -69,110 +73,29 @@ const formatDate = (dateString: string | null | undefined): string => {
   }
 };
 
-const formatScore = (score: number | null | undefined): number => {
-  if (score == null) return 0;
-  return Math.round(score * 10) / 10;
-};
-
-const hasSectionScore = (score: number | null | undefined): boolean =>
-  score !== null && score !== undefined;
-
-const matchesTestScope = (item: ApiResult, scope: TestScopeOption): boolean => {
-  if (scope === "ALL") return true;
-
-  const hasReading = hasSectionScore(item.readingScore);
-  const hasListening = hasSectionScore(item.listeningScore);
-  const hasWriting = hasSectionScore(item.writingScore);
-  const hasSpeaking = hasSectionScore(item.speakingScore);
-
-  if (scope === "FULL") {
-    return hasReading && hasListening && hasWriting && hasSpeaking;
-  }
-
-  if (scope === "READING") {
-    return hasReading && !hasListening && !hasWriting && !hasSpeaking;
-  }
-
-  if (scope === "LISTENING") {
-    return hasListening && !hasReading && !hasWriting && !hasSpeaking;
-  }
-
-  if (scope === "WRITING") {
-    return hasWriting && !hasReading && !hasListening && !hasSpeaking;
-  }
-
-  if (scope === "SPEAKING") {
-    return hasSpeaking && !hasReading && !hasListening && !hasWriting;
-  }
-
-  return true;
-};
-
-const resultTimestamp = (item: ApiResult): number => {
-  const value = item.completedAt || item.createdAt || "";
-  const time = value ? new Date(value).getTime() : 0;
-  return Number.isNaN(time) ? 0 : time;
-};
-
 const HomeLastMonthTopResults = () => {
   const [users, setUsers] = useState<UserResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTestScope, setSelectedTestScope] = useState<TestScopeOption>("ALL");
 
   useEffect(() => {
+    let cancelled = false;
     const fetchRecentResults = async () => {
       try {
         setLoading(true);
-        // Show latest results and choose the best score per user.
+        // The API applies the selected scope before limiting the result set.
         const data = await overallTestService.getRecentQualifiedOverallTests(
-          100,
+          15,
           undefined,
-          false
+          true,
+          selectedTestScope,
         );
 
-        const scoped = (data as ApiResult[]).filter((item) =>
-          matchesTestScope(item, selectedTestScope)
-        );
+        const recentResults = data as ApiResult[];
 
-        const bestByUser = new Map<string, ApiResult>();
-        const noUserEntries: ApiResult[] = [];
-
-        scoped.forEach((item) => {
-          const listedUserId = String(item.user?.id || "").trim();
-          if (!listedUserId) {
-            noUserEntries.push(item);
-            return;
-          }
-
-          const existing = bestByUser.get(listedUserId);
-          if (!existing) {
-            bestByUser.set(listedUserId, item);
-            return;
-          }
-
-          const existingScore = Number(existing.overallScore || 0);
-          const nextScore = Number(item.overallScore || 0);
-          const shouldReplace =
-            nextScore > existingScore ||
-            (nextScore === existingScore &&
-              resultTimestamp(item) > resultTimestamp(existing));
-
-          if (shouldReplace) {
-            bestByUser.set(listedUserId, item);
-          }
-        });
-
-        const uniqueBestResults = [...bestByUser.values(), ...noUserEntries]
-          .sort((a, b) => {
-            const scoreDiff = Number(b.overallScore || 0) - Number(a.overallScore || 0);
-            if (scoreDiff !== 0) return scoreDiff;
-            return resultTimestamp(b) - resultTimestamp(a);
-          })
-          .slice(0, 20);
-
-        const mappedUsers: UserResult[] = uniqueBestResults.map((item: ApiResult) => {
+        const mappedUsers: UserResult[] = recentResults.map((item: ApiResult) => {
           const resultUser: ApiUser = item.user || { id: "", name: "Anonim" };
-          const date = item.completedAt || item.createdAt || "";
+          const date = item.completedAt || item.updatedAt || item.createdAt || "";
           const avatarUrl = resultUser.avatarUrl || resultUser.avatar;
           const roundedOverall = Math.round(item.overallScore || 0);
           const formattedAvatarUrl = avatarUrl
@@ -186,158 +109,91 @@ const HomeLastMonthTopResults = () => {
             name: resultUser.name || "Anonim",
             avatarUrl: formattedAvatarUrl,
             date: formatDate(date),
-            dinleme: formatScore(item.listeningScore),
-            okuma: formatScore(item.readingScore),
-            yazma: formatScore(item.writingScore),
-            konusma: formatScore(item.speakingScore),
+            dinleme: formatSectionScore(item.listeningScore),
+            okuma: formatSectionScore(item.readingScore),
+            yazma: formatSectionScore(item.writingScore),
+            konusma: formatSectionScore(item.speakingScore),
             overallScore: roundedOverall,
             level: getCefrLevel(roundedOverall),
           };
         });
 
-        setUsers(mappedUsers);
+        if (!cancelled) setUsers(mappedUsers);
       } catch (error) {
         console.error("Error fetching recent results:", error);
-        setUsers([]);
+        if (!cancelled) setUsers([]);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     fetchRecentResults();
+    return () => { cancelled = true; };
   }, [selectedTestScope]);
 
-  const getRankStyle = (index: number) => {
-    switch (index) {
-      case 0:
-        return "bg-yellow-50 text-yellow-700 border-yellow-200";
-      case 1:
-        return "bg-gray-50 text-gray-700 border-gray-200";
-      case 2:
-        return "bg-orange-50 text-orange-700 border-orange-200";
-      default:
-        return "bg-white text-gray-500 border-gray-200";
-    }
-  };
-
   return (
-    <section className="py-16 sm:py-20 bg-gray-50 font-sans">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-gray-200 bg-white mb-3">
-            <Zap className="w-4.5 h-4.5 text-yellow-500 fill-yellow-500" />
-            <span className="text-xs font-semibold text-gray-700 tracking-tight">Sonuçlar</span>
+    <section id="son-sinav-sonuclari" className={`${tm.section} home-results scroll-mt-20`}>
+      <div className="mx-auto max-w-[960px] px-4 sm:px-6 lg:px-8">
+        <SectionHeader
+          title="Son Sınav Sonuçları"
+          description="En yeni deneme sonuçları ve beceri puanları."
+          align="center"
+        />
+        <div className="home-results__toolbar">
+          <div className="home-results__filter">
+            <select aria-label="Sonuçları sınav türüne göre filtrele"
+              value={selectedTestScope}
+              onChange={(event) => setSelectedTestScope(event.target.value as TestScopeOption)}>
+              {TEST_SCOPE_OPTIONS.map(option => <option key={option.key} value={option.key}>{option.label}</option>)}
+            </select>
+            <ChevronDown size={14} aria-hidden="true" />
           </div>
-
-          <h2 className="text-xl sm:text-3xl font-semibold text-gray-900 mb-2 tracking-tight">
-            Son Sınav Sonuçları
-          </h2>
         </div>
-
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-          <div className="px-4 sm:px-5 py-3 border-b border-gray-100 bg-gray-50 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Filtre</span>
-              <select
-                value={selectedTestScope}
-                onChange={(e) => setSelectedTestScope(e.target.value as TestScopeOption)}
-                className="h-9 min-w-[170px] rounded-md border border-gray-300 bg-white px-3 text-sm font-semibold text-gray-800 outline-none focus:border-black focus:ring-1 focus:ring-black/20"
-              >
-                {TEST_SCOPE_OPTIONS.map((option) => (
-                  <option key={option.key} value={option.key}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <Link
-              to="/sonuclar/tam-liste"
-              className="h-9 inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-3 text-sm font-semibold text-gray-800 hover:bg-gray-100 transition-colors"
-            >
-              Tam Liste
-            </Link>
-          </div>
-
-          {loading ? (
-            <div className="text-center py-10">
-              <div className="animate-spin w-7 h-7 border-2 border-red-600 border-t-transparent rounded-full mx-auto mb-3"></div>
-              <p className="text-gray-500 text-sm">Sonuçlar yükleniyor...</p>
-            </div>
-          ) : users.length === 0 ? (
-            <div className="text-center py-10">
-              <p className="text-gray-500 text-sm">Seçili filtrelerde sonuç bulunamadı.</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-100">
-              <div className="hidden sm:grid grid-cols-[28px_1.6fr_1fr_160px] gap-4 px-5 py-3 bg-gray-50 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
-                <span>#</span>
-                <span>Kullanıcı</span>
-                <span>Alt Skorlar</span>
-                <span>Puan / Seviye</span>
-              </div>
-              {users.map((user, index) => (
-                <div
-                  key={user.id}
-                  className="group px-4 sm:px-5 py-4 transition-colors hover:bg-gray-50/70"
-                >
-                  <div className="grid grid-cols-[28px_1fr] sm:grid-cols-[28px_1.6fr_1fr_160px] gap-4 items-center">
-                    <div className={`w-7 h-7 flex items-center justify-center rounded-full text-xs font-bold border ${getRankStyle(index)}`}>
-                      {index + 1}
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <Avatar className="w-10 h-10 border border-gray-200">
-                        <AvatarImage src={user.avatarUrl} alt={user.name} />
-                        <AvatarFallback className="bg-gray-900 text-white font-bold">
-                          {user.name.substring(0, 2).toUpperCase()}
+        {loading ? (
+          <p className="home-results__empty" role="status">Sonuçlar yükleniyor…</p>
+        ) : users.length === 0 ? (
+          <p className="home-results__empty" role="status">Bu sınav türünde henüz sonuç yok.</p>
+        ) : (
+          <div className="home-results__scroll" tabIndex={0} role="region" aria-label="Son sınav sonuçları tablosu">
+            <table className="home-results__table">
+              <thead><tr>
+                <th scope="col">Katılımcı</th>
+                <th scope="col">Dinleme</th>
+                <th scope="col">Okuma</th>
+                <th scope="col">Yazma</th>
+                <th scope="col">Konuşma</th>
+                <th scope="col">Puan / Seviye</th>
+              </tr></thead>
+              <tbody>{users.map(user => (
+                <tr key={user.id}>
+                  <th scope="row">
+                    <div className="home-results__person">
+                      <Avatar className="h-10 w-10 shrink-0" data-protected-media="avatar"
+                        onContextMenu={event => event.preventDefault()} onDragStart={event => event.preventDefault()}>
+                        <AvatarImage src={user.avatarUrl} alt="" draggable={false}
+                          className="pointer-events-none select-none object-cover"
+                          referrerPolicy="no-referrer" loading="lazy" decoding="async" />
+                        <AvatarFallback className="bg-gray-100 text-gray-700 text-sm font-semibold">
+                          {user.name.trim().split(/\s+/).map(part => part[0]).slice(0, 2).join("").toLocaleUpperCase("tr-TR")}
                         </AvatarFallback>
                       </Avatar>
-
-                      <div className="min-w-0">
-                        <h4 className="font-semibold text-gray-900 text-sm truncate">{user.name}</h4>
-                        <div className="flex items-center gap-1.5 text-gray-400 text-xs font-medium mt-0.5">
-                          <Calendar className="w-3 h-3" />
-                          <span className="truncate">{user.date}</span>
-                        </div>
+                      <div className="home-results__identity">
+                        <span className="home-results__name">{user.name}</span>
+                        <span className="home-results__date">{user.date}</span>
                       </div>
                     </div>
-
-                    <div className="hidden sm:flex items-center gap-2">
-                      {[
-                        { l: "D", v: user.dinleme },
-                        { l: "O", v: user.okuma },
-                        { l: "Y", v: user.yazma },
-                        { l: "K", v: user.konusma },
-                      ].map((score, i) => (
-                        <div
-                          key={i}
-                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-50 border border-gray-200"
-                        >
-                          <span className="text-[10px] font-bold text-gray-400 uppercase">{score.l}</span>
-                          <span className="text-xs font-bold text-gray-700">{Math.round(score.v)}</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="hidden sm:flex items-center gap-2">
-                      <span className="block text-base font-bold text-gray-900">{user.overallScore}</span>
-                      <span className="text-gray-400 text-sm font-semibold">/</span>
-                      <span className="text-sm font-semibold text-gray-700">{user.level}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-3 sm:hidden">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-gray-900">{user.overallScore}</span>
-                        <span className="text-gray-400 text-xs font-semibold">/</span>
-                        <span className="text-xs font-semibold text-gray-700">{user.level}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                  </th>
+                  {[user.dinleme, user.okuma, user.yazma, user.konusma].map((score, index) => (
+                    <td key={index} className={score === null ? "home-results__missing" : undefined}>
+                      <span aria-label={score === null ? "Katılmadı" : undefined}>{score === null ? "×" : Math.round(score)}</span>
+                    </td>
+                  ))}
+                  <td><div className="home-results__score"><strong>{user.overallScore}</strong><span>/ {user.level}</span></div></td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        )}
       </div>
     </section>
   );

@@ -71,20 +71,21 @@ const getTestInstructions = (testType: string) => {
       };
     case "writing":
       return {
-        title: "Yazma Testi",
+        title: "Yazma Sınavı",
         icon: PenTool,
         duration: "60 dakika",
-        sections: "2 görev",
+        sections: "2 bölüm · 3 görev",
         description:
-          "IELTS Yazma testi İngilizce yazma becerinizi değerlendirir.",
+          "Yazma sınavı Türkçe yazılı anlatım becerinizi üç görev üzerinden değerlendirir.",
         instructions: [
-          "Görev 1: Grafik, tablo veya diyagram açıklama (150 kelime, 20 dakika)",
-          "Görev 2: Essay yazma - verilen konuda görüşünüzü savunun (250 kelime, 40 dakika)",
+          "Görev 1.1: 50 kelimelik gayriresmî mektup",
+          "Görev 1.2: 120-150 kelimelik resmî mektup",
+          "Bölüm 2: 180-200 kelimelik kompozisyon",
         ],
         tips: [
-          "Zamanınızı görevlere göre ayırın",
-          "Plan yapın, sonra yazın",
-          "Gramer ve kelime çeşitliliği gösterin",
+          "Üslubu, alıcıyı ve görevin amacını dikkate alın",
+          "Yanıtınızı kısa bir planla düzenleyin",
+          "Göndermeden önce yazım ve noktalama işaretlerini kontrol edin",
         ],
       };
     default:
@@ -150,8 +151,6 @@ const TestInstructionModal = ({
               </div>
             </div>
           </div>
-
-
 
           {/* Instructions */}
           {testInfo.instructions.length > 0 && (

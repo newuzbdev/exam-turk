@@ -1,68 +1,116 @@
 import axios from "axios";
-import { SecureStorage } from "@/utils/secureStorage";
+import {
+  readStoredAccessToken,
+  readStoredRefreshToken,
+  storeRenewedAccessToken,
+} from "@/utils/authTokenStorage";
+import { requestReauthentication } from "@/utils/authSessionRecovery";
+import { AUTH_REQUEST_TIMEOUT_MS } from "@/utils/authConnectionRecovery";
 
 const baseURL =
   import.meta.env.VITE_API_URL || "https://api.turkishmock.uz";
+
+export const resolveApiResourceUrl = (value: string): string => {
+  const resourceUrl = String(value || "").trim();
+  if (!resourceUrl) return "";
+
+  try {
+    const normalizedBase = baseURL.endsWith("/") ? baseURL : `${baseURL}/`;
+    return new URL(resourceUrl, normalizedBase).toString();
+  } catch {
+    return resourceUrl;
+  }
+};
 
 const axiosPrivate = axios.create({
   baseURL,
   // withCredentials: true,
 });
 
-const readFirstToken = (keys: string[]): string | null => {
-  for (const key of keys) {
-    const fromSession = SecureStorage.getSessionItem(key);
-    if (fromSession) return fromSession;
-    const fromLocal = SecureStorage.getItem(key);
-    if (fromLocal) return fromLocal;
+const isApiDebugEnabled = import.meta.env.VITE_DEBUG_API === "true";
+
+const debugApi = (...args: unknown[]) => {
+  if (isApiDebugEnabled) {
+    console.debug(...args);
   }
-  return null;
 };
 
-const readAccessToken = (): string | null =>
-  readFirstToken(["accessToken", "token", "authToken"]);
-
-const readRefreshToken = (): string | null =>
-  readFirstToken(["refreshToken"]);
-
-const extractAccessTokenFromPayload = (payload: any): string | null => {
+const extractAccessTokenFromPayload = (payload: unknown): string | null => {
+  const data = payload && typeof payload === "object" ? payload as Record<string, unknown> : {};
+  const nested = data.data && typeof data.data === "object" ? data.data as Record<string, unknown> : {};
   const accessToken =
-    payload?.accessToken ||
-    payload?.access_token ||
-    payload?.token ||
-    payload?.data?.accessToken ||
-    payload?.data?.access_token ||
-    payload?.data?.token;
-  return accessToken ? String(accessToken) : null;
+    data.accessToken || data.access_token || data.token ||
+    nested.accessToken || nested.access_token || nested.token;
+  return typeof accessToken === "string" && accessToken ? accessToken : null;
+};
+
+const isAuthenticationEntry = (url: string = "") =>
+  /\/api\/(?:user\/(?:login|register|refresh|password-reset(?:\/confirm)?)|otp\/(?:send|verify)|auth\/(?:google\/redirect|telegram\/(?:init|verify-code|widget)))(?:\?|$)/.test(url);
+
+let refreshRequest: Promise<string> | null = null;
+let refreshRequestToken: string | null = null;
+const requestSessions = new WeakMap<object, string | null>();
+
+const renewAccessToken = (): Promise<string> => {
+  const refreshToken = readStoredRefreshToken();
+  if (refreshRequest && refreshRequestToken === refreshToken) return refreshRequest;
+  if (!refreshToken) {
+    requestReauthentication();
+    return Promise.reject({ response: { status: 401 } });
+  }
+  const pending = (async () => {
+    try {
+      const response = await axios.post(
+        `${baseURL}/api/user/refresh`,
+        { refreshToken },
+        // Refresh authentication is carried in JSON. Cookie credentials would
+        // make the API's wildcard CORS response unreadable in the browser.
+        { withCredentials: false, timeout: AUTH_REQUEST_TIMEOUT_MS },
+      );
+      if (readStoredRefreshToken() !== refreshToken) {
+        throw new Error("Oturum değişti. İsteği yeniden deneyin.");
+      }
+      const token = extractAccessTokenFromPayload(response.data);
+      if (!token) throw new Error("Oturum yenileme yanıtı eksik.");
+      storeRenewedAccessToken(token);
+      return token;
+    } catch (error) {
+      if (readStoredRefreshToken() !== refreshToken) {
+        throw new Error("Oturum değişti. İsteği yeniden deneyin.");
+      }
+      if (
+        axios.isAxiosError(error) && error.response?.status === 401
+      ) {
+        requestReauthentication();
+      }
+      // A failed connection/5xx is not proof that the session is invalid.
+      throw error;
+    }
+  })();
+  refreshRequest = pending;
+  refreshRequestToken = refreshToken;
+  void pending.finally(() => {
+    if (refreshRequest === pending) {
+      refreshRequest = null;
+      refreshRequestToken = null;
+    }
+  }).catch(() => undefined);
+  return pending;
 };
 
 // Request interceptor
 axiosPrivate.interceptors.request.use(
   (config) => {
-    console.log(
+    requestSessions.set(config, readStoredRefreshToken());
+    debugApi(
       `[API] Request: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`,
     );
-    const token = readAccessToken();
+    const token = readStoredAccessToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log("[API] Access token attached:", token.substring(0, 20) + "...");
-
-      // Debug: Check if token is expired
-      try {
-        const payload = JSON.parse(atob(token.split(".")[1]));
-        const currentTime = Math.floor(Date.now() / 1000);
-        const isExpired = payload.exp < currentTime;
-        console.log("[API] Token expiration check:", {
-          exp: payload.exp,
-          currentTime,
-          isExpired,
-          expiresIn: payload.exp - currentTime,
-        });
-      } catch (e) {
-        console.error("[API] Error parsing token:", e);
-      }
+      debugApi("[API] Access token attached");
     } else {
-      console.log("[API] No access token found");
+      debugApi("[API] No access token found");
     }
     return config;
   },
@@ -75,7 +123,7 @@ axiosPrivate.interceptors.request.use(
 // Response interceptor
 axiosPrivate.interceptors.response.use(
   (response) => {
-    console.log(
+    debugApi(
       `[API] Response: ${response.config.method?.toUpperCase()} ${response.config.url} - Status: ${response.status}`,
     );
     return response;
@@ -95,61 +143,53 @@ axiosPrivate.interceptors.response.use(
       error.message,
     );
 
-    // Debug: Log the full error response
-    console.log("[API] Error response payload:", {
+    debugApi("[API] Error response payload:", {
       status: error.response?.status,
       data: error.response?.data,
-      headers: error.response?.headers,
     });
 
     // Debug: Check if this is the specific error we're seeing
     if (error.response?.data?.error === "Token not found or expired") {
-      console.log("[API] Detected token expiration error");
-      console.log("[API] Request details:", {
+      debugApi("[API] Detected token expiration error");
+      debugApi("[API] Request details:", {
         url: error.config?.url,
         method: error.config?.method,
-        headers: error.config?.headers,
         hasAuthHeader: !!error.config?.headers?.Authorization,
       });
     }
 
     const originalRequest = error.config;
 
-    // Handle token expiration - check for various error formats
-    const isTokenError =
-      error.response?.status === 401 &&
-      (error.response?.data?.error === "JWT_EXPIRED" ||
-        error.response?.data?.error === "Token not found or expired" ||
-        error.response?.data?.message === "Token not found or expired" ||
-        error.response?.data?.success === false);
+    const code = error.response?.data?.code;
+    const isTokenError = error.response?.status === 401 &&
+      originalRequest && !isAuthenticationEntry(originalRequest.url) &&
+      (!code || ["JWT_EXPIRED", "JWT_INVALID", "BEARER_TOKEN_NOT_PROVIDED", "LOGIN_FAILED"].includes(code));
+
+    if (isTokenError && requestSessions.has(originalRequest) &&
+      requestSessions.get(originalRequest) !== readStoredRefreshToken()) {
+      return Promise.reject(new Error("Oturum değişti. İsteği yeniden deneyin."));
+    }
+    if (isTokenError && originalRequest._retry) {
+      requestReauthentication();
+    }
 
     if (isTokenError && !originalRequest._retry) {
       originalRequest._retry = true;
 
       try {
-        const refreshToken = readRefreshToken();
-        const refreshPayload = refreshToken ? { refreshToken } : {};
-        const refreshResponse = await axios.post(
-          `${baseURL}/api/user/refresh`,
-          refreshPayload,
-          { withCredentials: true },
-        );
-        console.log("[API] Refresh response:", refreshResponse.data);
-
-        const newAccessToken = extractAccessTokenFromPayload(refreshResponse?.data);
-        if (newAccessToken) {
-          SecureStorage.setSessionItem("accessToken", newAccessToken);
-          SecureStorage.setItem("accessToken", newAccessToken);
-          SecureStorage.setSessionItem("token", newAccessToken);
-          SecureStorage.setItem("token", newAccessToken);
-          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-          return axiosPrivate(originalRequest);
-        }
+        const currentToken = readStoredAccessToken();
+        const sentToken = originalRequest.headers?.Authorization;
+        // A late 401 may belong to the token replaced by another request/tab.
+        const newAccessToken = currentToken && sentToken !== `Bearer ${currentToken}`
+          ? currentToken
+          : await renewAccessToken();
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        return axiosPrivate(originalRequest);
       } catch (err) {
-        console.error("[API] Error refreshing token:", err);
-        // Keep the user on the current page so in-progress test answers are not interrupted.
-        // Caller layers handle retry messaging and safe re-submit guidance.
-        return Promise.reject(error);
+        console.error("[API] Token renewal failed");
+        // Return the actual renewal failure, not the old 401. Exam callers must
+        // not mistake a temporary outage for a confirmed need to sign in.
+        return Promise.reject(err);
       }
     }
 

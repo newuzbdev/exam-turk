@@ -1,0 +1,59 @@
+.lesson-workbook { width: 100%; max-width: 680px; margin-top: 44px; padding-top: 32px; border-top: 1px solid var(--tm-border-subtle); color: var(--tm-text-primary); font-size: 15px; line-height: 1.85; overflow-wrap: anywhere; }
+.lesson-workbook h2 { font-size: 23px; line-height: 1.35; font-weight: 600; letter-spacing: -.025em; margin: 0 0 14px; }
+.lesson-workbook h3 { font-size: 17px; line-height: 1.5; font-weight: 600; letter-spacing: -.015em; margin: 0 0 8px; }
+.lesson-workbook .workbook-section > h3,
+.lesson-workbook .workbook-practice > h2 { padding: 10px 14px; margin-bottom: 14px; border-radius: 6px; background: var(--tm-bg-muted); }
+.lesson-workbook p { margin: 0 0 14px; }
+.lesson-workbook .workbook-reminder { font-weight: 500; margin-top: 20px; }
+.workbook-section { margin-top: 36px; }
+.workbook-figure { margin: 22px 0; }
+.workbook-figure img { display: block; width: 100%; height: auto; border-radius: 6px; }
+.workbook-figure figcaption { margin-top: 8px; font-size: 13px; line-height: 1.6; }
+.lesson-workbook blockquote { margin: 22px 0 28px; border-left: 2px solid #89a589; padding-left: 20px; font-size: 16px; line-height: 1.9; }
+.workbook-table { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 1.7; text-align: left; }
+.workbook-table caption { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.workbook-table th, .workbook-table td { padding: 14px 12px; border-bottom: 1px solid var(--tm-border-subtle); vertical-align: top; }
+.workbook-table thead th { font-weight: 500; padding: 10px 12px; background: var(--tm-bg-muted); }
+.workbook-table thead th:first-child { border-top-left-radius: 6px; }
+.workbook-table thead th:last-child { border-top-right-radius: 6px; }
+.workbook-table tr[data-emphasis=true] { background: #f0f6ef; }
+.workbook-table tbody th { width: 36%; padding-right: 24px; font-weight: 600; }
+.workbook-table th span { display: block; font-size: 13px; font-weight: 400; line-height: 1.6; margin-top: 3px; }
+.workbook-tip { margin-top: 24px; padding: 14px 16px; border-radius: 6px; background: #fff8e8; font-size: 14px; line-height: 1.8; }
+.workbook-tip strong { display: block; margin-bottom: 4px; font-weight: 600; }
+.lesson-workbook .workbook-tip p { margin: 0; }
+.workbook-practice { margin-top: 44px; }
+.workbook-question { padding: 28px 0; border-bottom: 1px solid var(--tm-border-subtle); }
+.workbook-question:last-of-type { border-bottom: 0; padding-bottom: 8px; }
+.workbook-question-number { display: inline-block; min-width: 22px; font-variant-numeric: tabular-nums; }
+.lesson-workbook .workbook-blank-line { margin: 22px 0 8px; line-height: 2.7; }
+.workbook-blank { width: 155px; max-width: 100%; border: 0; border-radius: 0; border-bottom: 1px solid #b7bcb3; background: transparent; padding: 2px 5px; font: inherit; line-height: 1.8; color: inherit; text-align: center; }
+.workbook-writing { display: block; width: 100%; min-height: 114px; resize: none; overflow: hidden; box-sizing: border-box; border: 0; border-radius: 0; border-bottom: 1px solid #d9d9d5; background: transparent; color: inherit; font: inherit; line-height: 1.85; padding: 12px 0 18px; margin: 16px 0 8px; }
+.workbook-writing::placeholder, .workbook-blank::placeholder { color: #82847e; font-weight: 400; }
+.workbook-writing:focus, .workbook-blank:focus { outline: none; border-bottom-color: #587b58; box-shadow: 0 1px 0 #587b58; }
+.workbook-choices { border: 0; padding: 0; margin: 20px 0 10px; min-width: 0; }
+.workbook-choices label { display: flex; align-items: baseline; gap: 12px; padding: 8px 0; cursor: pointer; }
+.workbook-choices input { width: 16px; height: 16px; flex-shrink: 0; accent-color: #587b58; }
+.workbook-choices input:checked + span { font-weight: 500; }
+.workbook-choices input:focus-visible { outline: 2px solid #587b58; outline-offset: 4px; }
+.workbook-check { display: inline-flex; align-items: center; gap: 8px; padding: 5px 0; border: 0; border-bottom: 1px solid #c4c8bf; border-radius: 0; background: transparent; font-size: 13px; line-height: 22px; font-weight: 500; color: inherit; cursor: pointer; margin-top: 8px; }
+.workbook-check:hover { border-bottom-color: #587b58; color: #405c40; }
+.workbook-feedback { margin: 20px 0 0; padding: 2px 0 2px 16px; border-left: 2px solid #c1a368; font-size: 14px; line-height: 1.8; }
+.workbook-feedback[data-kind=correct] { border-color: #89a589; }
+.workbook-feedback[data-kind=compare] { padding: 16px 18px; border-left: 2px solid #89a589; border-radius: 0 6px 6px 0; background: #f0f6ef; }
+.workbook-feedback h4 { display: flex; align-items: center; gap: 6px; margin: 0 0 5px; font-size: 14px; font-weight: 600; }
+.workbook-feedback[data-kind=correct] h4 { color: #405c40; }
+.workbook-feedback[data-kind=retry] h4 { color: #80622e; }
+.workbook-feedback p { margin: 0; }
+.workbook-feedback ul { padding-left: 20px; margin: 14px 0; list-style: disc; }
+.workbook-feedback li + li { margin-top: 5px; }
+.workbook-feedback .workbook-feedback-note { font-size: 13px; }
+.lesson-workbook .workbook-preview-note { font-size: 12px; line-height: 1.8; margin: 30px 0 0; padding-top: 20px; border-top: 1px solid var(--tm-border-subtle); }
+@media (max-width: 520px) {
+  .lesson-workbook { margin-top: 32px; padding-top: 26px; }
+  .lesson-workbook h2 { font-size: 21px; }
+  .lesson-workbook blockquote { font-size: 15px; padding-left: 14px; }
+  .workbook-table tbody th { width: 34%; padding-right: 14px; }
+  .workbook-question { padding: 24px 0; }
+  .workbook-check { min-height: 44px; }
+}

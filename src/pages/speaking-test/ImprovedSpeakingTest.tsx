@@ -1,17 +1,72 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
-import { overallTestFlowStore, overallTestTokenStore } from "@/services/overallTest.service"
+import {
+  createBackendSyncedTimerState,
+  getBackendSyncedRemainingSeconds,
+  getOverallSectionTimerErrorMessage,
+  overallTestFlowStore,
+  overallTestService,
+  overallTestTokenStore,
+  type BackendSyncedTimerState,
+  type OverallSectionTimerResponse,
+  type MockSubmitMode,
+} from "@/services/overallTest.service"
 import { motion, AnimatePresence } from "framer-motion"
-import { Mic, ArrowLeft, Volume2 } from "lucide-react"
+import { ALargeSmall, Maximize2, Mic, Minimize2, Volume2 } from "lucide-react"
 import axiosPrivate from "@/config/api"
 import { toast } from "sonner"
 import { speakingSubmissionService } from "@/services/speakingSubmission.service"
+import {
+  clearAcceptedSpeakingDraft,
+  resolveSpeakingSubmissionTransition,
+} from "@/services/speakingSubmissionRecovery"
 import { MicrophoneCheck } from "./components/MicrophoneCheck"
+import {
+  createSpeakingDeadline,
+  finalizeSpeakingCapture,
+  getSpeakingAudioConstraints,
+  isExpiredSpeakingCaptureMissing,
+  remainingSpeakingMilliseconds,
+  restoreSpeakingAnswers,
+  serializeSpeakingAnswers,
+  shouldRestoreSpeakingCapture,
+  speakingMicrophoneStorageKey,
+  speakingProgressStorageKey,
+} from "@/services/speakingRecordingLifecycle"
+import { loadPendingSpeakingRecording, removePendingSpeakingRecording, savePendingSpeakingRecording } from "@/services/speakingPendingRecording"
 import { getInstructionForSection } from "@/config/speakingInstructions"
 import { speechToTextService } from "@/services/speechToText.service"
+import {
+  speakingPhaseService,
+  type SpeakingPhaseState,
+} from "@/services/speakingPhase.service"
 import SimpleTextDisplay from "@/components/speaking-test/SimpleTextDisplay"
+import { getReadingTypographyPreset } from "@/components/reading-test/reading-typography"
+import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { normalizeDisplayText } from "@/utils/text"
 import { API_BASE_URL } from "@/config/runtime"
+import { useOverallSectionHeartbeat } from "@/hooks/use-overall-section-heartbeat"
+import { protectedImageProps } from "@/utils/mediaProtection"
+import {
+  activateExamPresentation,
+  clearExamPresentation,
+  EXAM_FULLSCREEN_EVENTS,
+  exitExamFullscreen,
+  getExamFullscreenElement,
+  requestExamFullscreen,
+} from "@/utils/examFullscreen"
+import {
+  destroySharedExamAudioController,
+  ExamAudioController,
+  getSharedExamAudioController,
+} from "@/utils/examAudio"
 // import ResultModal from "./components/ResultModal"
 // import DisableKeys from "./components/DisableKeys"
 
@@ -29,6 +84,7 @@ interface SubPart {
   id: string
   label: string
   description: string
+  instructionAudioUrl?: string | null
   images: string[]
   questions: Question[]
 }
@@ -45,11 +101,33 @@ interface SpeakingTestData {
   id: string
   title: string
   sections: Section[]
+  speakingPlan?: SpeakingPlanItem[]
+  speakingPhase?: SpeakingPhaseState | null
+  sectionTiming?: OverallSectionTimerResponse
+}
+interface SpeakingPlanItem {
+  questionId: string
+  questionIndex: number
+  sectionIndex: number
+  subPartIndex: number
+  localQuestionIndex: number
+  part: string
+  prepDurationSeconds: number
+  recordingDurationSeconds: number
+  requiresPrep: boolean
 }
 interface Recording {
   blob: Blob
   duration: number
   questionId: string
+  audioClientId: string
+}
+
+type SpeakingAnswerState = {
+  text: string
+  duration: number
+  audioClientId?: string
+  transcriptionStatus?: "PENDING" | "SUCCESS"
 }
 
 interface SpeakingProgressSnapshot {
@@ -61,49 +139,52 @@ interface SpeakingProgressSnapshot {
   timeLeft: number
   prepSeconds: number
   isPrepRunning: boolean
-  isExamMode: boolean
-  answersEntries: Array<[string, { text: string; duration: number }]>
+  answersEntries: Array<[string, SpeakingAnswerState]>
   updatedAt: number
 }
 
 const RECORD_SECONDS_PER_QUESTION = 30
-const sectionAudios: Record<number, string> = {
-  1: "/1.1.mp3",
-  2: "/2.mp3",
-  3: "/3.mp3",
+const DEBUG_SPEAKING = import.meta.env.VITE_DEBUG_API === "true"
+
+const debugSpeaking = (...args: unknown[]) => {
+  if (DEBUG_SPEAKING) console.debug("[speaking]", ...args)
 }
+const FullscreenReturnDialog = ({
+  open,
+  onReturn,
+}: {
+  open: boolean
+  onReturn: () => void | Promise<void>
+}) => {
+  if (!open) return null
 
-// Static section descriptions
-const getSectionDescription = (sectionTitle: string, subPartIndex?: number): string => {
-  if (sectionTitle.includes("Section 1") || sectionTitle.includes("Part 1")) {
-    if (subPartIndex === 0) {
-      // Section 1.1
-      return "Merhaba, Türkçe Yeterlik Sınavı'nın konuşma bölümüne hoş geldiniz.\nŞimdi Birinci Bölümün Birinci Kısmına geçiyoruz.\nBu bölümde size kendinizle ilgili üç kısa soru sorulacaktır.\nHer bir soruyu cevaplamak için 30 saniyeniz bulunmaktadır.\nZil sesini duyduğunuzda konuşmaya başlayabilirsiniz."
-    } else if (subPartIndex === 1) {
-      // Section 1.2
-      return "Şimdi size iki resim gösterilecek ve onlara ilişkin daha üç soru sorulacaktır.\nHer bir soruyu cevaplamak için 30 saniyeniz bulunur.\nZil sesini duyduğunuzda konuşmaya başlayabilirsiniz."
-    }
-  } else if (sectionTitle.includes("Section 2") || sectionTitle.includes("Part 2")) {
-    return "Bu bölümde size bir resim gösterilecek ve üç soru sorulacaktır.\nKonuşmaya başlamadan önce hazırlanmanız için 1 dakikanız,\nsoruları cevaplamanız için ise 2 dakikanız vardır.\nZil sesinden sonra konuşmaya başlayabilirsiniz."
-  } else if (sectionTitle.includes("Section 3") || sectionTitle.includes("Part 3")) {
-    return "Bu bölümde size bir argüman sunulacaktır.\nBu argümanın her iki yönünü ele alarak konuşmanız gerekmektedir.\nKonuşmaya başlamadan önce hazırlanmanız için 1 dakikanız,\nkonuşmanızı yapmanız için ise 2 dakikanız bulunmaktadır.\nZil sesini duyduktan sonra konuşmaya başlayabilirsiniz."
-  }
-  return "Bu bölümde konuşma testi yapılacaktır."
+  return (
+    <div
+      className="fixed inset-0 z-[10000] flex items-center justify-center bg-[#f7f7f5] px-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="speaking-fullscreen-title"
+    >
+      <div className="w-full max-w-sm rounded-md border border-[#dededb] bg-white p-6 text-center shadow-lg">
+        <Maximize2 className="mx-auto h-5 w-5 text-[#5f5e5a]" />
+        <h2
+          id="speaking-fullscreen-title"
+          className="mt-3 text-[17px] font-semibold text-[#37352f]"
+        >
+          Tam ekrana dön
+        </h2>
+        <p className="mt-1 text-sm text-[#6f6d67]">Sınav süresi devam ediyor.</p>
+        <Button
+          type="button"
+          className="mt-5 h-9 bg-[#37352f] px-4 text-sm font-semibold text-white hover:bg-[#242320]"
+          onClick={() => void onReturn()}
+        >
+          Sınava dön
+        </Button>
+      </div>
+    </div>
+  )
 }
-
-
-
-// Simple Progress component
-const Progress = ({ value }: { value: number }) => (
-  <div className="w-full bg-red-100 rounded-full h-2 overflow-hidden">
-    <motion.div
-      className="h-full bg-gradient-to-r from-red-600 to-rose-600 rounded-full"
-      initial={{ width: 0 }}
-      animate={{ width: `${value}%` }}
-      transition={{ duration: 0.5 }}
-    />
-  </div>
-)
 
 // Format time utility
 const formatTime = (seconds: number) => {
@@ -112,7 +193,15 @@ const formatTime = (seconds: number) => {
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
 
-const SUBMIT_RETRY_GUIDE = "Cevaplariniz bu tarayicida guvenle saklandi."
+const formatSpeakingSectionHeading = (value: string | number) => {
+  const normalizedLabel = normalizeDisplayText(String(value)).trim()
+  if (!normalizedLabel) return ""
+  return /^bölüm\b/i.test(normalizedLabel)
+    ? normalizedLabel
+    : `Bölüm ${normalizedLabel}`
+}
+
+const SUBMIT_RETRY_GUIDE = "Cevaplarınız bu tarayıcıda saklandı."
 
 const buildSubmitRetryMessage = (errorLike: unknown, fallback: string) => {
   const raw =
@@ -129,7 +218,7 @@ const buildSubmitRetryMessage = (errorLike: unknown, fallback: string) => {
     /(expired|not found|invalid|suresi|dol|bulunamad|gecersiz)/i.test(normalized)
 
   if (isTokenError) {
-    return "Oturum tarafinda gecici bir hata olustu. Sistem gonderimi otomatik olarak tekrar deneyecek."
+    return "Bağlantı yenileniyor. Cevaplarınız saklandı; birazdan tekrar deneyin."
   }
 
   if (base.includes(SUBMIT_RETRY_GUIDE)) return base
@@ -141,24 +230,74 @@ const wait = (ms: number) =>
     setTimeout(resolve, ms)
   })
 
+const createClientAudioId = () => {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID()
+  }
+  return `audio-${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
 
 export default function ImprovedSpeakingTest() {
   const { testId } = useParams()
   const navigate = useNavigate()
+  useOverallSectionHeartbeat(testId)
 
   // data / flow
   const [testData, setTestData] = useState<SpeakingTestData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [micChecked, setMicChecked] = useState(false)
+  const [showLoadingScreen, setShowLoadingScreen] = useState(false)
+
+  useEffect(() => {
+    if (!loading) {
+      setShowLoadingScreen(false)
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => setShowLoadingScreen(true), 250)
+    return () => window.clearTimeout(timeoutId)
+  }, [loading])
+
+  const [micChecked, setMicChecked] = useState(() => {
+    if (!testId || typeof window === "undefined") return false
+    try {
+      return sessionStorage.getItem(`speaking_mic_checked_${testId}`) === "1"
+    } catch {
+      return false
+    }
+  })
+  const [audioReady, setAudioReady] = useState(() =>
+    typeof window !== "undefined"
+      ? getSharedExamAudioController().isUnlocked()
+      : false,
+  )
   const [showSectionDescription, setShowSectionDescription] = useState(true)
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0)
   const [currentSubPartIndex, setCurrentSubPartIndex] = useState(0)
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [isTestComplete, setIsTestComplete] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submissionError, setSubmissionError] = useState<string | null>(null)
+  const [isRetryingRecording, setIsRetryingRecording] = useState(false)
+  const [restoredCaptureAttempt, setRestoredCaptureAttempt] = useState<string | null>(null)
+  const [sectionTimeLeft, setSectionTimeLeft] = useState<number | null>(null)
+  const [sectionTimerLoading, setSectionTimerLoading] = useState(false)
+  const [sectionTimerError, setSectionTimerError] = useState<string | null>(null)
+  const [speakingPhase, setSpeakingPhase] = useState<SpeakingPhaseState | null>(null)
+  const [phaseError, setPhaseError] = useState<string | null>(null)
+  const [isSectionSkipping, setIsSectionSkipping] = useState(false)
 
   // exam mode (fullscreen + hide headers + lock back)
   const [isExamMode, setIsExamMode] = useState(false)
+  const [fontScale, setFontScale] = useState(1)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false)
+  const fullscreenWasActiveRef = useRef(false)
+  const typographyPreset = useMemo(
+    () => getReadingTypographyPreset(fontScale),
+    [fontScale],
+  )
+  const selectedFontScale = typographyPreset.menuValue
   const popHandlerRef = useRef<(e: PopStateEvent) => void | null>(null)
   const beforeUnloadRef = useRef<((e: BeforeUnloadEvent) => any) | null>(null)
 
@@ -166,26 +305,33 @@ export default function ImprovedSpeakingTest() {
   const [isRecording, setIsRecording] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
   const [isPlayingInstructions, setIsPlayingInstructions] = useState(false)
+  const [instructionCountdown, setInstructionCountdown] = useState<number | null>(null)
   const [isPlayingTTS, setIsPlayingTTS] = useState(false)
   const [isProcessingSpeechToText, setIsProcessingSpeechToText] = useState(false)
+  const [isFinalizingRecording, setIsFinalizingRecording] = useState(false)
   // speaking/answer timer (seconds)
   const [timeLeft, setTimeLeft] = useState(RECORD_SECONDS_PER_QUESTION)
-  const [_recordingTime, setRecordingTime] = useState(0)
-  const [_recordings, setRecordings] = useState<Map<string, Recording>>(new Map())
-  const [answers, setAnswers] = useState<Map<string, { text: string; duration: number }>>(new Map())
+  const [answers, setAnswers] = useState<Map<string, SpeakingAnswerState>>(new Map())
+  const recordingsRef = useRef<Map<string, Recording>>(new Map())
+  const answersRef = useRef<Map<string, SpeakingAnswerState>>(new Map())
+  const recordingFinalizePromiseRef = useRef<Promise<void> | null>(null)
+  const recordingStartInFlightRef = useRef(false)
+  const recordingDeadlineRef = useRef<number | null>(null)
+  const promptDeadlineRef = useRef<number | null>(null)
+  const prepDeadlineRef = useRef<number | null>(null)
+  const pendingRecordingRef = useRef<Recording | null>(null)
+  const submitInFlightRef = useRef(false)
+  const acceptedSubmissionRef = useRef<ReturnType<typeof resolveSpeakingSubmissionTransition>>(undefined)
+  const recordingStartedAtRef = useRef(0)
+  const resolveRecordingFinalizeRef = useRef<(() => void) | null>(null)
   // preparation timer (seconds)
   const [prepSeconds, setPrepSeconds] = useState<number>(0)
   const [isPrepRunning, setIsPrepRunning] = useState(false)
-  const [introCountdown, setIntroCountdown] = useState<number | null>(null)
-  const [showSkipConfirm, setShowSkipConfirm] = useState(false)
-  const INTRO_COUNTDOWN_SECONDS = 10
-  const introCountdownRef = useRef<NodeJS.Timeout | null>(null)
   
   // instruction state
   const [completedInstructions] = useState<Set<string>>(new Set())
 
   const INSTRUCTION_VOLUME = 0.6
-  const START_SOUND_VOLUME = 0.6
 
 
 
@@ -196,48 +342,114 @@ export default function ImprovedSpeakingTest() {
   // refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
-  const chunksRef = useRef<Blob[]>([])
   const countdownRef = useRef<number | null>(null)
   const elapsedRef = useRef<number | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
-  const startSoundRef = useRef<HTMLAudioElement | null>(null)
-  const endSoundRef = useRef<HTMLAudioElement | null>(null)
-  const questionSoundRef = useRef<HTMLAudioElement | null>(null)
+  const examAudioRef = useRef<ExamAudioController | null>(null)
   const ttsAudioRef = useRef<HTMLAudioElement | null>(null)
   const prepIntervalRef = useRef<number | null>(null)
   const prepAfterActionRef = useRef<(() => void) | null>(null)
   const autoAdvanceRef = useRef<string | null>(null)
-  const autoStartKeyRef = useRef<string | null>(null)
   const prepStartedKeyRef = useRef<string | null>(null)
   const skipToNextSectionRef = useRef<boolean>(false)
-  const skipToNextQuestionRef = useRef<boolean>(false)
-  const skipToPart1SubPart2Ref = useRef<boolean>(false)
-  const skipStoreEmptyRef = useRef<boolean>(false)
   // Guard to ensure section instruction audio plays only once per section
   const instructionPlayStartedRef = useRef<boolean>(false)
+  const instructionRunKeyRef = useRef<string | null>(null)
+  const instructionCountdownTimerRef = useRef<number | null>(null)
   const lastInstructionSectionRef = useRef<string | null>(null)
   const submitAllRetryRef = useRef<number>(0)
   const hasRestoredProgressRef = useRef(false)
   const hasSubmittedRef = useRef(false)
-  const progressStorageKey = testId ? `speaking_progress_${testId}` : null
+  const hasOverallTimerRef = useRef(false)
+  const autoSubmitRef = useRef(false)
+  const backendTimerRef = useRef<BackendSyncedTimerState | null>(null)
+  const phaseStartKeyRef = useRef<string | null>(null)
+  const ttsStartedKeyRef = useRef<string | null>(null)
+  const speakingPhaseRef = useRef<SpeakingPhaseState | null>(null)
+  const loadedAttemptRef = useRef<string | null>(null)
+  const isSectionSkippingRef = useRef(false)
+  const overallAttemptId = overallTestFlowStore.getOverallId() || ""
+  const progressStorageKey = testId ? speakingProgressStorageKey(testId, overallAttemptId) : null
+  const recordingAttemptId = `${overallAttemptId}:${testId || ""}`
+  const pendingCaptureRestored = restoredCaptureAttempt === recordingAttemptId
+  const sectionExpired = sectionTimeLeft !== null && sectionTimeLeft <= 0
   const micReadyStorageKey = testId ? `speaking_mic_checked_${testId}` : null
+  const examStartedStorageKey = testId ? `speaking_exam_started_${testId}` : null
 
-  useLayoutEffect(() => {
-    if (typeof document !== "undefined") {
-      document.body.classList.add("exam-mode")
+  useEffect(() => {
+    return () => {
+      if (instructionCountdownTimerRef.current !== null) {
+        window.clearTimeout(instructionCountdownTimerRef.current)
+        instructionCountdownTimerRef.current = null
+      }
     }
   }, [])
 
-  useEffect(() => {
-    // Activate exam mode immediately when entering speaking test
-    if (typeof document !== "undefined") {
-      document.body.classList.add("exam-mode")
-      // Double-check exam mode is active if in overall test flow
-      if (overallTestFlowStore.hasActive()) {
-        document.body.classList.add("exam-mode")
-      }
+  useLayoutEffect(() => {
+    if (!examStartedStorageKey) return
+
+    let examStarted = false
+    try {
+      examStarted = sessionStorage.getItem(examStartedStorageKey) === "1"
+    } catch {}
+
+    const fullscreenActive = Boolean(getExamFullscreenElement())
+    setIsExamMode(examStarted)
+    setIsFullscreen(fullscreenActive)
+    fullscreenWasActiveRef.current = examStarted
+
+    if (examStarted) {
+      activateExamPresentation()
+      setShowFullscreenPrompt(!fullscreenActive)
+      return
     }
 
+    fullscreenWasActiveRef.current = false
+    setShowFullscreenPrompt(false)
+    void clearExamPresentation()
+  }, [examStartedStorageKey])
+
+  useLayoutEffect(() => {
+    if (!micReadyStorageKey) return
+    try {
+      if (sessionStorage.getItem(micReadyStorageKey) === "1") {
+        setMicChecked(true)
+      }
+    } catch {}
+  }, [micReadyStorageKey])
+
+  useEffect(() => {
+    speakingPhaseRef.current = speakingPhase
+  }, [speakingPhase])
+
+  const updateAnswers = (
+    updater: (current: Map<string, SpeakingAnswerState>) => Map<string, SpeakingAnswerState>,
+  ) => {
+    const next = updater(new Map(answersRef.current))
+    answersRef.current = next
+    setAnswers(next)
+    if (progressStorageKey) {
+      try {
+        const snapshot = JSON.parse(sessionStorage.getItem(progressStorageKey) || "{}")
+        sessionStorage.setItem(progressStorageKey, JSON.stringify({ ...snapshot, answersEntries: serializeSpeakingAnswers(next) }))
+      } catch {}
+    }
+    return next
+  }
+
+  const updateRecordings = (
+    updater: (current: Map<string, Recording>) => Map<string, Recording>,
+  ) => {
+    const next = updater(new Map(recordingsRef.current))
+    recordingsRef.current = next
+    return next
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    loadedAttemptRef.current = null
+    setTestData(null)
+    setLoading(true)
     if (micReadyStorageKey) {
       try {
         if (sessionStorage.getItem(micReadyStorageKey) === "1") {
@@ -246,61 +458,133 @@ export default function ImprovedSpeakingTest() {
       } catch {}
     }
 
-    addNavigationLock()
-
-    // Enter fullscreen immediately for speaking test
-    enterFullscreen().catch(() => {})
-    
     ; (async () => {
       try {
-        // First try to get pre-loaded data from sessionStorage
-        const cachedData = sessionStorage.getItem(`test_data_SPEAKING_${testId}`)
-        if (cachedData) {
-          const data = JSON.parse(cachedData)
-          setTestData(data)
-          setLoading(false)
-          return
-        }
+	        const sessionToken = overallTestTokenStore.getByTestId(testId || "")
+          if (!sessionToken) {
+            toast.error("Bu sınav oturumu başlatılmadı. Lütfen testi yeniden başlat.")
+            await clearExamPresentation()
+            navigate("/app/test")
+            return
+          }
 
-        // Fallback to API call if no cached data
-        const res = await axiosPrivate.get(`/api/speaking-test/${testId}`)
-        setTestData(res.data)
-      } catch (e) {
-        console.error(e)
-        toast.error("Test verisi yüklenemedi")
-      } finally {
-        setLoading(false)
+	        const res = await axiosPrivate.get(`/api/speaking-test/${testId}/solve`, {
+            params: { sessionToken },
+          })
+	        if (cancelled) return
+	        loadedAttemptRef.current = recordingAttemptId
+	        setTestData(res.data)
+          sessionStorage.setItem(`test_data_SPEAKING_${testId}`, JSON.stringify(res.data))
+          applySpeakingPhase(res.data?.speakingPhase || null, res.data)
+	      } catch (e) {
+	        if (cancelled) return
+	        debugSpeaking("test-data-load-failed", (e as any)?.response?.status || (e as any)?.message)
+	        toast.error("Test verisi yüklenemedi")
+	      } finally {
+        if (!cancelled) setLoading(false)
       }
     })()
 
-    startSoundRef.current = new Audio(
-      "/start.wav",
-    )
-    startSoundRef.current.volume = START_SOUND_VOLUME
-    // Use bell sound for when user stops speaking
-    endSoundRef.current = new Audio(
-      "/bell-98033.mp3"
-    )
-    endSoundRef.current.volume = 0.5
-    questionSoundRef.current = new Audio(
-      "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAACAgICAf39/f39/f39/f39/f39/gICAf39/f39/f39/f39/f39/gICAf39/f39/f4CAgICAgH9/f39/f39/gICAf39/f39/f39/f39/f4CAgICAf39/f39/f39/"
-    )
-
     return () => {
+      cancelled = true
       stopAllAudio()
       cleanupMedia()
       clearTimers()
       removeNavigationLock()
-      // Only exit fullscreen if not in overall test flow
-      const hasActiveOverallTest = overallTestFlowStore.hasActive();
-      if (!hasActiveOverallTest) {
-        exitFullscreen().catch(() => { })
-        removeExamBodyClass()
-      }
+      examAudioRef.current = null
+      const activeTestId = testId
+      window.setTimeout(() => {
+        if (!activeTestId || !window.location.pathname.includes(`/speaking-test/${activeTestId}`)) {
+          void destroySharedExamAudioController()
+          void clearExamPresentation()
+        }
+      }, 0)
     }
-  }, [testId, micReadyStorageKey])
+  }, [testId, micReadyStorageKey, recordingAttemptId])
 
   useEffect(() => {
+    let mounted = true
+    autoSubmitRef.current = false
+    if (!testId) {
+      hasOverallTimerRef.current = false
+      setSectionTimeLeft(null)
+      return
+    }
+    if (!testData || testData.id !== testId || loadedAttemptRef.current !== recordingAttemptId) return
+
+    // An already-started section is resumed from read-only server timing.
+    if (testData.sectionTiming?.startedAt) {
+      const timerState = createBackendSyncedTimerState(testData.sectionTiming)
+      backendTimerRef.current = timerState
+      hasOverallTimerRef.current = true
+      setSectionTimeLeft(getBackendSyncedRemainingSeconds(timerState))
+      setSectionTimerLoading(false)
+      setSectionTimerError(null)
+      return
+    }
+
+    const hasExplicitStart = Boolean(
+      examStartedStorageKey && sessionStorage.getItem(examStartedStorageKey) === "1",
+    )
+    if (!hasExplicitStart) {
+      hasOverallTimerRef.current = false
+      backendTimerRef.current = null
+      setSectionTimerLoading(false)
+      setSectionTimerError(null)
+      setSectionTimeLeft(null)
+      return
+    }
+
+    const hasOverallToken = !!overallTestTokenStore.getByTestId(testId)
+    hasOverallTimerRef.current = hasOverallToken
+    backendTimerRef.current = null
+    if (!hasOverallToken) {
+      setSectionTimerLoading(false)
+      setSectionTimerError(null)
+      setSectionTimeLeft(null)
+      return
+    }
+
+    setSectionTimerLoading(true)
+    setSectionTimerError(null)
+    overallTestService
+      .startSectionTimerForTest(testId)
+      .then((timer) => {
+        if (!mounted || !timer) return
+        const timerState = createBackendSyncedTimerState(timer)
+        backendTimerRef.current = timerState
+        setSectionTimeLeft(getBackendSyncedRemainingSeconds(timerState) ?? timerState.initialRemainingSeconds)
+      })
+      .catch((error) => {
+        if (!mounted) return
+        if (backendTimerRef.current) return
+        const message = getOverallSectionTimerErrorMessage(error)
+        setSectionTimerError(message)
+        toast.error(message)
+      })
+      .finally(() => {
+        if (mounted) setSectionTimerLoading(false)
+      })
+
+    return () => {
+      mounted = false
+    }
+  }, [testId, examStartedStorageKey, testData, recordingAttemptId])
+
+  useEffect(() => {
+    setRestoredCaptureAttempt(null)
+    pendingRecordingRef.current = null
+    answersRef.current = new Map()
+    setAnswers(new Map())
+    recordingsRef.current = new Map()
+    setCurrentSectionIndex(0)
+    setCurrentSubPartIndex(0)
+    setCurrentQuestionIndex(0)
+    setIsTestComplete(false)
+    setSubmissionError(null)
+    setPhaseError(null)
+    acceptedSubmissionRef.current = undefined
+    hasSubmittedRef.current = false
     hasRestoredProgressRef.current = false
     if (!progressStorageKey) {
       hasRestoredProgressRef.current = true
@@ -348,60 +632,104 @@ export default function ImprovedSpeakingTest() {
       // Do not restore running timers directly; they will be started by flow effects.
       setIsPrepRunning(false)
 
-      const restoredAnswers = new Map<string, { text: string; duration: number }>()
-      if (Array.isArray(parsed.answersEntries)) {
-        for (const entry of parsed.answersEntries) {
-          if (!Array.isArray(entry) || entry.length < 2) continue
-          const [rawQuestionId, rawAnswer] = entry
-          if (typeof rawQuestionId !== "string" || !rawQuestionId.trim()) continue
-          const answerObj = rawAnswer as any
-          const text = typeof answerObj?.text === "string"
-            ? answerObj.text
-            : typeof rawAnswer === "string"
-            ? rawAnswer
-            : ""
-          const durationRaw = Number(answerObj?.duration)
-          restoredAnswers.set(rawQuestionId, {
-            text,
-            duration: Number.isFinite(durationRaw) ? durationRaw : 0,
-          })
-        }
-      }
+      const restoredAnswers = restoreSpeakingAnswers(parsed.answersEntries)
       if (restoredAnswers.size > 0) {
+        answersRef.current = restoredAnswers
         setAnswers(restoredAnswers)
       }
 
-      if (typeof parsed.isExamMode === "boolean") {
-        setIsExamMode(parsed.isExamMode)
-      } else if (typeof parsed.micChecked === "boolean" && parsed.micChecked) {
-        setIsExamMode(true)
-      }
     }
 
     hasRestoredProgressRef.current = true
   }, [progressStorageKey])
 
+  useEffect(() => {
+    if (!testData || testData.id !== testId || loadedAttemptRef.current !== recordingAttemptId) return
+    let cancelled = false
+    void loadPendingSpeakingRecording(recordingAttemptId).then((recording) => {
+      if (cancelled || !recording) return
+      const answer = answersRef.current.get(recording.questionId)
+      if (!shouldRestoreSpeakingCapture(recording, answer, speakingPhaseRef.current?.currentQuestionId)) return
+      pendingRecordingRef.current = recording
+      updateRecordings((previous) => previous.set(recording.questionId, recording))
+      setPhaseError("Kaydedilen sesiniz hazır. Ses çözümlemesini yeniden deneyin.")
+    }).catch(() => undefined).finally(() => {
+      if (cancelled) return
+      const phase = speakingPhaseRef.current
+      if (isExpiredSpeakingCaptureMissing({
+        sectionExpired: testData.sectionTiming?.status === "EXPIRED",
+        phase: phase?.phase,
+        hasPendingCapture: Boolean(pendingRecordingRef.current),
+        hasActiveCapture: Boolean(recordingFinalizePromiseRef.current),
+        answer: phase?.currentQuestionId ? answersRef.current.get(phase.currentQuestionId) : undefined,
+      })) {
+        autoSubmitRef.current = true
+        setSubmissionError("Son kayıt yenileme sırasında tamamlanamadı. Tamamlanan cevaplarınız korundu.")
+      }
+      setRestoredCaptureAttempt(recordingAttemptId)
+    })
+    return () => { cancelled = true }
+  }, [testData, testId, recordingAttemptId])
+
+  useEffect(() => {
+    if (pendingCaptureRestored && speakingPhase?.canSubmitSection && !pendingRecordingRef.current && !submissionError) {
+      setIsTestComplete(true)
+    }
+  }, [pendingCaptureRestored, speakingPhase, submissionError])
+
 
   // utils
-  const playSound = (type: "start" | "end" | "question") => {
-    try {
-      const el = type === "start" ? startSoundRef.current : type === "end" ? endSoundRef.current : questionSoundRef.current
-      if (el) {
-        // Stop any currently playing audio of the same type
-        el.pause()
-        el.currentTime = 0
-        console.log(`Playing ${type} sound`)
-        el.play().catch((error) => {
-          // This happens when play() is interrupted by a pause() during rapid state transitions.
-          if (error?.name === "AbortError") return
-          console.error(`Error playing ${type} sound:`, error)
-        })
-      } else {
-        console.error(`Audio element for ${type} not found`)
-      }
-    } catch (error) {
-      console.error(`Error in playSound for ${type}:`, error)
+  const getExamAudio = () => {
+    if (!examAudioRef.current) {
+      examAudioRef.current = getSharedExamAudioController()
     }
+    return examAudioRef.current
+  }
+
+  const unlockExamAudioFromGesture = async () => {
+    const ready = await getExamAudio().unlockFromUserGesture()
+    setAudioReady(ready)
+    return ready
+  }
+
+  const playExamCue = async (type: "start" | "end") => {
+    try {
+      await getExamAudio().playCue(type)
+    } catch (error) {
+	      debugSpeaking("play-exam-cue-failed", type, (error as any)?.name || "error")
+    }
+  }
+
+  const playInstructionAudio = async (url: string) => {
+    try {
+      await getExamAudio().playMedia(url, INSTRUCTION_VOLUME)
+      return
+    } catch (primaryError) {
+      debugSpeaking(
+        "instruction-webaudio-failed",
+        (primaryError as any)?.name || (primaryError as any)?.message || "error",
+      )
+    }
+
+    await getExamAudio().playHtmlMedia(url, INSTRUCTION_VOLUME)
+  }
+
+  const playInstructionAudioAutomatically = async (url: string) => {
+    let lastError: unknown = new Error("Bölüm sesi oynatılamadı")
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        await playInstructionAudio(url)
+        return
+      } catch (error) {
+        lastError = error
+        if (attempt < 2) {
+          await new Promise((resolve) => window.setTimeout(resolve, 180 * (attempt + 1)))
+        }
+      }
+    }
+
+    throw lastError
   }
 
   const clearTimers = () => {
@@ -420,6 +748,7 @@ export default function ImprovedSpeakingTest() {
   }
 
   const stopAllAudio = () => {
+    examAudioRef.current?.stopAll()
     if (audioRef.current) {
       audioRef.current.pause()
       audioRef.current.currentTime = 0
@@ -440,17 +769,6 @@ export default function ImprovedSpeakingTest() {
     } catch {}
   }
 
-  useEffect(() => {
-    return () => {
-      if (hasSubmittedRef.current) return
-      clearSpeakingProgress()
-      if (!testId) return
-      try { sessionStorage.removeItem(`speaking_answers_${testId}`) } catch {}
-      try { sessionStorage.removeItem(`speaking_mic_checked_${testId}`) } catch {}
-      try { sessionStorage.removeItem(`test_data_SPEAKING_${testId}`) } catch {}
-    }
-  }, [testId, progressStorageKey, micReadyStorageKey])
-
   const cleanupMedia = () => {
     try {
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
@@ -463,22 +781,6 @@ export default function ImprovedSpeakingTest() {
       streamRef.current = null
     }
   }
-
-  const getBlobDuration = async (blob: Blob) => {
-    try {
-      const arrayBuffer = await blob.arrayBuffer()
-      const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext
-      const ctx = new Ctx()
-      const buf = await ctx.decodeAudioData(arrayBuffer.slice(0))
-      // @ts-ignore
-      if (ctx.close) await ctx.close()
-      return Math.round(buf.duration)
-    } catch (e) {
-      console.error("duration error", e)
-      return 0
-    }
-  }
-
 
   // Check if instruction should be shown for current section
   const shouldShowInstruction = (sectionIndex: number, subPartIndex?: number) => {
@@ -508,6 +810,9 @@ export default function ImprovedSpeakingTest() {
   }
 
   const currentSection = testData?.sections?.[currentSectionIndex]
+  const currentInstructionSectionId = currentSection?.id ?? null
+  const currentInstructionAudioUrl =
+    currentSection?.subParts?.[currentSubPartIndex]?.instructionAudioUrl?.trim() ?? ""
   const currentQuestion: Question | null = (() => {
     const sec = currentSection
     if (!sec) return null
@@ -518,12 +823,11 @@ export default function ImprovedSpeakingTest() {
         const sortedQuestions = [...questions].sort((a, b) => a.order - b.order)
         const question = sortedQuestions[currentQuestionIndex] ?? null
         
-        console.log("Current question (sorted):", {
-          questionIndex: currentQuestionIndex,
-          questionOrder: question?.order,
-          questionText: question?.questionText?.substring(0, 50) + "...",
-          totalQuestions: sortedQuestions.length
-        })
+	        debugSpeaking("current-question", {
+	          questionIndex: currentQuestionIndex,
+	          questionOrder: question?.order,
+	          totalQuestions: sortedQuestions.length
+	        })
         
         return question
       }
@@ -531,6 +835,192 @@ export default function ImprovedSpeakingTest() {
     }
     return sec.questions?.[currentQuestionIndex] ?? null
   })()
+
+  const getSessionToken = () => (testId ? overallTestTokenStore.getByTestId(testId) : null)
+
+  const getCurrentPlanItem = () => {
+    return (
+      testData?.speakingPlan?.find(
+        (item) =>
+          item.sectionIndex === currentSectionIndex &&
+          item.subPartIndex === currentSubPartIndex &&
+          item.localQuestionIndex === currentQuestionIndex,
+      ) || null
+    )
+  }
+
+  const getCurrentPhaseQuestionId = () => {
+    const planItem = getCurrentPlanItem()
+    if (planItem?.questionId) return planItem.questionId
+    if (currentQuestion?.id) return currentQuestion.id
+    const directQuestion = currentSection?.questions?.[currentQuestionIndex]
+    if (directQuestion?.id) return directQuestion.id
+    const sortedQuestions = [
+      ...(currentSection?.subParts?.[currentSubPartIndex]?.questions || []),
+    ].sort((a, b) => a.order - b.order)
+    if (sortedQuestions[currentQuestionIndex]?.id) {
+      return sortedQuestions[currentQuestionIndex].id
+    }
+    return ""
+  }
+
+  const getActivePhaseQuestionId = () =>
+    speakingPhaseRef.current?.currentQuestionId || getCurrentPhaseQuestionId()
+
+  const getPlanItemByQuestionId = (questionId?: string | null) => {
+    if (!questionId || !testData?.speakingPlan?.length) return null
+    return testData.speakingPlan.find((item) => item.questionId === questionId) || null
+  }
+
+  const applySpeakingPhase = (
+    phase: SpeakingPhaseState | null,
+    dataOverride?: SpeakingTestData | null,
+  ) => {
+    setSpeakingPhase(phase)
+    speakingPhaseRef.current = phase
+    if (phase) {
+      const now = performance.now()
+      promptDeadlineRef.current = createSpeakingDeadline(phase, "promptExpectedEndsAt", now)
+      prepDeadlineRef.current = createSpeakingDeadline(phase, "prepExpiresAt", now)
+      recordingDeadlineRef.current = createSpeakingDeadline(phase, "recordingExpiresAt", now)
+    }
+    const data = dataOverride || testData
+    if (!phase || !data?.speakingPlan?.length) return
+    const item = data.speakingPlan.find(
+      (entry) => entry.questionId === phase.currentQuestionId,
+    )
+    if (!item) return
+    setCurrentSectionIndex(item.sectionIndex)
+    setCurrentSubPartIndex(item.subPartIndex)
+    setCurrentQuestionIndex(item.localQuestionIndex)
+  }
+
+  const getPhaseErrorMessage = (error: any) => {
+    const code = String(error?.response?.data?.code || error?.response?.data?.error || "").trim()
+    const rawMessage = String(error?.response?.data?.message || "").trim()
+    const normalized = `${code} ${rawMessage}`.toLowerCase()
+
+    if (normalized.includes("test_time_expired")) {
+      return "Bu bölümün süresi doldu."
+    }
+    if (normalized.includes("section_not_started") || normalized.includes("session_token_required")) {
+      return "Bu sınav oturumu başlatılmadı. Lütfen testi yeniden başlatın."
+    }
+    if (
+      normalized.includes("phase") ||
+      normalized.includes("mismatch") ||
+      normalized.includes("currentquestion")
+    ) {
+      return "Cevabınız kaydediliyor, lütfen bu soruda kalın."
+    }
+    return rawMessage && !/[A-Z_]{3,}/.test(rawMessage)
+      ? normalizeDisplayText(rawMessage)
+      : "İşlem tamamlanamadı. Lütfen bu soruda kalın."
+  }
+
+  const requireSessionToken = () => {
+    const sessionToken = getSessionToken()
+    if (!sessionToken) {
+      toast.error("Bu sınav oturumu başlatılmadı. Lütfen testi yeniden başlat.")
+      return null
+    }
+    return sessionToken
+  }
+
+  const startBackendQuestionPhase = async (questionId: string) => {
+    const sessionToken = requireSessionToken()
+    if (!sessionToken || !questionId) return null
+    try {
+      setPhaseError(null)
+      const phase = await speakingPhaseService.startQuestion({
+        sessionToken,
+        questionId,
+      })
+      applySpeakingPhase(phase)
+      return phase
+    } catch (error: any) {
+      const message = getPhaseErrorMessage(error)
+      setPhaseError(message)
+      toast.error(message)
+      return null
+    }
+  }
+
+  const completeBackendPromptPhase = async (questionId: string) => {
+    const sessionToken = requireSessionToken()
+    if (!sessionToken || !questionId) return null
+    try {
+      setPhaseError(null)
+      const phase = await speakingPhaseService.promptEnded({
+        sessionToken,
+        questionId,
+      })
+      applySpeakingPhase(phase)
+      return phase
+    } catch (error: any) {
+      const message = getPhaseErrorMessage(error)
+      setPhaseError(message)
+      toast.error(message)
+      return null
+    }
+  }
+
+  const startBackendRecordingPhase = async (questionId: string) => {
+    const sessionToken = requireSessionToken()
+    if (!sessionToken || !questionId) return null
+    try {
+      setPhaseError(null)
+      const phase = await speakingPhaseService.startRecording({
+        sessionToken,
+        questionId,
+      })
+      applySpeakingPhase(phase)
+      return phase
+    } catch (error: any) {
+      const message = getPhaseErrorMessage(error)
+      setPhaseError(message)
+      toast.error(message)
+      return null
+    }
+  }
+
+  const finalizeBackendRecordingPhase = async (questionId: string) => {
+    const sessionToken = requireSessionToken()
+    if (!sessionToken || !questionId) return null
+    try {
+      setPhaseError(null)
+      const phase = await speakingPhaseService.finalizeRecording({
+        sessionToken,
+        questionId,
+      })
+      applySpeakingPhase(phase)
+      return phase
+    } catch (error: any) {
+      const message = getPhaseErrorMessage(error)
+      setPhaseError(message)
+      toast.error(message)
+      return null
+    }
+  }
+
+  const advanceBackendQuestionPhase = async (questionId: string) => {
+    const sessionToken = requireSessionToken()
+    if (!sessionToken || !questionId) return null
+    try {
+      setPhaseError(null)
+      const phase = await speakingPhaseService.next({
+        sessionToken,
+        questionId,
+      })
+      applySpeakingPhase(phase)
+      return phase
+    } catch (error: any) {
+      const message = getPhaseErrorMessage(error)
+      setPhaseError(message)
+      toast.error(message)
+      return null
+    }
+  }
 
   useEffect(() => {
     if (!testData?.sections?.length) return
@@ -562,18 +1052,10 @@ export default function ImprovedSpeakingTest() {
   }, [testData, currentSectionIndex, currentSubPartIndex, currentQuestionIndex])
 
   useEffect(() => {
-    if (!progressStorageKey || !hasRestoredProgressRef.current) return
+    if (!progressStorageKey || !hasRestoredProgressRef.current || !pendingCaptureRestored) return
     if (isTestComplete || isSubmitting) return
 
-    const answersEntries: SpeakingProgressSnapshot["answersEntries"] = Array.from(answers.entries()).map(
-      ([questionId, value]): [string, { text: string; duration: number }] => [
-        questionId,
-        {
-          text: typeof value?.text === "string" ? value.text : "",
-          duration: Number.isFinite(Number(value?.duration)) ? Number(value.duration) : 0,
-        },
-      ]
-    )
+    const answersEntries = serializeSpeakingAnswers(answers)
 
     const snapshot: SpeakingProgressSnapshot = {
       micChecked,
@@ -584,7 +1066,6 @@ export default function ImprovedSpeakingTest() {
       timeLeft,
       prepSeconds,
       isPrepRunning,
-      isExamMode,
       answersEntries,
       updatedAt: Date.now(),
     }
@@ -594,6 +1075,7 @@ export default function ImprovedSpeakingTest() {
     } catch {}
   }, [
     progressStorageKey,
+    pendingCaptureRestored,
     micChecked,
     showSectionDescription,
     currentSectionIndex,
@@ -602,7 +1084,6 @@ export default function ImprovedSpeakingTest() {
     timeLeft,
     prepSeconds,
     isPrepRunning,
-    isExamMode,
     answers,
     isTestComplete,
     isSubmitting,
@@ -627,12 +1108,48 @@ export default function ImprovedSpeakingTest() {
     return ""
   }
 
-  const buildSpeechToTextOptions = (questionId: string) => {
+  const getSectionKeyByQuestionId = (questionId: string): string => {
+    if (!testData?.sections?.length) return ""
+    for (const section of testData.sections) {
+      if (Array.isArray(section.questions)) {
+        for (const question of section.questions) {
+          if (question.id === questionId) {
+            if (section.type === "PART2") return "bolum_2"
+            if (section.type === "PART3") return "bolum_3"
+          }
+        }
+      }
+      if (Array.isArray(section.subParts)) {
+        for (const subPart of section.subParts) {
+          for (const question of subPart.questions || []) {
+            if (question.id === questionId) {
+              if (section.type === "PART1" && subPart.label === "1.1") return "bolum_1_1"
+              if (section.type === "PART1" && subPart.label === "1.2") return "bolum_1_2"
+              if (section.type === "PART2") return "bolum_2"
+              if (section.type === "PART3") return "bolum_3"
+            }
+          }
+        }
+      }
+    }
+    return ""
+  }
+
+  const buildSpeechToTextOptions = (
+    questionId: string,
+    audioClientId?: string,
+    durationSeconds?: number,
+  ) => {
     const questionText = getQuestionTextById(questionId).trim()
     return {
+      sessionToken: getSessionToken() || undefined,
       language: "tr",
       prompt: "Bu bir Turkce yeterlik sinavi konusma transkriptidir. Metni oldugu gibi yaz ve gereksiz ceviri yapma.",
       context: questionText ? `Soru: ${questionText}` : "",
+      questionId,
+      sectionKey: getSectionKeyByQuestionId(questionId),
+      clientAudioId: audioClientId,
+      durationSeconds,
       timeoutMs: 45000,
       retryCount: 1,
     }
@@ -656,124 +1173,102 @@ export default function ImprovedSpeakingTest() {
 
   // Play instruction audio in background when section description is shown
   useEffect(() => {
-    if (showSectionDescription && currentSection && micChecked && !isPlayingInstructions && introCountdown === null) {
-      // Get instruction for current section/subpart
-      const instruction = shouldShowInstruction(currentSectionIndex, currentSubPartIndex)
-      
-      if (instruction) {
-        // Enter exam mode when instruction starts
-        setIsExamMode(true)
-        addNavigationLock()
-        enterFullscreen().catch(() => {})
-
-        // Stop any existing audio to avoid overlaps
-        if (audioRef.current) {
-          try {
-            audioRef.current.pause()
-            audioRef.current.currentTime = 0
-          } catch {}
-        }
-        
-        // Play instruction audio directly
-        console.log("Loading audio from path:", instruction.audioPath)
-        const audio = new Audio(instruction.audioPath)
-        audio.volume = INSTRUCTION_VOLUME
-        audioRef.current = audio
-        setIsPlayingInstructions(true)
-        instructionPlayStartedRef.current = true
-        lastInstructionSectionRef.current = currentSection.id
-        
-        audio.onloadstart = () => {
-          console.log("Audio load started for:", instruction.audioPath)
-        }
-        
-        audio.oncanplay = () => {
-          console.log("Audio can play:", instruction.audioPath)
-        }
-        
-        audio.onerror = (e) => {
-          console.error("Audio error:", e)
-          console.error("Audio error details:", audio.error)
-          console.error("Audio network state:", audio.networkState)
-          console.error("Audio ready state:", audio.readyState)
-          setIsPlayingInstructions(false)
-          instructionPlayStartedRef.current = false
-          toast.error("Audio yüklenemedi: " + (audio.error?.message || "Unknown error"))
-          // Do not block test flow if instruction audio fails.
-          startIntroCountdown()
-        }
-        
-        audio.onended = () => {
-          console.log("Audio ended:", instruction.audioPath)
-          setIsPlayingInstructions(false)
-          instructionPlayStartedRef.current = false
-          startIntroCountdown()
-        }
-        
-        audio.play().catch((error) => {
-          console.error("Audio play failed:", error)
-          console.error("Error name:", error.name)
-          console.error("Error message:", error.message)
-          setIsPlayingInstructions(false)
-          // Continue flow even if browser blocks or fails audio playback.
-          startIntroCountdown()
-        })
-      } else {
-        // No instruction needed, proceed with old flow
-        const src = sectionAudios[currentSection.order]
-        if (src) {
-          // Enter exam mode when audio starts playing
-          setIsExamMode(true)
-          addNavigationLock()
-          enterFullscreen().catch(() => {})
-
-          // Stop any existing audio to avoid overlaps
-          if (audioRef.current) {
-            try {
-              audioRef.current.pause()
-              audioRef.current.currentTime = 0
-            } catch {}
-          }
-          const audio = new Audio(src)
-          audio.volume = INSTRUCTION_VOLUME
-          audioRef.current = audio
-          setIsPlayingInstructions(true)
-          instructionPlayStartedRef.current = true
-          lastInstructionSectionRef.current = currentSection.id
-          audio.onended = () => {
-            setIsPlayingInstructions(false)
-            instructionPlayStartedRef.current = false
-            startIntroCountdown()
-          }
-          audio.onerror = () => {
-            setIsPlayingInstructions(false)
-            instructionPlayStartedRef.current = false
-            toast.error("Audio yüklenemedi")
-            // Do not block test flow if instruction audio fails.
-            startIntroCountdown()
-          }
-          audio.play().catch(() => {
-            setIsPlayingInstructions(false)
-            // Continue flow even if browser blocks or fails audio playback.
-            startIntroCountdown()
-          })
-        }
+    let cancelled = false
+    const instructionRunKey = currentInstructionSectionId
+      ? `${currentInstructionSectionId}:${currentSubPartIndex}:${currentInstructionAudioUrl}`
+      : null
+    if (
+      !showSectionDescription ||
+      !pendingCaptureRestored ||
+      sectionExpired ||
+      isSubmitting ||
+      !currentInstructionSectionId ||
+      !micChecked ||
+      !audioReady ||
+      (instructionPlayStartedRef.current &&
+        instructionRunKeyRef.current === instructionRunKey)
+    ) {
+      return () => {
+        cancelled = true
       }
     }
-  }, [showSectionDescription, currentSection, micChecked, isPlayingInstructions, currentSectionIndex, currentSubPartIndex, introCountdown])
+
+    const instruction = shouldShowInstruction(
+      currentSectionIndex,
+      currentSubPartIndex,
+    )
+    if (!instruction) {
+      return () => {
+        cancelled = true
+      }
+    }
+
+    instructionPlayStartedRef.current = true
+    instructionRunKeyRef.current = instructionRunKey
+    lastInstructionSectionRef.current = currentInstructionSectionId
+    setIsPlayingInstructions(Boolean(currentInstructionAudioUrl))
+
+    void (async () => {
+      if (!currentInstructionAudioUrl) {
+        if (!cancelled) startInstructionCountdown()
+        return
+      }
+
+      try {
+        debugSpeaking("instruction-audio-auto-play")
+        await playInstructionAudioAutomatically(currentInstructionAudioUrl)
+        if (cancelled) return
+
+        debugSpeaking("instruction-audio-ended")
+        setIsPlayingInstructions(false)
+        instructionPlayStartedRef.current = false
+        startInstructionCountdown()
+      } catch (error) {
+        if (cancelled) return
+        debugSpeaking(
+          "instruction-audio-play-failed",
+          (error as any)?.name || (error as any)?.message || "error",
+        )
+        setIsPlayingInstructions(false)
+        instructionPlayStartedRef.current = false
+        toast.error("Bölüm sesi oynatılamadı. Sınav akışı devam ediyor.")
+        startInstructionCountdown()
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    showSectionDescription,
+    currentInstructionSectionId,
+    currentInstructionAudioUrl,
+    micChecked,
+    audioReady,
+    currentSectionIndex,
+    currentSubPartIndex,
+    pendingCaptureRestored,
+    sectionExpired,
+    isSubmitting,
+  ])
 
   // Play TTS audio when a new question becomes active (outside instructions)
   // After TTS ends, start preparation timer
   useEffect(() => {
-    if (
-      !showSectionDescription &&
-      currentSection &&
-      !isPlayingInstructions &&
-      !isRecording &&
-      !isPrepRunning &&
-      !isPlayingTTS &&
-      introCountdown === null
-    ) {
+    let cancelled = false
+    void (async () => {
+      if (isTestComplete || isSubmitting || hasSubmittedRef.current || !pendingCaptureRestored || pendingRecordingRef.current || phaseError || sectionExpired) return
+      if (
+          !showSectionDescription &&
+          currentSection &&
+          !isPlayingInstructions &&
+          !isRecording &&
+          !isFinalizingRecording &&
+          !isProcessingSpeechToText &&
+          !isSectionSkipping &&
+          !isPrepRunning &&
+          !isPlayingTTS
+      ) {
       const key = `${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
       
       // If preparation already started for this question, skip
@@ -792,50 +1287,72 @@ export default function ImprovedSpeakingTest() {
           questionToUse = currentSection.questions[0]
         }
       }
+
+      const questionId = questionToUse?.id || getCurrentPhaseQuestionId()
+      const phaseKey = `${key}:${questionId}`
+      if (!questionId) return
+      if (speakingPhaseRef.current?.phase === "NEXT_READY" && answersRef.current.has(questionId)) {
+        await nextQuestion(true)
+        return
+      }
+      if (phaseStartKeyRef.current !== phaseKey) {
+        const phase = await startBackendQuestionPhase(questionId)
+        if (cancelled || !phase) return
+        phaseStartKeyRef.current = phaseKey
+      }
+
+      if (ttsStartedKeyRef.current === phaseKey) {
+        return
+      }
+      ttsStartedKeyRef.current = phaseKey
       
-      // Play TTS audio only for PART1 (skip TTS for PART2 and PART3)
-      if (currentSection.type === "PART1" && questionToUse?.textToSpeechUrl) {
-        console.log(`?? Playing TTS for ${currentSection.type}, question: ${questionToUse.id}`)
+
+      // PART1 audio is required by publication checks. PART2/PART3 audio is
+      // optional and is played only when an admin prepared it.
+      if (questionToUse?.textToSpeechUrl) {
+	        debugSpeaking("tts-play", { sectionType: currentSection.type })
         const rawUrl = questionToUse.textToSpeechUrl.startsWith('./')
           ? `${baseURL}${questionToUse.textToSpeechUrl.substring(1)}`
           : questionToUse.textToSpeechUrl
-        const cacheSep = rawUrl.includes('?') ? '&' : '?'
-        const fullUrl = `${rawUrl}${cacheSep}v=${Date.now()}`
-        const ttsAudio = new Audio(fullUrl)
+        const ttsAudio = new Audio(rawUrl)
         ttsAudioRef.current = ttsAudio
         setIsPlayingTTS(true)
         ttsAudio.onended = () => {
-          console.log(`? TTS ended for ${currentSection.type}, starting preparation timer`)
+	          debugSpeaking("tts-ended", currentSection.type)
           setIsPlayingTTS(false)
           ttsAudioRef.current = null
           // After question TTS ends, ALWAYS start preparation for all sections
-          startPreparationAfterTTS()
+          startPreparationAfterTTS(questionId)
         }
         ttsAudio.onerror = (e) => {
-          console.error(`? TTS error for ${currentSection.type}:`, e)
+	          debugSpeaking("tts-error", currentSection.type, (e as any)?.name || "error")
           setIsPlayingTTS(false)
           ttsAudioRef.current = null
-          // If TTS fails, start preparation immediately
-          startPreparationAfterTTS()
+          toast.error("Soru sesi yüklenemedi. Metni okuyup devam ediliyor.")
+          startPreparationAfterTTS(questionId)
         }
         ttsAudio.play().catch((error) => {
-          console.error(`? TTS play failed for ${currentSection.type}:`, error)
+	          debugSpeaking("tts-play-failed", currentSection.type, (error as any)?.name || "error")
           setIsPlayingTTS(false)
           ttsAudioRef.current = null
-          // If TTS play fails, start preparation immediately
-          startPreparationAfterTTS()
+          toast.error("Soru sesi başlatılamadı. Metni okuyup devam ediliyor.")
+          startPreparationAfterTTS(questionId)
         })
       } else {
-        // For PART2 and PART3, skip TTS and start preparation immediately
-        // For PART1 without TTS, also start preparation immediately
-        console.log(`?? Skipping TTS for ${currentSection.type}, starting preparation immediately`)
-        startPreparationAfterTTS()
+
+        // Continue without blocking when an optional question audio is absent.
+	        debugSpeaking("tts-skip", currentSection.type)
+        startPreparationAfterTTS(questionId)
       }
     }
-  }, [currentSectionIndex, currentSubPartIndex, currentQuestionIndex, showSectionDescription, isPlayingInstructions, currentQuestion, isRecording, isPrepRunning, isPlayingTTS, currentSection, introCountdown])
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [currentSectionIndex, currentSubPartIndex, currentQuestionIndex, showSectionDescription, isPlayingInstructions, currentQuestion, isRecording, isFinalizingRecording, isProcessingSpeechToText, isSectionSkipping, isPrepRunning, isPlayingTTS, currentSection, isTestComplete, isSubmitting, pendingCaptureRestored, phaseError, sectionExpired])
 
   // Helper function to start preparation after TTS (or immediately if no TTS)
-  const startPreparationAfterTTS = () => {
+  const startPreparationAfterTTS = async (questionId?: string) => {
     if (!currentSection) return
     
     // For PART2/PART3, there might not be a currentQuestion in the same way
@@ -848,24 +1365,42 @@ export default function ImprovedSpeakingTest() {
     
     // Prevent duplicate preparation starts
     if (prepStartedKeyRef.current === key) {
-      console.log(`?? Preparation already started for key: ${key}`)
+	      debugSpeaking("preparation-already-started")
       return
     }
+
+    const targetQuestionId = questionId || getCurrentPhaseQuestionId()
+    if (!targetQuestionId) return
+    // Failed/blocked media still respects the authoritative prompt duration.
+    const promptWait = remainingSpeakingMilliseconds(promptDeadlineRef.current, performance.now()) || 0
+    if (promptWait > 0) await wait(promptWait + 50)
+    if (prepStartedKeyRef.current === key || submitInFlightRef.current || hasSubmittedRef.current || getActivePhaseQuestionId() !== targetQuestionId) return
+    prepStartedKeyRef.current = key
+    const phase = await completeBackendPromptPhase(targetQuestionId)
+    if (!phase) { prepStartedKeyRef.current = null; return }
     
-    console.log(`?? Starting preparation for ${currentSection.type}, key: ${key}`)
+	    debugSpeaking("preparation-start", currentSection.type)
     prepStartedKeyRef.current = key
     
     if (currentSection.type === "PART1") {
-      // Both Section 1.1 and 1.2 use a short preparation window.
-      const prepTime = 3
-      console.log(`?? PART1 preparation time: ${prepTime} seconds (subPart: ${currentSubPartIndex})`)
+      const planItem = testData?.speakingPlan?.find((item) => item.questionId === targetQuestionId)
+      const recordingTime = Math.max(1, Math.round(planItem?.recordingDurationSeconds ?? 30))
+      const prepTime = Math.max(0, Math.round(
+        (planItem?.prepDurationSeconds ?? 0),
+      ))
+      debugSpeaking("part1-preparation", { prepTime, subPartIndex: currentSubPartIndex })
+      if (prepTime <= 0) {
+        void startRecording(recordingTime, true)
+        return
+      }
       beginPreparation(prepTime, () => {
-        startRecording(30, true)
+        startRecording(recordingTime, true)
       })
     } else if (currentSection.type === "PART2" || currentSection.type === "PART3") {
-      console.log(`?? ${currentSection.type} preparation time: 60 seconds`)
-      beginPreparation(60, () => {
-        startRecording(120, true)
+	      debugSpeaking("long-section-preparation", currentSection.type)
+      const planItem = testData?.speakingPlan?.find((item) => item.questionId === targetQuestionId)
+      beginPreparation(Math.max(0, Math.round(planItem?.prepDurationSeconds ?? 60)), () => {
+        startRecording(Math.max(1, Math.round(planItem?.recordingDurationSeconds ?? 120)), true)
       })
     } else {
       startRecording(undefined, true)
@@ -878,65 +1413,101 @@ export default function ImprovedSpeakingTest() {
 
   // Removed centralized auto-start to prevent double hazırlık
 
-  // timers while recording
+  // Recompute from the server deadline; background throttling cannot extend capture.
   useEffect(() => {
     if (!isRecording || isPaused) return
+    const update = () => {
+      const remaining = remainingSpeakingMilliseconds(recordingDeadlineRef.current, performance.now()) ?? 0
+      setTimeLeft(Math.ceil(remaining / 1000))
+      if (remaining <= 0) void stopRecording()
+    }
+    update()
+    countdownRef.current = window.setInterval(update, 100)
+    const onVisible = () => { if (document.visibilityState === "visible") update() }
+    document.addEventListener("visibilitychange", onVisible)
+    return () => { clearTimers(); document.removeEventListener("visibilitychange", onVisible) }
+  }, [isRecording, isPaused])
 
-    countdownRef.current = window.setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          stopRecording()
-          return 0
-        }
-        return prev - 1
+  useEffect(() => {
+    if (
+      sectionTimerLoading ||
+      sectionTimerError ||
+      submissionError ||
+      !pendingCaptureRestored ||
+      !hasOverallTimerRef.current ||
+      sectionTimeLeft === null ||
+      isSubmitting ||
+      hasSubmittedRef.current
+    ) {
+      return
+    }
+
+    if (sectionTimeLeft <= 0) {
+      if (!autoSubmitRef.current) {
+        autoSubmitRef.current = true
+        toast.message("Süre bitti. Cevaplarınız gönderiliyor.")
+        submitTest()
+      }
+      return
+    }
+
+    const timer = window.setTimeout(() => {
+      setSectionTimeLeft((prev) => {
+        if (prev === null) return prev
+        const backendRemaining = getBackendSyncedRemainingSeconds(backendTimerRef.current)
+        return backendRemaining === null ? Math.max(0, prev - 1) : Math.min(prev, backendRemaining)
       })
     }, 1000)
 
-    elapsedRef.current = window.setInterval(() => {
-      setRecordingTime((prev) => prev + 1)
-    }, 1000)
-
-    return () => clearTimers()
-  }, [isRecording, isPaused])
+    return () => window.clearTimeout(timer)
+  }, [sectionTimerLoading, sectionTimerError, sectionTimeLeft, isSubmitting, submissionError, pendingCaptureRestored])
 
   // FULLSCREEN & NAV LOCK helpers
   const enterFullscreen = async () => {
-    try {
-      const el = document.documentElement as any
-      if (el.requestFullscreen) await el.requestFullscreen()
-      else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen()
-      // add body class to hide global header/footer (depends on your layout classes)
-      addExamBodyClass()
-    } catch (e) {
-      console.warn("Fullscreen failed", e)
+    // Both operations must begin inside the same click gesture for Safari.
+    const audioUnlock = unlockExamAudioFromGesture().catch(() => false)
+    const fullscreenRequest = requestExamFullscreen()
+    const entered = await fullscreenRequest
+    const unlocked = await audioUnlock
+    if (!entered) {
+      setShowFullscreenPrompt(true)
+      toast.error("Tam ekran açılamadı. Tarayıcı izinlerini kontrol edip yeniden deneyin.")
+      return
     }
+    if (!unlocked) {
+      setShowFullscreenPrompt(true)
+      toast.error("Ses başlatılamadı. Sınava dön düğmesine tekrar basın.")
+      return
+    }
+
+    activateExamPresentation()
+    fullscreenWasActiveRef.current = true
+    setIsFullscreen(true)
+    setShowFullscreenPrompt(false)
   }
 
   const exitFullscreen = async () => {
-    try {
-      const doc: any = document
-      if (doc.exitFullscreen) await doc.exitFullscreen()
-      else if (doc.webkitExitFullscreen) await doc.webkitExitFullscreen()
-      removeExamBodyClass()
-    } catch (e) {
-      console.warn("Exit fullscreen failed", e)
+    const exited = await exitExamFullscreen()
+    if (!exited) {
+      toast.error("Tam ekrandan çıkılamadı. ESC tuşunu kullanmayı deneyin.")
+      return
+    }
+
+    setIsFullscreen(false)
+    if (isExamMode && !isTestComplete) {
+      fullscreenWasActiveRef.current = true
+      setShowFullscreenPrompt(true)
     }
   }
 
-  const addExamBodyClass = () => {
-    try {
-      document.body.classList.add("exam-mode")
-      // Allow scrolling on speaking test pages (mobile should scroll when content overflows)
-      const isMobile = window.matchMedia("(max-width: 640px)").matches
-      document.documentElement.style.overflow = isMobile ? "auto" : "hidden"
-      document.body.style.overflowY = isMobile ? "auto" : "hidden"
-    } catch { }
-  }
-
   const proceedAfterInstruction = () => {
+    if (instructionCountdownTimerRef.current !== null) {
+      window.clearTimeout(instructionCountdownTimerRef.current)
+      instructionCountdownTimerRef.current = null
+    }
+    setInstructionCountdown(null)
     setShowSectionDescription(false)
     resetPerQuestionState()
-    playSound("question")
     if (currentSection?.type === "PART1" || currentSection?.type === "PART2" || currentSection?.type === "PART3") {
       // TTS will handle starting preparation after it finishes
       // If no TTS, the TTS effect will handle it
@@ -945,51 +1516,81 @@ export default function ImprovedSpeakingTest() {
     }
   }
 
-  const skipInstructionAndProceed = () => {
+  const startInstructionCountdown = () => {
+    if (instructionCountdownTimerRef.current !== null) return
+
     stopAllAudio()
     setIsPlayingInstructions(false)
-    proceedAfterInstruction()
+    instructionPlayStartedRef.current = false
+    instructionRunKeyRef.current = null
+
+    let nextValue = 3
+    setInstructionCountdown(nextValue)
+
+    const tick = () => {
+      nextValue -= 1
+      if (nextValue > 0) {
+        setInstructionCountdown(nextValue)
+        instructionCountdownTimerRef.current = window.setTimeout(tick, 1000)
+        return
+      }
+
+      instructionCountdownTimerRef.current = null
+      setInstructionCountdown(null)
+      proceedAfterInstruction()
+    }
+
+    instructionCountdownTimerRef.current = window.setTimeout(tick, 1000)
   }
 
-  const startIntroCountdown = () => {
-    // Prevent double-start
-    if (introCountdownRef.current) {
-      clearInterval(introCountdownRef.current)
-      introCountdownRef.current = null
-    }
-    setIntroCountdown(INTRO_COUNTDOWN_SECONDS)
-    introCountdownRef.current = setInterval(() => {
-      setIntroCountdown((prev) => {
-        if (prev === null) return prev
-        if (prev <= 1) {
-          if (introCountdownRef.current) {
-            clearInterval(introCountdownRef.current)
-            introCountdownRef.current = null
-          }
-          proceedAfterInstruction()
-          return null
-        }
-        return prev - 1
-      })
-    }, 1000)
-  }
-  const removeExamBodyClass = () => {
-    try {
-      // Only remove exam-mode if not in overall test flow
-      const hasActiveOverallTest = overallTestFlowStore.hasActive();
-      if (!hasActiveOverallTest) {
-        document.body.classList.remove("exam-mode")
-        document.documentElement.style.overflow = ""
-        document.body.style.overflowY = ""
-      } else {
-        // Ensure exam-mode stays active for next test
-        document.body.classList.add("exam-mode")
-        const isMobile = window.matchMedia("(max-width: 640px)").matches
-        document.documentElement.style.overflow = isMobile ? "auto" : "hidden"
-        document.body.style.overflowY = isMobile ? "auto" : "hidden"
+  useEffect(() => {
+    const reconcileFullscreenState = () => {
+      const fullscreenActive = Boolean(getExamFullscreenElement())
+
+      setIsFullscreen(fullscreenActive)
+      if (!isExamMode || isTestComplete) {
+        setShowFullscreenPrompt(false)
+        return
       }
-    } catch { }
-  }
+
+      if (fullscreenActive) {
+        fullscreenWasActiveRef.current = true
+        activateExamPresentation()
+        setShowFullscreenPrompt(false)
+      } else if (fullscreenWasActiveRef.current) {
+        setShowFullscreenPrompt(true)
+      }
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        reconcileFullscreenState()
+      }
+    }
+
+    EXAM_FULLSCREEN_EVENTS.forEach((eventName) => {
+      document.addEventListener(eventName, reconcileFullscreenState)
+    })
+    window.addEventListener("pageshow", reconcileFullscreenState)
+    window.addEventListener("focus", reconcileFullscreenState)
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+
+    const pollId =
+      isExamMode && !isTestComplete
+        ? window.setInterval(reconcileFullscreenState, 250)
+        : null
+    reconcileFullscreenState()
+
+    return () => {
+      EXAM_FULLSCREEN_EVENTS.forEach((eventName) => {
+        document.removeEventListener(eventName, reconcileFullscreenState)
+      })
+      window.removeEventListener("pageshow", reconcileFullscreenState)
+      window.removeEventListener("focus", reconcileFullscreenState)
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+      if (pollId !== null) window.clearInterval(pollId)
+    }
+  }, [isExamMode, isTestComplete])
 
   const addNavigationLock = () => {
     try {
@@ -1001,11 +1602,27 @@ export default function ImprovedSpeakingTest() {
         window.removeEventListener("beforeunload", beforeUnloadRef.current)
         beforeUnloadRef.current = null
       }
-      window.history.pushState(null, "", window.location.href)
+      const lockedExamUrl = window.location.href
+      const lockedUrl = new URL(lockedExamUrl)
+      const lockedExamRoute = `${lockedUrl.pathname}${lockedUrl.search}${lockedUrl.hash}`
+      const guardState = {
+        ...(window.history.state || {}),
+        __speakingExamGuard: testId || "active",
+      }
+      window.history.replaceState(guardState, "", lockedExamUrl)
+      window.history.pushState(guardState, "", lockedExamUrl)
+      let lastToastAt = 0
       const popHandler = () => {
-        // whenever user tries to go back, push them forward again
-        window.history.pushState(null, "", window.location.href)
-        toast.error("Sinov davomida orqaga qaytish mumkin emas")
+        const attemptedRoute = `${window.location.pathname}${window.location.search}${window.location.hash}`
+        window.history.pushState(guardState, "", lockedExamUrl)
+        if (attemptedRoute !== lockedExamRoute) {
+          navigate(lockedExamRoute, { replace: true })
+        }
+        const now = Date.now()
+        if (now - lastToastAt > 1200) {
+          toast.error("Sınav sırasında geri dönemezsiniz")
+          lastToastAt = now
+        }
       }
       popHandlerRef.current = popHandler
       window.addEventListener("popstate", popHandler)
@@ -1017,7 +1634,7 @@ export default function ImprovedSpeakingTest() {
       beforeUnloadRef.current = beforeUnload
       window.addEventListener("beforeunload", beforeUnload)
     } catch (e) {
-      console.warn("Navigation lock failed", e)
+	      debugSpeaking("navigation-lock-failed", (e as any)?.name || "error")
     }
   }
 
@@ -1032,191 +1649,194 @@ export default function ImprovedSpeakingTest() {
         beforeUnloadRef.current = null
       }
     } catch (e) {
-      console.warn("remove nav lock failed", e)
+	      debugSpeaking("navigation-unlock-failed", (e as any)?.name || "error")
     }
   }
 
-  const getCurrentAnswerKey = () => {
-    let key = currentQuestion?.id
-    if (!key && currentSection && currentSection.questions && currentSection.questions.length > 0 && currentSection.questions[currentQuestionIndex]) {
-      key = currentSection.questions[currentQuestionIndex].id
+  useEffect(() => {
+    if (!isExamMode || isTestComplete) {
+      removeNavigationLock()
+      return
     }
-    if (!key && currentSection?.subParts?.[currentSubPartIndex]?.questions && currentSection?.subParts?.[currentSubPartIndex]?.questions
-      ?.length > 0) {
-      const sortedQuestions = [...currentSection?.subParts?.[currentSubPartIndex]?.questions || []].sort((a, b) => a.order - b.order)
-      if (sortedQuestions[currentQuestionIndex]) {
-        key = sortedQuestions[currentQuestionIndex].id
-      }
+
+    addNavigationLock()
+    return removeNavigationLock
+  }, [isExamMode, isTestComplete, testId])
+
+  const finishExamPresentation = async () => {
+    setIsExamMode(false)
+    setIsFullscreen(false)
+    setShowFullscreenPrompt(false)
+    fullscreenWasActiveRef.current = false
+    removeNavigationLock()
+
+    if (examStartedStorageKey) {
+      try {
+        sessionStorage.removeItem(examStartedStorageKey)
+      } catch {}
     }
-    if (!key) {
-      key = currentSection?.id || `${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`
-    }
-    return key
+
+    await clearExamPresentation()
   }
 
-  // recording controls
-  const startRecording = async (durationSeconds?: number, allowOverride: boolean = false) => {
+  const completeCapturedAnswer = async (recording: Recording, advance: boolean) => {
+    setIsFinalizingRecording(true)
+    setPhaseError(null)
     try {
-      if (isPlayingInstructions && !allowOverride) {
-        toast.error("Talimat bitmeden kayıt başlatılamaz")
-        return
-      }
-      // Determine effective duration by section when not explicitly provided
-      const sectionType = currentSection?.type
-      const effectiveDuration =
-        durationSeconds ?? (sectionType === "PART1" ? 30 : sectionType === "PART2" ? 120 : sectionType === "PART3" ? 120 : RECORD_SECONDS_PER_QUESTION)
-
-      setTimeLeft(effectiveDuration)
-      setRecordingTime(0)
-      setIsPaused(false)
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          channelCount: 1,
-          sampleRate: 44100,
+      const stt = await finalizeSpeakingCapture({
+        preserve: () => {
+          pendingRecordingRef.current = recording
+          updateRecordings((prev) => prev.set(recording.questionId, recording))
+          updateAnswers((prev) => prev.set(recording.questionId, {
+            text: prev.get(recording.questionId)?.text || "",
+            duration: recording.duration,
+            audioClientId: recording.audioClientId,
+            transcriptionStatus: "PENDING",
+          }))
+          return savePendingSpeakingRecording(recordingAttemptId, recording).catch(() => undefined)
+        },
+        finalize: async () => {
+          const phase = await finalizeBackendRecordingPhase(recording.questionId)
+          if (!phase?.canGoNext) throw new Error("Kayıt tamamlanamadı. Kaydedilen sesle yeniden deneyin.")
+        },
+        transcribe: async () => {
+          setIsProcessingSpeechToText(true)
+          return speechToTextService.convertAudioToText(
+            recording.blob,
+            buildSpeechToTextOptions(recording.questionId, recording.audioClientId, recording.duration),
+          )
         },
       })
-      streamRef.current = stream
-      chunksRef.current = []
-
-      const preferredMimeTypes = [
-        "audio/webm;codecs=opus",
-        "audio/webm",
-        "audio/mp4",
-      ]
-      const selectedMimeType = preferredMimeTypes.find((mimeType) =>
-        MediaRecorder.isTypeSupported(mimeType),
-      )
-      const mr = selectedMimeType
-        ? new MediaRecorder(stream, { mimeType: selectedMimeType })
-        : new MediaRecorder(stream)
-      mediaRecorderRef.current = mr
-
-      mr.ondataavailable = (e) => e.data?.size && chunksRef.current.push(e.data)
-      mr.onstop = async () => {
-        console.log(`?? Recording stopped for question ${currentQuestionIndex + 1}`)
-        // bell to indicate answer end
-        playSound("end")
-        clearTimers()
-        const chunkMimeType = chunksRef.current[0]?.type
-        const recorderMimeType =
-          mr.mimeType ||
-          chunkMimeType ||
-          selectedMimeType ||
-          "audio/webm"
-        const blob = new Blob(chunksRef.current, { type: recorderMimeType })
-        chunksRef.current = []
-        const duration = await getBlobDuration(blob)
-        const key = getCurrentAnswerKey()
-        console.log(`?? Recording saved with key: ${key} for question:`, currentQuestion?.id || "unknown")
-        const rec: Recording = { blob, duration, questionId: key }
-        setRecordings((prev) => new Map(prev).set(key, rec))
-
-        if (skipStoreEmptyRef.current) {
-          skipStoreEmptyRef.current = false
-          setAnswers(prev => new Map(prev).set(key, { text: "", duration }))
-        } else {
-          // Transcribe immediately and store text answer
-          setIsProcessingSpeechToText(true)
-          try {
-            const stt = await speechToTextService.convertAudioToText(
-              blob,
-              buildSpeechToTextOptions(key),
-            )
-            let text = ""
-            if (stt.success && stt.text) {
-              text = stt.text.trim()
-            }
-            // Only use placeholder if text is actually empty
-            if (!text) {
-              text = "[Ses metne dönüştürülemedi]"
-            }
-            console.log(`?? Saving answer for question ${key}:`, text.substring(0, 50))
-            setAnswers(prev => new Map(prev).set(key, { text, duration }))
-          } catch (error) {
-            console.error("Error converting speech to text:", error)
-            setAnswers(prev => new Map(prev).set(key, { text: "[Ses metne dönüştürülemedi]", duration }))
-          } finally {
-            setIsProcessingSpeechToText(false)
-          }
-        }
-        
-        // If user requested to skip to next section, do it after saving
-        if (skipToPart1SubPart2Ref.current) {
-          skipToPart1SubPart2Ref.current = false
-          setTimeout(() => {
-            setCurrentSubPartIndex(1)
-            setCurrentQuestionIndex(0)
-            setShowSectionDescription(true)
-            resetPerQuestionState()
-            prepStartedKeyRef.current = null
-            autoStartKeyRef.current = null
-          }, 300)
-        } else if (skipToNextSectionRef.current) {
+      if (!stt.success) throw new Error("Sesiniz saklandı. Ses çözümlemesini yeniden deneyin.")
+      updateAnswers((prev) => prev.set(recording.questionId, {
+        text: stt.text?.trim() || "",
+        duration: recording.duration,
+        audioClientId: recording.audioClientId,
+        transcriptionStatus: "SUCCESS",
+      }))
+      pendingRecordingRef.current = null
+      await removePendingSpeakingRecording(recordingAttemptId).catch(() => undefined)
+      if (advance && !submitInFlightRef.current && !hasSubmittedRef.current) {
+        if (skipToNextSectionRef.current) {
           skipToNextSectionRef.current = false
-          setTimeout(() => {
-            advanceToNextSection()
-          }, 300)
-        } else if (skipToNextQuestionRef.current) {
-          skipToNextQuestionRef.current = false
-          setTimeout(() => {
-            nextQuestion(true)
-          }, 300)
+          await advanceToNextMainSpeakingUnit()
         } else {
-          // Automatically advance to next question after recording completes
-          if (currentSection?.type === "PART1") {
-            console.log(`?? PART1: Recording finished for question ${currentQuestionIndex + 1}, auto-advancing in 800ms...`)
-            setTimeout(() => {
-              console.log(`?? Calling nextQuestion(true) for auto-advance`)
-              nextQuestion(true)
-            }, 800) // Slightly longer delay to ensure bell sound finishes
-          } else {
-            // For other parts, use shorter delay
-            console.log(`?? Other part: Recording finished, auto-advancing in 600ms...`)
-            console.log(`?? Current section type: ${currentSection?.type}`)
-            setTimeout(() => {
-              console.log(`?? About to call nextQuestion(true) for section ${currentSection?.type}`)
-              nextQuestion(true)
-            }, 600)
-          }
+          await nextQuestion(true)
+        }
+      }
+      return true
+    } catch (error) {
+      setPhaseError(error instanceof Error ? error.message : "Sesiniz saklandı. Yeniden deneyin.")
+      return false
+    } finally {
+      setIsProcessingSpeechToText(false)
+      setIsFinalizingRecording(false)
+    }
+  }
+
+  // Microphone permission and the cue precede the server's recording clock.
+  const startRecording = async (
+    durationSeconds?: number,
+    allowOverride: boolean = false,
+  ) => {
+    if (recordingStartInFlightRef.current || mediaRecorderRef.current?.state === "recording" ||
+        pendingRecordingRef.current || submitInFlightRef.current || hasSubmittedRef.current) return
+    recordingStartInFlightRef.current = true
+    setPhaseError(null)
+    try {
+      if (isPlayingInstructions && !allowOverride) return
+      const questionId = getActivePhaseQuestionId()
+      if (!questionId) throw new Error("Soru bilgisi bulunamadı.")
+      let deviceId = ""
+      try { deviceId = testId ? sessionStorage.getItem(speakingMicrophoneStorageKey(testId)) || "" : "" } catch {}
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: getSpeakingAudioConstraints(deviceId),
+      })
+      streamRef.current = stream
+      const preferredMimeTypes = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"]
+      const selectedMimeType = preferredMimeTypes.find((mimeType) => MediaRecorder.isTypeSupported(mimeType))
+      const mr = selectedMimeType ? new MediaRecorder(stream, { mimeType: selectedMimeType }) : new MediaRecorder(stream)
+      const chunks: Blob[] = []
+      mediaRecorderRef.current = mr
+      mr.ondataavailable = (event) => { if (event.data?.size) chunks.push(event.data) }
+      mr.onstop = async () => {
+        const stoppedAt = performance.now()
+        setIsRecording(false)
+        setIsPaused(false)
+        clearTimers()
+        const blob = new Blob(chunks, { type: mr.mimeType || chunks[0]?.type || selectedMimeType || "audio/webm" })
+        const recording: Recording = {
+          blob,
+          duration: Math.max(0, Math.round((stoppedAt - recordingStartedAtRef.current) / 1000)),
+          questionId,
+          audioClientId: createClientAudioId(),
         }
         cleanupMedia()
+        try {
+          // Capture is closed before transcription; the cue is never recorded.
+          void playExamCue("end")
+          await completeCapturedAnswer(recording, true)
+        } finally {
+          const resolveFinalize = resolveRecordingFinalizeRef.current
+          resolveRecordingFinalizeRef.current = null
+          recordingFinalizePromiseRef.current = null
+          resolveFinalize?.()
+        }
       }
-        
-        mr.start(100)
-        setIsRecording(true)
-        // Recording begins after preparation end bell; do not play an extra start sound here
-        console.log("Recording started")
-    } catch (e) {
-      console.error("start error", e)
-      toast.error("Mikrofon erişimi reddedildi veya başlatılamadı")
+      mr.onerror = () => {
+        setPhaseError("Mikrofon kaydı kesildi. Kaydedilen ses tamamlanıyor.")
+        void stopRecording()
+      }
+      await playExamCue("start")
+      if (submitInFlightRef.current || hasSubmittedRef.current) { cleanupMedia(); return }
+      const backendPhase = await startBackendRecordingPhase(questionId)
+      if (!backendPhase?.canRecord) { cleanupMedia(); return }
+      const deadline = createSpeakingDeadline(backendPhase, "recordingExpiresAt", performance.now())
+      const remaining = remainingSpeakingMilliseconds(deadline, performance.now())
+      if (remaining === null || remaining <= 0) {
+        cleanupMedia()
+        throw new Error("Bu sorunun kayıt süresi doldu. Kaydı tamamlayıp devam edin.")
+      }
+      recordingDeadlineRef.current = deadline
+      setTimeLeft(Math.ceil(Math.min(remaining / 1000, durationSeconds ?? remaining / 1000)))
+      setIsPaused(false)
+      recordingFinalizePromiseRef.current = new Promise<void>((resolve) => { resolveRecordingFinalizeRef.current = resolve })
+      recordingStartedAtRef.current = performance.now()
+      mr.start(100)
+      setIsRecording(true)
+    } catch (error) {
+      debugSpeaking("recording-start-failed", (error as any)?.name || "error")
+      setPhaseError(error instanceof Error && error.message.startsWith("Bu sorunun")
+        ? error.message : "Mikrofon başlatılamadı. Bağlantısını ve iznini kontrol edip yeniden deneyin.")
       cleanupMedia()
       clearTimers()
       setIsRecording(false)
+      setIsFinalizingRecording(false)
+      const resolveFinalize = resolveRecordingFinalizeRef.current
+      resolveRecordingFinalizeRef.current = null
+      recordingFinalizePromiseRef.current = null
+      resolveFinalize?.()
+    } finally {
+      recordingStartInFlightRef.current = false
     }
   }
 
-
-
-  const stopRecording = () => {
+  const stopRecording = async () => {
+    const pendingFinalize = recordingFinalizePromiseRef.current
     try {
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        setIsFinalizingRecording(true)
         mediaRecorderRef.current.stop()
       }
     } catch { }
     setIsRecording(false)
     setIsPaused(false)
-    // Play bell when user finishes speaking
-    console.log("Stopping recording, playing bell sound")
-    playSound("end")
+	    debugSpeaking("recording-stop-requested")
+    await (pendingFinalize || Promise.resolve())
   }
 
   const resetPerQuestionState = () => {
     setTimeLeft(RECORD_SECONDS_PER_QUESTION)
-    setRecordingTime(0)
     setIsPaused(false)
     // Clear any existing preparation state
     if (prepIntervalRef.current) {
@@ -1235,37 +1855,15 @@ export default function ImprovedSpeakingTest() {
     setIsPlayingTTS(false)
     // Clear preparation key to allow next question to start preparation after TTS
     prepStartedKeyRef.current = null
+    phaseStartKeyRef.current = null
+    ttsStartedKeyRef.current = null
   }
 
-  const advanceToNextSection = () => {
-    if (!testData || !currentSection) return
-    if (currentSectionIndex < (testData.sections?.length ?? 0) - 1) {
-      console.log(`?? Skipping to next section ${currentSectionIndex + 2}`)
-      setCurrentSectionIndex((i) => i + 1)
-      setCurrentSubPartIndex(0)
-      setCurrentQuestionIndex(0)
-      setShowSectionDescription(true)
-      resetPerQuestionState()
-      prepStartedKeyRef.current = null
-      autoStartKeyRef.current = null
-    } else {
-      setIsTestComplete(true)
-    }
-  }
+  const advanceToNextMainSpeakingUnit = async () => {
+    if (!testData?.speakingPlan?.length) return
 
-  const skipSectionWithConfirm = () => {
-    setShowSkipConfirm(true)
-  }
-
-  const confirmSkipSection = () => {
-    setShowSkipConfirm(false)
     stopAllAudio()
     setIsPlayingInstructions(false)
-    if (introCountdownRef.current) {
-      clearInterval(introCountdownRef.current)
-      introCountdownRef.current = null
-    }
-    setIntroCountdown(null)
     if (prepIntervalRef.current) {
       window.clearInterval(prepIntervalRef.current)
       prepIntervalRef.current = null
@@ -1273,40 +1871,81 @@ export default function ImprovedSpeakingTest() {
     prepAfterActionRef.current = null
     setIsPrepRunning(false)
 
-    if (isRecording) {
-      if (currentSection?.type === "PART1" && currentSubPartIndex === 0) {
-        // While recording in 1.1, skip should still land on 1.2 after recorder finishes.
-        skipToPart1SubPart2Ref.current = true
-        stopRecording()
+    let activeQuestionId = getActivePhaseQuestionId()
+    const originPlanItem = getPlanItemByQuestionId(activeQuestionId) || getCurrentPlanItem()
+    const originSectionIndex = originPlanItem?.sectionIndex ?? currentSectionIndex
+    const originSubPartIndex = originPlanItem?.subPartIndex ?? currentSubPartIndex
+    const maxSteps = testData.speakingPlan.length + 1
+
+    if (
+      activeQuestionId &&
+      speakingPhaseRef.current?.currentQuestionId !== activeQuestionId
+    ) {
+      const startedPhase = await startBackendQuestionPhase(activeQuestionId)
+      if (!startedPhase) return
+    }
+
+    for (let step = 0; step < maxSteps; step += 1) {
+      if (!activeQuestionId) return
+      const nextPhase = await advanceBackendQuestionPhase(activeQuestionId)
+      if (!nextPhase) return
+
+      resetPerQuestionState()
+      if (nextPhase.phase === "SECTION_READY_TO_SUBMIT") {
+        debugSpeaking("section-skip-ready-to-submit")
+        setIsTestComplete(true)
         return
       }
-      // Preserve partial audio, then move to next section as soon as onstop persists it.
-      skipToNextSectionRef.current = true
-      stopRecording()
-      return
+
+      const nextPlanItem = testData.speakingPlan.find(
+        (item) => item.questionId === nextPhase.currentQuestionId,
+      )
+      if (!nextPlanItem) return
+
+      const changedMainUnit =
+        nextPlanItem.sectionIndex !== originSectionIndex ||
+        nextPlanItem.subPartIndex !== originSubPartIndex
+
+      if (changedMainUnit) {
+        setCurrentSectionIndex(nextPlanItem.sectionIndex)
+        setCurrentSubPartIndex(nextPlanItem.subPartIndex)
+        setCurrentQuestionIndex(nextPlanItem.localQuestionIndex)
+        setShowSectionDescription(true)
+        debugSpeaking("skip-main-unit-complete", {
+          sectionIndex: nextPlanItem.sectionIndex,
+          subPartIndex: nextPlanItem.subPartIndex,
+        })
+        return
+      }
+
+      activeQuestionId = nextPlanItem.questionId
     }
 
-    if (currentSection?.type === "PART1" && currentSubPartIndex === 0) {
-      setCurrentSubPartIndex(1)
-      setCurrentQuestionIndex(0)
-      setShowSectionDescription(true)
-      resetPerQuestionState()
-      prepStartedKeyRef.current = null
-      autoStartKeyRef.current = null
-      return
+    toast.error("Bölüm geçilemedi. Lütfen tekrar deneyin.")
+  }
+
+  const skipCurrentMainSpeakingUnit = async () => {
+    if (pendingRecordingRef.current) return
+    if (isSectionSkippingRef.current || isFinalizingRecording || isProcessingSpeechToText || isSubmitting) return
+    isSectionSkippingRef.current = true
+    setIsSectionSkipping(true)
+    try {
+      if (isRecording) {
+        skipToNextSectionRef.current = true
+        await stopRecording()
+        return
+      }
+      await advanceToNextMainSpeakingUnit()
+    } finally {
+      isSectionSkippingRef.current = false
+      setIsSectionSkipping(false)
     }
-
-    skipToNextSectionRef.current = true
-    advanceToNextSection()
   }
 
-  const cancelSkipSection = () => {
-    setShowSkipConfirm(false)
-  }
-
-  const nextQuestion = (force: boolean = false) => {
-    console.log(`?? nextQuestion called with force: ${force}`)
-    console.log(`Current state:`, {
+  const nextQuestion = async (force: boolean = false) => {
+    if (pendingRecordingRef.current) return
+    debugSpeaking("next-question", {
+      force,
       isPlayingInstructions,
       isRecording,
       isPrepRunning,
@@ -1316,24 +1955,24 @@ export default function ImprovedSpeakingTest() {
     })
     
     if (!force && audioRef.current && !audioRef.current.paused) {
-      console.log('? Audio still playing, skipping nextQuestion')
+      debugSpeaking("next-question-skipped", "audio-playing")
       return
     }
     if (!force && isPlayingInstructions) {
-      console.log('? Instructions playing, skipping nextQuestion')
+      debugSpeaking("next-question-skipped", "instructions-playing")
       return
     }
     if (!force && isPlayingTTS) {
-      console.log('? TTS playing, skipping nextQuestion')
+      debugSpeaking("next-question-skipped", "tts-playing")
       return
     }
     if (!force && isRecording) {
-      console.log('? Recording in progress, skipping nextQuestion')
+      debugSpeaking("next-question-skipped", "recording")
       return
     }
 
     if (force) {
-      console.log('?? Force mode: stopping all ongoing processes')
+      debugSpeaking("next-question-force-stop")
       // stop any ongoing audio/instructions/prep/recording before skipping
       stopAllAudio()
       setIsPlayingInstructions(false)
@@ -1342,133 +1981,93 @@ export default function ImprovedSpeakingTest() {
         prepIntervalRef.current = null
       }
       setIsPrepRunning(false)
-      if (isRecording) stopRecording()
+      if (isRecording) {
+        await stopRecording()
+        return
+      }
     }
 
     if (!testData || !currentSection) {
-      console.log('? No test data or current section')
+      debugSpeaking("next-question-missing-data")
       return
     }
 
-    // Only handle subParts for PART1 (Section 1)
-    if (currentSection.subParts?.length && currentSection.type === "PART1") {
-      const sp = currentSection.subParts[currentSubPartIndex]
-      const questions = sp?.questions
-      if (questions) {
-        // Sort questions by order field to ensure correct sequence
-        const sortedQuestions = [...questions].sort((a, b) => a.order - b.order)
-        const qLen = sortedQuestions.length
-        // Next question within same subpart
-        if (currentQuestionIndex < qLen - 1) {
-          const nextIdx = currentQuestionIndex + 1
-          console.log(`?? Advancing to question ${nextIdx + 1} in PART1.${currentSubPartIndex + 1}`)
-          setCurrentQuestionIndex(nextIdx)
-          resetPerQuestionState()
-          
-          // For PART1, let the auto-advance effect handle the preparation
-          // This ensures proper state management and prevents conflicts
-          if (currentSection.type === "PART1") {
-            console.log(`?? Question advanced, TTS will play then preparation will start for question ${nextIdx + 1}`)
-          }
-          return
-        }
-      }
-      // Move to next subpart
-      if (currentSubPartIndex < currentSection.subParts.length - 1) {
-        const nextSp = currentSubPartIndex + 1
-        setCurrentSubPartIndex(nextSp)
-        setCurrentQuestionIndex(0)
+    const questionId = getActivePhaseQuestionId()
+    const previousPlanItem = getPlanItemByQuestionId(questionId) || getCurrentPlanItem()
+    const previousSectionIndex = previousPlanItem?.sectionIndex ?? currentSectionIndex
+    const previousSubPartIndex = previousPlanItem?.subPartIndex ?? currentSubPartIndex
+    const currentBackendPhase = speakingPhaseRef.current
+    if (
+      questionId &&
+      currentBackendPhase?.currentQuestionId !== questionId
+    ) {
+      const startedPhase = await startBackendQuestionPhase(questionId)
+      if (!startedPhase) return
+    }
+    if (
+      questionId &&
+      speakingPhaseRef.current?.phase !== "SECTION_READY_TO_SUBMIT"
+    ) {
+      const nextPhase = await advanceBackendQuestionPhase(questionId)
+      if (!nextPhase) return
+
+      if (nextPhase.phase === "SECTION_READY_TO_SUBMIT") {
+        debugSpeaking("section-ready-to-submit")
         resetPerQuestionState()
-        // For PART1 subpart transition, show description/instructions (1.2) first; prep will start after audio
-        if (currentSection.type === "PART1") {
-          setShowSectionDescription(true)
-          // clear prep-start guard; it will be set at instruction end
-          prepStartedKeyRef.current = null
-        }
+        setIsTestComplete(true)
         return
       }
-    } else {
-      // For sections without subParts (like PART2 and PART3)
-      // These sections have only one "question" (the speaking period)
-      // So we should move to the next section immediately
-      console.log(`?? Section ${currentSection.type} completed, moving to next section`)
+
+      const nextPlanItem = testData.speakingPlan?.find(
+        (item) => item.questionId === nextPhase.currentQuestionId,
+      )
+      resetPerQuestionState()
+      if (nextPlanItem) {
+        const changedSection =
+          nextPlanItem.sectionIndex !== previousSectionIndex ||
+          nextPlanItem.subPartIndex !== previousSubPartIndex
+        setShowSectionDescription(changedSection)
+        debugSpeaking("backend-phase-advanced", {
+          questionIndex: nextPlanItem.questionIndex,
+          sectionIndex: nextPlanItem.sectionIndex,
+          subPartIndex: nextPlanItem.subPartIndex,
+          changedSection,
+        })
+      }
+      return
     }
 
-      if (currentSectionIndex < (testData.sections?.length ?? 0) - 1) {
-        console.log(`?? Moving from section ${currentSectionIndex + 1} to section ${currentSectionIndex + 2}`)
-        setCurrentSectionIndex((i) => i + 1)
-        setCurrentSubPartIndex(0)
-        setCurrentQuestionIndex(0)
-        setShowSectionDescription(true)
-        resetPerQuestionState()
-        // clear any prep-start guards for new section
-        prepStartedKeyRef.current = null
-        autoStartKeyRef.current = null
-        console.log(`? Section transition completed`)
-      } else {
-        // test finished: clean up locks & fullscreen
-        console.log(`?? Test completed, finishing...`)
-        setIsTestComplete(true)
-      }
+    debugSpeaking("test-complete")
+    setIsTestComplete(true)
   }
 
   // when test becomes complete, remove navigation lock & auto-submit
   useEffect(() => {
-    if (isTestComplete) {
-      removeNavigationLock()
-      // Don't exit exam mode here - let submitTest handle it based on navigation path
-      // auto-submit and navigate to results
-      if (!isSubmitting) {
-        setIsSubmitting(true)
-        submitTest()
-      }
-    }
-  }, [isTestComplete])
+    if (!isTestComplete || isSubmitting || hasSubmittedRef.current || submissionError) return
+    removeNavigationLock()
+    void submitTest()
+  }, [isTestComplete, isSubmitting, submissionError])
 
   // preparation helper
   const beginPreparation = (seconds: number, after?: () => void) => {
-    console.log(`?? beginPreparation called with ${seconds} seconds`)
     prepAfterActionRef.current = after || null
-    
-    // Clear any existing preparation timer
-    if (prepIntervalRef.current) {
-      window.clearInterval(prepIntervalRef.current)
+    if (prepIntervalRef.current) window.clearInterval(prepIntervalRef.current)
+    const deadline = prepDeadlineRef.current ?? performance.now() + seconds * 1000
+    setIsPrepRunning(true)
+    const update = () => {
+      const remaining = remainingSpeakingMilliseconds(deadline, performance.now()) || 0
+      setPrepSeconds(Math.ceil(remaining / 1000))
+      if (remaining > 0) return
+      if (prepIntervalRef.current) window.clearInterval(prepIntervalRef.current)
       prepIntervalRef.current = null
+      setIsPrepRunning(false)
+      setIsPlayingInstructions(false)
+      const nextAction = prepAfterActionRef.current
+      prepAfterActionRef.current = null
+      if (!submitInFlightRef.current && !hasSubmittedRef.current) nextAction?.()
     }
-    
-    // Reset preparation state immediately
-    setIsPrepRunning(false)
-    setPrepSeconds(0)
-    
-    // Small delay to ensure state is reset, then start preparation
-    setTimeout(() => {
-      console.log(`? Starting preparation timer: ${seconds} seconds`)
-      setPrepSeconds(seconds)
-      setIsPrepRunning(true)
-      
-      // no bell at prep start; bell will play when prep ends
-      prepIntervalRef.current = window.setInterval(() => {
-        setPrepSeconds((prev) => {
-          if (prev <= 1) {
-            console.log(`? Preparation time ended`)
-            if (prepIntervalRef.current) {
-              window.clearInterval(prepIntervalRef.current)
-              prepIntervalRef.current = null
-            }
-            setIsPrepRunning(false)
-            // ensure instructions flag is off before auto-start
-            setIsPlayingInstructions(false)
-            // bell to indicate prep end (start speaking)
-            playSound("start")
-            const nextAction = prepAfterActionRef.current
-            prepAfterActionRef.current = null
-            nextAction && nextAction()
-            return 0
-          }
-          return prev - 1
-        })
-      }, 1000)
-    }, 50)
+    prepIntervalRef.current = window.setInterval(update, 100)
+    update()
   }
 
   const skipPreparationAndStart = () => {
@@ -1483,8 +2082,6 @@ export default function ImprovedSpeakingTest() {
     setPrepSeconds(0)
     setIsPlayingInstructions(false)
 
-    // Keep the same start path as timer completion to avoid behavior drift.
-    playSound("start")
     const nextAction = prepAfterActionRef.current
     prepAfterActionRef.current = null
     if (nextAction) {
@@ -1549,266 +2146,76 @@ export default function ImprovedSpeakingTest() {
   // }
 
   const submitTest = async () => {
-    if (!testData) {
-      setIsTestComplete(false)
-      setIsSubmitting(false)
-      toast.error("Test verisi bulunamadi")
-      return
-    }
+    if (submitInFlightRef.current || isSubmitting) return
+    submitInFlightRef.current = true
     hasSubmittedRef.current = true
     setIsSubmitting(true)
-
+    setSubmissionError(null)
+    stopAllAudio()
+    clearTimers()
     try {
-      const isMeaningfulText = (value: unknown) => {
-        if (typeof value !== "string") return false
-        const trimmed = value.trim()
-        return (
-          trimmed.length > 0 &&
-          trimmed !== "[Cevap bulunamadı]" &&
-          trimmed !== "[Ses metne dönüştürülemedi]"
-        )
-      }
-
-      const withTimeout = async <T,>(promise: Promise<T>, ms: number, label: string): Promise<T> => {
-        let timeoutId: number | null = null
-        try {
-          return await Promise.race([
-            promise,
-            new Promise<T>((_, reject) => {
-              timeoutId = window.setTimeout(() => {
-                reject(new Error(`${label} timeout (${ms}ms)`))
-              }, ms)
-            }),
-          ])
-        } finally {
-          if (timeoutId !== null) {
-            window.clearTimeout(timeoutId)
-          }
+      if (!testData) throw new Error("Test verisi bulunamadı.")
+      // onstop owns the final Blob and transcript; snapshot only after it settles.
+      const hadActiveCapture = Boolean(recordingFinalizePromiseRef.current)
+      await stopRecording()
+      if (pendingRecordingRef.current) {
+        if (hadActiveCapture || !await completeCapturedAnswer(pendingRecordingRef.current, false)) {
+          throw new Error("Son ses kaydınız saklandı. Gönderimi yeniden deneyin.")
         }
       }
-
-      const ensureTranscriptsReady = async () => {
-        const transcriptByQid: Record<string, string> = {}
-
-        // Start from any already transcribed answers
-        for (const [qid, v] of Array.from(answers.entries())) {
-          if (isMeaningfulText(v?.text)) transcriptByQid[qid] = String(v.text).trim()
+      let transition = acceptedSubmissionRef.current
+      if (!transition) {
+        const entries = Array.from(answersRef.current.entries())
+        const transcripts = Object.fromEntries(entries.map(([id, answer]) => [id, answer.text || ""]))
+        const audioClientIds = Object.fromEntries(entries.filter(([, answer]) => answer.audioClientId).map(([id, answer]) => [id, answer.audioClientId]))
+        sessionStorage.setItem(`speaking_answers_${testData.id}`, JSON.stringify({
+          testId: testData.id, answers: Object.fromEntries(entries), transcripts, audioClientIds,
+          sections: testData.sections, timestamp: new Date().toISOString(),
+        }))
+        const token = getSessionToken()
+        if (!token) throw new Error("Oturum bilgisi bulunamadı. Cevaplarınız saklandı.")
+        const latestPhase = await speakingPhaseService.get(token)
+        applySpeakingPhase(latestPhase)
+        const outerRemaining = getBackendSyncedRemainingSeconds(backendTimerRef.current)
+        const submitMode: MockSubmitMode = autoSubmitRef.current || outerRemaining === 0 ? "AUTO" : "MANUAL"
+        if (submitMode !== "AUTO" && latestPhase?.phase !== "SECTION_READY_TO_SUBMIT") {
+          throw new Error("SPEAKING_SECTION_NOT_READY")
         }
-
-        // Fill gaps using in-memory recordings (Blob). This is critical because sessionStorage cannot persist blobs.
-        for (const [qid, rec] of Array.from(_recordings.entries())) {
-          if (transcriptByQid[qid]) continue
-          try {
-            const stt = await withTimeout(
-              speechToTextService.convertAudioToText(
-                rec.blob,
-                buildSpeechToTextOptions(qid),
-              ),
-              30000,
-              `speech-to-text ${qid}`
-            )
-            if (isMeaningfulText(stt.text)) {
-              transcriptByQid[qid] = String(stt.text).trim()
-              setAnswers((prev) => new Map(prev).set(qid, { text: transcriptByQid[qid], duration: rec.duration }))
-            }
-          } catch (e) {
-            console.error("ensureTranscriptsReady speech-to-text failed:", e)
+        const formatted = speakingSubmissionService.formatSubmissionData(testData, transcripts)
+        for (const part of formatted.parts || []) {
+          for (const question of [...(part.questions || []), ...(part.subParts || []).flatMap((subpart) => subpart.questions || [])]) {
+            question.audioClientId = audioClientIds[question.questionId]
           }
         }
-
-        return transcriptByQid
+        formatted.sessionToken = token
+        formatted.submitMode = submitMode
+        const result = await speakingSubmissionService.submitSpeakingTest(formatted)
+        if (!result.success) throw new Error(result.error || "Gönderim tamamlanamadı.")
+        transition = resolveSpeakingSubmissionTransition(result, overallTestFlowStore.getOverallId())
+        if (!transition) throw new Error("Gönderimin sonucu henüz alınamadı. Yeniden deneyin.")
+        acceptedSubmissionRef.current = transition
+        if (transition.overallTestId) overallTestFlowStore.setOverallId(transition.overallTestId)
+        clearAcceptedSpeakingDraft(sessionStorage, testData.id)
+        if (progressStorageKey) sessionStorage.removeItem(progressStorageKey)
       }
-
-      const transcriptByQid = await ensureTranscriptsReady()
-      if (Object.keys(transcriptByQid).length === 0) {
-        // Allow empty submission; backend will score as 0 and return a result page.
-        toast.message("Konuşma testi boş gönderildi (0 puan).")
-      }
-
-      const answersEntries = Array.from(answers.entries())
-      console.log("?? Submitting test with answers:", answersEntries.map(([qid, v]) => ({ qid, text: v.text?.substring(0, 50) })))
-
-      // Persist detailed answers (with duration) for potential overall submission
-      const answersObj = Object.fromEntries(
-        answersEntries.map(([qid, v]) => {
-          // Preserve the text as-is, don't overwrite with placeholder if it exists
-          const text = v.text || "[Cevap bulunamadı]"
-          return [qid, { text, duration: v.duration }]
-        })
-      )
-
-      // Keep a simple questionId -> transcript map for direct submission
-      // Persist transcripts (not placeholders) for reliable submit-all flow.
-      const answerTextRecord = transcriptByQid
-      const fallbackAnswers: Array<{ questionId: string; questionText: string; userAnswer: string }> = []
-      for (const section of testData.sections || []) {
-        if (Array.isArray(section.subParts) && section.subParts.length > 0) {
-          for (const subPart of section.subParts) {
-            for (const question of subPart.questions || []) {
-              fallbackAnswers.push({
-                questionId: question.id,
-                questionText: normalizeDisplayText(question.questionText) || "Soru metni mevcut değil",
-                userAnswer: answerTextRecord[question.id] || "",
-              })
-            }
-          }
-        } else {
-          for (const question of section.questions || []) {
-            fallbackAnswers.push({
-              questionId: question.id,
-              questionText: normalizeDisplayText(question.questionText) || "Soru metni mevcut değil",
-              userAnswer: answerTextRecord[question.id] || "",
-            })
-          }
-        }
-      }
-      const fallbackSummary = {
-        testId: testData.id,
-        submittedAt: new Date().toISOString(),
-        score: 0,
-        aiFeedback:
-          Object.keys(transcriptByQid).length === 0
-            ? "Herhangi bir konuşma yanıtı tespit edilmedi. Boş gönderim 0 puan olarak değerlendirildi."
-            : "Sonuç kimliği üretilemedi. Yanıtlarınız kaydedildi; bu geçici geri bildirim ekranıdır.",
-        answers: fallbackAnswers,
-      }
-
-      const answersData = {
-        testId: testData.id,
-        answers: answersObj,
-        transcripts: answerTextRecord,
-        sections: testData.sections,
-        timestamp: new Date().toISOString()
-      }
-
-      console.log("?? Saving to sessionStorage:", {
-        testId: testData.id,
-        answerCount: Object.keys(answersObj).length,
-        answerKeys: Object.keys(answersObj)
-      })
-      sessionStorage.setItem(`speaking_answers_${testData.id}`, JSON.stringify(answersData))
-
-      const wasOverallFlowActive = overallTestFlowStore.hasActive()
       const nextPath = overallTestFlowStore.onTestCompleted("SPEAKING", testData.id)
-
-      if (nextPath) {
-        if (nextPath !== "/overall-section-ready" && typeof document !== "undefined") {
-          document.body.classList.add("exam-mode")
-          const enterFullscreen = async () => {
-            try {
-              const el: any = document.documentElement as any
-              if (el.requestFullscreen) await el.requestFullscreen()
-              else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen()
-              else if (el.msRequestFullscreen) await el.msRequestFullscreen()
-            } catch {}
-          }
-          await enterFullscreen()
-        }
-        clearSpeakingProgress()
-        navigate(nextPath)
-        return
-      }
-
-      const overallId = overallTestFlowStore.getOverallId()
+      await finishExamPresentation()
+      if (nextPath) { navigate(nextPath); return }
+      const overallId = transition.overallTestId || overallTestFlowStore.getOverallId()
       if (overallId && overallTestFlowStore.isAllDone()) {
-        const submitAllOk = await submitAllTests(overallId)
-        if (!submitAllOk) {
-          clearSpeakingProgress()
-          navigate(`/speaking-test/results/temp`, {
-            state: {
-              summary: {
-                ...fallbackSummary,
-                aiFeedback:
-                  "Bazi bolumler simdilik gonderilemedi. Cevaplariniz yerel olarak saklandi; daha sonra tekrar denenebilir.",
-              },
-            },
-          })
-        }
+        const submitted = await submitAllTests(overallId)
+        if (submitted) return
+        // Speaking is accepted; the report can expose another section's status.
+        navigate(transition.path)
         return
       }
-
-      if (!wasOverallFlowActive) {
-        const formattedSubmission = speakingSubmissionService.formatSubmissionData(testData, answerTextRecord)
-        if (!speakingSubmissionService.validateSubmissionData(formattedSubmission)) {
-          clearSpeakingProgress()
-          navigate(`/speaking-test/results/temp`, {
-            state: {
-              summary: {
-                ...fallbackSummary,
-                aiFeedback:
-                  "Gonderim verisi dogrulanamadi. Cevaplariniz kaydedildi; bu gecici sonuc ekranidir.",
-              },
-            },
-          })
-          return
-        }
-
-        let submissionResult = await speakingSubmissionService.submitSpeakingTest(formattedSubmission)
-        if (!submissionResult.success) {
-          // One silent retry to absorb transient auth/network races.
-          await wait(1000)
-          const retried = await speakingSubmissionService.submitSpeakingTest(formattedSubmission)
-          if (retried.success) {
-            submissionResult = retried
-          }
-        }
-
-        if (!submissionResult.success) {
-          const submitError = String(submissionResult.error || "").trim()
-          clearSpeakingProgress()
-          navigate(`/speaking-test/results/temp`, {
-            state: {
-              summary: {
-                ...fallbackSummary,
-                aiFeedback: submitError
-                  ? buildSubmitRetryMessage(
-                      `Gonderim sirasinda hata alindi: ${submitError}. Yanitlariniz yerel olarak kaydedildi`,
-                      "Gonderim sirasinda hata alindi"
-                    )
-                  : fallbackSummary.aiFeedback,
-              },
-            },
-          })
-          return
-        }
-
-        if (submissionResult.submissionId) {
-          clearSpeakingProgress()
-          navigate(`/speaking-test/results/${submissionResult.submissionId}`)
-        } else {
-          clearSpeakingProgress()
-          navigate(`/speaking-test/results/temp`, { state: { summary: fallbackSummary } })
-        }
-        return
-      }
-
-      clearSpeakingProgress()
-      navigate(`/speaking-test/results/temp`, { state: { summary: fallbackSummary } })
-    } catch (e) {
-      console.error("speaking navigation error", e)
-      const emergencyAnswers = Array.from(answers.entries()).map(([questionId, answer]) => ({
-        questionId,
-        questionText: "Soru metni mevcut değil",
-        userAnswer: typeof answer?.text === "string" ? answer.text : "",
-      }))
-      const emergencySummary = {
-        testId: testData.id,
-        submittedAt: new Date().toISOString(),
-        score: 0,
-        aiFeedback: buildSubmitRetryMessage(e, "Test gecisinde hata olustu"),
-        answers: emergencyAnswers,
-      }
-
-      try {
-        navigate(`/speaking-test/results/temp`, { state: { summary: emergencySummary } })
-        return
-      } catch (navError) {
-        console.error("speaking emergency navigation failed", navError)
-      }
-
-      setIsTestComplete(false)
-      toast.error(buildSubmitRetryMessage(e, "Test gecisinde hata olustu"))
+      navigate(transition.path)
+    } catch (error) {
+      await finishExamPresentation()
+      hasSubmittedRef.current = false
+      setSubmissionError(buildSubmitRetryMessage(error, "Gönderim tamamlanamadı"))
     } finally {
+      submitInFlightRef.current = false
       setIsSubmitting(false)
     }
   }
@@ -1876,14 +2283,14 @@ export default function ImprovedSpeakingTest() {
         const readingAnswers = sessionStorage.getItem(key);
         if (readingAnswers) {
           const readingData = JSON.parse(readingAnswers);
-          console.log("Submitting reading test:", readingData.testId, "with answers:", readingData.answers);
+          debugSpeaking("submit-all-reading", {
+            testId: readingData.testId,
+            answerCount: Object.keys(readingData.answers || {}).length,
+          });
           const payload = normalizeChoiceAnswers(readingData.answers);
           const overallToken = overallTestTokenStore.getByTestId(readingData.testId);
           if (!overallToken) {
-            console.warn(
-              "Reading submit-all without overall token; falling back to standard auth:",
-              readingData.testId
-            );
+            debugSpeaking("submit-all-reading-missing-token", { testId: readingData.testId });
           }
           try {
             await runWithRetries(
@@ -1898,8 +2305,12 @@ export default function ImprovedSpeakingTest() {
             );
             successfulSubmissions.push(`Okuma (${readingData.testId})`);
             try { sessionStorage.removeItem(key); } catch {}
-          } catch (submitError) {
-            console.error("Reading submit-all failed:", submitError);
+          } catch (submitError: any) {
+            debugSpeaking("submit-all-reading-failed", {
+              testId: readingData.testId,
+              status: submitError?.response?.status,
+              code: submitError?.code,
+            });
             failedSubmissions.push(`Okuma (${readingData.testId})`);
           }
         }
@@ -1911,14 +2322,14 @@ export default function ImprovedSpeakingTest() {
         const listeningAnswers = sessionStorage.getItem(key);
         if (listeningAnswers) {
           const listeningData = JSON.parse(listeningAnswers);
-          console.log("Submitting listening test:", listeningData.testId, "with answers:", listeningData.answers, "audioUrl:", listeningData.audioUrl, "imageUrls:", listeningData.imageUrls);
+          debugSpeaking("submit-all-listening", {
+            testId: listeningData.testId,
+            answerCount: Object.keys(listeningData.answers || {}).length,
+          });
           const payload = normalizeChoiceAnswers(listeningData.answers);
           const overallToken = overallTestTokenStore.getByTestId(listeningData.testId);
           if (!overallToken) {
-            console.warn(
-              "Listening submit-all without overall token; falling back to standard auth:",
-              listeningData.testId
-            );
+            debugSpeaking("submit-all-listening-missing-token", { testId: listeningData.testId });
           }
           try {
             await runWithRetries(
@@ -1935,8 +2346,12 @@ export default function ImprovedSpeakingTest() {
             );
             successfulSubmissions.push(`Dinleme (${listeningData.testId})`);
             try { sessionStorage.removeItem(key); } catch {}
-          } catch (submitError) {
-            console.error("Listening submit-all failed:", submitError);
+          } catch (submitError: any) {
+            debugSpeaking("submit-all-listening-failed", {
+              testId: listeningData.testId,
+              status: submitError?.response?.status,
+              code: submitError?.code,
+            });
             failedSubmissions.push(`Dinleme (${listeningData.testId})`);
           }
         }
@@ -1948,13 +2363,13 @@ export default function ImprovedSpeakingTest() {
         const writingAnswers = sessionStorage.getItem(key);
         if (writingAnswers) {
           const writingData = JSON.parse(writingAnswers);
-          console.log("Submitting writing test:", writingData.testId, "with answers:", writingData.answers);
+          debugSpeaking("submit-all-writing", {
+            testId: writingData.testId,
+            answerCount: Object.keys(writingData.answers || {}).length,
+          });
           const overallToken = overallTestTokenStore.getByTestId(writingData.testId);
           if (!overallToken) {
-            console.warn(
-              "Writing submit-all without overall token; falling back to standard auth:",
-              writingData.testId
-            );
+            debugSpeaking("submit-all-writing-missing-token", { testId: writingData.testId });
           }
 
           const getWritingAnswer = (
@@ -2046,8 +2461,12 @@ export default function ImprovedSpeakingTest() {
             );
             successfulSubmissions.push(`Yazma (${writingData.testId})`);
             try { sessionStorage.removeItem(key); } catch {}
-          } catch (submitError) {
-            console.error("Writing submit-all failed:", submitError);
+          } catch (submitError: any) {
+            debugSpeaking("submit-all-writing-failed", {
+              testId: writingData.testId,
+              status: submitError?.response?.status,
+              code: submitError?.code,
+            });
             failedSubmissions.push(`Yazma (${writingData.testId})`);
           }
         }
@@ -2093,20 +2512,23 @@ export default function ImprovedSpeakingTest() {
           Object.keys(answerTextRecord).length === 0 &&
           testData?.id &&
           speakingData.testId === testData.id &&
-          _recordings.size > 0
+          recordingsRef.current.size > 0
         ) {
-          for (const [qid, rec] of _recordings.entries()) {
+          for (const [qid, rec] of recordingsRef.current.entries()) {
             try {
               const stt = await speechToTextService.convertAudioToText(
                 rec.blob,
-                buildSpeechToTextOptions(qid),
+                buildSpeechToTextOptions(qid, rec.audioClientId, rec.duration),
               );
               const rawText = stt.text ?? "";
               if (isMeaningfulText(rawText)) {
                 answerTextRecord[qid] = String(rawText).trim();
               }
-            } catch (e) {
-              console.error("Speech-to-text retry failed for submit-all:", e);
+            } catch (e: any) {
+              debugSpeaking("submit-all-speaking-stt-retry-failed", {
+                status: e?.response?.status,
+                code: e?.code,
+              });
             }
           }
         }
@@ -2115,18 +2537,29 @@ export default function ImprovedSpeakingTest() {
           speakingData,
           answerTextRecord
         );
+        const audioClientIds =
+          speakingData.audioClientIds && typeof speakingData.audioClientIds === "object"
+            ? speakingData.audioClientIds
+            : {};
+        for (const part of formattedSubmission.parts || []) {
+          for (const subPart of part.subParts || []) {
+            for (const question of subPart.questions || []) {
+              ;(question as any).audioClientId = audioClientIds[question.questionId]
+            }
+          }
+          for (const question of part.questions || []) {
+            ;(question as any).audioClientId = audioClientIds[question.questionId]
+          }
+        }
         const overallToken = overallTestTokenStore.getByTestId(speakingData.testId);
         if (!overallToken) {
-          console.warn(
-            "Speaking submit-all without overall token; falling back to standard auth:",
-            speakingData.testId
-          );
+          debugSpeaking("submit-all-speaking-missing-token", { testId: speakingData.testId });
         } else {
           formattedSubmission.sessionToken = overallToken;
         }
 
         if (!speakingSubmissionService.validateSubmissionData(formattedSubmission)) {
-          console.warn("Skipping speaking submit-all; formatted submission is invalid.");
+          debugSpeaking("submit-all-speaking-invalid-payload", { testId: speakingData.testId });
           failedSubmissions.push(`Konusma (${speakingData.testId})`);
           continue;
         }
@@ -2142,14 +2575,11 @@ export default function ImprovedSpeakingTest() {
             /(token|session|oturum)/i.test(normalizedError) &&
             /(expired|not found|invalid|süresi|dol|bulunamad|geçersiz)/i.test(normalizedError);
           if (isTokenError) {
-            console.warn(
-              "Skipping speaking submit-all due token issue:",
-              submissionResult.error
-            );
+            debugSpeaking("submit-all-speaking-token-issue", { testId: speakingData.testId });
             failedSubmissions.push(`Konusma (${speakingData.testId})`);
             continue;
           }
-          console.error("Speaking submit-all failed:", submissionResult.error);
+          debugSpeaking("submit-all-speaking-failed", { testId: speakingData.testId });
           failedSubmissions.push(`Konusma (${speakingData.testId})`);
           continue;
         }
@@ -2161,18 +2591,17 @@ export default function ImprovedSpeakingTest() {
         if (submitAllRetryRef.current < 1) {
           submitAllRetryRef.current += 1;
           toast.message(
-            `Gonderim tekrar deneniyor (${failedSubmissions.join(", ")}). Cevaplariniz saklandi.`
+            "Gönderim tekrar deneniyor. Cevaplarınız saklandı."
           );
           await wait(1400);
           return await submitAllTests(overallId);
         }
 
         toast.error(
-          `Bazi bolumler gecici olarak kaydedilemedi: ${failedSubmissions.join(", ")}. ` +
-            "Cevaplariniz saklandi."
+          "Bazı bölümler şu anda gönderilemedi. Cevaplarınız saklandı; lütfen biraz sonra tekrar deneyin."
         );
         if (successfulSubmissions.length > 0) {
-          toast.message(`Kaydedilen bolumler: ${successfulSubmissions.join(", ")}`);
+          toast.message("Kaydedilen cevaplarınız korunuyor.");
         }
         submitAllRetryRef.current = 0;
         return false;
@@ -2187,61 +2616,112 @@ export default function ImprovedSpeakingTest() {
         overallTestFlowStore.markCompleted();
       }
       
-      // Exit fullscreen and go to results
-      if (document.fullscreenElement) {
-        try {
-          document.exitFullscreen().catch(() => {});
-        } catch {}
-      }
+      await finishExamPresentation()
       clearSpeakingProgress()
       navigate(`/overall-results/${overallId}`);
       return true;
-    } catch (error) {
-      console.error("Error submitting all tests:", error);
+    } catch (error: any) {
+      debugSpeaking("submit-all-failed", {
+        status: error?.response?.status,
+        code: error?.code,
+      });
       submitAllRetryRef.current = 0;
-      toast.error(buildSubmitRetryMessage(error, "Testler gonderilirken hata olustu"));
+      toast.error(buildSubmitRetryMessage(error, "Test gönderilemedi"));
       return false;
     }
   }
 
 
 
+  useEffect(() => {
+    if (!testId) return
+
+    let reconciling = false
+    const reconcileVisibleSession = async () => {
+      if (
+        document.visibilityState !== "visible" ||
+        reconciling ||
+        isSubmitting ||
+        submissionError ||
+        !pendingCaptureRestored ||
+        hasSubmittedRef.current
+      ) {
+        return
+      }
+
+      const sessionToken = getSessionToken()
+      if (!sessionToken) return
+      reconciling = true
+      try {
+        const phase = await speakingPhaseService.get(sessionToken)
+        if (!phase) return
+        applySpeakingPhase(phase)
+        if (phase.phase === "EXPIRED" || phase.canSubmitSection) {
+          autoSubmitRef.current = true
+          await submitTest()
+        }
+      } catch (error) {
+        debugSpeaking("visible-session-reconcile-failed", {
+          status: (error as any)?.response?.status,
+        })
+      } finally {
+        reconciling = false
+      }
+    }
+
+    const handleVisibleAgain = () => {
+      void reconcileVisibleSession()
+    }
+
+    document.addEventListener("visibilitychange", handleVisibleAgain)
+    window.addEventListener("focus", handleVisibleAgain)
+    window.addEventListener("pageshow", handleVisibleAgain)
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibleAgain)
+      window.removeEventListener("focus", handleVisibleAgain)
+      window.removeEventListener("pageshow", handleVisibleAgain)
+    }
+  }, [testId, isSubmitting, submissionError, pendingCaptureRestored])
+
+  const shouldShowFullscreenPrompt =
+    showFullscreenPrompt && isExamMode && !isTestComplete
+
+  const retryCurrentStep = async () => {
+    if (isRetryingRecording || isFinalizingRecording || isSubmitting) return
+    setIsRetryingRecording(true)
+    setPhaseError(null)
+    try {
+      if (pendingRecordingRef.current) {
+        await completeCapturedAnswer(pendingRecordingRef.current, true)
+      } else if (speakingPhaseRef.current?.phase === "NEXT_READY") {
+        await nextQuestion(true)
+      } else if (["PROMPT_PLAYING", "PROMPT_LOADING", "NOT_STARTED"].includes(speakingPhaseRef.current?.phase || "NOT_STARTED")) {
+        const questionId = getActivePhaseQuestionId()
+        if (!questionId || !await startBackendQuestionPhase(questionId)) return
+        ttsStartedKeyRef.current = null
+        prepStartedKeyRef.current = null
+        await startPreparationAfterTTS(questionId)
+      } else if (speakingPhaseRef.current?.phase === "RECORDING_IN_PROGRESS" &&
+                 remainingSpeakingMilliseconds(recordingDeadlineRef.current, performance.now()) === 0) {
+        await nextQuestion(true)
+      } else {
+        await startRecording(undefined, true)
+      }
+    } finally { setIsRetryingRecording(false) }
+  }
+
   if (loading) {
+    if (!showLoadingScreen) {
+      return <div className="min-h-[100dvh] bg-white" aria-hidden="true" />
+    }
+
     return (
-      <motion.div
-        className="min-h-screen  flex items-center justify-center px-4"
-        initial="initial"
-        animate="animate"
-      >
-        <motion.div className="text-center">
-          <motion.div
-            className="w-16 h-16 sm:w-20 sm:h-20  rounded-3xl mx-auto mb-4 sm:mb-6 grid place-items-center shadow-2xl shadow-red-200"
-            animate="animate"
-          >
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
-            >
-              <Mic className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
-            </motion.div>
-          </motion.div>
-          <motion.p
-            className="text-lg sm:text-xl font-bold text-gray-800 mb-2"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            Test yükleniyor...
-          </motion.p>
-          <div className="w-24 h-1 sm:w-32 sm:h-1  rounded-full mx-auto overflow-hidden">
-            <motion.div
-              className="h-full "
-              animate={{ x: ["-100%", "100%"] }}
-              transition={{ duration: 1.5, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
-            />
-          </div>
-        </motion.div>
-      </motion.div>
+      <div className="flex min-h-[100dvh] items-center justify-center bg-white px-4">
+        <div className="flex items-center gap-3 text-sm font-medium text-[#6f6d67]">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#dededb] border-t-[#6f6d67]" />
+          <span>Test yükleniyor</span>
+        </div>
+      </div>
     )
   }
 
@@ -2282,7 +2762,7 @@ export default function ImprovedSpeakingTest() {
             initial="initial"
             whileHover="hover"
             whileTap="tap"
-            onClick={() => navigate("/test")}
+            onClick={() => navigate("/app/test")}
             className="bg-gradient-to-r from-red-600 to-rose-600 text-white px-6 py-2 sm:px-8 sm:py-3 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all duration-200 text-sm sm:text-base"
           >
             Geri Dön
@@ -2292,7 +2772,19 @@ export default function ImprovedSpeakingTest() {
     )
   }
 
-  if (isTestComplete) {
+  if (submissionError) {
+    return (
+      <div data-speaking-submit-retry role="alert" className="flex min-h-screen items-center justify-center bg-white px-5 text-[#242424]">
+        <div className="max-w-md space-y-4 rounded-md border border-[#dededb] p-6">
+          <h1 className="text-lg font-semibold">Gönderim tamamlanamadı</h1>
+          <p className="text-sm leading-6">{submissionError}</p>
+          <Button onClick={() => void submitTest()} disabled={isSubmitting}>Gönderimi yeniden dene</Button>
+        </div>
+      </div>
+    )
+  }
+
+  if (isTestComplete || isSubmitting) {
     return (
       <motion.div
         className="min-h-screen flex items-center justify-center"
@@ -2310,109 +2802,145 @@ export default function ImprovedSpeakingTest() {
   if (showSectionDescription && currentSection) {
     return (
       <motion.div
-        className="h-[100dvh] overflow-y-auto overscroll-contain touch-pan-y bg-white"
+        className="h-[100dvh] overflow-y-auto overscroll-contain touch-pan-y bg-white text-[#242424]"
+        style={typographyPreset.style}
         initial="initial"
         animate="animate"
       >
         {!micChecked ? (
       <MicrophoneCheck
-        onSuccess={() => {
-          setMicChecked(true)
-          if (micReadyStorageKey) {
-            try { sessionStorage.setItem(micReadyStorageKey, "1") } catch {}
-          }
+        onSuccess={(deviceId) => {
+          // Microphone approval is a direct user gesture, so it can also unlock
+          // the shared WebAudio context used by automatic instruction playback.
+          void (async () => {
+            try {
+              const ready = await unlockExamAudioFromGesture()
+              if (!ready) {
+                toast.error("Ses başlatılamadı. Mikrofon kontrolünü tekrar deneyin.")
+                return
+              }
+              setMicChecked(true)
+              if (micReadyStorageKey) {
+                try {
+                  sessionStorage.setItem(micReadyStorageKey, "1")
+                  if (testId) sessionStorage.setItem(speakingMicrophoneStorageKey(testId), deviceId)
+                } catch {}
+              }
+            } catch {
+              toast.error("Ses başlatılamadı. Mikrofon kontrolünü tekrar deneyin.")
+            }
+          })()
         }}
       />
     ) : (
       <>
-        {introCountdown !== null ? (
-          <div className="fixed inset-0 z-[9998] bg-white flex flex-col items-center justify-center text-center px-4">
-            <div className="relative w-32 h-32 sm:w-40 sm:h-40">
-              {(() => {
-                const radius = 60;
-                const circumference = 2 * Math.PI * radius;
-                const progress =
-                  introCountdown === null
-                    ? 0
-                    : (introCountdown / INTRO_COUNTDOWN_SECONDS);
-                const offset = circumference * (1 - progress);
-                return (
-                  <svg className="w-full h-full" viewBox="0 0 140 140">
-                    <circle
-                      cx="70"
-                      cy="70"
-                      r={radius}
-                      stroke="#fee2e2"
-                      strokeWidth="10"
-                      fill="none"
-                    />
-                    <circle
-                      cx="70"
-                      cy="70"
-                      r={radius}
-                      stroke="#ef4444"
-                      strokeWidth="10"
-                      fill="none"
-                      strokeLinecap="round"
-                      strokeDasharray={`${circumference}`}
-                      strokeDashoffset={`${offset}`}
-                      transform="rotate(-90 70 70)"
-                    />
-                  </svg>
-                );
-              })()}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-5xl sm:text-6xl font-bold text-red-600">
-                  {introCountdown}
-                </div>
-              </div>
+          <header className="sticky top-0 z-50 grid min-h-[60px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-[#e5e5e2] bg-white px-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:px-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <img src="/logo11.svg" alt="TURKISHMOCK" className="h-10 max-w-[150px] shrink-0 object-contain sm:max-w-none" />
+              <span className="hidden h-5 w-px shrink-0 bg-[#dededb] sm:block" />
+              <span className="hidden truncate text-[17px] font-semibold text-[#37352f] sm:block">Konuşma</span>
             </div>
-            <div className="mt-6 text-base sm:text-lg text-gray-600">
-              {"... saniye sonra ba\u015Flayacak."}
+
+            <nav className="hidden shrink-0 items-center gap-1 sm:flex" aria-label="Konuşma bölümleri">
+              {[
+                { label: "1.1", active: currentSectionIndex === 0 && currentSubPartIndex === 0 },
+                { label: "1.2", active: currentSectionIndex === 0 && currentSubPartIndex === 1 },
+                { label: "2", active: currentSectionIndex === 1 },
+                { label: "3", active: currentSectionIndex === 2 },
+              ].map((item) => (
+                <span
+                  key={item.label}
+                  aria-current={item.active ? "step" : undefined}
+                  className={`flex h-8 min-w-10 items-center justify-center rounded-md px-3 text-[13px] font-semibold tabular-nums transition-colors ${
+                    item.active
+                      ? "bg-[#e9e9e6] text-[#2f2e2a] shadow-[inset_0_0_0_1px_#c9c9c4]"
+                      : "text-[#6f6d67]"
+                  }`}
+                >
+                  {item.label}
+                </span>
+              ))}
+            </nav>
+
+            <div className="flex min-w-0 items-center justify-end gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-[#dededb] bg-white text-[#5f5e5a] transition-colors hover:bg-[#f7f7f5] hover:text-[#37352f]"
+                    aria-label="Yazı boyutu"
+                    title="Yazı boyutu"
+                  >
+                    <ALargeSmall className="h-4 w-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  className="z-[10020] min-w-36 border-[#dededb] !bg-white !opacity-100 text-[#37352f] shadow-lg backdrop-blur-none"
+                  style={{ backgroundColor: "#fff", opacity: 1 }}
+                >
+                  <DropdownMenuRadioGroup
+                    value={selectedFontScale}
+                    onValueChange={(value) => setFontScale(Number(value))}
+                  >
+                    <DropdownMenuRadioItem value="0.9">Küçük</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="1">Standart</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="1.1">Büyük</DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <button
+                type="button"
+                onClick={() => void exitFullscreen()}
+                disabled={!isFullscreen}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-[#dededb] bg-white text-[#5f5e5a] transition-colors hover:bg-[#f7f7f5] hover:text-[#37352f] disabled:cursor-default disabled:opacity-45"
+                aria-label="Tam ekrandan çık"
+                title="Tam ekrandan çık"
+              >
+                <Minimize2 className="h-4 w-4" />
+              </button>
             </div>
-            <div className="text-base sm:text-lg font-semibold text-gray-800">
-              {"Haz\u0131rlan\u0131n!"}
-            </div>
-            {/* Intro countdown: no skip button */}
-          </div>
-        ) : (
-          <>
-        {!isExamMode && !isPlayingInstructions && (
-          <motion.header
-            className="sticky top-0 z-10 bg-white/80  border-b border-gray-100 shadow-sm"
-            initial={{ y: -100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-          >
-          </motion.header>
-        )}
+          </header>
           <SimpleTextDisplay
+            heading={formatSpeakingSectionHeading(
+              currentSection.type === "PART1"
+                ? currentSection.subParts?.[currentSubPartIndex]?.label ||
+                    (currentSubPartIndex === 0 ? "1.1" : "1.2")
+                : currentSection.order,
+            )}
             text={(() => {
               const instruction = shouldShowInstruction(currentSectionIndex, currentSubPartIndex)
-              // If instruction audio is playing, show its text
-              if (isPlayingInstructions && instruction) return instruction.instructionText
-              // For PART1 subpart 2, always show 1.2 text
-              if (currentSection.type === "PART1" && currentSubPartIndex === 1) {
-                const p12 = getInstructionForSection(currentSection.order, 2)
-                if (p12) return p12.instructionText
-              }
-              // Fallback to generic description
-              return getSectionDescription(currentSection.title, currentSubPartIndex)
+              const editedInstruction = normalizeDisplayText(
+                currentSection.subParts?.[currentSubPartIndex]?.description,
+              )
+              return editedInstruction
+                || (instruction ? instruction.instructionText : "")
+                || normalizeDisplayText(currentSection.description)
+                || "Bu bölüm için talimat bulunamadı."
             })()}
-            isPlaying={isPlayingInstructions}
+            fontScale={fontScale}
           />
-          <div className="mt-6 flex justify-center">
-            <button
-              onClick={skipInstructionAndProceed}
-              className="px-6 py-3 text-sm sm:text-base bg-white border-2 border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 font-bold transition-all duration-200"
-            >
-              Geç
-            </button>
+          <div
+            data-testid="speaking-instruction-footer"
+            className="mt-2 flex h-10 items-center justify-center"
+          >
+            {instructionCountdown !== null && (
+              <span
+                data-testid="speaking-instruction-countdown"
+                className="text-[20px] font-normal tabular-nums text-[#242424]"
+                aria-label="Soru başlamadan önce geri sayım"
+                aria-live="assertive"
+              >
+                {instructionCountdown}
+              </span>
+            )}
           </div>
-          </>
-        )}
       </>
     )}
+      <FullscreenReturnDialog
+        open={shouldShowFullscreenPrompt}
+        onReturn={enterFullscreen}
+      />
       </motion.div>
     )
   }
@@ -2422,263 +2950,150 @@ export default function ImprovedSpeakingTest() {
     return null
   }
 
-  const totalQuestionsInSection = currentSection?.subParts?.length
-    ? (currentSection.subParts[currentSubPartIndex]?.questions?.length ?? 0)
-    : (currentSection?.questions?.length ?? 0)
-  const progressPercent = (currentQuestionIndex / Math.max(1, totalQuestionsInSection)) * 100
+  const isAnswerRecording = isRecording && !isPrepRunning && !isPlayingTTS && !isPlayingInstructions
+  const phaseLabel = phaseError
+    ? phaseError
+    : speakingPhase?.phase === "PROMPT_LOADING"
+    ? "Soru hazırlanıyor"
+    : speakingPhase?.phase === "PROMPT_PLAYING" || isPlayingTTS
+    ? "Soru okunuyor"
+    : speakingPhase?.phase === "PREP_IN_PROGRESS" || isPrepRunning
+    ? "Hazırlık süresi"
+    : speakingPhase?.phase === "RECORDING_READY"
+    ? "Kayıt otomatik başlayacak"
+    : speakingPhase?.phase === "RECORDING_IN_PROGRESS" || isRecording
+    ? "Kaydediliyor"
+    : speakingPhase?.phase === "RECORDING_FINALIZING" || isProcessingSpeechToText
+    ? "Kayıt tamamlanıyor"
+    : speakingPhase?.phase === "ANSWER_SAVED" || speakingPhase?.phase === "NEXT_READY"
+    ? "Cevap kaydedildi"
+    : speakingPhase?.phase === "SECTION_READY_TO_SUBMIT"
+    ? "Bölüm gönderime hazır"
+    : null
+  const sectionSkipDisabled =
+    isSectionSkipping ||
+    isProcessingSpeechToText ||
+    isFinalizingRecording ||
+    isSubmitting
 
   return (
     <motion.div
-      className="h-[100dvh] min-h-0 relative overflow-x-hidden overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch] flex flex-col"
+      className="h-[100dvh] min-h-0 relative overflow-x-hidden overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch] flex flex-col bg-white text-[#242424]"
+      style={typographyPreset.style}
       initial="initial"
       animate="animate"
     >
       {/* <DisableKeys /> */}
       
-      {/* Header with section indicators - Same height and logic as main navbar */}
-      <div className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50 shadow-sm w-full">
-        {/* Match horizontal padding with description block below */}
-        <div className="px-2 sm:px-4">
-          <div className="block sm:hidden w-full py-0.5">
-            <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <img
-                  src="/logo11.svg"
-                  alt="TURKISHMOCK"
-                  className="h-9 w-auto object-contain"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = "none";
-                  }}
-                />
-              </div>
-              <div className="justify-self-center px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 text-xs font-semibold">
-                {currentSectionIndex === 0
-                  ? (currentSubPartIndex === 0 ? "Bölüm 1.1" : "Bölüm 1.2")
-                  : currentSectionIndex === 1
-                  ? "Bölüm 2"
-                  : "Bölüm 3"}
-              </div>
-              <button
-                onClick={skipSectionWithConfirm}
-                className="px-3 py-1 text-xs bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold transition-all duration-200"
-              >
-                Bölümü Geç
-              </button>
-            </div>
-            <div className="mt-1" />
-          </div>
-
-          <div className="hidden sm:flex relative flex-wrap justify-between items-center min-h-[4.5rem] sm:min-h-[6rem] gap-2">
-            {/* Logo on desktop, section label on mobile */}
-            <div className="flex items-center flex-shrink-0">
-              <div className="block sm:hidden absolute left-1/2 -translate-x-1/2 font-extrabold text-base tracking-wider">KONUŞMA</div>
-              <img 
-                src="/logo11.svg" 
-                alt="TURKISHMOCK" 
-                className="block h-8 sm:h-10 md:h-12 w-auto object-contain"
-                onError={(e) => {
-                  console.error("Logo failed to load");
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
-              />
-            </div>
-
-            {/* Progress indicators on right - circular tabs with connectors */}
-            <div className="hidden sm:flex absolute left-1/2 -translate-x-1/2 items-center flex-wrap justify-center gap-1 sm:gap-2 min-w-0">
-              {/* Section 1.1 */}
-              <div className="flex items-center">
-                <div className={`w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center font-semibold text-xs sm:text-sm md:text-base transition-all shadow-md ${
-                  currentSectionIndex === 0 && currentSubPartIndex === 0
-                    ? "bg-red-500 text-white"
-                    : "bg-gray-200 text-gray-600"
-                }`}>
-                  1.1
-                </div>
-                <div className={`w-4 sm:w-6 md:w-8 h-0.5 ${
-                  (currentSectionIndex > 0 || (currentSectionIndex === 0 && currentSubPartIndex > 0))
-                    ? "bg-red-500"
-                    : "bg-gray-300"
-                }`}></div>
-              </div>
-              
-              {/* Section 1.2 */}
-              <div className="flex items-center">
-                <div className={`w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center font-semibold text-xs sm:text-sm md:text-base transition-all shadow-md ${
-                  currentSectionIndex === 0 && currentSubPartIndex === 1
-                    ? "bg-red-500 text-white"
-                    : (currentSectionIndex > 0 || (currentSectionIndex === 0 && currentSubPartIndex > 1))
-                    ? "bg-gray-100 text-gray-600"
-                    : "bg-gray-200 text-gray-600"
-                }`}>
-                  1.2
-                </div>
-                <div className={`w-4 sm:w-6 md:w-8 h-0.5 ${
-                  currentSectionIndex > 0
-                    ? "bg-red-500"
-                    : "bg-gray-300"
-                }`}></div>
-              </div>
-              
-              {/* Section 2 */}
-              <div className="flex items-center">
-                <div className={`w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center font-semibold text-xs sm:text-sm md:text-base transition-all shadow-md ${
-                  currentSectionIndex === 1
-                    ? "bg-red-500 text-white"
-                    : currentSectionIndex > 1
-                    ? "bg-gray-100 text-gray-600"
-                    : "bg-gray-200 text-gray-600"
-                }`}>
-                  2
-                </div>
-                <div className={`w-4 sm:w-6 md:w-8 h-0.5 ${
-                  currentSectionIndex > 1
-                    ? "bg-red-500"
-                    : "bg-gray-300"
-                }`}></div>
-              </div>
-              
-              {/* Section 3 */}
-              <div className="flex items-center">
-                <div className={`w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center font-semibold text-xs sm:text-sm md:text-base transition-all shadow-md ${
-                  currentSectionIndex === 2
-                    ? "bg-red-500 text-white"
-                    : "bg-gray-200 text-gray-600"
-                }`}>
-                  3
-                </div>
-              </div>
-            </div>
-
-            {/* Mobile: show only current section */}
-            <div className="flex sm:hidden items-center justify-end w-full mt-1">
-              <div className="px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 text-xs font-semibold">
-                {currentSectionIndex === 0
-                  ? (currentSubPartIndex === 0 ? "Bölüm 1.1" : "Bölüm 1.2")
-                  : currentSectionIndex === 1
-                  ? "Bölüm 2"
-                  : "Bölüm 3"}
-              </div>
-            </div>
-
-            <div className="flex items-center flex-shrink-0">
-              <button
-                onClick={skipSectionWithConfirm}
-                className="px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold transition-all duration-200"
-              >
-                Bölümü Geç
-              </button>
-            </div>
-          </div>
+      <header className="sticky top-0 z-50 grid min-h-[60px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-[#e5e5e2] bg-white px-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:px-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <img
+            src="/logo11.svg"
+            alt="TURKISHMOCK"
+            className="h-10 max-w-[150px] shrink-0 object-contain sm:max-w-none"
+            onError={(event) => {
+              (event.target as HTMLImageElement).style.display = "none"
+            }}
+          />
+          <span className="hidden h-5 w-px shrink-0 bg-[#dededb] sm:block" />
+          <p className="min-w-0 truncate text-[17px] font-semibold leading-6 text-[#242424]">Konuşma</p>
         </div>
-      </div>
 
-      {showSkipConfirm && (
-        <div className="fixed inset-0 z-[10000] bg-black/50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white rounded-xl shadow-xl border border-gray-200 p-5 sm:p-6">
-            <h3 className="text-base sm:text-lg font-semibold text-gray-900">Bölümü Geç</h3>
-            <p className="mt-2 text-sm sm:text-base text-gray-600">
-              Bu bölümü geçmek istediğinize emin misiniz?
-            </p>
-            <div className="mt-4 flex items-center justify-end gap-2">
-              <button
-                onClick={cancelSkipSection}
-                className="px-4 py-2 text-sm bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold"
-              >
-                Vazgeç
-              </button>
-              <button
-                onClick={confirmSkipSection}
-                className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold"
-              >
-                Geç
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {introCountdown !== null && (
-        <div className="fixed inset-0 z-[9998] bg-white flex items-center justify-center">
-          <div className="text-5xl sm:text-6xl font-bold text-gray-900">
-            {introCountdown}
-          </div>
-        </div>
-      )}
-      {!isExamMode && (
-        <motion.header
-          className="sticky top-0 z-10 bg-white/80 backdrop-blur-xl border-b border-red-100 shadow-sm"
-          initial={{ y: -100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-        >
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-5">
-            <div className="flex items-center justify-between">
-              <motion.button
-                initial="initial"
-                whileHover="hover"
-                whileTap="tap"
-                onClick={() => navigate("/test")}
-                className="flex items-center text-red-600 hover:text-red-700 font-bold transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                <span className="text-sm sm:text-lg">Geri</span>
-              </motion.button>
-              <motion.div
-                className="text-center"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.2 }}
-              >
-                <h1 className="text-xl sm:text-2xl font-black text-gray-900">{normalizeDisplayText(testData.title)}</h1>
-                <div className="flex items-center justify-center gap-2 sm:gap-3 mt-2">
-                  <motion.div
-                    className="px-3 py-1 sm:px-4 sm:py-1.5 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-full text-xs sm:text-sm font-bold shadow-md"
-                    whileHover={{ scale: 1.05 }}
-                  >
-                    {normalizeDisplayText(currentSection?.title)}
-                  </motion.div>
-                  <span className="text-xs sm:text-sm text-gray-400">•</span>
-                  <span className="text-xs sm:text-sm text-gray-600 font-semibold">Soru {currentQuestionIndex + 1}</span>
-                </div>
-              </motion.div>
-              <motion.div
-                className="text-sm sm:text-lg font-bold text-gray-700 px-3 py-1 sm:px-4 sm:py-2 rounded-xl"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3 }}
-              >
-                Bölüm {currentSectionIndex + 1} / {testData.sections.length}
-              </motion.div>
-            </div>
-            <motion.div
-              className="mt-3 sm:mt-4"
-              initial={{ opacity: 0, scaleX: 0 }}
-              animate={{ opacity: 1, scaleX: 1 }}
-              transition={{ delay: 0.4, duration: 0.5 }}
+        <nav className="hidden shrink-0 items-center gap-1 sm:flex" aria-label="Konuşma bölümleri">
+          {[
+            { label: "1.1", active: currentSectionIndex === 0 && currentSubPartIndex === 0 },
+            { label: "1.2", active: currentSectionIndex === 0 && currentSubPartIndex === 1 },
+            { label: "2", active: currentSectionIndex === 1 },
+            { label: "3", active: currentSectionIndex === 2 },
+          ].map((item) => (
+            <span
+              key={item.label}
+              aria-current={item.active ? "step" : undefined}
+              className={`flex h-8 min-w-10 items-center justify-center rounded-md px-3 text-[13px] font-semibold tabular-nums transition-colors ${
+                item.active
+                  ? "bg-[#e9e9e6] text-[#2f2e2a] shadow-[inset_0_0_0_1px_#c9c9c4]"
+                  : "text-[#6f6d67]"
+              }`}
             >
-              <Progress value={progressPercent} />
-            </motion.div>
-          </div>
-        </motion.header>
-      )}
-         {/* question rendering part */}
+              {item.label}
+            </span>
+          ))}
+        </nav>
+
+        <div className="flex min-w-0 items-center justify-end gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-[#dededb] bg-white text-[#5f5e5a] transition-colors hover:bg-[#f7f7f5] hover:text-[#37352f]"
+                aria-label="Yazı boyutu"
+                title="Yazı boyutu"
+              >
+                <ALargeSmall className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="z-[10020] min-w-36 border-[#dededb] !bg-white !opacity-100 text-[#37352f] shadow-lg backdrop-blur-none"
+              style={{ backgroundColor: "#fff", opacity: 1 }}
+            >
+              <DropdownMenuRadioGroup
+                value={selectedFontScale}
+                onValueChange={(value) => setFontScale(Number(value))}
+              >
+                <DropdownMenuRadioItem value="0.9">Küçük</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="1">Standart</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="1.1">Büyük</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <button
+            type="button"
+            onClick={() => void exitFullscreen()}
+            disabled={!isFullscreen}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-[#dededb] bg-white text-[#5f5e5a] transition-colors hover:bg-[#f7f7f5] hover:text-[#37352f] disabled:cursor-default disabled:opacity-45"
+            aria-label="Tam ekrandan çık"
+            title="Tam ekrandan çık"
+          >
+            <Minimize2 className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={skipCurrentMainSpeakingUnit}
+            disabled={sectionSkipDisabled}
+            className="flex h-8 shrink-0 items-center justify-center whitespace-nowrap rounded border border-[#dededb] bg-white px-3 text-[13px] font-semibold text-[#37352f] transition-colors hover:bg-[#f7f7f5] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Bölümü Geç
+          </button>
+        </div>
+      </header>
+
+      {/* question rendering part */}
      <main
-       className={`flex flex-1 flex-col items-center min-h-0 w-full px-2 sm:px-4 md:px-8 pt-2 sm:pt-6 md:pt-8 pb-36 sm:pb-20 safe-area-bottom ${
-         currentSection?.type === "PART1" && currentSubPartIndex === 0 ? "justify-center" : "justify-start"
-       } sm:justify-center`}
+       className={`flex flex-1 flex-col items-center min-h-0 w-full px-3 sm:px-6 md:px-8 pt-4 md:pt-6 pb-16 safe-area-bottom ${
+         currentSection?.type === "PART2"
+           ? "justify-center sm:justify-center"
+           : currentSection?.type === "PART1" && currentSubPartIndex === 0
+             ? "justify-center sm:justify-center"
+             : "justify-start sm:justify-center"
+       }`}
      >
+        <div
+          data-testid="speaking-active-stage"
+          className="flex w-full flex-col items-center lg:-translate-y-[5vh]"
+        >
         <AnimatePresence mode="wait">
           <motion.div
             key={`${currentSectionIndex}-${currentSubPartIndex}-${currentQuestionIndex}`}
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className="mb-6 sm:mb-8 md:mb-8"
+            className="mb-4"
           >
           {currentSection?.type !== "PART2" && currentSection?.type !== "PART3" && !isPlayingInstructions && (
              <div className="text-center px-2">
                <div
-                 className="text-black font-bold leading-tight"
-                 style={{ fontSize: "clamp(1.1rem, 5vw, 1.9rem)" }}
+                 className="text-[length:var(--reading-heading-size)] font-semibold leading-[var(--reading-heading-line-height)] text-[#242424]"
                >
                  Soru {currentQuestionIndex + 1}
                </div>
@@ -2689,7 +3104,7 @@ export default function ImprovedSpeakingTest() {
 
         {!isPlayingInstructions && currentSection?.type !== "PART2" && currentSection?.subParts?.[currentSubPartIndex]?.images?.length ? (
           <motion.div 
-            className="mb-4 sm:mb-6 md:mb-8 w-full px-2 sm:px-4" 
+            className="mb-5 w-full px-2 sm:px-4"
             initial={{ opacity: 0, scale: 0.95 }} 
             animate={{ opacity: 1, scale: 1 }}
           >
@@ -2698,15 +3113,12 @@ export default function ImprovedSpeakingTest() {
               if (imgs.length === 1) {
                 return (
                   <div
-                    className="w-full mx-auto aspect-[4/3] bg-transparent rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex items-center justify-center shadow-sm border border-gray-200"
-                    style={{ maxWidth: "clamp(240px, 82vw, 560px)" }}
+                    className="mx-auto flex aspect-[3/2] w-full max-w-[560px] items-center justify-center overflow-hidden rounded-none border border-[#dededb] bg-white"
                   >
                     <motion.img
                       src={imgs[0]}
                       alt="Soru görseli"
-                      className="w-full h-full object-contain p-2 sm:p-3"
-                      whileHover={{ scale: 1.02 }}
-                      transition={{ duration: 0.3 }}
+                      className="h-full w-full object-contain p-2 sm:p-3"
                       onError={(e) => {
                         const el = e.target as HTMLImageElement
                         el.src = "https://placehold.co/800x600?text=Gorsel+Yuklenemedi"
@@ -2718,17 +3130,14 @@ export default function ImprovedSpeakingTest() {
               if (imgs.length >= 2) {
                 return (
                   <div
-                    className="w-full mx-auto grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:gap-6"
-                    style={{ maxWidth: "clamp(280px, 92vw, 960px)" }}
+                    className="mx-auto grid w-full max-w-[960px] grid-cols-1 items-start gap-4 sm:grid-cols-2"
                   >
                     {imgs.slice(0, 2).map((src, idx) => (
-                      <div key={`pimg-${idx}`} className="aspect-[4/3] bg-transparent rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex items-center justify-center shadow-sm border border-gray-200">
+                      <div key={`pimg-${idx}`} className="relative aspect-[3/2] w-full min-w-0 overflow-hidden rounded-none border border-[#dededb] bg-white">
                         <motion.img
                           src={src}
                           alt={`Soru görseli ${idx + 1}`}
-                          className="w-full h-full object-contain p-2 sm:p-3"
-                          whileHover={{ scale: 1.02 }}
-                          transition={{ duration: 0.3 }}
+                          className="absolute inset-0 h-full w-full object-contain p-1"
                           onError={(e) => {
                             const el = e.target as HTMLImageElement
                             el.src = "https://placehold.co/800x600?text=Gorsel+Yuklenemedi"
@@ -2752,7 +3161,7 @@ export default function ImprovedSpeakingTest() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ delay: 0.2 }}
-              className="w-full mb-8 sm:mb-12 md:mb-14 lg:mb-16 md:-mt-3 lg:-mt-4 px-2 sm:px-4"
+              className="mb-5 w-full px-2 sm:px-4"
             >
           {currentSection?.type === "PART2" ? (
             (() => {
@@ -2760,22 +3169,23 @@ export default function ImprovedSpeakingTest() {
               const questions = (currentSection?.subParts?.[currentSubPartIndex]?.questions || currentSection?.questions || [])
               if (imgs.length > 0) {
                 return (
-                  <div className="w-full max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-[5fr_7fr] gap-5 sm:gap-7 md:gap-10 items-center">
-                    <div className="bg-white rounded-lg sm:rounded-xl border border-gray-200 shadow-sm p-2 sm:p-3 flex items-center justify-center md:justify-start">
+                  <div className="mx-auto grid w-full max-w-5xl items-center gap-7 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:gap-10">
+                    <div className="relative aspect-video w-full overflow-hidden rounded-none border border-[#dededb] bg-white">
                       <img
+                        {...protectedImageProps}
                         src={imgs[0]}
                         alt="Soru görseli"
-                        className="w-full h-full object-contain max-h-[380px] md:max-h-[420px]"
+                        className="absolute inset-0 h-full w-full object-contain p-1"
                         onError={(e) => {
                           const el = e.target as HTMLImageElement
                           el.src = "https://placehold.co/800x600?text=Gorsel+Yuklenemedi"
                         }}
                       />
                     </div>
-                    <div className="px-2 sm:px-0 self-center text-center md:text-left">
-                      <ul className="list-disc list-inside space-y-2 sm:space-y-3 text-black inline-block text-left">
+                    <div className="w-full min-w-0 px-1 sm:px-2">
+                      <ul className="list-outside list-disc space-y-3 pl-6 text-left text-[#242424] sm:space-y-4">
                         {questions.map((q) => (
-                          <li key={q.id} className="text-base sm:text-lg md:text-xl leading-relaxed break-words">
+                          <li key={q.id} className="break-words text-[length:var(--reading-body-size)] leading-[var(--reading-body-line-height)]">
                             {normalizeDisplayText(q.questionText)}
                           </li>
                         ))}
@@ -2785,10 +3195,10 @@ export default function ImprovedSpeakingTest() {
                 )
               }
               return (
-                <div className="max-w-3xl mx-auto bg-white p-3 sm:p-4 md:p-6 rounded-lg sm:rounded-xl">
+                <div className="mx-auto max-w-3xl rounded-md bg-white p-3 sm:p-4 md:p-6">
                   <ul className="list-disc list-inside space-y-2 sm:space-y-3 text-black">
                     {questions.map((q) => (
-                      <li key={q.id} className="text-base sm:text-lg md:text-xl leading-relaxed break-words">
+                      <li key={q.id} className="break-words text-[length:var(--reading-body-size)] leading-[var(--reading-body-line-height)]">
                         {normalizeDisplayText(q.questionText)}
                       </li>
                     ))}
@@ -2797,31 +3207,32 @@ export default function ImprovedSpeakingTest() {
               )
             })()
           ) : currentSection?.type === "PART3" ? (
-            <div className="w-full max-w-5xl mx-auto bg-white p-0 rounded-lg sm:rounded-xl overflow-hidden border border-gray-300 shadow-sm mb-4 sm:mb-6">
+            <div className="mx-auto mb-5 w-full max-w-5xl overflow-hidden border border-[#242424] bg-white">
               {(() => {
                 const sp = currentSection?.subParts?.[currentSubPartIndex]
                 const questions = sp?.questions ? [...sp.questions].sort((a, b) => a.order - b.order) : []
-                const text = normalizeDisplayText(questions?.[0]?.questionText || currentSection?.description || "")
+                const activeQuestion = currentQuestion || questions[currentQuestionIndex] || questions[0]
+                const text = normalizeDisplayText(activeQuestion?.questionText || currentSection?.description || "")
                 return text ? (
-                  <div className="border-b border-gray-300 px-3 sm:px-4 md:px-6 py-3 sm:py-4">
-                    <h3 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-gray-900 text-center whitespace-pre-line leading-relaxed break-words">
+                  <div className="border-b border-[#242424] px-4 py-4 md:px-6">
+                    <h3 className="whitespace-pre-line break-words text-center text-[length:var(--reading-heading-size)] font-semibold leading-[var(--reading-heading-line-height)] text-[#242424]">
                       {text}
                     </h3>
                   </div>
                 ) : null
               })()}
               <div className="grid grid-cols-1 md:grid-cols-2">
-                <div className="p-3 sm:p-4 md:p-5 lg:p-6 md:border-r border-gray-300 border-b md:border-b-0">
-                  <h4 className="text-xs sm:text-sm md:text-base lg:text-lg font-bold mb-2 sm:mb-3 text-gray-900">Lehine</h4>
-                  <ul className="list-disc list-inside space-y-2 sm:space-y-2.5 md:space-y-3 text-gray-800 text-xs sm:text-sm md:text-base lg:text-lg leading-relaxed">
+                <div className="border-b border-[#242424] p-4 md:border-b-0 md:border-r md:p-6">
+                  <h4 className="mb-3 text-[length:var(--reading-body-size)] font-semibold leading-[var(--reading-body-line-height)] text-[#242424]">Lehine</h4>
+                  <ul className="list-inside list-disc space-y-2 text-[length:var(--reading-body-size)] leading-[var(--reading-body-line-height)] text-[#242424]">
                     {(currentSection as any)?.points?.filter((p: any) => p.type === 'ADVANTAGE')?.flatMap((p: any) => p.example || []).sort((a: any, b: any) => (a.order||0)-(b.order||0)).map((ex: any, idx: number) => (
                       <li key={`adv-${idx}`} className="pl-1 break-words">{normalizeDisplayText(ex.text)}</li>
                     ))}
                   </ul>
                 </div>
-                <div className="p-3 sm:p-4 md:p-5 lg:p-6">
-                  <h4 className="text-xs sm:text-sm md:text-base lg:text-lg font-bold mb-2 sm:mb-3 text-gray-900">Aleyhine</h4>
-                  <ul className="list-disc list-inside space-y-2 sm:space-y-2.5 md:space-y-3 text-gray-800 text-xs sm:text-sm md:text-base lg:text-lg leading-relaxed">
+                <div className="p-4 md:p-6">
+                  <h4 className="mb-3 text-[length:var(--reading-body-size)] font-semibold leading-[var(--reading-body-line-height)] text-[#242424]">Aleyhine</h4>
+                  <ul className="list-inside list-disc space-y-2 text-[length:var(--reading-body-size)] leading-[var(--reading-body-line-height)] text-[#242424]">
                     {(currentSection as any)?.points?.filter((p: any) => p.type === 'DISADVANTAGE')?.flatMap((p: any) => p.example || []).sort((a: any, b: any) => (a.order||0)-(b.order||0)).map((ex: any, idx: number) => (
                       <li key={`dis-${idx}`} className="pl-1 break-words">{normalizeDisplayText(ex.text)}</li>
                     ))}
@@ -2831,8 +3242,7 @@ export default function ImprovedSpeakingTest() {
             </div>
               ) : (
                 <h2
-                  className="font-medium text-gray-800 text-center leading-relaxed max-w-3xl mx-auto px-2 sm:px-4 break-words"
-                  style={{ fontSize: "clamp(1.25rem, 5.1vw, 2.25rem)" }}
+                  className="mx-auto max-w-3xl break-words px-2 text-center text-[length:var(--reading-body-size)] font-normal leading-[var(--reading-body-line-height)] text-[#242424] sm:px-4"
                 >
                   {normalizeDisplayText(currentQuestion?.questionText)}
                 </h2>
@@ -2841,209 +3251,66 @@ export default function ImprovedSpeakingTest() {
           )}
         </AnimatePresence>
 
-
-        {/* Hide microphone button until TTS finishes and preparation time completes */}
-        {!isPlayingInstructions && !isPlayingTTS && !isPrepRunning ? (
-          <div className="relative mt-2 sm:mt-4 md:mt-6 min-h-[120px] sm:min-h-[140px] flex items-center justify-center">
-            <div
-              className="relative flex items-center justify-center"
-              style={{ width: "clamp(96px, 24vw, 152px)", height: "clamp(96px, 24vw, 152px)" }}
-            >
-              {isRecording && !isPaused && (
-                <>
-                  <span
-                    className="absolute left-1/2 top-1/2 w-full h-full -translate-x-1/2 -translate-y-1/2 rounded-full bg-red-400 opacity-30 animate-ping"
-                    style={{ animationDuration: "2.5s" }}
-                  />
-                  <span
-                    className="absolute left-1/2 top-1/2 w-[118%] h-[118%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-red-500 opacity-20 animate-ping"
-                    style={{ animationDuration: "3s" }}
-                  />
-                </>
-              )}
-              <motion.div
-                className={`speaking-mic-core relative z-10 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 ${
-                  isRecording
-                    ? "bg-red-600"
-                    : isProcessingSpeechToText
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-gradient-to-br from-red-400 to-red-600"
-                }`}
-                style={{ width: "clamp(74px, 19vw, 128px)", height: "clamp(74px, 19vw, 128px)" }}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.4, type: "spring", stiffness: 200 }}
-              >
-                <Mic className="text-white" style={{ width: "clamp(28px, 7.2vw, 48px)", height: "clamp(28px, 7.2vw, 48px)" }} />
-              </motion.div>
-            </div>
-          </div>
-        ) : (
-          /* Show loading state when TTS is playing or preparation is running */
-          (isPlayingTTS || isPrepRunning) && !isPlayingInstructions && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="relative mt-2 sm:mt-4 md:mt-6 min-h-[120px] sm:min-h-[140px] flex flex-col items-center justify-center"
-            >
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1.4, repeat: Infinity, ease: "linear" }}
-                className="w-16 h-16 sm:w-20 sm:h-20 aspect-square shrink-0 mx-auto mb-4"
-              >
-                <svg viewBox="0 0 100 100" className="w-full h-full">
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="42"
-                    fill="none"
-                    stroke="#fecaca"
-                    strokeWidth="8"
-                  />
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="42"
-                    fill="none"
-                    stroke="#dc2626"
-                    strokeWidth="8"
-                    strokeLinecap="round"
-                    strokeDasharray="80 264"
-                    transform="rotate(-90 50 50)"
-                  />
-                </svg>
-              </motion.div>
-              <p className="text-lg sm:text-xl font-semibold text-gray-700">
-                {isPlayingTTS ? "Soru okunuyor..." : "Hazırlık süresi..."}
-              </p>
-              {isPrepRunning && (
-                <>
-                  <p className="text-2xl sm:text-3xl font-bold text-red-600 mt-2">
-                    {formatTime(prepSeconds)}
-                  </p>
-                  {(currentSection?.type === "PART2" || currentSection?.type === "PART3") && (
-                    <button
-                      type="button"
-                      onClick={skipPreparationAndStart}
-                      className="mt-6 px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs sm:text-sm font-semibold hover:bg-red-700 transition-colors"
-                    >
-                      Hazırlığı Geç ve Başla
-                    </button>
-                  )}
-                </>
-              )}
-            </motion.div>
-          )
-        )}
-
-        {/* {(() => {
-          const key = currentQuestion?.id || currentSection?.id || `${currentSectionIndex}`
-          return recordings.has(key)
-        })() && (
+        {!isPlayingInstructions && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-4 flex items-center gap-2 text-green-600 font-bold"
-          >
-            <CheckCircle className="w-5 h-5" />
-            <span>Recorded</span>
-          </motion.div>
-        )} */}
-
-        {isPlayingInstructions && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-4 flex items-center gap-2 text-red-600 font-bold"
-          >
-            <Volume2 className="w-5 h-5" />
-            <span>Talimatlar oynatılıyor...</span>
-          </motion.div>
-        )}
-
-        {isProcessingSpeechToText && (
-          <div className="mt-4 text-center">
-            <p className="text-sm text-gray-500">İşleniyor...</p>
-          </div>
-        )}
-{/* 
-        {isPlayingTTS && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-4 flex items-center gap-2 text-green-600 font-bold"
-          >
-            <Volume2 className="w-5 h-5" />
-            <span>Playing question audio...</span>
-          </motion.div>
-        )} */}
-
-        <div className="flex flex-wrap items-center gap-4 mt-8">
-          {!isExamMode && (
-            <motion.button
-              initial="initial"
-              whileHover="hover"
-              whileTap="tap"
-              onClick={() => setIsTestComplete(true)}
-              className="px-6 py-3 text-sm bg-white border-2 border-red-200 text-red-600 rounded-xl hover:bg-red-50 font-bold transition-all duration-200"
-            >
-              Test Bitir
-            </motion.button>
-          )}
-
-          {/* <motion.button
-            onClick={() => {
-              if (isPlayingInstructions) {
-                // Skip only the instructions, then start prep for current section
-                stopAllAudio()
-                setIsPlayingInstructions(false)
-                startAfterInstructionsForCurrentSection()
-              } else {
-                // Skip the current question entirely
-                nextQuestion(true)
-              }
-            }}
-            className={`px-8 py-3 rounded-xl cursor-pointer font-bold transition-all duration-200 bg-yellow-400 text-black hover:bg-yellow-500 shadow-lg`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.6 }}
-          >
-            Atla
-          </motion.button>
-
-          <motion.button
-            onClick={() => nextQuestion(false)}
-            disabled={isRecording || isPlayingInstructions || isPrepRunning || isPlayingTTS}
-            className={`px-8 py-3 rounded-xl font-bold transition-all duration-200 ${
-              (isRecording || isPlayingInstructions || isPrepRunning)
-                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                : "bg-red-600 text-white hover:bg-red-700 shadow-lg"
+            className={`mt-2 flex min-h-[72px] w-full max-w-xl flex-wrap items-center gap-3 rounded-md border px-4 py-3 ${
+              phaseError ? "border-[#efb5b0] bg-[#fff7f6]" : "border-[#dededb] bg-[#fafaf9]"
             }`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.6 }}
           >
-            Sonraki ›
-          </motion.button> */}
+            <div className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${
+              isRecording ? "bg-[#dc2626] text-white" : "bg-[#eeeeec] text-[#565550]"
+            }`}>
+              {isRecording && !isPaused && (
+                <span
+                  className="speaking-recording-pulse pointer-events-none absolute inset-0 rounded-full bg-[#dc2626]"
+                  aria-hidden="true"
+                />
+              )}
+              {isPlayingTTS ? <Volume2 className="relative h-5 w-5" /> : <Mic className="relative h-5 w-5" />}
+            </div>
+
+            <div className="min-w-[8rem] flex-1">
+              <p className={`break-words text-[15px] font-semibold leading-5 ${phaseError ? "text-[#b42318]" : "text-[#242424]"}`}>
+                {isAnswerRecording
+                  ? "Kaydediliyor"
+                  : phaseLabel || (isPlayingTTS ? "Soru okunuyor" : "Kayıt otomatik başlayacak")}
+              </p>
+            </div>
+
+            {phaseError && (
+              <button type="button" onClick={() => void retryCurrentStep()}
+                disabled={isRetryingRecording || isFinalizingRecording}
+                className="rounded border border-[#dededb] bg-white px-3 py-2 text-sm disabled:opacity-50">
+                {isRetryingRecording ? "Yeniden deneniyor…" : pendingRecordingRef.current ? "Ses çözümlemesini yeniden dene" : "Yeniden dene"}
+              </button>
+            )}
+
+            {(isPrepRunning || isAnswerRecording) && (
+              <span className="shrink-0 font-mono text-xl font-semibold tabular-nums text-[#242424]">
+                {formatTime(isPrepRunning ? prepSeconds : timeLeft)}
+              </span>
+            )}
+
+            {isPrepRunning && (currentSection?.type === "PART2" || currentSection?.type === "PART3") && (
+              <button
+                type="button"
+                onClick={skipPreparationAndStart}
+                className="flex h-8 shrink-0 items-center justify-center whitespace-nowrap rounded border border-[#dededb] bg-white px-3 text-[13px] font-semibold text-[#37352f] transition-colors hover:bg-[#f7f7f5]"
+              >
+                Hazırlığı Geç
+              </button>
+            )}
+          </motion.div>
+        )}
         </div>
       </main>
 
-
-      {/* Bottom timer: show only while answering */}
-      {!isPrepRunning && !isPlayingTTS && !isPlayingInstructions && (
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.6 }}
-          className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 lg:bottom-8 lg:right-8 z-[900] bg-transparent border-0 shadow-none rounded-none p-0 m-0 pointer-events-none"
-        >
-          <div className="text-3xl sm:text-4xl lg:text-6xl font-bold text-gray-800 font-mono bg-transparent border-0 shadow-none">
-            {formatTime(timeLeft)}
-          </div>
-        </motion.div>
-      )}
-
-
+      <FullscreenReturnDialog
+        open={shouldShowFullscreenPrompt}
+        onReturn={enterFullscreen}
+      />
     </motion.div>
   )
 }

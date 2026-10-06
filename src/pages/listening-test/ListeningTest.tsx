@@ -20,9 +20,9 @@ export default function ListeningTestPage() {
          return () => {
            // leave as-is; final test pages will clean up
          };
-     }, []);
+    }, []);
     if (!testId) {
-        navigate("/test");
+        navigate("/app/test");
         return null;
     }
 

@@ -1,10 +1,20 @@
+import { reportMockAccessFailure } from '@/utils/mock-access-recovery';
+import { notifyAccessAllowanceChanged } from '@/utils/access-events';
 import axiosPrivate from '@/config/api';
 import { toast } from 'sonner';
 import { normalizeDisplayText } from '@/utils/text';
+import { getOverallSectionTimerErrorMessage } from './overallTest.service';
+import type { MockSubmitMode } from './overallTest.service';
+import {
+  normalizeSpeakingSubmissionResponse,
+  selectRecentRecoverableSpeakingSubmission,
+  type RecoverableSpeakingSubmission,
+} from './speakingSubmissionRecovery';
 
 export interface QuestionAnswer {
   questionId: string;
   userAnswer: string;
+  audioClientId?: string;
 }
 
 export interface SubPartSubmission {
@@ -26,16 +36,25 @@ export interface SpeakingSubmissionData {
   speakingTestId: string;
   parts: PartSubmission[];
   sessionToken?: string;
+  submitMode?: MockSubmitMode;
 }
 
 export interface SubmissionResponse {
   success: boolean;
   submissionId?: string;
+  overallTestId?: string;
+  evaluationStatus?: "PENDING" | "COMPLETED" | "FAILED";
   error?: string;
 }
 
 const RETRY_ACTION_GUIDE =
-  "Cevaplariniz bu tarayicida guvenle saklandi.";
+  "CevaplarÄ±nÄ±z bu tarayÄ±cÄ±da saklandÄ±.";
+
+const DEBUG_SPEAKING_API = import.meta.env.VITE_DEBUG_API === "true";
+
+const debugSpeakingApi = (event: string, details?: Record<string, unknown>) => {
+  if (DEBUG_SPEAKING_API) console.debug("[speaking-api]", event, details || {});
+};
 
 const appendRetryGuide = (message: string): string => {
   const base = String(message || "").trim();
@@ -89,23 +108,73 @@ const extractSubmissionId = (payload: any): string | undefined => {
   return undefined;
 };
 
+const isAmbiguousSubmissionFailure = (error: any): boolean => {
+  const status = Number(error?.response?.status || 0);
+  return error?.code === 'ECONNABORTED' || status === 408 || status >= 500;
+};
+
+const recoverRecentSpeakingSubmission = async (
+  speakingTestId: string,
+  submissionStartedAt: number,
+  expectedOverallTestId?: string,
+): Promise<RecoverableSpeakingSubmission | undefined> => {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      const response = await axiosPrivate.get(
+        '/api/speaking-submission/findByUserId',
+        {
+          params: { page: 1, limit: 5 },
+          timeout: 10_000,
+        },
+      );
+      const recovered = selectRecentRecoverableSpeakingSubmission(
+        response.data,
+        speakingTestId,
+        submissionStartedAt,
+        expectedOverallTestId,
+      );
+      if (recovered) return recovered;
+    } catch {
+      // The original submit error remains authoritative if recovery is unavailable.
+    }
+
+    if (attempt < 4) {
+      await new Promise((resolve) => setTimeout(resolve, 1_000));
+    }
+  }
+
+  return undefined;
+};
+
 export const speakingSubmissionService = {
   /**
    * Submit the complete speaking test results
    * @param submissionData - The formatted submission data
    * @returns Promise with submission result
-   */
+  */
   submitSpeakingTest: async (submissionData: SpeakingSubmissionData): Promise<SubmissionResponse> => {
+    const submissionStartedAt = Date.now();
+    let expectedOverallTestId: string | undefined;
     try {
       const { overallTestTokenStore, overallTestFlowStore } = await import('./overallTest.service');
       const isOverallFlowActive =
         overallTestFlowStore.hasActive() || !!overallTestFlowStore.getOverallId();
+      expectedOverallTestId = overallTestFlowStore.getOverallId() || undefined;
       const embeddedToken =
         submissionData.sessionToken ||
         (isOverallFlowActive
           ? overallTestTokenStore.getByTestId(submissionData.speakingTestId)
           : null);
-      const payload = embeddedToken ? { ...submissionData, sessionToken: embeddedToken } : submissionData;
+      if (!embeddedToken) {
+        const message = "Bu sÄ±nav oturumu baÅŸlatÄ±lmadÄ±. LÃ¼tfen testi yeniden baÅŸlatÄ±n.";
+        toast.error(message);
+        return {
+          success: false,
+          error: "SESSION_TOKEN_REQUIRED",
+        };
+      }
+
+      const payload = { ...submissionData, sessionToken: embeddedToken };
 
       const response = await axiosPrivate.post('/api/speaking-submission', payload, {
         headers: {
@@ -115,37 +184,79 @@ export const speakingSubmissionService = {
       });
 
       if (response.data && (response.data.success || response.status === 200 || response.status === 201)) {
-        // toast.success('KonuÅŸma testi baÅŸarÄ±yla gÃ¶nderildi!');
-        const submissionId = extractSubmissionId(response.data);
+        notifyAccessAllowanceChanged();
+      // toast.success('KonuÅŸma testi baÅŸarÄ±yla gÃ¶nderildi!');
+        const normalized = normalizeSpeakingSubmissionResponse(
+          response.data,
+          overallTestFlowStore.getOverallId(),
+        );
+        const submissionId = normalized?.submissionId || extractSubmissionId(response.data);
         const result = {
           success: true,
-          submissionId
+          submissionId,
+          overallTestId: normalized?.overallTestId,
+          evaluationStatus: normalized?.evaluationStatus,
         };
         try { if (embeddedToken) overallTestTokenStore.clearByTestId(submissionData.speakingTestId); } catch {}
         return result;
       } else {
         return {
           success: false,
-          error: 'Test gönderilemedi'
+          error: 'Test gÃ¶nderilemedi'
         };
       }
     } catch (error: any) {
-      console.error('Speaking test submission error:', error);
+      notifyAccessAllowanceChanged();
+      reportMockAccessFailure(error, { scope: 'MOCK_SPEAKING', targetId: submissionData.speakingTestId });
+      debugSpeakingApi("submission-error", {
+        status: error?.response?.status,
+        code: error?.code,
+      });
       
-      let errorMessage = 'Test gönderilirken hata oluþtu';
+      let errorMessage = 'Test gÃ¶nderilirken hata oluÅŸtu';
+      const timerCode = error?.response?.data?.code;
+      if (timerCode === "TEST_TIME_EXPIRED" || timerCode === "SECTION_NOT_STARTED" || timerCode === "SESSION_TOKEN_REQUIRED") {
+        errorMessage = getOverallSectionTimerErrorMessage(error);
+        toast.error(errorMessage);
+        return {
+          success: false,
+          error: errorMessage,
+        };
+      }
+      if (isAmbiguousSubmissionFailure(error)) {
+        const recoveredSubmission = await recoverRecentSpeakingSubmission(
+          submissionData.speakingTestId,
+          submissionStartedAt,
+          expectedOverallTestId,
+        );
+        if (recoveredSubmission) {
+          let fallbackOverallTestId: string | undefined;
+          try {
+            const { overallTestFlowStore, overallTestTokenStore } = await import('./overallTest.service');
+            fallbackOverallTestId = overallTestFlowStore.getOverallId() || undefined;
+            overallTestTokenStore.clearByTestId(submissionData.speakingTestId);
+          } catch {}
+          return {
+            success: true,
+            submissionId: recoveredSubmission.submissionId,
+            overallTestId: recoveredSubmission.overallTestId || fallbackOverallTestId,
+            evaluationStatus: recoveredSubmission.evaluationStatus,
+          };
+        }
+      }
       // Prefer backend message (more actionable) over generic status buckets.
       if (error.response?.data?.message) {
         errorMessage = normalizeDisplayText(error.response.data.message);
       } else if (error.response?.data?.error) {
         errorMessage = normalizeDisplayText(error.response.data.error);
       } else if (error.response?.status === 400) {
-        errorMessage = 'Geçersiz test verisi';
+        errorMessage = 'KonuÅŸma cevabÄ± kontrol edilemedi';
       } else if (error.response?.status === 401) {
-        errorMessage = 'Oturum tarafinda gecici bir hata olustu';
+        errorMessage = 'Oturum yenilenemedi. LÃ¼tfen tekrar giriÅŸ yapÄ±n.';
       } else if (error.response?.status === 413) {
-        errorMessage = 'Test verisi çok büyük';
+        errorMessage = 'KonuÅŸma kaydÄ± Ã§ok uzun. LÃ¼tfen tekrar deneyin.';
       } else if (error.code === 'ECONNABORTED') {
-        errorMessage = 'Ýþlem zaman aþýmýna uðradý';
+        errorMessage = 'Ä°ÅŸlem uzun sÃ¼rdÃ¼. LÃ¼tfen tekrar deneyin.';
       }
 
       errorMessage = normalizeDisplayText(errorMessage);
@@ -171,9 +282,54 @@ export const speakingSubmissionService = {
     const res = await axiosPrivate.get(`/api/speaking-submission/${id}`)
      return res.data?.data || res.data || null
   } catch (error: any) {
-    console.error('Failed to fetch speaking submission', error)
-     toast.error('Konuþma sonucu bulunamadý')
+    debugSpeakingApi("fetch-submission-error", {
+      status: error?.response?.status,
+      code: error?.code,
+    })
+     toast.error('KonuÅŸma sonucu bulunamadÄ±')
       return null
+    }
+  },
+
+  retryFeedback: async (id: string): Promise<void> => {
+    try {
+      await axiosPrivate.post(
+        `/api/speaking-submission/${id}/retry-feedback`,
+        {},
+        { timeout: 180000 },
+      );
+      toast.success('KonuÅŸma deÄŸerlendirmeniz hazÄ±rlandÄ±.');
+    } catch (error: any) {
+      const code = String(error?.response?.data?.code || '');
+      const message =
+        code === 'SPEAKING_FEEDBACK_ALREADY_READY'
+          ? 'Bu konuÅŸma deÄŸerlendirmesi zaten hazÄ±r.'
+          : code === 'SPEAKING_FEEDBACK_RETRY_IN_PROGRESS'
+            ? 'DeÄŸerlendirmeniz zaten hazÄ±rlanÄ±yor.'
+            : 'DeÄŸerlendirme tamamlanamadÄ±. LÃ¼tfen tekrar deneyin.';
+      toast.error(message);
+      throw error;
+    }
+  },
+
+  retryEvaluation: async (id: string): Promise<void> => {
+    try {
+      await axiosPrivate.post(
+        `/api/speaking-submission/${id}/retry-evaluation`,
+        {},
+        { timeout: 180000 },
+      );
+      toast.success('KonuÅŸma deÄŸerlendirmeniz yeniden baÅŸlatÄ±ldÄ±.');
+    } catch (error: any) {
+      const code = String(error?.response?.data?.code || '');
+      const message =
+        code === 'SPEAKING_EVALUATION_RETRY_CONFLICT'
+          ? 'DeÄŸerlendirmeniz zaten hazÄ±rlanÄ±yor.'
+          : code === 'SPEAKING_EVALUATION_RETRY_NOT_AVAILABLE'
+            ? 'Bu konuÅŸma yeniden deÄŸerlendirilemiyor.'
+            : 'DeÄŸerlendirme yeniden baÅŸlatÄ±lamadÄ±. LÃ¼tfen tekrar deneyin.';
+      toast.error(message);
+      throw error;
     }
   },
  
@@ -254,24 +410,24 @@ export const speakingSubmissionService = {
    */
   formatAssessmentFeedback: (assessment: any): string => {
     const formattedFeedback = `
-GENEL SONUÇ:
- Genel CEFR Puaný: ${assessment.cefr_puan ?? 0}/75
+GENEL SONUÃ‡:
+ Genel CEFR PuanÄ±: ${assessment.cefr_puan ?? 0}/75
  Belirlenen Seviye: ${assessment.seviye ?? 'Belirlenmedi'}
 
-[BÖLÜM 1.1 ANALÝZÝ]
-${assessment.bolumler?.bolum_1_1?.degerlendirme ?? 'Deðerlendirme yapýlamadý.'}
+[BÃ–LÃœM 1.1 ANALÄ°ZÄ°]
+${assessment.bolumler?.bolum_1_1?.degerlendirme ?? 'DeÄŸerlendirme yapÄ±lamadÄ±.'}
 
-[BÖLÜM 1.2 ANALÝZÝ]
-${assessment.bolumler?.bolum_1_2?.degerlendirme ?? 'Deðerlendirme yapýlamadý.'}
+[BÃ–LÃœM 1.2 ANALÄ°ZÄ°]
+${assessment.bolumler?.bolum_1_2?.degerlendirme ?? 'DeÄŸerlendirme yapÄ±lamadÄ±.'}
 
-[BÖLÜM 2 ANALÝZÝ]
-${assessment.bolumler?.bolum_2?.degerlendirme ?? 'Deðerlendirme yapýlamadý.'}
+[BÃ–LÃœM 2 ANALÄ°ZÄ°]
+${assessment.bolumler?.bolum_2?.degerlendirme ?? 'DeÄŸerlendirme yapÄ±lamadÄ±.'}
 
-[BÖLÜM 3 ANALÝZÝ]
-${assessment.bolumler?.bolum_3?.degerlendirme ?? 'Deðerlendirme yapýlamadý.'}
+[BÃ–LÃœM 3 ANALÄ°ZÄ°]
+${assessment.bolumler?.bolum_3?.degerlendirme ?? 'DeÄŸerlendirme yapÄ±lamadÄ±.'}
 
-GENEL DEÐERLENDÝRME:
-${assessment.genel_degerlendirme ?? 'Genel Deðerlendirme yapýlamadý.'}
+GENEL DEÄžERLENDÄ°RME:
+${assessment.genel_degerlendirme ?? 'Genel DeÄŸerlendirme yapÄ±lamadÄ±.'}
 `.trim();
 
     return formattedFeedback;
@@ -284,12 +440,12 @@ ${assessment.genel_degerlendirme ?? 'Genel Deðerlendirme yapýlamadý.'}
    */
   validateSubmissionData: (submissionData: SpeakingSubmissionData): boolean => {
     if (!submissionData.speakingTestId) {
-      toast.error('Test ID bulunamadý');
+      toast.error('Test ID bulunamadÄ±');
       return false;
     }
 
     if (!submissionData.parts || submissionData.parts.length === 0) {
-      toast.error('Test cevaplarý bulunamadý');
+      toast.error('Test cevaplarÄ± bulunamadÄ±');
       return false;
     }
 

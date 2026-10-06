@@ -1,109 +1,148 @@
-import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  AlertTriangle,
-  BookOpen,
-  Clock3,
-  Headphones,
-  MessageCircle,
-  Pencil,
-  ShieldAlert,
-  Volume2,
-} from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { MicrophoneCheck } from "@/pages/speaking-test/components/MicrophoneCheck";
-import { overallTestFlowStore, overallTestService, type TestType } from "@/services/overallTest.service";
+import { speakingMicrophoneStorageKey } from "@/services/speakingRecordingLifecycle";
+import {
+  getOverallSectionTimerErrorMessage,
+  overallTestFlowStore,
+  overallTestService,
+  overallTestTokenStore,
+  type TestType,
+} from "@/services/overallTest.service";
+import { useOverallSectionHeartbeat } from "@/hooks/use-overall-section-heartbeat";
+import {
+  listeningPreparationStore,
+  verifyListeningAudioBlob,
+} from "@/services/listeningPreparation.store";
+import WritingCharacterPractice from "./components/WritingCharacterPractice";
+import { useWritingInputMode } from "@/components/writing-test/use-writing-input-mode";
+import ListeningSoundCheck from "./components/ListeningSoundCheck";
+import {
+  activateExamPresentation,
+  clearExamPresentation,
+  getExamFullscreenElement,
+  requestExamFullscreen,
+} from "@/utils/examFullscreen";
+import { getSharedExamAudioController } from "@/utils/examAudio";
+import { formatListeningPreparationDuration, TEST_SECTION_DURATION } from "./test-section-info";
+import "./OverallSectionReadyPage.css";
 
 type SectionGuide = {
   title: string;
-  subtitle: string;
   duration: string;
   taskInfo: string;
-  icon: ComponentType<{ className?: string }>;
-  technicalWarnings: string[];
+  checklist: string[];
+  questionDistribution?: readonly {
+    label: string;
+    summary: string;
+    detail?: string;
+  }[];
   needsSoundTest?: boolean;
   needsMicCheck?: boolean;
 };
 
-const COMMON_TECHNICAL_WARNINGS = [
-  "Sayfayı yenilemeyin.",
-  "Tarayıcıyı kapatmayın.",
-];
-
 const sectionGuides: Record<TestType, SectionGuide> = {
   LISTENING: {
-    title: "Dinleme Bölümü",
-    subtitle: "Ses kaydını dikkatle takip edin ve cevapları zamanında işaretleyin.",
-    duration: "Yaklaşık 40-60 dakika",
-    taskInfo: "Toplam 35 soru (6 bölüm)",
-    icon: Headphones,
+    title: "Dinleme",
+    duration: TEST_SECTION_DURATION.LISTENING,
+    taskInfo: "6 dinleme metni · 35 soru",
+    questionDistribution: [8, 6, 4, 5, 6, 6].map((count, index) => ({
+      label: `${index + 1}. bölüm`,
+      summary: `${count} soru`,
+    })),
     needsSoundTest: true,
-    technicalWarnings: [
-      "Kulaklık kullanmanız önerilir.",
-      "Başlamadan önce hoparlör/kulaklık sesini test edin.",
+    checklist: [
+      "Kayıttaki yönergeleri takip edip cevaplarınızı işaretleyin.",
+      "Kayıt bitince cevaplarınızı kontrol etmek için 10 dakikanız var.",
+      "Süre durdurulamaz.",
     ],
   },
   READING: {
-    title: "Okuma Bölümü",
-    subtitle: "Metinleri stratejik okuyup zamanı dengeli kullanın.",
-    duration: "60 dakika",
-    taskInfo: "Toplam 35 soru (5 bölüm)",
-    icon: BookOpen,
-    technicalWarnings: [
-      "Zor soruya takılırsanız ilerleyip daha sonra geri dönün.",
-      "Her parçaya dengeli süre ayırın.",
+    title: "Okuma",
+    duration: TEST_SECTION_DURATION.READING,
+    taskInfo: "5 okuma metni · 35 soru",
+    questionDistribution: [6, 8, 6, 9, 6].map((count, index) => ({
+      label: `${index + 1}. bölüm`,
+      summary: `${count} soru`,
+    })),
+    checklist: [
+      "Metinleri okuyup cevaplarınızı işaretleyin.",
+      "Bu bölümde cevaplarınızı değiştirebilirsiniz.",
+      "Süre durdurulamaz.",
     ],
   },
   WRITING: {
-    title: "Yazma Bölümü",
-    subtitle: "Planlı yazın, paragraf düzenini koruyun ve süreyi yönetin.",
-    duration: "60 dakika",
-    taskInfo: "Toplam 3 görev",
-    icon: Pencil,
-    technicalWarnings: [
-      "Görevi dikkatlice okuyup kısa plan yaptıktan sonra yazmaya başlayın.",
-      "Son dakikalarda yazım ve dil bilgisi kontrolü yapın.",
+    title: "Yazma",
+    duration: TEST_SECTION_DURATION.WRITING,
+    taskInfo: "3 görev",
+    questionDistribution: [
+      { label: "Görev 1.1", summary: "50 kelime", detail: "Samimi e-posta" },
+      { label: "Görev 1.2", summary: "120–150 kelime", detail: "Resmî e-posta" },
+      { label: "Görev 2", summary: "180–200 kelime", detail: "Blog / forum / dergi" },
+    ],
+    checklist: [
+      "Süre üç görev için ortaktır ve durdurulamaz.",
     ],
   },
   SPEAKING: {
-    title: "Konuşma Bölümü",
-    subtitle: "Net konuşun, soruya odaklı kalın ve düzenli cevap verin.",
-    duration: "Yaklaşık 10 dakika",
-    taskInfo: "Toplam 3 bölüm",
-    icon: MessageCircle,
+    title: "Konuşma",
+    duration: TEST_SECTION_DURATION.SPEAKING,
+    taskInfo: "4 bölüm",
+    questionDistribution: [
+      { label: "Bölüm 1.1", summary: "3 soru", detail: "Kişisel sorular" },
+      { label: "Bölüm 1.2", summary: "3 soru", detail: "İki görsel" },
+      { label: "Bölüm 2", summary: "3 soru", detail: "Tek yanıt" },
+      { label: "Bölüm 3", summary: "1 konu", detail: "Lehte / aleyhte" },
+    ],
     needsMicCheck: true,
-    technicalWarnings: [
-      "Mikrofon ve kamera izni açık olmalıdır.",
-      "Mikrofon testini tamamlamadan bölümü başlatmayın.",
+    checklist: [
+      "Hazırlık ve konuşma sürelerini sınav ekranından takip edin. Kayıt otomatik başlar; süre durdurulamaz.",
     ],
   },
 };
 
-const formatStep = (step: number, total: number) => {
-  if (total <= 0) return "";
-  return `${Math.min(step, total)} / ${total}`;
-};
+type ListeningPreparationState = "idle" | "loading" | "ready" | "error";
+type PreparationPresentationState = "checking" | "ready" | "blocked";
 
 export default function OverallSectionReadyPage() {
   const navigate = useNavigate();
   const pending = overallTestFlowStore.getPendingNextSection();
+  useOverallSectionHeartbeat(pending?.next?.testId);
   const nextType = pending?.next?.testType as TestType | undefined;
   const section = nextType ? sectionGuides[nextType] : null;
+  const writingTestId = nextType === "WRITING" ? pending?.next?.testId ?? null : null;
+  const [writingInputMode, setWritingInputMode] = useWritingInputMode(
+    writingTestId,
+    writingTestId ? overallTestTokenStore.getByTestId(writingTestId) : null,
+  );
 
   const speakingMicStorageKey =
     pending?.next?.testType === "SPEAKING" && pending?.next?.testId
       ? `speaking_mic_checked_${pending.next.testId}`
       : null;
 
-  const soundTestRef = useRef<HTMLAudioElement | null>(null);
-  const [isPlayingSoundTest, setIsPlayingSoundTest] = useState(false);
+  const isStartingSectionRef = useRef(false);
+  const [isListeningSoundReady, setIsListeningSoundReady] = useState(false);
   const [isSpeakingMicReady, setIsSpeakingMicReady] = useState(false);
+  const [isStartingSection, setIsStartingSection] = useState(false);
   const [showExitConfirmModal, setShowExitConfirmModal] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
+  const [listeningPreparationState, setListeningPreparationState] =
+    useState<ListeningPreparationState>("idle");
+  const [listeningPreparationError, setListeningPreparationError] =
+    useState<string | null>(null);
+  const [listeningPreparationAttempt, setListeningPreparationAttempt] =
+    useState(0);
+  const [listeningDuration, setListeningDuration] =
+    useState<string>(TEST_SECTION_DURATION.LISTENING);
+  const [presentationState, setPresentationState] =
+    useState<PreparationPresentationState>("checking");
+  const isPresentationReady = presentationState === "ready";
 
   const stepInfo = useMemo(() => {
     const total = Math.max(0, pending?.totalCount || 0);
@@ -111,6 +150,7 @@ export default function OverallSectionReadyPage() {
     const upcoming = total > 0 ? Math.min(total, completed + 1) : 0;
     return { total, completed, upcoming };
   }, [pending]);
+  const isPreparationOnly = stepInfo.completed === 0;
 
   useEffect(() => {
     if (!speakingMicStorageKey) {
@@ -118,57 +158,185 @@ export default function OverallSectionReadyPage() {
       return;
     }
 
-    setIsSpeakingMicReady(false);
     try {
-      sessionStorage.removeItem(speakingMicStorageKey);
-    } catch {}
+      setIsSpeakingMicReady(
+        sessionStorage.getItem(speakingMicStorageKey) === "1",
+      );
+    } catch {
+      setIsSpeakingMicReady(false);
+    }
   }, [speakingMicStorageKey]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    let mounted = true;
+    void clearExamPresentation().then((cleared) => {
+      if (!mounted) return;
+      setPresentationState(
+        cleared && !getExamFullscreenElement() ? "ready" : "blocked",
+      );
+    });
+
     return () => {
-      if (soundTestRef.current) {
-        soundTestRef.current.pause();
-        soundTestRef.current = null;
-      }
+      mounted = false;
     };
   }, []);
 
-  const handlePlaySoundTest = async () => {
-    try {
-      if (soundTestRef.current) {
-        soundTestRef.current.pause();
+  useEffect(() => {
+    const keepPreparationWindowed = () => {
+      if (isStartingSectionRef.current) return;
+      if (getExamFullscreenElement()) {
+        setPresentationState("checking");
       }
+      void clearExamPresentation().then((cleared) => {
+        if (isStartingSectionRef.current) return;
+        setPresentationState(
+          cleared && !getExamFullscreenElement() ? "ready" : "blocked",
+        );
+      });
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        keepPreparationWindowed();
+      }
+    };
 
-      const audio = new Audio("/start.wav");
-      audio.volume = 0.8;
-      audio.onended = () => setIsPlayingSoundTest(false);
-      audio.onerror = () => {
-        setIsPlayingSoundTest(false);
-        toast.error("Ses testi oynatılamadı. Lütfen tekrar deneyin.");
-      };
-      soundTestRef.current = audio;
+    // Safari returns focus/pageshow after its microphone permission sheet.
+    // A preparation page must never inherit fullscreen from a previous route.
+    window.addEventListener("pageshow", keepPreparationWindowed);
+    window.addEventListener("focus", keepPreparationWindowed);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
-      setIsPlayingSoundTest(true);
-      await audio.play();
-    } catch {
-      setIsPlayingSoundTest(false);
-      toast.error("Tarayıcı sesi başlatamadı. Tekrar deneyin.");
+    return () => {
+      window.removeEventListener("pageshow", keepPreparationWindowed);
+      window.removeEventListener("focus", keepPreparationWindowed);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, []);
+
+  useEffect(() => {
+    const testId =
+      nextType === "LISTENING" ? String(pending?.next?.testId || "") : "";
+    setListeningDuration(TEST_SECTION_DURATION.LISTENING);
+    if (!testId) {
+      setListeningPreparationState("idle");
+      setListeningPreparationError(null);
+      return;
     }
-  };
 
-  const handleSpeakingMicSuccess = () => {
+    const sessionToken = overallTestTokenStore.getByTestId(testId);
+    if (!sessionToken) {
+      setListeningPreparationState("error");
+      setListeningPreparationError(
+        "Dinleme oturumu hazırlanamadı. Testler sayfasından tekrar deneyin.",
+      );
+      return;
+    }
+
+    const cachedPreparation = listeningPreparationStore.get(
+      testId,
+      sessionToken,
+    );
+    if (cachedPreparation) {
+      setListeningDuration(formatListeningPreparationDuration(cachedPreparation.preparedSection));
+      setListeningPreparationState("ready");
+      setListeningPreparationError(null);
+      return;
+    }
+
+    let mounted = true;
+    setListeningPreparationState("loading");
+    setListeningPreparationError(null);
+
+    Promise.all([
+      overallTestService.prepareSectionForTest(testId),
+      overallTestService.preloadListeningAudioForTest(testId),
+    ])
+      .then(async ([preparedSection, audioBlob]) => {
+        if (!preparedSection || !audioBlob) {
+          throw new Error("Dinleme sesi hazırlanamadı.");
+        }
+
+        await verifyListeningAudioBlob(audioBlob);
+        if (!mounted) return;
+
+        listeningPreparationStore.set(
+          testId,
+          sessionToken,
+          preparedSection,
+          audioBlob,
+        );
+        setListeningDuration(formatListeningPreparationDuration(preparedSection));
+        setListeningPreparationState("ready");
+      })
+      .catch((error) => {
+        if (!mounted) return;
+        listeningPreparationStore.clear(testId);
+        setListeningPreparationState("error");
+        setListeningPreparationError(
+          getOverallSectionTimerErrorMessage(error),
+        );
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [
+    listeningPreparationAttempt,
+    nextType,
+    pending?.next?.testId,
+  ]);
+
+  const handleSpeakingMicSuccess = (deviceId: string) => {
+    // Keep the speaking narration context unlocked before entering fullscreen.
+    // Safari only permits this while handling a direct user interaction.
+    void getSharedExamAudioController()
+      .unlockFromUserGesture()
+      .catch(() => undefined);
     setIsSpeakingMicReady(true);
     if (speakingMicStorageKey) {
       try {
         sessionStorage.setItem(speakingMicStorageKey, "1");
+        if (pending?.next?.testId) sessionStorage.setItem(speakingMicrophoneStorageKey(pending.next.testId), deviceId);
       } catch {}
     }
   };
 
+  const handleSpeakingMicRetry = () => {
+    if (isStartingSection || isExiting) return;
+    setIsSpeakingMicReady(false);
+    try {
+      if (speakingMicStorageKey) sessionStorage.removeItem(speakingMicStorageKey);
+      if (pending?.next?.testId) {
+        sessionStorage.removeItem(speakingMicrophoneStorageKey(pending.next.testId));
+      }
+    } catch {}
+  };
+
+  const handleExitPreparationFullscreen = async () => {
+    setPresentationState("checking");
+    const cleared = await clearExamPresentation();
+    setPresentationState(
+      cleared && !getExamFullscreenElement() ? "ready" : "blocked",
+    );
+  };
+
   const handleStart = async () => {
+    if (isStartingSection) return;
     const nextPath = pending?.next?.path;
     if (!nextPath) {
-      navigate("/test", { replace: true });
+      navigate("/app/test", { replace: true });
       return;
     }
 
@@ -177,16 +345,83 @@ export default function OverallSectionReadyPage() {
       return;
     }
 
-    try {
-      document.body.classList.add("exam-mode");
-      const doc: any = document as any;
-      const el: any = document.documentElement as any;
-      if (!doc.fullscreenElement && !doc.webkitFullscreenElement && !doc.msFullscreenElement) {
-        if (el.requestFullscreen) await el.requestFullscreen();
-        else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
-        else if (el.msRequestFullscreen) await el.msRequestFullscreen();
+    if (section?.needsSoundTest && !isListeningSoundReady) {
+      toast.error("Önce deneme sesini dinleyip duyduğunuzu onaylayın.");
+      return;
+    }
+
+    if (nextType === "WRITING" && !writingInputMode) {
+      toast.error("Önce yazma yönteminizi seçin.");
+      return;
+    }
+
+    const speakingAudioUnlock =
+      nextType === "SPEAKING"
+        ? getSharedExamAudioController().unlockFromUserGesture().catch(() => false)
+        : null;
+
+    const nextTestId = String(pending?.next?.testId || "");
+    if (nextType === "LISTENING") {
+      const sessionToken = overallTestTokenStore.getByTestId(nextTestId);
+      const listeningReady =
+        listeningPreparationState === "ready" &&
+        !!sessionToken &&
+        listeningPreparationStore.markStartRequested(
+          nextTestId,
+          sessionToken,
+        );
+
+      if (!listeningReady) {
+        toast.error(
+          listeningPreparationError ||
+            "Dinleme sesi henüz hazır değil. Lütfen bekleyin.",
+        );
+        return;
       }
-    } catch {}
+    }
+
+    isStartingSectionRef.current = true;
+    setIsStartingSection(true);
+
+    // Safari accepts fullscreen only while the start button click is still the
+    // active user gesture, so this must happen before the timer API call.
+    if (nextType !== "LISTENING") {
+      const enteredFullscreen = await requestExamFullscreen();
+      if (!enteredFullscreen) {
+        await clearExamPresentation();
+        toast.error(
+          "Tam ekran açılamadı. Tarayıcı iznini kontrol edip tekrar deneyin.",
+        );
+        isStartingSectionRef.current = false;
+        setIsStartingSection(false);
+        return;
+      }
+    }
+
+    const speakingAudioReady = await speakingAudioUnlock;
+    if (nextType === "SPEAKING" && !speakingAudioReady) {
+      await clearExamPresentation();
+      toast.error("Ses başlatılamadı. Bölümü başlat düğmesine tekrar basın.");
+      isStartingSectionRef.current = false;
+      setIsStartingSection(false);
+      return;
+    }
+
+    try {
+      await overallTestService.startSectionTimerForTest(nextTestId);
+      if (nextType === "SPEAKING") {
+        try {
+          sessionStorage.setItem(`speaking_exam_started_${nextTestId}`, "1");
+        } catch {}
+      }
+      activateExamPresentation();
+    } catch (error) {
+      await clearExamPresentation();
+      toast.error(getOverallSectionTimerErrorMessage(error));
+      isStartingSectionRef.current = false;
+      setIsStartingSection(false);
+      return;
+    }
 
     overallTestFlowStore.clearPendingNextSection();
     navigate(nextPath, { replace: true });
@@ -199,9 +434,10 @@ export default function OverallSectionReadyPage() {
   const handleConfirmExit = async () => {
     const overallId = overallTestFlowStore.getOverallId();
     if (!overallId) {
+      await clearExamPresentation();
       overallTestFlowStore.clearPendingNextSection();
       overallTestFlowStore.clear();
-      navigate("/test", { replace: true });
+      navigate("/app/test", { replace: true });
       return;
     }
 
@@ -214,145 +450,236 @@ export default function OverallSectionReadyPage() {
 
     overallTestFlowStore.clearPendingNextSection();
     overallTestFlowStore.clear();
+    await clearExamPresentation();
     setIsExiting(false);
     setShowExitConfirmModal(false);
-    navigate(`/overall-results/${overallId}`, { replace: true });
+    navigate(
+      stepInfo.completed > 0 ? `/overall-results/${overallId}` : "/app/test",
+      { replace: true },
+    );
   };
 
   if (!pending || !section) {
     return (
-      <div className="min-h-[calc(100vh-40px)] bg-gray-50 px-4 py-8 sm:py-12">
-        <div className="mx-auto max-w-2xl">
-          <Card className="border border-gray-200 bg-white shadow-sm">
-            <CardContent className="p-6 sm:p-8 text-center">
-              <h1 className="text-xl font-bold text-gray-900">Sonraki bölüm bilgisi bulunamadı</h1>
-              <p className="mt-2 text-sm text-gray-600">
-                Test akışını tekrar başlatmak için testler sayfasına dönebilirsiniz.
-              </p>
-              <Button className="mt-6 bg-red-600 hover:bg-red-700 text-white" onClick={() => navigate("/test")}>
-                Testlere Dön
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="section-ready-page">
+        <section className="section-ready-surface section-ready-notice">
+          <h1>Başlatılacak bölüm yok</h1>
+          <p>Testler sayfasından bir sınav ve çalışmak istediğiniz bölümü seçin.</p>
+          <Button className="section-ready-start" onClick={() => navigate("/app/test")}>
+            Testlere dön
+          </Button>
+        </section>
       </div>
     );
   }
 
-  const SectionIcon = section.icon;
-  const allWarnings = [...COMMON_TECHNICAL_WARNINGS, ...section.technicalWarnings];
+  if (presentationState === "checking") {
+    return (
+      <div className="section-ready-page" aria-busy="true">
+        <p className="section-ready-loading" role="status">Hazırlık ekranı açılıyor…</p>
+      </div>
+    );
+  }
+
+  if (presentationState === "blocked") {
+    return (
+      <div className="section-ready-page">
+        <section className="section-ready-surface section-ready-notice">
+          <h1>
+            Hazırlık için tam ekrandan çıkın
+          </h1>
+          <p>
+            Hazırlık kontrollerini tamamlamak için pencere görünümüne geçin.
+          </p>
+          <Button
+            type="button"
+            onClick={handleExitPreparationFullscreen}
+            className="section-ready-start"
+          >
+            Tam ekrandan çık
+          </Button>
+        </section>
+      </div>
+    );
+  }
 
   return (
-    <div className="h-[100dvh] overflow-y-auto overscroll-contain touch-pan-y bg-gray-50 px-3 sm:px-4 py-4 sm:py-8 pb-20 sm:pb-12">
-      <div className="mx-auto max-w-4xl">
-        <Card className="border border-gray-200 bg-white shadow-sm">
-          <CardContent className="p-4 sm:p-8">
-            <div className="mb-6 flex items-start justify-between gap-4">
-              <div>
-                <p className="inline-flex items-center rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-600">
-                  Bölüm Öncesi Uyarı
-                </p>
-                <h1 className="mt-3 text-2xl font-bold text-gray-900">{section.title}</h1>
-                <p className="mt-2 text-sm text-gray-600">{section.subtitle}</p>
-              </div>
-              <div className="hidden sm:flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 text-gray-600">
-                <SectionIcon className="h-6 w-6" />
-              </div>
+    <div data-section-ready-page data-skill={nextType?.toLowerCase()} data-layout="compact" className="section-ready-page">
+      <section className="section-ready-surface" aria-labelledby="section-ready-title">
+        <header className="section-ready-header">
+          <div className="section-ready-heading">
+            <div className="min-w-0">
+              <h1 id="section-ready-title">{section.title}</h1>
+              <dl className="section-ready-meta">
+                <div>
+                  <dt className="sr-only">Bölüm ve görev bilgisi</dt>
+                  <dd>{section.taskInfo}</dd>
+                </div>
+                <div>
+                  <dt className="sr-only">Süre</dt>
+                  <dd>{nextType === "LISTENING" ? listeningDuration : section.duration}</dd>
+                </div>
+              </dl>
             </div>
+          </div>
+        </header>
 
-            <div className="mb-6 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
-                <p className="text-xs text-gray-500">Sıra</p>
-                <p className="mt-1 text-sm font-semibold text-gray-900">Bölüm {formatStep(stepInfo.upcoming, stepInfo.total)}</p>
-              </div>
-              <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
-                <p className="text-xs text-gray-500">Süre Bilgisi</p>
-                <p className="mt-1 flex items-center gap-1.5 text-sm font-semibold text-gray-900">
-                  <Clock3 className="h-4 w-4 text-gray-500" />
-                  {section.duration}
-                </p>
-              </div>
-              <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
-                <p className="text-xs text-gray-500">Soru / Görev</p>
-                <p className="mt-1 text-sm font-semibold text-gray-900">{section.taskInfo}</p>
-              </div>
-            </div>
+        <div className="section-ready-body">
+          {nextType === "READING" || nextType === "LISTENING" ? (
+            <ul className="section-ready-rules" aria-label={`${section.title} yönergeleri`}>
+              {section.checklist.map((instruction) => (
+                <li key={instruction}>{instruction}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="section-ready-intro">
+              {section.checklist.join(" ")}
+            </p>
+          )}
+          {section.questionDistribution && (
+            <dl
+              className="section-ready-distribution"
+              data-count={section.questionDistribution.length}
+              aria-label="Bölümlere göre soru ve görev dağılımı"
+            >
+              {section.questionDistribution.map((part) => (
+                <div key={part.label}>
+                  <dt>{part.label}</dt>
+                  <dd>
+                    {part.summary}
+                    {part.detail && <span className="section-ready-distribution-detail">{part.detail}</span>}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          {nextType === "WRITING" && (
+            <section className="section-ready-control section-ready-writing" aria-label="Klavye kontrolü">
+              <WritingCharacterPractice
+                key={writingTestId}
+                inputMode={writingInputMode}
+                onInputModeChange={setWritingInputMode}
+                disabled={isStartingSection || isExiting}
+              />
+            </section>
+          )}
 
-            <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-4">
-              <div className="mb-2 flex items-center gap-2 text-gray-800">
-                <ShieldAlert className="h-4 w-4" />
-                <p className="text-sm font-semibold">Teknik Uyarılar</p>
-              </div>
-              <ul className="space-y-2">
-                {allWarnings.map((warning) => (
-                  <li key={warning} className="flex items-start gap-2 text-sm text-gray-700">
-                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-500" />
-                    <span>{warning}</span>
-                  </li>
-                ))}
-              </ul>
+          {section.needsSoundTest && (
+            <section className="section-ready-control section-ready-sound" aria-labelledby="section-ready-sound-title">
+              <ListeningSoundCheck
+                key={pending?.next?.testId}
+                onReadyChange={setIsListeningSoundReady}
+                disabled={isStartingSection || isExiting}
+              />
+              {(listeningPreparationState === "loading" || listeningPreparationState === "error") && <div
+                className="section-ready-audio-status"
+                role="status"
+                aria-live="polite"
+              >
+                {listeningPreparationState === "loading" ? (
+                  <div className="section-ready-status">
+                    <span className="section-ready-loading-dot" aria-hidden="true" />
+                    <span>Sınav sesi hazırlanıyor…</span>
+                  </div>
+                ) : listeningPreparationState === "error" ? (
+                  <div>
+                    <p className="section-ready-error">
+                      {listeningPreparationError ||
+                        "Ses hazırlanamadı. Tekrar deneyin."}
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() =>
+                        setListeningPreparationAttempt(
+                          (attempt) => attempt + 1,
+                        )
+                      }
+                      className="section-ready-secondary mt-3"
+                    >
+                      Tekrar dene
+                    </Button>
+                  </div>
+                ) : null}
+              </div>}
+            </section>
+          )}
 
-              {section.needsSoundTest && (
-                <div className="mt-4 rounded-md border border-gray-200 bg-gray-100/70 p-3">
-                  <p className="text-sm font-medium text-gray-800 mb-2">Kulaklık / Hoparlör Ses Testi</p>
-                  <Button
+          {section.needsMicCheck && (
+            <section className="section-ready-control section-ready-microphone" aria-labelledby="section-ready-mic-title">
+              {isSpeakingMicReady ? (
+                <div className="section-ready-mic-ready-row">
+                  <h2 id="section-ready-mic-title" className="section-ready-mic-ready" role="status">
+                    <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
+                    Mikrofon hazır
+                  </h2>
+                  <button
                     type="button"
-                    variant="outline"
-                    onClick={handlePlaySoundTest}
-                    className="border-gray-300 text-gray-700 hover:bg-gray-100"
+                    className="section-ready-mic-retry"
+                    onClick={handleSpeakingMicRetry}
+                    disabled={isStartingSection || isExiting}
                   >
-                    <Volume2 className="h-4 w-4 mr-2" />
-                    {isPlayingSoundTest ? "Ses Oynatılıyor..." : "Sesi Test Et"}
-                  </Button>
+                    Tekrar dene
+                  </button>
                 </div>
-              )}
-            </div>
-
-            {section.needsMicCheck && (
-              <div className="mt-6 rounded-lg border border-gray-200 bg-white p-4">
-                <div className="mb-3 flex items-center gap-2 text-gray-900">
-                  <MessageCircle className="h-4 w-4 text-gray-600" />
-                  <p className="text-sm font-semibold">Mikrofon Testi</p>
-                </div>
-                {!isSpeakingMicReady ? (
+              ) : (
+                <>
+                  <div className="section-ready-control-heading">
+                    <div>
+                      <h2 id="section-ready-mic-title">Mikrofonunuzu kontrol edin</h2>
+                    </div>
+                  </div>
                   <MicrophoneCheck
                     embedded
                     onSuccess={handleSpeakingMicSuccess}
-                    successButtonLabel="Mikrofon Testini Tamamla"
+                    successButtonLabel="Sesi onaylayın"
                   />
-                ) : (
-                  <p className="text-sm text-emerald-700 font-medium">Mikrofon testi tamamlandı. Bölümü başlatabilirsiniz.</p>
-                )}
-              </div>
-            )}
+                </>
+              )}
+            </section>
+          )}
+        </div>
 
-            <div className="mt-8 flex flex-col-reverse gap-3 sm:mt-6 sm:flex-row sm:justify-end">
-              <Button
-                variant="outline"
-                className="border-gray-300 text-gray-700 hover:bg-gray-100"
-                onClick={handleExitRequested}
-              >
-                Geri Dön
-              </Button>
-              <Button
-                className="bg-red-600 text-white hover:bg-red-700 disabled:bg-gray-300 disabled:text-gray-600"
-                onClick={handleStart}
-                disabled={section.needsMicCheck && !isSpeakingMicReady}
-              >
-                Hazırım, Bölümü Başlat
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+        <footer className="section-ready-footer">
+          <Button
+            variant="outline"
+            className="section-ready-secondary"
+            onClick={handleExitRequested}
+          >
+            {isPreparationOnly ? "Geri dön" : "Sınavdan çık"}
+          </Button>
+          <Button
+            className="section-ready-start"
+            onClick={handleStart}
+            disabled={
+              !isPresentationReady ||
+              isStartingSection ||
+              (nextType === "WRITING" && !writingInputMode) ||
+              (section.needsMicCheck && !isSpeakingMicReady) ||
+              (section.needsSoundTest && !isListeningSoundReady) ||
+              (nextType === "LISTENING" &&
+                listeningPreparationState !== "ready")
+            }
+          >
+            {isStartingSection
+              ? "Başlatılıyor…"
+              : nextType === "LISTENING" &&
+                  listeningPreparationState === "loading"
+                ? "Ses hazırlanıyor…"
+                : "Sınava başla"}
+          </Button>
+        </footer>
+      </section>
 
       <ConfirmationModal
         isOpen={showExitConfirmModal}
         onClose={() => !isExiting && setShowExitConfirmModal(false)}
         onConfirm={handleConfirmExit}
-        title="Sınavı Sonlandır"
-        message="Sınav oturumunuz sonlandırılacak ve sonuç sayfasına yönlendirileceksiniz. Tamamladığınız bölümler değerlendirilecek, başlamadığınız bölümlere ait krediler hesabınıza otomatik olarak iade edilecektir. Devam etmek istiyor musunuz?"
-        confirmText="Evet, Sınavı Sonlandır"
+        title={isPreparationOnly ? "Hazırlık iptal edilsin mi?" : "Sınavdan çıkılsın mı?"}
+        message={isPreparationOnly
+          ? "Seçtiğiniz bölümler iptal edilecek. Henüz sınava başlamadığınız için katılım, sonuç veya ücret oluşmayacak."
+          : "Bu deneme burada bitecek. Tamamladığınız bölümler değerlendirilecek. Tekrar çözmek isterseniz baştan başlayacaksınız."}
+        confirmText={isPreparationOnly ? "Evet, iptal et" : "Evet, çık"}
         cancelText="İptal"
         isLoading={isExiting}
       />

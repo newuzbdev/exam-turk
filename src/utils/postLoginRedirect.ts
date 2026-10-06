@@ -1,3 +1,4 @@
+import { captureAccessLink, safeAccessReturnTo } from './access-link-context.ts';
 const POST_LOGIN_REDIRECT_KEY = "tm_post_login_redirect_v1";
 
 const BLOCKED_PATH_PREFIXES = ["/login", "/signup", "/oauth-callback"];
@@ -13,8 +14,8 @@ export const normalizeRedirectPath = (value?: string | null): string | null => {
 
   try {
     const parsed = new URL(raw, window.location.origin);
-    if (parsed.origin !== window.location.origin) return null;
-    const normalized = `${parsed.pathname}${parsed.search}${parsed.hash}` || "/";
+    const normalized = safeAccessReturnTo(raw);
+    if (!normalized) return null;
     if (!normalized.startsWith("/")) return null;
     if (normalized.startsWith("//")) return null;
     if (isBlockedPath(parsed.pathname)) return null;
@@ -40,14 +41,10 @@ export const getCurrentPath = (): string => {
 };
 
 export const setPostLoginRedirect = (target?: string | null): string => {
-  const normalized = normalizeRedirectPath(target) || "/";
+  const normalized = target ? captureAccessLink(target).safeReturnTo : "/app";
   if (typeof window !== "undefined") {
     try {
-      if (normalized === "/") {
-        sessionStorage.removeItem(POST_LOGIN_REDIRECT_KEY);
-      } else {
-        sessionStorage.setItem(POST_LOGIN_REDIRECT_KEY, normalized);
-      }
+      sessionStorage.setItem(POST_LOGIN_REDIRECT_KEY, normalized);
     } catch {
       // no-op
     }
@@ -56,10 +53,13 @@ export const setPostLoginRedirect = (target?: string | null): string => {
 };
 
 export const resolvePostLoginRedirect = (preferred?: string | null): string =>
-  normalizeRedirectPath(preferred) || readStoredRedirect() || "/";
+  preferred ? normalizeRedirectPath(preferred) || "/app" : readStoredRedirect() || "/app";
 
-export const consumePostLoginRedirect = (fallback: string = "/"): string => {
-  const resolved = resolvePostLoginRedirect(fallback);
+export const consumePostLoginRedirect = (
+  fallback?: string | null,
+): string => {
+  const resolved =
+    readStoredRedirect() || normalizeRedirectPath(fallback) || "/app";
   if (typeof window !== "undefined") {
     try {
       sessionStorage.removeItem(POST_LOGIN_REDIRECT_KEY);

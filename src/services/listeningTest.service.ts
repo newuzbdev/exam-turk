@@ -1,12 +1,19 @@
+import type { MockReviewV1 } from "@/components/results/evidence-review-utils";
 import { SecureStorage } from "@/utils/secureStorage";
-import axiosPrivate from "@/config/api";
+import axiosPrivate, { resolveApiResourceUrl } from "@/config/api";
 import { toast } from "sonner";
+import {
+  getOverallSectionTimerErrorCode,
+  getOverallSectionTimerErrorMessage,
+} from "./overallTest.service";
+import type { MockSubmitMode } from "./overallTest.service";
 
 export interface ListeningAnswer {
   id: string;
   questionId?: string;
   variantText?: string | null;
-  answer: string;
+  displayText?: string | null;
+  answer?: string | null;
   correct?: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -49,6 +56,7 @@ export interface ListeningPart {
 
 export interface ListeningTestItem {
   audioUrl: string | null;
+  audioDurationSeconds?: number | null;
   id: string;
   title: string;
   type?: string;
@@ -98,6 +106,32 @@ export interface TestResultData {
   createdAt: string;
   updatedAt: string;
   userAnswers: UserAnswerResult[];
+  review?: MockReviewV1 | null;
+}
+
+export interface ExamSectionDraftResponse {
+  answers: Record<string, string | string[]>;
+  lastSavedAt?: string | null;
+  serverNow?: string;
+  remainingSeconds?: number;
+  phase?: "AUDIO" | "REVIEW";
+  remainingAudioSeconds?: number | null;
+  remainingReviewSeconds?: number | null;
+  saved?: boolean;
+}
+
+export interface ListeningExamSubmitResponse {
+  message?: string;
+  testResultId?: string;
+  correctCount?: number;
+  totalQuestions?: number;
+  score?: number;
+  level?: string;
+}
+
+export interface ListeningAudioAccessResponse {
+  url: string;
+  expiresAt: string;
 }
 
 function extractData<T = unknown>(res: unknown): T {
@@ -164,7 +198,7 @@ export const listeningTestService = {
       return [];
     } catch (error: unknown) {
       console.error("getAllListeningTests error:", error);
-      toast.error("Tinglash testlari yuklanmadi");
+      toast.error("Dinleme testleri yüklenemedi.");
       return [];
     }
   },
@@ -174,25 +208,107 @@ export const listeningTestService = {
     testId: string
   ): Promise<ListeningTestItem | null> => {
     try {
-      const res = await axiosPrivate.get(`/api/test/testaddition/${testId}`);
+      const { overallTestTokenStore } = await import("./overallTest.service");
+      const sessionToken = overallTestTokenStore.getByTestId(testId);
+      const res = await axiosPrivate.get(`/api/test/testaddition/${testId}`, {
+        params: sessionToken ? { sessionToken } : undefined,
+      });
       const testData = extractData<ListeningTestItem>(res);
       return testData;
     } catch (error) {
       console.error("getTestWithFullData error:", error);
-      toast.error("Tinglash testining to‘liq ma'lumoti yuklanmadi");
+      toast.error("Dinleme testi yüklenemedi.");
       return null;
     }
+  },
+
+  getActiveAudioUrl: async (
+    sessionToken: string
+  ): Promise<ListeningAudioAccessResponse> => {
+    const res = await axiosPrivate.post(
+      "/api/overal-test-result/section/listening-audio/access",
+      { sessionToken }
+    );
+    const access = extractData<ListeningAudioAccessResponse>(res);
+    return {
+      ...access,
+      url: resolveApiResourceUrl(access.url),
+    };
   },
 };
 
 export const listeningSubmissionService = {
+  getSessionResult: async (overallTestId: string, testId: string): Promise<{
+    overallTestId: string;
+    overallCompleted: boolean;
+    resultId: string;
+  } | null> => {
+    try {
+      const response = await axiosPrivate.get(`/api/overal-test-result/${encodeURIComponent(overallTestId)}/results`);
+      const result = extractData<{
+        id: string;
+        status: string;
+        isCompleted: boolean;
+        listening?: { resultId: string; test?: { id: string } } | null;
+      }>(response);
+      if (result?.id !== overallTestId || result.listening?.test?.id !== testId || !result.listening.resultId) return null;
+      if (result.status !== "IN_PROGRESS" && result.status !== "COMPLETED") return null;
+      return {
+        overallTestId: result.id,
+        overallCompleted: result.status === "COMPLETED" || result.isCompleted,
+        resultId: result.listening.resultId,
+      };
+    } catch {
+      return null;
+    }
+  },
+
+  getDraft: async (
+    sessionToken: string
+  ): Promise<ExamSectionDraftResponse | null> => {
+    try {
+      const res = await axiosPrivate.get("/api/exam/sections/listening/draft", {
+        params: { sessionToken },
+      });
+      return extractData<ExamSectionDraftResponse>(res);
+    } catch (error: any) {
+      const status = error?.response?.status;
+      if (status !== 401 && status !== 404) {
+        console.warn("Listening draft fetch failed");
+      }
+      return null;
+    }
+  },
+
+  saveDraft: async (
+    sessionToken: string,
+    answers: Record<string, unknown>
+  ): Promise<ExamSectionDraftResponse | null> => {
+    try {
+      const res = await axiosPrivate.patch("/api/exam/sections/listening/draft", {
+        sessionToken,
+        answers: answers || {},
+      });
+      return extractData<ExamSectionDraftResponse>(res);
+    } catch (error: any) {
+      const status = error?.response?.status;
+      const code = getOverallSectionTimerErrorCode(error);
+      if (code === "TEST_TIME_EXPIRED" || code === "SECTION_ALREADY_SUBMITTED") return null;
+      if (status !== 401) {
+        console.warn("Listening draft save failed");
+      }
+      return null;
+    }
+  },
+
   submitAnswers: async (
     testId: string,
     answers: { questionId: string; userAnswer: string }[] | Record<string, unknown>,
     token?: string | null,
-    audioUrl?: string | null,
-    imageUrls?: string[]
-  ) => {
+    _audioUrl?: string | null,
+    _imageUrls?: string[],
+    submitMode: MockSubmitMode = "MANUAL"
+  ): Promise<ListeningExamSubmitResponse> => {
     try {
       const { overallTestTokenStore } = await import("./overallTest.service");
       const authToken = readClientAccessToken();
@@ -202,52 +318,57 @@ export const listeningSubmissionService = {
         null;
       const normalizedAnswers = normalizeExamAnswers(answers);
       
-      console.log("🔍 Dinleme testi gönderim hata ayıklama:", {
-        testId,
-        hasOverallToken: !!overallTestTokenStore.getByTestId(testId),
-        hasSessionToken: !!overallSessionToken,
-        tokenSource: overallTestTokenStore.getByTestId(testId) ? 'genel' : 'oturum',
-        hasAudioUrl: !!audioUrl,
-        imageUrlsCount: imageUrls?.length || 0
-      });
-
       if (!authToken) {
-        toast.error("Javoblarni yuborish uchun tizimga kirishingiz kerak.");
+        toast.error("Cevapları göndermek için giriş yapmanız gerekiyor.");
         throw new Error("Sınav sonuçlarını göndermek için kimlik doğrulama gerekli.");
+      }
+      if (!overallSessionToken) {
+        const message = "Bu sınav oturumu başlatılmadı. Lütfen testi yeniden başlat.";
+        toast.error(message);
+        throw new Error("SESSION_TOKEN_REQUIRED");
       }
 
       const payload: Record<string, unknown> = { 
         testId, 
-        answers: normalizedAnswers
+        answers: normalizedAnswers,
+        sessionToken: overallSessionToken,
+        submitMode,
       };
-      if (overallSessionToken) {
-        payload.sessionToken = overallSessionToken;
-      }
       
-      // Add audio and images if provided
-      if (audioUrl) {
-        payload.audioUrl = audioUrl;
-      }
-      if (imageUrls && imageUrls.length > 0) {
-        payload.imageUrls = imageUrls;
-      }
+      // Media belongs to the server-owned test snapshot, not SubmitAnswersDto.
+      // Keep the positional arguments compatible with existing callers, but do
+      // not send them: strict DTO validation rejects these extra fields.
       
       const res = await axiosPrivate.post("/api/exam/submit-all", payload);
-      const data = extractData<unknown>(res);
+      const data = extractData<ListeningExamSubmitResponse>(res);
 
       // toast.success("Javoblar muvaffaqiyatli jo'natildi");
       try { if (overallSessionToken) overallTestTokenStore.clearByTestId(testId); } catch { /* no-op */ }
       return data ?? res.data ?? res;
     } catch (error: unknown) {
+      if ((error as { message?: string })?.message === "SESSION_TOKEN_REQUIRED") {
+        throw error;
+      }
       const status = (error as { response?: { status?: number } })?.response?.status;
+      const timerCode = getOverallSectionTimerErrorCode(error);
+      if (
+        timerCode === "TEST_TIME_EXPIRED" ||
+        timerCode === "SECTION_NOT_STARTED" ||
+        timerCode === "SESSION_TOKEN_REQUIRED" ||
+        timerCode === "SESSION_RECOVERY_EXPIRED" ||
+        timerCode === "SECTION_ALREADY_SUBMITTED"
+      ) {
+        toast.error(getOverallSectionTimerErrorMessage(error));
+        throw error;
+      }
       if (status === 401 || status === 403) {
-        toast.error("Javoblarni yuborish uchun tizimga kirishingiz kerak.");
+        toast.error("Cevapları göndermek için giriş yapmanız gerekiyor.");
         throw new Error(
           "Sınav sonuçlarını göndermek için kimlik doğrulama gerekli (401/403)."
         );
       }
       console.error("submitAnswers error:", error);
-      toast.error("Javoblarni jo'natishda xato yuz berdi");
+      toast.error("Cevaplar gönderilemedi. Lütfen yeniden deneyin.");
       throw error;
     }
   },
@@ -278,7 +399,7 @@ export const listeningSubmissionService = {
       return null;
     } catch (error) {
       console.error("getExamResults error:", error);
-      toast.error("Test natijalari yuklanmadi");
+      toast.error("Test sonucu yüklenemedi.");
       return null;
     }
   },

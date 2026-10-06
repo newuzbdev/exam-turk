@@ -1,0 +1,10 @@
+.reports-page h1 {
+  margin-top: 0;
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 600;
+  letter-spacing: -.025em;
+}
+@media (max-width: 760px) {
+  .reports-page h1 { font-size: 24px; }
+}

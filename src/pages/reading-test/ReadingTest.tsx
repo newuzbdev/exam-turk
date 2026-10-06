@@ -22,7 +22,7 @@ export default function ReadingTest() {
   }, []);
 
   if (!testId) {
-    navigate("/test");
+    navigate("/app/test");
     return null;
   }
 

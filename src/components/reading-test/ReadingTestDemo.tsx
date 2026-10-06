@@ -1,9 +1,24 @@
-﻿import { useEffect, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useRef, useState } from "react";
+import officialReadingInstructions from "@/data/official-reading-instructions.json";
 import { useNavigate } from "react-router-dom";
-import { overallTestFlowStore } from "@/services/overallTest.service";
+import {
+  createBackendSyncedTimerState,
+  getBackendSyncedRemainingSeconds,
+  getOverallSectionTimerErrorMessage,
+  getOverallSectionTimerErrorCode,
+  overallTestFlowStore,
+  overallTestService,
+  overallTestTokenStore,
+  type BackendSyncedTimerState,
+  type MockSubmitMode,
+} from "@/services/overallTest.service";
 import { Button } from "../ui/button";
 import { ConfirmationModal } from "../ui/confirmation-modal";
-import { readingTestService, type ReadingTestItem } from "@/services/readingTest.service";
+import {
+  readingSubmissionService,
+  readingTestService,
+  type ReadingTestItem,
+} from "@/services/readingTest.service";
 import { ReadingNotesProvider } from "@/contexts/ReadingNotesContext";
 import ReadingPart1 from "./ui/ReadingPart1";
 import ReadingPart2 from "./ui/ReadingPart2";
@@ -11,10 +26,31 @@ import ReadingPart3 from "./ui/ReadingPart3";
 import ReadingPart4 from "./ui/ReadingPart4";
 import ReadingPart5 from "./ui/ReadingPart5";
 import NotesPanel from "./NotesPanel";
+import { getReadingTypographyPreset } from "./reading-typography";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  ALargeSmall,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  LayoutGrid,
+  List,
+  Maximize2,
+  Minimize2,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
+import { useOverallSectionHeartbeat } from "@/hooks/use-overall-section-heartbeat";
 
 interface ReadingProgressSnapshot {
+  sessionToken?: string | null;
+  pendingAnswers?: Record<string, string>;
   currentPartNumber: number;
   answers: Record<string, string>;
   timeLeft: number;
@@ -23,8 +59,32 @@ interface ReadingProgressSnapshot {
   updatedAt: number;
 }
 
+type FullscreenDocument = Document & {
+  webkitFullscreenElement?: Element | null;
+  msFullscreenElement?: Element | null;
+  webkitExitFullscreen?: () => Promise<void> | void;
+  msExitFullscreen?: () => Promise<void> | void;
+};
+
+type FullscreenRoot = HTMLElement & {
+  webkitRequestFullscreen?: () => Promise<void> | void;
+  msRequestFullscreen?: () => Promise<void> | void;
+};
+
+const getActiveFullscreenElement = () => {
+  if (typeof document === "undefined") return null;
+  const fullscreenDocument = document as FullscreenDocument;
+  return (
+    document.fullscreenElement ||
+    fullscreenDocument.webkitFullscreenElement ||
+    fullscreenDocument.msFullscreenElement ||
+    null
+  );
+};
+
 export default function ReadingPage({ testId }: { testId: string }) {
   const navigate = useNavigate();
+  useOverallSectionHeartbeat(testId);
   const TOTAL_TIME = 60 * 60;
   const [timeLeft, setTimeLeft] = useState(TOTAL_TIME);
   const [testData, setTestData] = useState<ReadingTestItem | null>(null);
@@ -34,21 +94,377 @@ export default function ReadingPage({ testId }: { testId: string }) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sectionTimerLoading, setSectionTimerLoading] = useState(false);
+  const [sectionTimerError, setSectionTimerError] = useState<string | null>(null);
+  const [timerRetryKey, setTimerRetryKey] = useState(0);
+  const [draftReady, setDraftReady] = useState(false);
+  const [draftLoadError, setDraftLoadError] = useState(false);
+  const [draftRetryKey, setDraftRetryKey] = useState(0);
+  const [draftAcknowledgement, setDraftAcknowledgement] = useState(0);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [autoSubmitAttempts, setAutoSubmitAttempts] = useState(0);
+  const [, setDraftStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [showDescription, setShowDescription] = useState(true);
   const [fontScale, setFontScale] = useState(1);
+  const [showAllQuestionNumbers, setShowAllQuestionNumbers] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(() =>
+    Boolean(getActiveFullscreenElement()),
+  );
+  const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(
+    () => !getActiveFullscreenElement(),
+  );
+  const [activeQuestionNumber, setActiveQuestionNumber] = useState<number | null>(null);
   const hasRestoredProgressRef = useRef(false);
   const hasSubmittedRef = useRef(false);
+  const acceptedResultIdRef = useRef<string | null>(null);
+  const submitStartedRef = useRef(false);
+  const hasOverallTimerRef = useRef(false);
+  const autoSubmitRef = useRef(false);
+  const backendTimerRef = useRef<BackendSyncedTimerState | null>(null);
+  const draftLoadedRef = useRef(false);
+  const latestAnswersRef = useRef<Record<string, string>>({});
+  const editedAnswersRef = useRef<Record<string, string>>({});
+  const pendingAnswersRef = useRef<Record<string, string>>({});
+  const localProgressRef = useRef<Partial<ReadingProgressSnapshot> | null>(null);
+  const draftNeedsSaveRef = useRef(false);
+  const draftRevisionRef = useRef(0);
+  const lifecycleRef = useRef(0);
+  const recoveryPromiseRef = useRef<Promise<boolean> | null>(null);
+  const draftSaveQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const fullscreenWasActiveRef = useRef(false);
   const progressStorageKey = `reading_progress_${testId}`;
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(interval);
+    lifecycleRef.current += 1;
+    return () => { lifecycleRef.current += 1; };
+  }, [testId]);
+
+  const recoverSubmittedSection = useCallback(async (): Promise<boolean> => {
+    if (hasSubmittedRef.current) return true;
+    if (recoveryPromiseRef.current) return recoveryPromiseRef.current;
+    const lifecycle = lifecycleRef.current;
+    const recovery = (async () => {
+      const overallId = overallTestFlowStore.getOverallId();
+      if (!overallId) return false;
+      try {
+        const recovered = await readingSubmissionService.getSessionResult(overallId, testId);
+        if (!recovered || lifecycleRef.current !== lifecycle) return false;
+        hasSubmittedRef.current = true;
+        acceptedResultIdRef.current = recovered.resultId;
+        submitStartedRef.current = true;
+        setSectionTimerError(null);
+        setDraftLoadError(false);
+        setSubmitError(null);
+        try {
+          sessionStorage.removeItem(progressStorageKey);
+          sessionStorage.removeItem(`reading_answers_${testId}`);
+        } catch {}
+        if (recovered.overallCompleted) {
+          overallTestFlowStore.markCompleted();
+          navigate(`/overall-results/${recovered.overallTestId}`, { replace: true });
+          return true;
+        }
+        const nextPath = overallTestFlowStore.onTestCompleted("READING", testId);
+        if (nextPath) {
+          navigate(nextPath, { replace: true });
+          return true;
+        }
+        if (overallTestFlowStore.isAllDone()) {
+          const completed = await overallTestService.complete(overallId).catch(() => false);
+          if (lifecycleRef.current !== lifecycle) return false;
+          if (completed) {
+            overallTestFlowStore.markCompleted();
+            navigate(`/overall-results/${overallId}`, { replace: true });
+            return true;
+          }
+        }
+        navigate(`/reading-test/results/${recovered.resultId}`, { replace: true });
+        return true;
+      } catch {
+        return false;
+      }
+    })();
+    recoveryPromiseRef.current = recovery;
+    try { return await recovery; }
+    finally { recoveryPromiseRef.current = null; }
+  }, [navigate, progressStorageKey, testId]);
+
+  const requestExamFullscreen = useCallback(async (notifyFailure = false) => {
+    if (getActiveFullscreenElement()) {
+      fullscreenWasActiveRef.current = true;
+      setIsFullscreen(true);
+      setShowFullscreenPrompt(false);
+      return true;
+    }
+
+    try {
+      const root = document.documentElement as FullscreenRoot;
+      if (root.requestFullscreen) await root.requestFullscreen();
+      else if (root.webkitRequestFullscreen) await root.webkitRequestFullscreen();
+      else if (root.msRequestFullscreen) await root.msRequestFullscreen();
+      else throw new Error("Fullscreen API unavailable");
+
+      if (!getActiveFullscreenElement()) {
+        if (notifyFailure) {
+          toast.error("Tam ekran açılamadı. Tarayıcı izinlerini kontrol edip tekrar deneyin.");
+        }
+        return false;
+      }
+
+      fullscreenWasActiveRef.current = true;
+      setIsFullscreen(true);
+      setShowFullscreenPrompt(false);
+      return true;
+    } catch {
+      if (notifyFailure) {
+        toast.error("Tam ekran açılamadı. Tarayıcı izinlerini kontrol edip tekrar deneyin.");
+      }
+      return false;
+    }
   }, []);
 
-  // Enter fullscreen and lock navigation (exam mode)
+  const exitExamFullscreen = useCallback(async () => {
+    if (!getActiveFullscreenElement()) return;
+    const fullscreenDocument = document as FullscreenDocument;
+    try {
+      if (document.exitFullscreen) await document.exitFullscreen();
+      else if (fullscreenDocument.webkitExitFullscreen) {
+        await fullscreenDocument.webkitExitFullscreen();
+      } else if (fullscreenDocument.msExitFullscreen) {
+        await fullscreenDocument.msExitFullscreen();
+      }
+    } catch {
+      toast.error("Tam ekrandan çıkılamadı. Esc tuşunu deneyin.");
+    }
+  }, []);
+
   useEffect(() => {
+    if (sectionTimerLoading) return;
+    const interval = window.setInterval(() => {
+      setTimeLeft((prev) => {
+        const backendRemaining = getBackendSyncedRemainingSeconds(backendTimerRef.current);
+        return backendRemaining === null ? (prev > 0 ? prev - 1 : 0) : Math.min(prev, backendRemaining);
+      });
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, [sectionTimerLoading]);
+
+  useEffect(() => {
+    autoSubmitRef.current = false;
+    hasSubmittedRef.current = false;
+    acceptedResultIdRef.current = null;
+    submitStartedRef.current = false;
+    draftLoadedRef.current = false;
+    editedAnswersRef.current = {};
+    draftNeedsSaveRef.current = false;
+    setDraftReady(false);
+    setDraftLoadError(false);
+    setSubmitError(null);
+    setAutoSubmitAttempts(0);
+    draftSaveQueueRef.current = Promise.resolve();
+    setDraftStatus("idle");
+  }, [testId]);
+
+  useEffect(() => {
+    let mounted = true;
+    const hasOverallToken = !!overallTestTokenStore.getByTestId(testId);
+    hasOverallTimerRef.current = hasOverallToken;
+    backendTimerRef.current = null;
+    if (!hasOverallToken) {
+      // A successful section POST clears its token. A refreshed page may still
+      // have cached questions while overall finalization needs recovery.
+      setSectionTimerLoading(true);
+      setSectionTimerError(null);
+      void recoverSubmittedSection().then((recovered) => {
+        if (mounted && !recovered && overallTestFlowStore.getOverallId()) {
+          setSectionTimerError("Sınav durumunuz doğrulanamadı. Bağlantınızı kontrol edip tekrar deneyin.");
+        }
+      }).finally(() => {
+        if (mounted) setSectionTimerLoading(false);
+      });
+      return () => { mounted = false; };
+    }
+
+    setSectionTimerLoading(true);
+    setSectionTimerError(null);
+    overallTestService
+      .startSectionTimerForTest(testId)
+      .then(async (timer) => {
+        if (!mounted || !timer) return;
+        if (timer.status === "SUBMITTED" && await recoverSubmittedSection()) return;
+        const timerState = createBackendSyncedTimerState(timer);
+        backendTimerRef.current = timerState;
+        setTimeLeft(getBackendSyncedRemainingSeconds(timerState) ?? timerState.initialRemainingSeconds);
+      })
+      .catch(async (error) => {
+        if (!mounted) return;
+        const recovered = await recoverSubmittedSection();
+        if (recovered || !mounted) return;
+        if (getOverallSectionTimerErrorCode(error) === "TEST_TIME_EXPIRED") {
+          setSectionTimerError(null);
+          setTimeLeft(0);
+          return;
+        }
+        const message = getOverallSectionTimerErrorMessage(error);
+        setSectionTimerError(message);
+        toast.error(message);
+      })
+      .finally(() => {
+        if (mounted) setSectionTimerLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [testId, recoverSubmittedSection, timerRetryKey]);
+
+  useEffect(() => {
+    const matchesTest = (event: Event) => (event as CustomEvent<{ testId?: string }>).detail?.testId === testId;
+    const handleExpired = (event: Event) => {
+      if (!matchesTest(event)) return;
+      setSectionTimerError(null);
+      setSectionTimerLoading(false);
+      setTimeLeft(0);
+    };
+    const handleSubmitted = (event: Event) => {
+      if (matchesTest(event)) void recoverSubmittedSection();
+    };
+    window.addEventListener("overall-section-time-expired", handleExpired);
+    window.addEventListener("overall-section-submitted", handleSubmitted);
+    return () => {
+      window.removeEventListener("overall-section-time-expired", handleExpired);
+      window.removeEventListener("overall-section-submitted", handleSubmitted);
+    };
+  }, [recoverSubmittedSection, testId]);
+
+  const normalizeRestoredAnswers = (value: unknown): Record<string, string> => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+    const output: Record<string, string> = {};
+    for (const [questionId, raw] of Object.entries(value as Record<string, unknown>)) {
+      const key = String(questionId || "").trim();
+      if (!key) continue;
+      const answer = Array.isArray(raw) ? raw[0] : raw;
+      const normalized = String(answer ?? "").trim();
+      output[key] = normalized;
+    }
+    return output;
+  };
+
+  const getCurrentOverallToken = useCallback(() => {
+    return overallTestTokenStore.getByTestId(testData?.id || testId) || null;
+  }, [testData?.id, testId]);
+
+  const writeReadingDraft = useCallback(
+    async (token: string, nextAnswers: Record<string, string>, revision: number) => {
+      setDraftStatus("saving");
+      const result = await readingSubmissionService.saveDraft(token, nextAnswers);
+      if (result?.saved) {
+        if (revision === draftRevisionRef.current) {
+          pendingAnswersRef.current = {};
+        }
+        setDraftAcknowledgement((value) => value + 1);
+        setDraftStatus("saved");
+        return result;
+      }
+      setDraftStatus("error");
+      return null;
+    },
+    [],
+  );
+
+  const persistReadingDraft = useCallback(
+    async (nextAnswers: Record<string, string>) => {
+      const token = getCurrentOverallToken();
+      if (!token || !draftLoadedRef.current || hasSubmittedRef.current || autoSubmitRef.current) return null;
+      return writeReadingDraft(token, nextAnswers, draftRevisionRef.current);
+    },
+    [getCurrentOverallToken, writeReadingDraft],
+  );
+
+  const queueReadingDraft = useCallback(
+    (nextAnswers: Record<string, string>) => {
+      const token = getCurrentOverallToken();
+      if (
+        !token ||
+        !draftLoadedRef.current ||
+        hasSubmittedRef.current ||
+        autoSubmitRef.current ||
+        sectionTimerLoading ||
+        sectionTimerError ||
+        (hasOverallTimerRef.current && (timeLeft <= 0 ||
+          (getBackendSyncedRemainingSeconds(backendTimerRef.current) ?? 1) <= 0))
+      ) {
+        return;
+      }
+
+      const revision = draftRevisionRef.current;
+      const queuedWrite = draftSaveQueueRef.current
+        .catch(() => undefined)
+        .then(async () => {
+          await writeReadingDraft(token, nextAnswers, revision);
+        });
+      draftSaveQueueRef.current = queuedWrite.catch(() => undefined);
+    },
+    [
+      getCurrentOverallToken,
+      sectionTimerError,
+      sectionTimerLoading,
+      timeLeft,
+      writeReadingDraft,
+    ],
+  );
+
+  useEffect(() => {
+    // Timer initialization must not cancel an in-flight restore. Only changing
+    // the actual test (or explicitly retrying a failed load) replaces this read.
+    const token = overallTestTokenStore.getByTestId(testId);
+    if (!token) {
+      draftLoadedRef.current = true;
+      setDraftReady(true);
+      return;
+    }
+    let mounted = true;
+    setDraftLoadError(false);
+    readingSubmissionService.getDraft(token)
+      .then((draft) => {
+        if (!mounted) return;
+        if (!draft) throw new Error("Reading draft unavailable");
+        const restored = normalizeRestoredAnswers(draft.answers);
+        const local = localProgressRef.current;
+        const serverSavedAt = draft.lastSavedAt ? Date.parse(draft.lastSavedAt) : 0;
+        const keepLocal = Number(local?.updatedAt || 0) > (serverSavedAt || 0);
+        const localAnswers = local?.pendingAnswers
+          ? normalizeRestoredAnswers(local.pendingAnswers)
+          : keepLocal ? normalizeRestoredAnswers(local?.answers) : {};
+        pendingAnswersRef.current = { ...localAnswers, ...editedAnswersRef.current };
+        const merged = { ...restored, ...pendingAnswersRef.current };
+        latestAnswersRef.current = merged;
+        draftRevisionRef.current += 1;
+        draftNeedsSaveRef.current = Object.keys(pendingAnswersRef.current).length > 0;
+        setAnswers(merged);
+        draftLoadedRef.current = true;
+        setDraftReady(true);
+        setDraftStatus("saved");
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setDraftLoadError(true);
+        setDraftStatus("error");
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [testId, draftRetryKey]);
+
+  useEffect(() => {
+    if (!draftReady || sectionTimerLoading || sectionTimerError || !draftNeedsSaveRef.current) return;
+    queueReadingDraft(latestAnswersRef.current);
+    draftNeedsSaveRef.current = false;
+  }, [draftReady, sectionTimerLoading, sectionTimerError, queueReadingDraft]);
+
+  // Keep the exam route locked and recover cleanly when fullscreen is left.
+  useEffect(() => {
+    let disposed = false;
     const addNavigationLock = () => {
       const handlePopState = () => {
         window.history.pushState(null, "", window.location.href);
@@ -68,28 +484,60 @@ export default function ReadingPage({ testId }: { testId: string }) {
       };
     };
 
-    const enterFullscreen = async () => {
-      try {
-        const el: any = document.documentElement as any;
-        if (el.requestFullscreen) await el.requestFullscreen();
-        else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
-        else if (el.msRequestFullscreen) await el.msRequestFullscreen();
-      } catch {}
+    const handleFullscreenChange = () => {
+      const active = Boolean(getActiveFullscreenElement());
+      setIsFullscreen(active);
+
+      if (active) {
+        fullscreenWasActiveRef.current = true;
+        setShowFullscreenPrompt(false);
+        return;
+      }
+
+      if (!hasSubmittedRef.current) {
+        setShowFullscreenPrompt(true);
+      }
     };
 
     const cleanup = addNavigationLock();
-    enterFullscreen();
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+    handleFullscreenChange();
+    if (!getActiveFullscreenElement()) {
+      setShowFullscreenPrompt(true);
+      void requestExamFullscreen().then((enteredFullscreen) => {
+        if (!disposed && enteredFullscreen) {
+          setShowFullscreenPrompt(false);
+        }
+      });
+    }
+    const fullscreenGuardInterval = window.setInterval(() => {
+      if (
+        !disposed &&
+        !getActiveFullscreenElement() &&
+        !hasSubmittedRef.current
+      ) {
+        setIsFullscreen(false);
+        setShowFullscreenPrompt(true);
+      }
+    }, 1000);
+
     return () => {
+      disposed = true;
+      window.clearInterval(fullscreenGuardInterval);
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
+      cleanup?.();
+
       // Only exit fullscreen if not in overall test flow
       const hasActiveOverallTest = overallTestFlowStore.hasActive();
-      if (!hasActiveOverallTest && document.fullscreenElement) {
+      if (!hasActiveOverallTest && getActiveFullscreenElement()) {
         try {
           document.exitFullscreen().catch(() => {});
         } catch {}
       }
-      cleanup?.();
     };
-  }, []);
+  }, [requestExamFullscreen]);
 
   useEffect(() => {
     let mounted = true;
@@ -110,6 +558,11 @@ export default function ReadingPage({ testId }: { testId: string }) {
 
         // Fallback to API call if no cached data
         const data = await readingTestService.getTestWithFullData(testId);
+        if (!mounted) return;
+        if (!data) {
+          if (await recoverSubmittedSection()) return;
+          throw new Error("Okuma testi yüklenemedi.");
+        }
         if (mounted) {
           setTestData(data);
         }
@@ -122,7 +575,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
     return () => {
       mounted = false;
     };
-  }, [testId]);
+  }, [testId, recoverSubmittedSection]);
 
   useEffect(() => {
     hasRestoredProgressRef.current = false;
@@ -132,15 +585,18 @@ export default function ReadingPage({ testId }: { testId: string }) {
       if (raw) parsed = JSON.parse(raw) as Partial<ReadingProgressSnapshot>;
     } catch {}
 
+    const sessionToken = overallTestTokenStore.getByTestId(testId) || null;
+    if (parsed?.sessionToken !== sessionToken) parsed = null;
+    localProgressRef.current = parsed;
+    pendingAnswersRef.current = normalizeRestoredAnswers(parsed?.pendingAnswers);
+    latestAnswersRef.current = normalizeRestoredAnswers(parsed?.answers);
+    setAnswers(latestAnswersRef.current);
     if (parsed && typeof parsed === "object") {
       const restoredPart = Number(parsed.currentPartNumber);
       if (Number.isFinite(restoredPart)) {
         setCurrentPartNumber(Math.min(5, Math.max(1, Math.round(restoredPart))));
       }
 
-      if (parsed.answers && typeof parsed.answers === "object") {
-        setAnswers(parsed.answers as Record<string, string>);
-      }
 
       const restoredTimeLeft = Number(parsed.timeLeft);
       if (Number.isFinite(restoredTimeLeft)) {
@@ -161,8 +617,10 @@ export default function ReadingPage({ testId }: { testId: string }) {
   }, [progressStorageKey, TOTAL_TIME]);
 
   useEffect(() => {
-    if (!hasRestoredProgressRef.current) return;
+    if (!hasRestoredProgressRef.current || hasSubmittedRef.current) return;
     const snapshot: ReadingProgressSnapshot = {
+      sessionToken: overallTestTokenStore.getByTestId(testId) || null,
+      pendingAnswers: { ...pendingAnswersRef.current },
       currentPartNumber,
       answers,
       timeLeft,
@@ -173,7 +631,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
     try {
       sessionStorage.setItem(progressStorageKey, JSON.stringify(snapshot));
     } catch {}
-  }, [progressStorageKey, currentPartNumber, answers, timeLeft, showDescription, fontScale]);
+  }, [progressStorageKey, currentPartNumber, answers, timeLeft, showDescription, fontScale, draftAcknowledgement, testId]);
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -185,33 +643,81 @@ export default function ReadingPage({ testId }: { testId: string }) {
     try { sessionStorage.removeItem(progressStorageKey); } catch {}
   };
 
-  useEffect(() => {
-    return () => {
-      if (hasSubmittedRef.current) return;
-      clearReadingProgress();
-      try { sessionStorage.removeItem(`reading_answers_${testId}`); } catch {}
-      try { sessionStorage.removeItem(`test_data_READING_${testId}`); } catch {}
-    };
-  }, [testId, progressStorageKey]);
+  // Preserve the recovery copy on navigation/reload. It is removed only after
+  // the section has been accepted and its result route is available.
+  const isReadingExpired = () => {
+    if (!hasOverallTimerRef.current) return false;
+    const remaining = getBackendSyncedRemainingSeconds(backendTimerRef.current);
+    return timeLeft <= 0 || (remaining !== null && remaining <= 0);
+  };
 
   const handleSubmit = async () => {
-    if (isSubmitting) return;
-    hasSubmittedRef.current = true;
+    const expired = isReadingExpired();
+    if (
+      !testData || submitStartedRef.current || isSubmitting ||
+      sectionTimerLoading || sectionTimerError || (!draftReady && !expired)
+    ) return;
+    if (expired && !autoSubmitRef.current) {
+      autoSubmitRef.current = true;
+      setAutoSubmitAttempts((count) => Math.max(1, count));
+    }
+    submitStartedRef.current = true;
+    setSubmitError(null);
+    let submittedResultId = acceptedResultIdRef.current;
     try {
       setIsSubmitting(true);
-      
-      // Store answers locally for later submission
-      if (testData?.id) {
-        const answersData = {
-          testId: testData.id,
-          answers: answers,
-          timestamp: new Date().toISOString()
-        };
-        // Store in sessionStorage for later submission
-        sessionStorage.setItem(`reading_answers_${testData.id}`, JSON.stringify(answersData));
+      await draftSaveQueueRef.current;
+      const submissionAnswers = { ...latestAnswersRef.current };
+      // The deadline may pass while queued saves finish. Never write a new
+      // draft on an expired retry; AUTO uses the server's accepted draft.
+      if (isReadingExpired() && !autoSubmitRef.current) {
+        autoSubmitRef.current = true;
+        setAutoSubmitAttempts((count) => Math.max(1, count));
       }
 
-      // Just navigate to next test without submitting
+      // Once accepted, retry only navigation/overall finalization. The submit
+      // service has cleared the token and removed answers must stay removed.
+      if (testData?.id && !hasSubmittedRef.current) {
+        const answersData = {
+          testId: testData.id,
+          answers: submissionAnswers,
+          timestamp: new Date().toISOString()
+        };
+        sessionStorage.setItem(`reading_answers_${testData.id}`, JSON.stringify(answersData));
+
+        const overallToken = overallTestTokenStore.getByTestId(testData.id);
+        if (overallToken) {
+          if (!autoSubmitRef.current) {
+            await persistReadingDraft(submissionAnswers);
+          }
+          if (isReadingExpired() && !autoSubmitRef.current) {
+            autoSubmitRef.current = true;
+            setAutoSubmitAttempts((count) => Math.max(1, count));
+          }
+          const payload = Object.entries(submissionAnswers)
+            .map(([questionId, userAnswer]) => ({
+              questionId,
+              userAnswer: String(userAnswer),
+            }))
+            .filter((item) => item.questionId);
+
+          const submitMode: MockSubmitMode = autoSubmitRef.current ? "AUTO" : "MANUAL";
+          const submitResult = await readingSubmissionService.submitAnswers(
+            testData.id,
+            payload,
+            overallToken,
+            submitMode,
+          );
+          hasSubmittedRef.current = true;
+          submittedResultId =
+            typeof submitResult?.testResultId === "string"
+              ? submitResult.testResultId
+              : null;
+          acceptedResultIdRef.current = submittedResultId;
+          try { sessionStorage.removeItem(`reading_answers_${testData.id}`); } catch {}
+        }
+      }
+
       const nextPath = overallTestFlowStore.onTestCompleted("READING", testData?.id || "");
       if (nextPath) {
         // Ensure exam mode and fullscreen stay active for next test
@@ -237,17 +743,31 @@ export default function ReadingPage({ testId }: { testId: string }) {
       const overallId = overallTestFlowStore.getOverallId();
       if (overallId && overallTestFlowStore.isAllDone()) {
         const submitAllOk = await submitAllTests(overallId);
-        if (!submitAllOk) return;
+        if (!submitAllOk) {
+          setSubmitError("Sonuç raporu tamamlanamadı. Gönderimi tekrar deneyin.");
+          return;
+        }
         clearReadingProgress();
         return;
       }
       
-      // Fallback to single test results
+      if (submittedResultId) {
+        clearReadingProgress();
+        navigate(`/reading-test/results/${submittedResultId}`);
+        return;
+      }
+
       clearReadingProgress();
-      navigate(`/reading-test/results/temp`, { state: { summary: { testId: testData?.id } } });
+      toast.info("Sonuç raporu için testi Mock Test ekranından başlatın.");
+      navigate("/app/test");
     } catch (error) {
       console.error("Reading navigation error", error);
+      if (await recoverSubmittedSection()) return;
+      const message = getOverallSectionTimerErrorMessage(error) || "Cevaplarınız gönderilemedi. Tekrar deneyin.";
+      setSubmitError(message);
+      toast.error(message);
     } finally {
+      submitStartedRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -316,7 +836,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
           const overallToken = overallTestTokenStore.getByTestId(readingData.testId);
           if (!overallToken) {
             console.warn(
-              "Reading submit-all without overall token; falling back to standard auth:",
+              "Reading submit-all without overall token; skipping mock submit without overall token:",
               readingData.testId
             );
           }
@@ -360,7 +880,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
           const overallToken = overallTestTokenStore.getByTestId(listeningData.testId);
           if (!overallToken) {
             console.warn(
-              "Listening submit-all without overall token; falling back to standard auth:",
+              "Listening submit-all without overall token; skipping mock submit without overall token:",
               listeningData.testId
             );
           }
@@ -395,7 +915,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
           const overallToken = overallTestTokenStore.getByTestId(writingData.testId);
           if (!overallToken) {
             console.warn(
-              "Writing submit-all without overall token; falling back to standard auth:",
+              "Writing submit-all without overall token; skipping mock submit without overall token:",
               writingData.testId
             );
           }
@@ -538,7 +1058,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
           formattedSubmission.sessionToken = overallToken;
         } else {
           console.warn(
-            "Speaking submit-all without overall token; falling back to standard auth:",
+            "Speaking submit-all without overall token; skipping mock submit without overall token:",
             speakingData.testId
           );
         }
@@ -563,7 +1083,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
 
       if (failedSubmissions.length > 0) {
         toast.error(
-          `Bazi bolumler gecici olarak kaydedilemedi: ${failedSubmissions.join(", ")}. Cevaplariniz saklandi.`
+          "Bazı bölümler şu anda gönderilemedi. Cevaplarınız saklandı; lütfen biraz sonra tekrar deneyin."
         );
         if (successfulSubmissions.length > 0) {
           toast.message(`Kaydedilen bolumler: ${successfulSubmissions.join(", ")}`);
@@ -574,7 +1094,8 @@ export default function ReadingPage({ testId }: { testId: string }) {
       // Now complete the overall test
       if (!overallTestFlowStore.isCompleted()) {
         const { overallTestService } = await import("@/services/overallTest.service");
-        await overallTestService.complete(overallId);
+        const completed = await overallTestService.complete(overallId);
+        if (!completed) throw new Error("Overall result completion failed");
         overallTestFlowStore.markCompleted();
       }
       
@@ -589,8 +1110,10 @@ export default function ReadingPage({ testId }: { testId: string }) {
       return true;
     } catch (error) {
       console.error("Error submitting all tests:", error);
-      toast.error("Testler gonderilirken hata olustu. Cevaplariniz saklandi.");
+      toast.error("Test gönderilemedi. Cevaplarınız saklandı; lütfen biraz sonra tekrar deneyin.");
       return false;
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -603,6 +1126,27 @@ export default function ReadingPage({ testId }: { testId: string }) {
     handleSubmit();
   };
 
+  useEffect(() => {
+    if (
+      sectionTimerLoading || sectionTimerError || isSubmitting || !testData ||
+      hasSubmittedRef.current || !hasOverallTimerRef.current || timeLeft !== 0 ||
+      (autoSubmitRef.current && !submitError) || autoSubmitAttempts >= 3
+    ) return;
+
+    const attempt = () => {
+      autoSubmitRef.current = true;
+      setAutoSubmitAttempts((count) => count + 1);
+      if (autoSubmitAttempts === 0) toast.message("Süre bitti. Cevaplarınız gönderiliyor.");
+      void handleSubmit();
+    };
+    if (autoSubmitAttempts === 0) {
+      attempt();
+      return;
+    }
+    const timeout = window.setTimeout(attempt, 2000 * 2 ** (autoSubmitAttempts - 1));
+    return () => window.clearTimeout(timeout);
+  }, [sectionTimerLoading, sectionTimerError, isSubmitting, timeLeft, testData, submitError, autoSubmitAttempts]);
+
   const handleNextPart = () => {
     const ordered = (testData?.parts || [])
       .map((p) => p.number || 0)
@@ -612,6 +1156,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
     if (!unique.length) return;
     const idx = unique.indexOf(currentPartNumber);
     const next = idx >= 0 && idx < unique.length - 1 ? unique[idx + 1] : unique[idx] ?? unique[0];
+    setActiveQuestionNumber(null);
     setCurrentPartNumber(next);
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -625,12 +1170,33 @@ export default function ReadingPage({ testId }: { testId: string }) {
     if (!unique.length) return;
     const idx = unique.indexOf(currentPartNumber);
     const prev = idx > 0 ? unique[idx - 1] : unique[0];
+    setActiveQuestionNumber(null);
     setCurrentPartNumber(prev);
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleAnswerChange = (questionId: string, value: string) => {
-    setAnswers((prev) => ({ ...prev, [questionId]: value }));
+    if (
+      submitStartedRef.current || hasSubmittedRef.current ||
+      sectionTimerLoading || sectionTimerError || isReadingExpired()
+    ) {
+      return;
+    }
+    const question = (testData?.parts || [])
+      .flatMap((part) => part.sections || [])
+      .flatMap((section) => section.questions || [])
+      .find((item) => item.id === questionId);
+    if (typeof question?.number === "number") {
+      setActiveQuestionNumber(question.number);
+    }
+    editedAnswersRef.current[questionId] = value;
+    pendingAnswersRef.current[questionId] = value;
+    const nextAnswers = { ...latestAnswersRef.current, [questionId]: value };
+    latestAnswersRef.current = nextAnswers;
+    draftRevisionRef.current += 1;
+    draftNeedsSaveRef.current = !draftLoadedRef.current;
+    setAnswers(nextAnswers);
+    queueReadingDraft(nextAnswers);
   };
 
   const getOrderedPartNumbers = () =>
@@ -653,63 +1219,99 @@ export default function ReadingPage({ testId }: { testId: string }) {
     return qs.reduce((count, q: any) => (answers[q.id] ? count + 1 : count), 0);
   };
 
-  const getStaticHeader = (partNumber: number) => {
-    if (partNumber === 1) {
-      return "Sorular 1-6. Aşağıdaki metni okuyunuz ve alttaki sözcükleri (A-H) kullanarak boşlukları (1-6) doldurunuz. Her sözcük yalnızca bir defa kullanılabilir. Seçilmemesi gereken iki seçenek bulunmaktadır.";
+  const getPartInstruction = (partNumber: number) =>
+    officialReadingInstructions.parts[
+      String(partNumber) as keyof typeof officialReadingInstructions.parts
+    ] || "";
+
+  useEffect(() => {
+    const questionNumbers = getPartQuestions(currentPartNumber)
+      .map((question) => question.number)
+      .filter((number): number is number => typeof number === "number")
+      .sort((a, b) => a - b);
+    if (!questionNumbers.length) {
+      setActiveQuestionNumber(null);
+      return;
     }
-    if (partNumber === 2) {
-      return "Sorular 7-14. Aşağıda verilen durumları (A-J) ve bilgi metinlerini (7-14) okuyunuz. Her durum için uygun olan metni bulup uygun seçeneği işaretleyiniz. Her seçenek yalnız bir defa kullanılabilir. Seçilmemesi gereken iki seçenek bulunmaktadır.";
-    }
-    if (partNumber === 3) {
-      return "Sorular 15-20. Aşağıdaki başlıkları (A-H) ve paragrafları (15-20) okuyunuz. Her paragraf için uygun başlığı seçiniz.";
-    }
-    if (partNumber === 4) {
-      return "Sorular 21-29 için aşağıdaki metni okuyunuz.";
-    }
-    if (partNumber === 5) {
-      return "Sorular 30-35 için aşağıdaki metni okuyunuz.";
-    }
-    return "";
+    setActiveQuestionNumber((current) =>
+      current !== null && questionNumbers.includes(current)
+        ? current
+        : questionNumbers[0],
+    );
+  }, [currentPartNumber, testData]);
+
+  const scrollToQuestion = (questionNumber: number) => {
+    const target = document.getElementById(
+      `reading-question-desktop-${questionNumber}`,
+    );
+    const scrollContainer = target?.closest<HTMLElement>(".reading-scroll");
+    if (!target || !scrollContainer) return;
+
+    const targetRect = target.getBoundingClientRect();
+    const containerRect = scrollContainer.getBoundingClientRect();
+    const centeredTop =
+      scrollContainer.scrollTop +
+      targetRect.top -
+      containerRect.top -
+      (scrollContainer.clientHeight - targetRect.height) / 2;
+
+    scrollContainer.scrollTo({
+      top: Math.max(0, centeredTop),
+      behavior: "smooth",
+    });
   };
+
+  const goToQuestion = (questionNumber: number) => {
+    setActiveQuestionNumber(questionNumber);
+    window.requestAnimationFrame(() => {
+      scrollToQuestion(questionNumber);
+    });
+  };
+
+  const goToQuestionInPart = (partNumber: number, questionNumber: number) => {
+    setCurrentPartNumber(partNumber);
+    setActiveQuestionNumber(questionNumber);
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        scrollToQuestion(questionNumber);
+      });
+    });
+  };
+
+  const typographyPreset = getReadingTypographyPreset(fontScale);
+  const selectedFontScale = typographyPreset.menuValue;
 
   return (
     <ReadingNotesProvider>
       <div
-        className={`min-h-screen h-full bg-gray-50 font-sans text-[#333333] pb-44 sm:pb-52 ${
-          currentPartNumber >= 2 && currentPartNumber <= 5 ? "overflow-y-hidden lg:overflow-y-auto" : "overflow-y-auto"
+        className={`notranslate reading-exam-page min-h-screen h-full bg-white font-sans text-[#37352f] pb-44 sm:pb-52 lg:flex lg:h-dvh lg:min-h-0 lg:flex-col lg:overflow-hidden lg:pb-0 ${
+          currentPartNumber >= 2 && currentPartNumber <= 5 ? "overflow-y-hidden" : "overflow-y-auto"
         }`}
-        style={{ color: "#333333", ["--reading-font-scale" as any]: fontScale }}
+        translate="no"
+        data-exam-translation="disabled"
+        style={{ color: "#37352f", ...typographyPreset.style }}
       >
-        {/* Header - Same height and logic as main navbar */}
-        <div className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50 shadow-sm w-full">
-          {/* Match horizontal padding with description block below */}
+        <header className="sticky top-0 z-50 w-full border-b border-[#e5e5e2] bg-white">
           <div className="px-2 sm:px-4">
-            <div className="flex justify-between items-center h-auto py-2 lg:h-[68px] lg:py-0">
-              {/* Mobile Header - centered timer + title after logo */}
+            <div className="flex h-auto items-center justify-between py-2 lg:h-[60px] lg:py-0">
               <div className="block lg:hidden w-full">
-                <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <img
-                      src="/logo11.svg"
-                      alt="TURKISHMOCK"
-                      className="h-9 w-auto object-contain"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
-                      }}
-                    />
+                <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2">
+                  <div className="min-w-0 truncate text-sm font-semibold">
+                    Okuma
                   </div>
                   <div
-                    className={`justify-self-center text-base font-semibold tabular-nums ${
+                    className={`justify-self-center rounded-md border px-2.5 py-1.5 text-xs font-semibold tabular-nums ${
                       timeLeft <= 300 ? "text-red-700 animate-pulse" : "text-black"
-                    }`}
+                    } border-[#e5e5e2] bg-[#f7f7f5]`}
                   >
                     {formatTime(timeLeft)}
                   </div>
-                  <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-3 py-1.5 text-xs font-semibold min-h-[34px] touch-manipulation">
-                    GÖNDER
+                  <Button onClick={handleSubmitClick} disabled={sectionTimerLoading || !!sectionTimerError || isSubmitting || !testData || (!draftReady && timeLeft > 0)} className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-3 py-1.5 text-xs font-semibold min-h-[34px] touch-manipulation disabled:opacity-60">
+                    {sectionTimerLoading ? "Yükleniyor" : "GÖNDER"}
                   </Button>
                 </div>
-                <div className="mt-2 flex items-center justify-start gap-1">
+                <div className="mt-2 flex items-center justify-end gap-2">
+                  <div className="flex items-center gap-1">
                   <button
                     type="button"
                     className="!h-5 !w-5 !min-h-0 rounded border border-gray-200 bg-white !text-[9px] leading-none font-medium text-gray-700 p-0"
@@ -726,86 +1328,139 @@ export default function ReadingPage({ testId }: { testId: string }) {
                   >
                     A+
                   </button>
+                  </div>
                 </div>
               </div>
 
-              {/* Desktop Header - centered timer + title after logo */}
               <div className="hidden lg:grid lg:grid-cols-[auto_1fr_auto] items-center w-full gap-4">
-                <div className="flex items-center gap-2">
-                  <img 
-                    src="/logo11.svg" 
-                    alt="TURKISHMOCK" 
-                    className="h-9 sm:h-10 md:h-11 w-auto object-contain"
-                    onError={(e) => {
-                      console.error("Logo failed to load");
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
+                <div className="flex min-w-0 items-center gap-3">
+                  <img
+                    src="/logo11.svg"
+                    alt="TURKISHMOCK"
+                    className="h-10 w-auto shrink-0 object-contain"
                   />
+                  <span
+                    aria-hidden="true"
+                    className="h-5 w-px shrink-0 bg-[#dededb]"
+                  />
+                  <span className="truncate text-[17px] font-semibold text-[#37352f]">
+                    Okuma
+                  </span>
                 </div>
                 <div
-                  className={`justify-self-center text-[22px] font-semibold tabular-nums ${
+                  className={`justify-self-center rounded-md border px-3 py-1.5 text-sm font-semibold tabular-nums ${
                     timeLeft <= 300 ? "text-red-700 animate-pulse" : "text-black"
-                  }`}
+                  } border-[#e5e5e2] bg-[#f7f7f5]`}
                 >
                   {formatTime(timeLeft)}
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="justify-self-end flex items-center gap-3">
                   <NotesPanel currentPartNumber={currentPartNumber} />
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      className="h-8 w-8 rounded border border-gray-200 bg-white text-[11px] font-semibold text-gray-700"
-                      onClick={() => setFontScale((v) => Math.max(0.9, Math.round((v - 0.05) * 100) / 100))}
-                      aria-label="Metni küçült"
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex h-8 w-8 items-center justify-center rounded border border-[#dededb] bg-white text-[#5f5e5a] transition-colors hover:bg-[#f7f7f5] hover:text-[#37352f]"
+                        aria-label="Yazı boyutu"
+                        title="Yazı boyutu"
+                      >
+                        <ALargeSmall className="h-4 w-4" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="end"
+                      className="w-40 border-[#dededb] bg-white text-[#37352f] shadow-md"
                     >
-                      A-
-                    </button>
-                    <button
-                      type="button"
-                      className="h-8 w-8 rounded border border-gray-200 bg-white text-[11px] font-semibold text-gray-700"
-                      onClick={() => setFontScale((v) => Math.min(1.2, Math.round((v + 0.05) * 100) / 100))}
-                      aria-label="Metni büyült"
-                    >
-                      A+
-                    </button>
-                  </div>
-                  <Button onClick={handleSubmitClick} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 text-xs font-semibold min-h-[34px]">
-                    GÖNDER
+                      <DropdownMenuRadioGroup
+                        value={selectedFontScale}
+                        onValueChange={(value) => setFontScale(Number(value))}
+                      >
+                        <DropdownMenuRadioItem value="0.9">Küçük</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="1">Standart</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="1.1">Büyük</DropdownMenuRadioItem>
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <button
+                    type="button"
+                    onClick={() => void exitExamFullscreen()}
+                    disabled={!isFullscreen}
+                    className="flex h-8 w-8 items-center justify-center rounded border border-[#dededb] bg-white text-[#5f5e5a] transition-colors hover:bg-[#f7f7f5] hover:text-[#37352f] disabled:cursor-default disabled:opacity-45"
+                    aria-label="Tam ekrandan çık"
+                    title="Tam ekrandan çık"
+                  >
+                    <Minimize2 className="h-4 w-4" />
+                  </button>
+                  <Button onClick={handleSubmitClick} disabled={sectionTimerLoading || !!sectionTimerError || isSubmitting || !testData || (!draftReady && timeLeft > 0)} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 text-xs font-semibold min-h-[34px] disabled:opacity-60">
+                    {sectionTimerLoading ? "Yükleniyor" : "GÖNDER"}
                   </Button>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        </header>
 
-      {/* Description Section - Responsive */}
-      <div className="mx-2 sm:mx-4 mt-2">
-        <div className="p-3 sm:p-5 bg-gray-100 rounded-lg border border-gray-200">
-          <div className="flex items-center justify-between mb-2 sm:mb-3">
-            <h3 className="text-[19px] font-semibold text-[#333333]">
-              {currentPartNumber}. OKUMA METNİ
-            </h3>
+      <section className="mx-2 mt-2 border-b border-[#e5e5e2] bg-white px-3 py-3.5 sm:mx-4 sm:px-4">
+          <div className={`flex items-center justify-between gap-3 ${showDescription ? "mb-1.5" : ""}`}>
+            <h2 className="reading-part-heading">
+              Bölüm {currentPartNumber}
+            </h2>
             <button
               type="button"
               onClick={() => setShowDescription((v) => !v)}
-              className="text-xs sm:text-sm font-semibold text-gray-700 border border-gray-200 rounded-md px-2 py-1 bg-white"
+              className="flex h-8 w-8 items-center justify-center rounded-md text-[#6f6d67] hover:bg-[#f1f1ef] hover:text-[#37352f]"
+              aria-label={showDescription ? "Anlatımı gizle" : "Anlatımı göster"}
+              title={showDescription ? "Anlatımı gizle" : "Anlatımı göster"}
             >
-              {showDescription ? "Anlatımı Gizle" : "Anlatımı Göster"}
+              {showDescription ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </button>
           </div>
           {showDescription && (
-            <p className="text-sm sm:text-base lg:text-lg text-[#333333] leading-relaxed">
-              {getStaticHeader(currentPartNumber)}
+            <p className="reading-part-description max-w-6xl">
+              {getPartInstruction(currentPartNumber)}
             </p>
           )}
-        </div>
-      </div>
+      </section>
 
-      {/* Minimal info to verify network call */}
-      <div className="max-w-7xl mx-auto px-6 py-3">
-        {isLoading && <div className="text-sm text-[#333333]">Loading reading test...</div>}
-        {error && <div className="text-sm text-red-600">{error}</div>}
-      </div>
+      {sectionTimerError && (
+        <div role="alert" className="flex items-center justify-between gap-3 border-b border-[#e5e5e2] bg-[#fffdf7] px-5 py-3 text-sm">
+          <p>{sectionTimerError}</p>
+          <Button type="button" variant="outline" disabled={sectionTimerLoading} onClick={() => setTimerRetryKey((key) => key + 1)}>
+            Durumu tekrar kontrol et
+          </Button>
+        </div>
+      )}
+      {draftLoadError && timeLeft > 0 && (
+        <div role="alert" className="flex items-center justify-between gap-3 border-b border-[#e5e5e2] bg-[#fffdf7] px-5 py-3 text-sm">
+          <p>Kayıtlı cevaplarınız yüklenemedi. Bağlantınızı kontrol edip tekrar deneyin. Sınav süresi devam ediyor.</p>
+          <Button type="button" variant="outline" onClick={() => setDraftRetryKey((key) => key + 1)}>
+            Taslağı tekrar yükle
+          </Button>
+        </div>
+      )}
+      {submitError && (
+        <div role="alert" className="flex items-center justify-between gap-3 border-b border-[#e5e5e2] bg-[#fffdf7] px-5 py-3 text-sm">
+          <p>
+            {submitError}
+            {timeLeft <= 0 && autoSubmitAttempts < 3 && !hasSubmittedRef.current ? " Bağlantı yeniden denenecek." : " Cevaplarınız korunuyor."}
+          </p>
+          <Button type="button" variant="outline" disabled={isSubmitting} onClick={() => {
+            if (isReadingExpired()) {
+              setAutoSubmitAttempts(3);
+              autoSubmitRef.current = true;
+            }
+            void handleSubmit();
+          }}>
+            Gönderimi tekrar dene
+          </Button>
+        </div>
+      )}
+      {(isLoading || error) && (
+        <div className="mx-auto max-w-7xl px-6 py-3">
+          {isLoading && <div className="text-sm text-[#5f5e5a]">Okuma testi yükleniyor...</div>}
+          {error && <div className="text-sm text-red-600">{error}</div>}
+        </div>
+      )}
 
       {/* Dynamic Part Content */}
       {!isLoading && !error && testData && currentPartNumber === 1 && (
@@ -814,6 +1469,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
           answers={answers} 
           onAnswerChange={handleAnswerChange}
           partNumber={currentPartNumber}
+          fontScale={typographyPreset.scale}
         />
       )}
 
@@ -872,81 +1528,175 @@ export default function ReadingPage({ testId }: { testId: string }) {
           return { qs, nums };
         };
 
+        const allQuestionGroups = partNumbers.map((partNum) => ({
+          partNum,
+          ...buildPartQuestions(partNum),
+        }));
+
         return (
           <>
-            {/* Desktop Layout - Tabs */}
-            <div className="hidden lg:block fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-300 shadow-sm p-1.5 sm:p-2 z-50">
-              <div className="max-w-7xl mx-auto">
-                <div className="mb-2 flex items-center gap-3 px-1">
-                  <div className="text-[11px] font-semibold text-gray-700 min-w-[92px]">
-                    BÖLÜM {currentPartIndex + 1}/{totalParts}
-                  </div>
-                  <div className="h-1.5 flex-1 rounded-full bg-gray-200 overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-[#438553] transition-all duration-200 ease-out"
-                      style={{ width: `${currentPartProgress}%` }}
-                    />
-                  </div>
-                  <div className="text-[11px] font-semibold text-gray-700 min-w-[88px] text-right">
-                    {currentPartAnswered}/{currentPartQuestions} cevap
-                  </div>
-                </div>
+            <div className="z-50 hidden shrink-0 border-t border-[#e5e5e2] bg-white lg:block">
+              <div
+                className={`mx-auto flex items-center gap-3 px-4 py-2 ${
+                  showAllQuestionNumbers ? "max-w-none" : "max-w-7xl"
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => setShowAllQuestionNumbers((value) => !value)}
+                  aria-label={
+                    showAllQuestionNumbers
+                      ? "Bölüm görünümüne dön"
+                      : "Tüm soruları göster"
+                  }
+                  aria-pressed={showAllQuestionNumbers}
+                  title={
+                    showAllQuestionNumbers
+                      ? "Bölüm görünümüne dön"
+                      : "Tüm soruları göster"
+                  }
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8a8881] ${
+                    showAllQuestionNumbers
+                      ? "border-[#c9c9c4] bg-[#e9e9e6] text-[#2f2e2a]"
+                      : "border-[#d8d8d4] bg-white text-[#5f5e5a] hover:bg-[#f7f7f5] hover:text-[#37352f]"
+                  }`}
+                >
+                  {showAllQuestionNumbers ? (
+                    <List className="h-4 w-4" />
+                  ) : (
+                    <LayoutGrid className="h-4 w-4" />
+                  )}
+                </button>
 
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex justify-center gap-2 flex-nowrap overflow-x-auto flex-1">
-                    {partNumbers.map((partNum) => {
-                      const { qs, nums } = buildPartQuestions(partNum);
-                      const isActive = currentPartNumber === partNum;
-                      return (
-                        <div
-                          key={partNum}
-                          className={`text-center border rounded-md p-1 min-w-fit cursor-pointer ${
-                            isActive ? "border-[#438553] bg-[#438553]/15" : "border-gray-300 bg-gray-50 hover:bg-[#F6F5F2]"
-                          }`}
-                          onClick={() => {
-                            setCurrentPartNumber(partNum);
-                            window.scrollTo({ top: 0, behavior: "smooth" });
-                          }}
-                        >
-                          <div className="flex gap-1 mb-1 justify-center flex-wrap">
-                            {(nums.length ? nums : [partNum]).map((q) => {
-                              const questionId = qs.find((qq) => qq.number === q)?.id;
-                              const isAnswered = !!(questionId && answers[questionId]);
-                              return (
-                                <div
-                                  key={`${partNum}-${q}`}
-                                  className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-xs font-bold ${
-                                    isAnswered ? "bg-[#438553] border-gray-800 text-white" : "bg-white border-gray-800 text-gray-800"
-                                  }`}
-                                >
-                                  {q}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                <div className="h-6 w-px shrink-0 bg-[#e5e5e2]" />
 
-                  <div className="flex items-center gap-2">
-                    <Button
-                      onClick={handlePrevPart}
-                      disabled={partNumbers.indexOf(currentPartNumber) <= 0}
-                      className="bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-900 font-bold px-3 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed min-h-[40px] touch-manipulation"
-                      aria-label="Önceki"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      onClick={handleNextPart}
-                      disabled={partNumbers.indexOf(currentPartNumber) >= partNumbers.length - 1}
-                      className="bg-[#438553] hover:bg-[#356A44] active:bg-[#2d5a3a] text-white font-bold px-3 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed min-h-[40px] touch-manipulation"
-                      aria-label="Sonraki"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
+                {showAllQuestionNumbers ? (
+                  <nav
+                    className="flex min-w-0 flex-1 items-center overflow-x-auto"
+                    aria-label="Tüm okuma soruları"
+                  >
+                    {allQuestionGroups.map(({ partNum, qs, nums }, groupIndex) => (
+                      <div
+                        key={partNum}
+                        className={`flex shrink-0 items-center gap-1 ${
+                          groupIndex > 0
+                            ? "ml-1.5 border-l border-[#dededb] pl-1.5"
+                            : ""
+                        }`}
+                      >
+                        {nums.map((questionNumber) => {
+                          const questionId = qs.find(
+                            (question) => question.number === questionNumber,
+                          )?.id;
+                          const isAnswered = !!(questionId && answers[questionId]);
+                          const isActive =
+                            currentPartNumber === partNum &&
+                            activeQuestionNumber === questionNumber;
+
+                          return (
+                            <button
+                              key={`${partNum}-${questionNumber}`}
+                              type="button"
+                              onClick={() =>
+                                goToQuestionInPart(partNum, questionNumber)
+                              }
+                              aria-label={`Bölüm ${partNum}, soru ${questionNumber}`}
+                              aria-current={isActive ? "step" : undefined}
+                              className={`flex h-7 w-7 min-w-7 shrink-0 items-center justify-center rounded-full border text-[11px] font-semibold tabular-nums transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8a8881] ${
+                                isActive
+                                  ? "border-[#6f6d67] bg-[#f1f1ef] text-[#2f2e2a] shadow-[inset_0_0_0_1px_#6f6d67]"
+                                  : isAnswered
+                                    ? "border-[#aaa8a2] bg-[#e9e9e6] text-[#37352f]"
+                                    : "border-[#d8d8d4] bg-white text-[#6f6d67] hover:border-[#b8b7b1] hover:bg-[#f7f7f5]"
+                              }`}
+                            >
+                              {questionNumber}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </nav>
+                ) : (
+                  <>
+                    <nav className="flex shrink-0 items-center gap-1" aria-label="Okuma bölümleri">
+                      {partNumbers.map((partNum) => {
+                        const isActive = currentPartNumber === partNum;
+                        return (
+                          <button
+                            key={partNum}
+                            type="button"
+                            className={`h-8 rounded-md px-3 text-[13px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8a8881] focus-visible:ring-offset-0 ${
+                              isActive
+                                ? "bg-[#e9e9e6] text-[#2f2e2a] shadow-[inset_0_0_0_1px_#c9c9c4]"
+                                : "text-[#6f6d67] hover:bg-[#f1f1ef] hover:text-[#37352f]"
+                            }`}
+                            onClick={() => {
+                              setActiveQuestionNumber(null);
+                              setCurrentPartNumber(partNum);
+                              window.scrollTo({ top: 0, behavior: "smooth" });
+                            }}
+                          >
+                            Bölüm {partNum}
+                          </button>
+                        );
+                      })}
+                    </nav>
+
+                    <div className="h-6 w-px shrink-0 bg-[#e5e5e2]" />
+
+                    <div className="flex min-w-0 flex-1 items-center">
+                      <div className="flex min-w-0 items-center gap-1.5 overflow-x-auto">
+                        {(() => {
+                          const { qs, nums } = buildPartQuestions(currentPartNumber);
+                          return (nums.length ? nums : [currentPartNumber]).map((questionNumber) => {
+                            const questionId = qs.find((question) => question.number === questionNumber)?.id;
+                            const isAnswered = !!(questionId && answers[questionId]);
+                            const isActive = activeQuestionNumber === questionNumber;
+                            return (
+                              <button
+                                key={`${currentPartNumber}-${questionNumber}`}
+                                type="button"
+                                onClick={() => goToQuestion(questionNumber)}
+                                aria-label={`Soru ${questionNumber}`}
+                                aria-current={isActive ? "step" : undefined}
+                                className={`flex h-8 w-8 min-w-8 shrink-0 items-center justify-center rounded-full border text-xs font-semibold tabular-nums transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8a8881] focus-visible:ring-offset-0 ${
+                                  isActive
+                                    ? "border-[#6f6d67] bg-[#f1f1ef] text-[#2f2e2a] shadow-[inset_0_0_0_1px_#6f6d67]"
+                                    : isAnswered
+                                      ? "border-[#aaa8a2] bg-[#e9e9e6] text-[#37352f]"
+                                      : "border-[#d8d8d4] bg-white text-[#6f6d67] hover:border-[#b8b7b1] hover:bg-[#f7f7f5]"
+                                }`}
+                              >
+                                {questionNumber}
+                              </button>
+                            );
+                          });
+                        })()}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button
+                    onClick={handlePrevPart}
+                    disabled={partNumbers.indexOf(currentPartNumber) <= 0}
+                    className="h-9 min-h-9 w-9 border border-black bg-white p-0 text-[#37352f] hover:bg-[#f1f1ef] disabled:opacity-40"
+                    aria-label="Önceki bölüm"
+                    title="Önceki bölüm"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    onClick={handleNextPart}
+                    disabled={partNumbers.indexOf(currentPartNumber) >= partNumbers.length - 1}
+                    className="h-9 min-h-9 w-9 border border-black bg-white p-0 text-[#37352f] hover:bg-[#f1f1ef] disabled:opacity-40"
+                    aria-label="Sonraki bölüm"
+                    title="Sonraki bölüm"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             </div>
@@ -996,6 +1746,35 @@ export default function ReadingPage({ testId }: { testId: string }) {
       {/* Hook GÖNDER to submit current answers */}
 
       {/* Footer navigation removed for now (building from Part 1 only) */}
+
+      {(showFullscreenPrompt || !isFullscreen) && !hasSubmittedRef.current && (
+        <div
+          className="fixed inset-0 z-[100] hidden items-center justify-center bg-white/95 px-4 backdrop-blur-[2px] lg:flex"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="reading-fullscreen-title"
+        >
+          <div className="w-full max-w-sm border border-[#dededb] bg-white p-6 text-center shadow-lg">
+            <Maximize2 className="mx-auto h-5 w-5 text-[#5f5e5a]" />
+            <h2
+              id="reading-fullscreen-title"
+              className="mt-3 text-[17px] font-semibold text-[#37352f]"
+            >
+              Tam ekrana dön
+            </h2>
+            <p className="mt-1 text-sm text-[#6f6d67]">
+              Sınav süresi devam ediyor.
+            </p>
+            <Button
+              type="button"
+              onClick={() => void requestExamFullscreen(true)}
+              className="mt-5 h-9 bg-[#37352f] px-4 text-sm font-semibold text-white hover:bg-[#242320]"
+            >
+              Tam ekrana dön
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Confirmation Modal */}
       <ConfirmationModal

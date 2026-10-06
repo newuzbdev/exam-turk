@@ -1,0 +1,41 @@
+.microphone-check-page {
+  display: grid;
+  min-height: 100dvh;
+  align-items: center;
+  padding: 24px 16px;
+  background: var(--tm-bg-page);
+  color: var(--tm-text-primary);
+}
+
+.microphone-check-surface {
+  width: 100%;
+  max-width: 560px;
+  min-width: 0;
+  margin: auto;
+  padding: 24px;
+  border: 1px solid var(--tm-border-subtle);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 4px 18px #17171406;
+}
+
+.mic-check-brand { display: flex; justify-content: center; margin-bottom: 24px; }
+.mic-check-brand > img { height: 32px; }
+.mic-check-help { margin-top: 8px; color: var(--tm-text-secondary); font-size: 14px; line-height: 22px; }
+.mic-check-help > summary { display: flex; align-items: center; gap: 6px; width: fit-content; color: var(--tm-text-primary); font-weight: 500; list-style: none; cursor: pointer; }
+.mic-check-help > summary::-webkit-details-marker { display: none; }
+.mic-check-help > summary svg { flex-shrink: 0; transition: transform 120ms; }
+.mic-check-help[open] > summary svg { transform: rotate(180deg); }
+.mic-check-help > ol { margin-top: 10px; padding-left: 20px; list-style: decimal; }
+.mic-check-help > ol > li + li { margin-top: 4px; }
+.microphone-check-surface button:focus-visible,
+.microphone-check-surface summary:focus-visible { outline: 1px solid var(--tm-text-primary); outline-offset: 3px; }
+
+@media (max-width: 520px) {
+  .microphone-check-page { padding: 16px; }
+  .microphone-check-surface { padding: 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mic-check-help > summary svg { transition: none; }
+}

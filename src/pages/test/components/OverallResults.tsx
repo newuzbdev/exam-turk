@@ -1,13 +1,104 @@
-﻿import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+﻿import { useCallback, useEffect, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useRef } from "react";
+import { useLayoutEffect } from "react";
 import axiosPrivate from "@/config/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download } from "lucide-react";
-import { overallTestService } from "@/services/overallTest.service";
-import { ConfettiSideCannons } from "@/components/ui/confetti-side-cannons";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import {
+  ArrowLeft,
+  Download,
+  Loader2,
+  PlayCircle,
+  RefreshCw,
+  Volume2,
+} from "lucide-react";
+import WritingDeepReview from "@/components/writing/WritingDeepReview";
+import SpeakingDeepReview, {
+  extractSpeakingDiscussionPoints,
+  isExplicitSingleRecordingCombinedPrompt,
+  readLegacySpeakingSessionFallback,
+  resolveSpeakingResultFeedback,
+  type SpeakingDeepReviewSection,
+} from "@/components/speaking/SpeakingDeepReview";
+import SpeakingFlowAudioPlayer from "@/components/speaking/SpeakingFlowAudioPlayer";
+import { resolveSpeakingResultDisplay } from "@/components/speaking/speaking-result-display";
+import {
+  regroupSpeakingAnswersByExpectedLayout,
+  type SpeakingResultPartKey,
+} from "@/components/speaking/speaking-result-section-layout";
+import { sanitizeSpeakingLearnerCopy } from "@/components/speaking/speaking-learner-copy";
+import {
+  normalizeSpeakingSpeechEvidence,
+  type SpeakingFlowTimeRange,
+  type SpeakingSpeechEvidence,
+} from "@/components/speaking/speaking-speech-evidence";
 import { normalizeDisplayText, normalizeFeedbackText } from "@/utils/text";
+import ReadingEvidenceReview from "@/components/results/ReadingEvidenceReview";
+import ListeningEvidenceReview from "@/components/results/ListeningEvidenceReview";
+import WritingV2Results, {
+  WritingV2Summary,
+  isWritingV2Result,
+} from "@/components/results/WritingV2Results";
+import PerformanceReportOverview, {
+  type PerformanceReportSectionStat,
+  type PerformanceReportStat,
+} from "@/components/results/PerformanceReportOverview";
+import { FullTestReportSummary } from "@/components/results/FullTestReportSummary";
+import {
+  flattenReviewQuestions,
+  isBlankReviewAnswer,
+  type MockReviewV1,
+} from "@/components/results/evidence-review-utils";
+import speakingSubmissionService from "@/services/speakingSubmission.service";
+import {
+  resolveSpeakingEvaluationView,
+  resolveSpeakingRetryAction,
+  shouldShowSpeakingFeedbackRetry,
+  shouldRefreshOverallEvaluation,
+} from "@/services/speakingSubmissionRecovery";
+import { createSpeakingAudioReplayUrl } from "@/services/speakingAudioReplay";
+import writingSubmissionService from "@/services/writingSubmission.service";
+import { useResultScreenProtection } from "@/hooks/use-result-screen-protection";
+import { clearExamPresentation } from "@/utils/examFullscreen";
+import { overallTestService } from "@/services/overallTest.service";
+
+const resolveOfficialSpeakingDisplay = (
+  status: unknown,
+  score: unknown,
+  storedLevel?: string | null,
+) => {
+  const normalizedStatus = String(status || "").trim().toUpperCase();
+  return resolveSpeakingResultDisplay({
+    status: normalizedStatus === "PROCESSING" ? "PENDING" : normalizedStatus,
+    score:
+      typeof score === "number" || typeof score === "string"
+        ? score
+        : null,
+    storedLevel,
+  });
+};
+
+const sanitizeSpeakingFallbackFields = (
+  source: Record<string, unknown>,
+) => {
+  return {
+    part1: sanitizeSpeakingLearnerCopy(source.part1),
+    part2: sanitizeSpeakingLearnerCopy(source.part2),
+    part3: sanitizeSpeakingLearnerCopy(source.part3),
+    part4: sanitizeSpeakingLearnerCopy(source.part4),
+    coherence: sanitizeSpeakingLearnerCopy(source.coherence),
+    grammar: sanitizeSpeakingLearnerCopy(source.grammar),
+    lexical: sanitizeSpeakingLearnerCopy(source.lexical),
+    achievement: sanitizeSpeakingLearnerCopy(source.achievement),
+  };
+};
+
+const isSpeakingEvaluationPending = (status: unknown) =>
+  ["PENDING", "PROCESSING"].includes(
+    String(status || "").trim().toUpperCase(),
+  );
 
 interface Question {
   questionId: string;
@@ -24,6 +115,9 @@ interface Question {
 
 interface TestSonuc {
   aiFeedback?: any;
+  resultId?: string;
+  reviewAvailable?: boolean;
+  review?: MockReviewV1 | null;
   test: {
     id: string;
     title: string;
@@ -50,6 +144,29 @@ interface TestSonuc {
   part1?: any;
   part2?: any;
   part3?: any;
+  id?: string;
+  submissionId?: string;
+  feedbackRetry?: {
+    eligible?: boolean;
+    reason?: string | null;
+  };
+  evaluationStatus?: string;
+  processingVersion?: string | null;
+  evaluationErrorCode?: string | null;
+  evaluationAttempts?: number;
+  evaluatedAt?: string | null;
+  updatedAt?: string | null;
+}
+
+interface SpeakingAudioMeta {
+  audioId?: string | null;
+  hasAudio?: boolean;
+  mimeType?: string | null;
+  sizeBytes?: number | null;
+  durationSeconds?: number | null;
+  retentionUntil?: string | null;
+  sectionKey?: string | null;
+  speechEvidence?: SpeakingSpeechEvidence;
 }
 
 interface OverallResponse {
@@ -70,9 +187,28 @@ interface OverallResponse {
   speaking?: TestSonuc;
 }
 
+export const getSpeakingRetryFingerprint = (speaking?: TestSonuc | null) =>
+  JSON.stringify({
+    evaluationStatus: speaking?.evaluationStatus ?? null,
+    evaluatedAt: speaking?.evaluatedAt ?? null,
+    processingVersion: speaking?.processingVersion ?? null,
+    evaluationAttempts: speaking?.evaluationAttempts ?? null,
+    evaluationErrorCode: speaking?.evaluationErrorCode ?? null,
+    score: speaking?.score ?? null,
+    updatedAt: speaking?.updatedAt ?? null,
+  });
+
+export const hasChangedSpeakingRetryResult = (
+  baseline: string | null,
+  current: string,
+) => Boolean(baseline && baseline !== current);
+
 export default function OverallResults() {
+  useResultScreenProtection();
   const params = useParams<{ overallId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const openedFromReports = searchParams.get("source") === "reports";
   const [data, setData] = useState<OverallResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("listening");
@@ -81,11 +217,34 @@ export default function OverallResults() {
   const [activeSpeakingPart, setActiveSpeakingPart] = useState(0);
   const [activeSpeakingQuestion, setActiveSpeakingQuestion] = useState(0);
   const [downloadingPDF, setDownloadingPDF] = useState(false);
+  const [audioUrls, setAudioUrls] = useState<Record<string, { url: string; expiresAt: number }>>({});
+  const [audioLoading, setAudioLoading] = useState<Record<string, boolean>>({});
+  const [audioErrors, setAudioErrors] = useState<Record<string, string>>({});
+  const [retryingSpeakingFeedback, setRetryingSpeakingFeedback] = useState(false);
+  const [speakingRetryRefreshError, setSpeakingRetryRefreshError] = useState<string | null>(null);
+  const [retryingWritingFeedback, setRetryingWritingFeedback] = useState(false);
+  const audioElementRefs = useRef(new Map<string, HTMLAudioElement>());
+  const audioObjectUrlsRef = useRef(new Map<string, string>());
+  const pendingAudioSeek = useRef(new Map<string, number>());
+  const speakingRetryAcceptedRef = useRef(false);
+  const speakingRetryBaselineRef = useRef<string | null>(null);
+
+  useLayoutEffect(() => {
+    void clearExamPresentation();
+  }, []);
+
+  useEffect(
+    () => () => {
+      audioObjectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+      audioObjectUrlsRef.current.clear();
+    },
+    [],
+  );
 
   const handleDownloadPDF = async () => {
     const id = params.overallId;
     if (!id) return;
-    
+
     setDownloadingPDF(true);
     try {
       await overallTestService.downloadPDF(id, `certificate-${id}.pdf`);
@@ -96,30 +255,226 @@ export default function OverallResults() {
     }
   };
 
-  useEffect(() => {
+  const fetchOverallResults = useCallback(async (showLoading = true) => {
     const id = params.overallId;
-    if (!id) { navigate("/test"); return; }
+    if (!id) { navigate("/app/test"); return false; }
+    if (showLoading) setLoading(true);
+    try {
+      const res = await axiosPrivate.get(`/api/overal-test-result/${id}/results`);
+      const payload = (res?.data?.data || res?.data || null) as OverallResponse | null;
+      const speakingSubmissionId =
+        typeof payload?.speaking?.submissionId === "string"
+          ? payload.speaking.submissionId.trim()
+          : typeof payload?.speaking?.id === "string"
+            ? payload.speaking.id.trim()
+            : "";
 
-    const fetchOverallResults = async () => {
-      setLoading(true);
-      try {
-        console.log("Fetching overall results for ID:", id);
-        const res = await axiosPrivate.get(`/api/overal-test-result/${id}/results`);
-        console.log("Overall results response:", res.data);
-        const payload = (res?.data?.data || res?.data || null) as OverallResponse | null;
+      if (payload?.speaking && speakingSubmissionId) {
+        try {
+          const speakingRes = await axiosPrivate.get(`/api/speaking-submission/${speakingSubmissionId}`);
+          const detailedSpeaking = speakingRes?.data?.data || speakingRes?.data || null;
+          if (detailedSpeaking) {
+            setData({
+              ...payload,
+              speaking: {
+                ...payload.speaking,
+                ...detailedSpeaking,
+                answers:
+                  Array.isArray(detailedSpeaking.answers) && detailedSpeaking.answers.length > 0
+                    ? detailedSpeaking.answers
+                    : payload.speaking.answers || [],
+                part1: payload.speaking.part1,
+                part2: payload.speaking.part2,
+                part3: payload.speaking.part3,
+                test: payload.speaking.test,
+              },
+            });
+            return true;
+          }
+        } catch {
+          // Keep the overall result usable if detailed speaking hydration is unavailable.
+        }
         setData(payload);
-      } catch (e) {
-        console.error("Error fetching overall results:", e);
-        setData(null);
-      } finally {
-        setLoading(false);
+        return false;
       }
-    };
+
+      setData(payload);
+      return Boolean(payload);
+    } catch (e) {
+      console.error("Error fetching overall results:", e);
+      if (showLoading) setData(null);
+      return false;
+    } finally {
+      if (showLoading) setLoading(false);
+    }
+  }, [params.overallId, navigate]);
+
+  useEffect(() => {
 
     // exit exam mode on entering overall results
     try { document?.body?.classList?.remove("exam-mode"); } catch {}
-    fetchOverallResults();
-  }, [params.overallId, navigate]);
+    void fetchOverallResults();
+  }, [fetchOverallResults]);
+
+  const pendingWritingEvaluationStatus = String(
+    data?.writing?.evaluationStatus ||
+      (data?.writing?.aiFeedback as any)?.evaluationStatus ||
+      "",
+  ).toUpperCase();
+  const speakingEvaluationStatus = String(
+    data?.speaking?.evaluationStatus ||
+      (data?.speaking?.aiFeedback as any)?.evaluationStatus ||
+      "",
+  ).toUpperCase();
+  const pendingSpeakingEvaluation = isSpeakingEvaluationPending(
+    speakingEvaluationStatus,
+  );
+  const speakingRetryFingerprint = getSpeakingRetryFingerprint(data?.speaking);
+  const speakingEvaluationView = resolveSpeakingEvaluationView(
+    pendingSpeakingEvaluation ? "PENDING" : speakingEvaluationStatus,
+  );
+  const shouldRefreshEvaluation = shouldRefreshOverallEvaluation({
+    writingStatus: pendingWritingEvaluationStatus,
+    speakingStatus: pendingSpeakingEvaluation
+      ? "PENDING"
+      : speakingEvaluationStatus,
+  });
+
+  useEffect(() => {
+    if (
+      !retryingSpeakingFeedback ||
+      !speakingRetryAcceptedRef.current ||
+      pendingSpeakingEvaluation ||
+      !hasChangedSpeakingRetryResult(
+        speakingRetryBaselineRef.current,
+        speakingRetryFingerprint,
+      )
+    ) {
+      return;
+    }
+
+    if (speakingEvaluationStatus === "COMPLETED") {
+      speakingRetryAcceptedRef.current = false;
+      speakingRetryBaselineRef.current = null;
+      setSpeakingRetryRefreshError(null);
+      setRetryingSpeakingFeedback(false);
+      return;
+    }
+
+    if (speakingEvaluationStatus === "FAILED") {
+      speakingRetryAcceptedRef.current = false;
+      speakingRetryBaselineRef.current = null;
+      setSpeakingRetryRefreshError(
+        "Yeniden değerlendirme tamamlanamadı. Sonuç güncellenemedi.",
+      );
+      setRetryingSpeakingFeedback(false);
+    }
+  }, [
+    pendingSpeakingEvaluation,
+    retryingSpeakingFeedback,
+    speakingEvaluationStatus,
+    speakingRetryFingerprint,
+  ]);
+
+  useEffect(() => {
+    if (!shouldRefreshEvaluation && !retryingSpeakingFeedback) return;
+
+    const refresh = () => {
+      void fetchOverallResults(false).then((refreshed) => {
+        if (refreshed || !speakingRetryAcceptedRef.current) return;
+        speakingRetryAcceptedRef.current = false;
+        speakingRetryBaselineRef.current = null;
+        setSpeakingRetryRefreshError(
+          "Yeniden değerlendirme durumu şu anda yenilenemedi. Lütfen tekrar deneyin.",
+        );
+        setRetryingSpeakingFeedback(false);
+      });
+    };
+
+    const refreshInterval = window.setInterval(() => {
+      refresh();
+    }, 2_500);
+
+    return () => window.clearInterval(refreshInterval);
+  }, [
+    fetchOverallResults,
+    retryingSpeakingFeedback,
+    shouldRefreshEvaluation,
+  ]);
+
+  const speakingSubmissionId =
+    typeof data?.speaking?.submissionId === "string"
+      ? data.speaking.submissionId.trim()
+      : typeof data?.speaking?.id === "string"
+        ? data.speaking.id.trim()
+        : "";
+  const speakingFeedbackRetry = data?.speaking?.feedbackRetry;
+  const canRetrySpeakingFeedback = Boolean(
+    speakingSubmissionId && speakingFeedbackRetry?.eligible,
+  );
+
+  const retrySpeakingFeedback = async () => {
+    if (
+      !canRetrySpeakingFeedback ||
+      !speakingSubmissionId ||
+      retryingSpeakingFeedback
+    ) {
+      return;
+    }
+
+    setRetryingSpeakingFeedback(true);
+    setSpeakingRetryRefreshError(null);
+    speakingRetryBaselineRef.current = getSpeakingRetryFingerprint(
+      data?.speaking,
+    );
+    try {
+      const retryAction = resolveSpeakingRetryAction(
+        speakingEvaluationStatus,
+        data?.speaking?.processingVersion,
+      );
+      if (retryAction === "evaluation") {
+        await speakingSubmissionService.retryEvaluation(speakingSubmissionId);
+      } else {
+        await speakingSubmissionService.retryFeedback(speakingSubmissionId);
+      }
+      speakingRetryAcceptedRef.current = true;
+      const refreshed = await fetchOverallResults(false);
+      if (!refreshed) {
+        speakingRetryAcceptedRef.current = false;
+        speakingRetryBaselineRef.current = null;
+        setSpeakingRetryRefreshError(
+          "Yeniden değerlendirme durumu şu anda yenilenemedi. Lütfen tekrar deneyin.",
+        );
+        setRetryingSpeakingFeedback(false);
+      }
+    } catch {
+      // The service presents a safe student-facing error message.
+      speakingRetryAcceptedRef.current = false;
+      speakingRetryBaselineRef.current = null;
+      setSpeakingRetryRefreshError(
+        "Yeniden değerlendirme isteği gönderilemedi. Lütfen tekrar deneyin.",
+      );
+      setRetryingSpeakingFeedback(false);
+    }
+  };
+
+  const retryWritingFeedback = async () => {
+    const submissionId =
+      typeof data?.writing?.submissionId === "string"
+        ? data.writing.submissionId.trim()
+        : typeof data?.writing?.id === "string"
+          ? data.writing.id.trim()
+          : "";
+    if (!submissionId || retryingWritingFeedback) return;
+
+    setRetryingWritingFeedback(true);
+    try {
+      const retried = await writingSubmissionService.retryFeedback(submissionId);
+      if (retried) await fetchOverallResults(false);
+    } finally {
+      setRetryingWritingFeedback(false);
+    }
+  };
 
   const normalizeLevelLabel = (value?: string) => {
     if (!value) return value;
@@ -222,19 +577,23 @@ export default function OverallResults() {
     if (correct.length !== user.length) return false;
     return correct.every((answer) => user.includes(answer)) && user.every((answer) => correct.includes(answer));
   };
-  const isMultiTest =
-    (data?.listening ? 1 : 0) +
-    (data?.reading ? 1 : 0) +
-    (data?.writing ? 1 : 0) +
-    (data?.speaking ? 1 : 0) > 1;
-
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Sonuçlar yükleniyor...</p>
+      <div className="min-h-screen bg-[var(--tm-bg-app)] px-4 py-8 font-sans tracking-normal sm:px-6 sm:py-10">
+        <div className="mx-auto max-w-6xl animate-pulse">
+          <div className="h-3 w-24 rounded bg-[#e7e7e4]" />
+          <div className="mt-3 h-8 w-64 rounded bg-[#dededb]" />
+          <div className="mt-3 h-4 w-96 max-w-full rounded bg-[#e7e7e4]" />
+          <div className="mt-6 overflow-hidden rounded-[8px] border border-[var(--tm-border-subtle)] bg-white">
+            <div className="h-10 border-b border-[var(--tm-border-subtle)] bg-[#fbfbfa]" />
+            <div className="grid min-h-36 sm:grid-cols-2">
+              <div className="m-5 rounded bg-[#efefed]" />
+              <div className="m-5 rounded bg-[#f5f5f3]" />
+            </div>
+          </div>
+          <p className="mt-4 text-[12px] text-[var(--tm-text-tertiary)]">
+            Sonuç raporu hazırlanıyor…
+          </p>
         </div>
       </div>
     );
@@ -242,14 +601,67 @@ export default function OverallResults() {
 
   if (!data) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600">Genel sonuçlar bulunamadı</p>
-          <Button onClick={() => navigate("/test")} className="mt-4">Testlere Dön</Button>
+      <div className="min-h-screen bg-[var(--tm-bg-app)] px-4 py-10 font-sans tracking-normal">
+        <div className="mx-auto max-w-xl rounded-[8px] border border-[var(--tm-border-subtle)] bg-white px-5 py-8 text-center shadow-[var(--tm-shadow-card)]">
+          <h1 className="text-[20px] font-semibold text-[var(--tm-text-primary)]">
+            Sonuç raporu bulunamadı
+          </h1>
+          <p className="mt-2 text-[13px] leading-5 text-[var(--tm-text-secondary)]">
+            Bu sınavın sonucu henüz hazır olmayabilir veya rapora erişilemiyor.
+          </p>
+          <Button
+            onClick={() => navigate("/app/test")}
+            variant="outline"
+            className="mt-5 rounded-[7px]"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Testlere dön
+          </Button>
         </div>
       </div>
     );
   }
+
+  const renderSpeakingFeedbackRetry = () => {
+    if (!shouldShowSpeakingFeedbackRetry(
+      speakingEvaluationView.kind,
+      canRetrySpeakingFeedback,
+    )) {
+      return null;
+    }
+
+    return (
+      <section className="mb-5 flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-sm font-semibold text-[var(--tm-text-primary)]">
+            Konuşma değerlendirmesi hazırlanamadı
+          </h2>
+          <p className="mt-1 text-sm leading-5 text-[var(--tm-text-secondary)]">
+            Sorun giderildiyse bu raporu yeniden değerlendirebilirsiniz.
+          </p>
+          {speakingRetryRefreshError && (
+            <p role="alert" className="mt-2 text-sm leading-5 text-[#9f3f3f]">
+              {speakingRetryRefreshError}
+            </p>
+          )}
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={retryingSpeakingFeedback}
+          onClick={retrySpeakingFeedback}
+          className="min-h-10 shrink-0"
+        >
+          {retryingSpeakingFeedback && (
+            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+          )}
+          {retryingSpeakingFeedback
+            ? "Değerlendiriliyor"
+            : "Konuşmayı yeniden değerlendir"}
+        </Button>
+      </section>
+    );
+  };
 
   // Render functions using the original UI but with new data structure
   const renderListeningResults = () => {
@@ -286,37 +698,15 @@ export default function OverallResults() {
         
           <div className="space-y-6">
 
-          {/* Report Info */}
-          {!isMultiTest && (
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-muted-foreground ml-2">
-              <span>Katılımcı: {data.user.name}</span>
-              <span className="text-xs sm:text-sm">Tarih: {new Date(data.listening.completedAt || data.startedAt).toISOString().replace('T', ' ').substring(0, 19) + " "}</span>
-            </div>
-          )}
+          <ListeningEvidenceReview
+            resultId={data.listening.resultId}
+            reviewAvailable={data.listening.reviewAvailable}
+            review={data.listening.review}
+            showOutcomeCounts={reportIsMulti}
+          />
 
-          {/* Listening Score with Level */}
-          {!isMultiTest && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-3 sm:px-6 sm:py-4 h-full mb-6">
-              <div className="h-full flex items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Dinleme Puanı</h2>
-                  <p className="text-sm text-gray-600 mt-1">
-                    ({examData.filter(r => r.result === "Doğru").length} / {examData.length} doğru)
-                  </p>
-                </div>
-                <div className="text-right">
-                  <div className="flex items-center gap-2">
-                    <div className="text-3xl sm:text-4xl font-bold text-red-600">{data.listening.score}</div>
-                    {displayLevel(data.level) && (
-                      <span className="text-base sm:text-lg font-semibold text-gray-700"> / {displayLevel(data.level)}</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Results Table - Mobile Card Layout + Desktop Table */}
+          {/* Legacy results keep their basic answer table. */}
+          {!data.listening.reviewAvailable && (
           <Card className="overflow-hidden rounded-lg border border-gray-200">
             <CardContent className="p-0">
               {/* Mobile Card Layout */}
@@ -329,11 +719,11 @@ export default function OverallResults() {
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-semibold text-gray-700">Soru {item.no}</span>
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        item.result === "Doğru"
-                          ? "bg-green-100 text-green-800"
+                      item.result === "Doğru"
+                          ? "bg-[#e7f1e8] text-[#2f6f3d]"
                           : item.result === "Yanlış"
-                            ? "bg-red-100 text-red-800"
-                            : "bg-gray-100 text-gray-700"
+                            ? "bg-[#f8e8e8] text-[#a93636]"
+                            : "bg-[#efefed] text-[var(--tm-text-secondary)]"
                       }`}>
                         {item.result}
                       </span>
@@ -356,29 +746,29 @@ export default function OverallResults() {
               <div className="hidden sm:block overflow-x-auto">
                 <table className="w-full min-w-[500px]">
                   <thead>
-                    <tr className="bg-green-600 text-white">
-                      <th className="px-2 sm:px-4 py-2 sm:py-3 text-left font-medium rounded-tl-lg text-xs sm:text-base">No.</th>
-                      <th className="px-2 sm:px-4 py-2 sm:py-3 text-left font-medium text-xs sm:text-base">Kullanıcı Cevabı</th>
-                      <th className="px-2 sm:px-4 py-2 sm:py-3 text-left font-medium text-xs sm:text-base">Doğru Cevap</th>
-                      <th className="px-2 sm:px-4 py-2 sm:py-3 text-left font-medium rounded-tr-lg text-xs sm:text-base">Sonuç</th>
+                    <tr className="border-b border-[var(--tm-border-subtle)] bg-[#f3f3f1] text-[var(--tm-text-secondary)]">
+                      <th className="px-4 py-3 text-left text-[12px] font-semibold">Soru</th>
+                      <th className="px-4 py-3 text-left text-[12px] font-semibold">Cevabınız</th>
+                      <th className="px-4 py-3 text-left text-[12px] font-semibold">Doğru cevap</th>
+                      <th className="px-4 py-3 text-left text-[12px] font-semibold">Sonuç</th>
                     </tr>
                   </thead>
                   <tbody>
                     {examData.map((item, index: number) => (
                       <tr
                         key={item.no}
-                        className={`border-b border-gray-200 last:border-b-0 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
+                        className={`border-b border-[var(--tm-border-subtle)] last:border-b-0 ${index % 2 === 0 ? "bg-white" : "bg-[#fbfbfa]"}`}
                       >
-                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-gray-700 font-medium text-xs sm:text-sm">{item.no}</td>
-                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-gray-600 text-xs sm:text-sm break-words">{item.userAnswer}</td>
-                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-gray-800 font-medium text-xs sm:text-sm break-words">{item.correctAnswer}</td>
-                        <td className="px-2 sm:px-4 py-2 sm:py-3">
+                        <td className="px-4 py-3 text-[13px] font-semibold text-[var(--tm-text-primary)]">S{item.no}</td>
+                        <td className="break-words px-4 py-3 text-[13px] text-[var(--tm-text-secondary)]">{item.userAnswer}</td>
+                        <td className="break-words px-4 py-3 text-[13px] font-medium text-[var(--tm-text-primary)]">{item.correctAnswer}</td>
+                        <td className="px-4 py-3">
                           <span className={`inline-flex items-center px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium ${
                             item.result === "Doğru" 
-                              ? "bg-green-100 text-green-800" 
+                              ? "bg-[#e7f1e8] text-[#2f6f3d]"
                               : item.result === "Yanlış" 
-                                ? "bg-red-100 text-red-800"
-                                : "bg-gray-100 text-gray-700"
+                                ? "bg-[#f8e8e8] text-[#a93636]"
+                                : "bg-[#efefed] text-[var(--tm-text-secondary)]"
                           }`}>
                             {item.result}
                           </span>
@@ -390,6 +780,7 @@ export default function OverallResults() {
               </div>
             </CardContent>
           </Card>
+          )}
         </div>
       </div>
     );
@@ -419,40 +810,17 @@ export default function OverallResults() {
         result: isCorrect ? "Doğru" : "Yanlış"
       };
     });
-
     return (
       <div className="space-y-6">
-        {/* Report Info */}
-        {!isMultiTest && (
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-muted-foreground ml-2">
-            <span>Katılımcı: {data.user.name}</span>
-            <span className="text-xs sm:text-sm">Tarih: {new Date(data.reading.completedAt || data.startedAt).toISOString().replace('T', ' ').substring(0, 19) + " "}</span>
-          </div>
-        )}
+        <ReadingEvidenceReview
+          resultId={data.reading.resultId}
+          reviewAvailable={data.reading.reviewAvailable}
+          review={data.reading.review}
+          showOutcomeCounts={reportIsMulti}
+        />
 
-        {/* Reading Score with Level */}
-        {!isMultiTest && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-3 sm:px-6 sm:py-4 h-full mb-6">
-            <div className="h-full flex items-center justify-between gap-4">
-              <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Okuma Puanı</h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  ({examData.filter(r => r.result === "Doğru").length} / {examData.length} doğru)
-                </p>
-              </div>
-              <div className="text-right">
-                <div className="flex items-center gap-2">
-                  <div className="text-3xl sm:text-4xl font-bold text-red-600">{data.reading.score}</div>
-                  {displayLevel(data.level) && (
-                    <span className="text-base sm:text-lg font-semibold text-gray-700"> / {displayLevel(data.level)}</span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Results Table */}
+        {/* Legacy results keep their basic answer table. */}
+        {!data.reading.reviewAvailable && (
         <Card className="overflow-hidden rounded-lg border border-gray-200">
           <CardContent className="p-0">
             {/* Mobile Card Layout */}
@@ -465,11 +833,11 @@ export default function OverallResults() {
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-semibold text-gray-700">Soru {item.no}</span>
                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      item.result === "Doğru"
-                        ? "bg-green-100 text-green-800"
+                    item.result === "Doğru"
+                        ? "bg-[#e7f1e8] text-[#2f6f3d]"
                         : item.result === "Yanlış"
-                          ? "bg-red-100 text-red-800"
-                          : "bg-gray-100 text-gray-700"
+                          ? "bg-[#f8e8e8] text-[#a93636]"
+                          : "bg-[#efefed] text-[var(--tm-text-secondary)]"
                     }`}>
                       {item.result}
                     </span>
@@ -492,29 +860,29 @@ export default function OverallResults() {
             <div className="hidden sm:block overflow-x-auto">
               <table className="w-full min-w-[500px]">
                 <thead>
-                  <tr className="bg-green-600 text-white">
-                    <th className="px-4 py-3 text-left font-medium rounded-tl-lg">No.</th>
-                    <th className="px-4 py-3 text-left font-medium">Kullanıcı Cevabı</th>
-                    <th className="px-4 py-3 text-left font-medium">Doğru Cevap</th>
-                    <th className="px-4 py-3 text-left font-medium rounded-tr-lg">Sonuç</th>
+                  <tr className="border-b border-[var(--tm-border-subtle)] bg-[#f3f3f1] text-[var(--tm-text-secondary)]">
+                    <th className="px-4 py-3 text-left text-[12px] font-semibold">Soru</th>
+                    <th className="px-4 py-3 text-left text-[12px] font-semibold">Cevabınız</th>
+                    <th className="px-4 py-3 text-left text-[12px] font-semibold">Doğru cevap</th>
+                    <th className="px-4 py-3 text-left text-[12px] font-semibold">Sonuç</th>
                   </tr>
                 </thead>
                 <tbody>
                   {examData.map((item, index: number) => (
                     <tr
                       key={item.no}
-                      className={`border-b border-gray-200 last:border-b-0 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
+                      className={`border-b border-[var(--tm-border-subtle)] last:border-b-0 ${index % 2 === 0 ? "bg-white" : "bg-[#fbfbfa]"}`}
                     >
-                      <td className="px-4 py-3 text-gray-700 font-medium">{item.no}</td>
-                      <td className="px-4 py-3 text-gray-600">{item.userAnswer}</td>
-                      <td className="px-4 py-3 text-gray-800 font-medium">{item.correctAnswer}</td>
+                      <td className="px-4 py-3 text-[13px] font-semibold text-[var(--tm-text-primary)]">S{item.no}</td>
+                      <td className="px-4 py-3 text-[13px] text-[var(--tm-text-secondary)]">{item.userAnswer}</td>
+                      <td className="px-4 py-3 text-[13px] font-medium text-[var(--tm-text-primary)]">{item.correctAnswer}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                           item.result === "Doğru" 
-                            ? "bg-green-100 text-green-800" 
+                            ? "bg-[#e7f1e8] text-[#2f6f3d]"
                             : item.result === "Yanlış" 
-                              ? "bg-red-100 text-red-800"
-                              : "bg-gray-100 text-gray-700"
+                              ? "bg-[#f8e8e8] text-[#a93636]"
+                              : "bg-[#efefed] text-[var(--tm-text-secondary)]"
                         }`}>
                           {item.result}
                         </span>
@@ -526,6 +894,7 @@ export default function OverallResults() {
             </div>
           </CardContent>
         </Card>
+        )}
       </div>
     );
   };
@@ -554,6 +923,18 @@ export default function OverallResults() {
           (rawAiFeedback as any).assessment ??
           rawAiFeedback
         : rawAiFeedback;
+
+    if (isWritingV2Result(writing as any)) {
+      return (
+        <WritingV2Results
+          data={writing as any}
+          showOverallSummary={reportIsMulti}
+          summaryMode="general-only"
+          retrying={retryingWritingFeedback}
+          onRetry={retryWritingFeedback}
+        />
+      );
+    }
     
     // Bullet cleanup + Turkish text normalization + repeated sentence dedupe
     const cleanBullets = (text: string): string => {
@@ -620,17 +1001,6 @@ export default function OverallResults() {
       }
       return undefined;
     };
-    
-    // Debug: Log the writing data structure
-    console.log("Writing data structure:", {
-      hasAnswers: !!writing?.answers,
-      answersLength: writing?.answers?.length || 0,
-      hasSections: !!writing?.sections,
-      sectionsLength: writing?.sections?.length || 0,
-      aiFeedbackType: typeof aiFeedback,
-      aiFeedback: aiFeedback,
-      writing: writing
-    });
     
     // Helper function to extract feedback sections from string
     const extractFeedbackSection = (feedbackText: string | undefined, sectionName: string): string => {
@@ -1091,7 +1461,6 @@ export default function OverallResults() {
 
     // Prefer score-derived writing level to avoid mixed/overall-level mismatches in this tab
     const level = levelFrom75(scores.overall) || displayLevel(data?.level);
-    console.log('Using level from data:', level);
 
     // Extract answers from either answers array or sections structure
     const extractWritingAnswers = () => {
@@ -1147,7 +1516,6 @@ export default function OverallResults() {
       }
 
       if (writing?.answers && Array.isArray(writing.answers) && writing.answers.length > 0) {
-        console.log("Using answers array from writing data:", writing.answers);
         return writing.answers;
       }
 
@@ -1155,10 +1523,7 @@ export default function OverallResults() {
     };
 
     const answers = extractWritingAnswers();
-    
-    console.log("OverallResults - Writing data:", writing);
-    console.log("OverallResults - All answers:", answers);
-    
+
     type WritingTaskKey = "bolum_1_1" | "bolum_1_2" | "bolum_2";
     const toTaskHint = (value: unknown) =>
       String(value ?? "")
@@ -1310,16 +1675,12 @@ export default function OverallResults() {
       return sanitizeNarrativeArtifacts(text.replace(/\s{2,}/g, " ").trim());
     };
     
-    console.log("OverallResults - Task 1 answers:", task1Answers);
-    console.log("OverallResults - Task 2 answers:", task2Answers);
-
     // Get current question and answer based on active task
     const getCurrentQuestionAndAnswer = () => {
       if (activeTask === "task1") {
         const answerIndex = activeTask1Part === "part1" ? 0 : 1;
         const currentAnswer = task1Answers[answerIndex];
         const userAnswer = currentAnswer?.userAnswer;
-        console.log("OverallResults - Task 1 answer:", currentAnswer, "userAnswer:", userAnswer);
 
         // Get feedback for the specific part
         const feedbackKey = activeTask1Part === "part1" ? "part1_1" : "part1_2";
@@ -1353,8 +1714,6 @@ export default function OverallResults() {
         ) || task2Answers[0]; // Fallback to first if none found
         
         const userAnswer = task2AnswerWithContent?.userAnswer;
-        console.log("OverallResults - Task 2 answers:", task2Answers);
-        console.log("OverallResults - Task 2 answer with content:", task2AnswerWithContent, "userAnswer:", userAnswer);
         
         // Get feedback for Task 2
         let feedback: string;
@@ -1384,30 +1743,22 @@ export default function OverallResults() {
       activeTask === "task1"
         ? `Görev 1.${activeTask1Part === "part1" ? "1" : "2"}`
         : "Görev 2";
+    const showLegacyWritingBlocks = !aiFeedback;
 
     return (
       <div className="w-full">
         <div className="w-full">
           {/* Header Section */}
-          <div className="mb-8">
-            {!isMultiTest && (
-              <div className="bg-white rounded-lg border border-gray-200 px-6 py-4 h-full mb-8">
-                <div className="h-full flex items-center justify-between gap-4">
-                  <div>
-                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Genel Puan</h2>
-                    <p className="text-sm sm:text-base text-gray-600">Yazma testi performansınız</p>
-                  </div>
-                  <div className="text-right">
-                    <div className="flex items-center gap-2">
-                      <div className="text-3xl sm:text-4xl font-bold text-red-600">{scores.overall}</div>
-                      {level && <span className="text-base sm:text-lg font-semibold text-gray-700"> / {level}</span>}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          <WritingDeepReview
+            aiFeedback={aiFeedback}
+            answers={answers}
+            sections={(writing as any).sections}
+            score={scores.overall}
+            className="mb-6 sm:mb-8"
+          />
 
+          {showLegacyWritingBlocks && (
+            <>
           {/* Task Navigation - Simplified Design */}
           <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6 mb-6 sm:mb-8">
             <h3 className="text-base sm:text-lg font-semibold tracking-tight text-gray-900 mb-4 sm:mb-6">
@@ -1425,7 +1776,7 @@ export default function OverallResults() {
               variant="outline"
               className={`h-14 sm:h-16 w-full rounded-lg font-medium transition-all ${
                 activeTask === "task1" && activeTask1Part === "part1"
-                  ? "bg-red-600 text-white hover:bg-red-700 border-red-600"
+                  ? "bg-red-50 text-red-700 hover:bg-red-100 border-red-200"
                   : "bg-white text-gray-700 hover:bg-gray-50 border-gray-300"
               }`}
             >
@@ -1444,7 +1795,7 @@ export default function OverallResults() {
               variant="outline"
               className={`h-14 sm:h-16 w-full rounded-lg font-medium transition-all ${
                 activeTask === "task1" && activeTask1Part === "part2"
-                  ? "bg-red-600 text-white hover:bg-red-700 border-red-600"
+                  ? "bg-red-50 text-red-700 hover:bg-red-100 border-red-200"
                   : "bg-white text-gray-700 hover:bg-gray-50 border-gray-300"
               }`}
             >
@@ -1460,7 +1811,7 @@ export default function OverallResults() {
               variant="outline"
               className={`h-14 sm:h-16 w-full rounded-lg font-medium transition-all ${
                 activeTask === "task2"
-                  ? "bg-red-600 text-white hover:bg-red-700 border-red-600"
+                  ? "bg-red-50 text-red-700 hover:bg-red-100 border-red-200"
                   : "bg-white text-gray-700 hover:bg-gray-50 border-gray-300"
               }`}
             >
@@ -1642,11 +1993,13 @@ export default function OverallResults() {
                         {normalizeFeedbackText(generalFeedback)}
                       </p>
                     </div>
-                  )}
+              )}
                 </div>
               );
             })()}
           </div>
+            </>
+          )}
         </div>
       </div>
     );
@@ -1662,6 +2015,90 @@ export default function OverallResults() {
     }
 
     const { speaking } = data;
+    if (speakingEvaluationView.kind !== "completed") {
+      const isPending = speakingEvaluationView.kind === "pending";
+      if (isPending) {
+        return (
+          <section
+            data-speaking-evaluation-pending="true"
+            role="status"
+            aria-live="polite"
+            aria-busy="true"
+            className="flex min-h-[190px] items-center justify-center rounded-[8px] border border-[var(--tm-border-subtle)] bg-white px-5 py-8 text-center shadow-[var(--tm-shadow-card)] animate-in fade-in duration-300"
+          >
+            <div className="max-w-md">
+              <Loader2
+                aria-hidden="true"
+                strokeWidth={1.75}
+                className="mx-auto h-7 w-7 animate-spin text-[var(--tm-cat-speaking-fg)] motion-reduce:animate-none"
+              />
+              <h2 className="mt-4 text-[17px] font-semibold leading-6 text-[var(--tm-text-primary)]">
+                {speakingEvaluationView.title}
+              </h2>
+              <p className="mt-1 text-[14px] leading-6 text-[var(--tm-text-secondary)]">
+                {speakingEvaluationView.description}
+              </p>
+            </div>
+          </section>
+        );
+      }
+
+      return (
+        <section
+          data-speaking-evaluation-failed="true"
+          role="alert"
+          aria-live="polite"
+          className="rounded-[8px] border border-[#e4c9c9] bg-[#fffafa] px-5 py-6 shadow-[var(--tm-shadow-card)]"
+        >
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-[16px] font-semibold text-[var(--tm-text-primary)]">
+                {speakingEvaluationView.title}
+              </h2>
+              <p className="mt-1 max-w-2xl text-[14px] leading-6 text-[var(--tm-text-secondary)]">
+                {speakingEvaluationView.description}
+              </p>
+              {speakingRetryRefreshError && (
+                <p
+                  role="alert"
+                  className="mt-2 text-[13px] leading-5 text-[#9f3f3f]"
+                >
+                  {speakingRetryRefreshError}
+                </p>
+              )}
+              <p className="mt-2 text-[13px] leading-5 text-[var(--tm-text-secondary)]">
+                Tekrar değerlendirme de tamamlanmazsa{" "}
+                <a
+                  href="https://t.me/turkishmock_admin"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-semibold text-[var(--tm-text-primary)] underline decoration-[var(--tm-border-default)] underline-offset-4 hover:decoration-[var(--tm-text-primary)]"
+                >
+                  Telegram üzerinden destek alın
+                </a>
+                .
+              </p>
+            </div>
+            {canRetrySpeakingFeedback && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={retryingSpeakingFeedback}
+                onClick={retrySpeakingFeedback}
+                className="h-10 shrink-0 rounded-[7px] border-[var(--tm-border-default)] bg-white px-3 text-[13px] font-semibold text-[var(--tm-text-primary)] hover:bg-[#f5f5f3]"
+              >
+                {retryingSpeakingFeedback ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" />
+                ) : (
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                )}
+                Yeniden değerlendir
+              </Button>
+            )}
+          </div>
+        </section>
+      );
+    }
     const rawSpeakingAiFeedback =
       (speaking as any)?.aiFeedback ??
       (speaking as any)?.ai_feedback ??
@@ -1669,50 +2106,11 @@ export default function OverallResults() {
       (speaking as any)?.assessment ??
       null;
 
-    const parseJsonCandidate = (value: unknown): unknown => {
-      if (typeof value !== "string") return value;
-      const trimmed = value.trim();
-      if (!trimmed) return value;
-
-      const cleaned = trimmed.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
-      if (!(cleaned.startsWith("{") || cleaned.startsWith("["))) return value;
-      try {
-        return JSON.parse(cleaned);
-      } catch {
-        return value;
-      }
-    };
-
-    const unwrapAiFeedback = (value: unknown): unknown => {
-      let current: any = parseJsonCandidate(value);
-      for (let i = 0; i < 3; i += 1) {
-        if (!current || typeof current !== "object") break;
-        const next =
-          current?.aiFeedback ??
-          current?.ai_feedback ??
-          current?.feedback ??
-          current?.assessment;
-        if (!next || next === current) break;
-        current = parseJsonCandidate(next);
-      }
-      return current;
-    };
-
-    const aiFeedback: any = unwrapAiFeedback(rawSpeakingAiFeedback);
-    
-    // Debug: Log the speaking data structure
-    console.log("Speaking data structure:", {
-      hasAnswers: !!speaking?.answers,
-      answersLength: speaking?.answers?.length || 0,
-      hasParts: !!speaking?.parts,
-      partsLength: speaking?.parts?.length || 0,
-      hasPart1: !!speaking?.part1,
-      hasPart2: !!speaking?.part2,
-      hasPart3: !!speaking?.part3,
-      part1Sections: speaking?.part1?.sections?.length || 0,
-      aiFeedbackType: typeof aiFeedback,
-      speaking: speaking
-    });
+    const aiFeedback: any = resolveSpeakingResultFeedback(rawSpeakingAiFeedback);
+    const canonicalAssessment =
+      aiFeedback?.assessmentVersion === "speaking-canonical-v1"
+        ? aiFeedback
+        : null;
     
     // Helper function to remove bullet symbols from text
     const normalizeQuestionRefs = (text: string): string =>
@@ -1736,14 +2134,21 @@ export default function OverallResults() {
     // Remove raw AI metadata blocks from general feedback text
     const sanitizeGeneralFeedback = (text: string): string => {
       if (!text) return text;
-      return sanitizeNarrativeArtifacts(removeBullets(
-        text
-          .replace(/\[[^\]]+\]/g, " ")
-          .replace(/GENEL PUAN\s*:[^\n\r]*/gi, " ")
-          .replace(/BELİRLENEN SEVİYE\s*:[^\n\r]*/gi, " ")
-          .replace(/AI GERİ BİLDİRİMİ\s*\(EĞİTMEN NOTU\)\s*:/gi, " ")
-          .replace(/GENEL DEĞERLENDİRME\s*:/gi, " ")
-      ));
+      return sanitizeSpeakingLearnerCopy(
+        sanitizeNarrativeArtifacts(
+          removeBullets(
+            text
+              .replace(/\[[^\]]+\]/g, " ")
+              .replace(/GENEL PUAN\s*:[^\n\r]*/gi, " ")
+              .replace(/BELİRLENEN SEVİYE\s*:[^\n\r]*/gi, " ")
+              .replace(
+                /AI GERİ BİLDİRİMİ\s*\(EĞİTMEN NOTU\)\s*:/gi,
+                " ",
+              )
+              .replace(/GENEL DEĞERLENDİRME\s*:/gi, " "),
+          ),
+        ),
+      );
     };
 
     type StructuredGeneralFeedback = {
@@ -1762,7 +2167,10 @@ export default function OverallResults() {
 
       if (!raw || typeof raw !== "object") return null;
       const src: any = raw;
-      const clean = (value: any) => removeBullets(typeof value === "string" ? value : "");
+      const clean = (value: any) =>
+        sanitizeSpeakingLearnerCopy(
+          removeBullets(typeof value === "string" ? value : ""),
+        );
 
       const structured: StructuredGeneralFeedback = {
         ozet: clean(src?.ozet),
@@ -1806,7 +2214,7 @@ export default function OverallResults() {
     // Helper function to extract feedback sections from string format
     const extractFeedbackSection = (feedbackSource: any, sectionName: string): string => {
       if (!feedbackSource) {
-        return `Geri bildirim mevcut değil`;
+        return "";
       }
 
       if (typeof feedbackSource === "object") {
@@ -1848,7 +2256,9 @@ export default function OverallResults() {
           const part1_1 = getSectionNarrative(bolumler?.bolum_1_1 ?? bolumler?.["bölüm_1_1"]);
           const part1_2 = getSectionNarrative(bolumler?.bolum_1_2 ?? bolumler?.["bölüm_1_2"]);
           const merged = [part1_1, part1_2].filter(Boolean).join(" ");
-          if (merged) return removeBullets(merged);
+          if (merged) {
+            return sanitizeSpeakingLearnerCopy(removeBullets(merged));
+          }
         }
 
         const objectFallback =
@@ -1859,12 +2269,14 @@ export default function OverallResults() {
               : feedbackObj?.[sectionName];
 
         if (typeof objectFallback === "string" && objectFallback.trim()) {
-          return removeBullets(objectFallback.trim());
+          return sanitizeSpeakingLearnerCopy(
+            removeBullets(objectFallback.trim()),
+          );
         }
       }
 
       if (typeof feedbackSource !== "string") {
-        return `Geri bildirim mevcut değil`;
+        return "";
       }
 
       // Try to extract specific section from string format
@@ -1883,7 +2295,9 @@ export default function OverallResults() {
           if (sectionName === "general") {
             return sanitizeGeneralFeedback(match[1].trim());
           }
-          return removeBullets(match[1].trim());
+          return sanitizeSpeakingLearnerCopy(
+            removeBullets(match[1].trim()),
+          );
         }
       }
 
@@ -1891,10 +2305,10 @@ export default function OverallResults() {
         return sanitizeGeneralFeedback(feedbackText);
       }
       if (sectionName === "taskAchievement") {
-        return removeBullets(feedbackText);
+        return sanitizeSpeakingLearnerCopy(removeBullets(feedbackText));
       }
 
-      return `Geri bildirim mevcut değil`;
+      return "";
     };
 
     // Extract scores from AI feedback or use defaults
@@ -1904,21 +2318,27 @@ export default function OverallResults() {
     };
 
     const scores = {
-      overall: wholeScore(speaking?.score),
+      overall: canonicalAssessment?.standardScore ?? speaking?.score ?? null,
       coherence: extractScoreFromFeedback(aiFeedback?.coherenceAndCohesion) || 0,
       grammar: extractScoreFromFeedback(aiFeedback?.grammaticalRangeAndAccuracy) || 0,
       lexical: extractScoreFromFeedback(aiFeedback?.lexicalResource) || 0,
       achievement: extractScoreFromFeedback(aiFeedback?.taskAchievement) || 0,
     };
-
-    // Use level from overall data
-    const level = displayLevel(data?.level);
+    const speakingDisplay = resolveOfficialSpeakingDisplay(
+      speaking?.evaluationStatus ?? aiFeedback?.evaluationStatus,
+      scores.overall,
+      canonicalAssessment?.cefrLevel ?? aiFeedback?.seviye ?? data?.level,
+    );
 
     type SpeakingAnswerItem = {
       questionId: string | null;
       questionText: string;
       userAnswer: string;
       questionOrder?: number;
+      partKey?: SpeakingResultPartKey;
+      audio?: SpeakingAudioMeta;
+      visuals?: string[];
+      visualContext?: "question" | "combined-prompt";
     };
 
     const extractNumericOrder = (value: unknown): number | undefined => {
@@ -1962,10 +2382,44 @@ export default function OverallResults() {
       return "";
     };
 
+    const normalizeAudioMeta = (answer: any): SpeakingAudioMeta | undefined => {
+      const candidate =
+        answer?.audio && typeof answer.audio === "object"
+          ? answer.audio
+          : Array.isArray(answer?.audios) && answer.audios[0]
+            ? answer.audios[0]
+            : answer;
+      const audioId =
+        typeof candidate?.audioId === "string" && candidate.audioId.trim()
+          ? candidate.audioId.trim()
+          : typeof candidate?.id === "string" && candidate?.hasAudio
+            ? candidate.id.trim()
+            : "";
+      if (!audioId) return undefined;
+      return {
+        audioId,
+        hasAudio: candidate?.hasAudio !== false,
+        mimeType: typeof candidate?.mimeType === "string" ? candidate.mimeType : null,
+        sizeBytes: typeof candidate?.sizeBytes === "number" ? candidate.sizeBytes : null,
+        durationSeconds:
+          typeof candidate?.durationSeconds === "number" ? candidate.durationSeconds : null,
+        retentionUntil:
+          typeof candidate?.retentionUntil === "string" ? candidate.retentionUntil : null,
+        sectionKey:
+          typeof candidate?.sectionKey === "string" ? candidate.sectionKey : null,
+        speechEvidence: normalizeSpeakingSpeechEvidence(candidate?.speechEvidence),
+      };
+    };
+
+    const hasAudioMeta = (item?: { audio?: SpeakingAudioMeta }) =>
+      Boolean(item?.audio?.hasAudio && item.audio.audioId);
+
     const toAnswerItem = (
       question: any,
       fallbackText: string,
-      fallbackOrder?: number
+      fallbackOrder?: number,
+      visualRefs?: unknown,
+      visualContext: "question" | "combined-prompt" = "question",
     ): SpeakingAnswerItem => ({
       questionId:
         (typeof question?.questionId === "string" && question.questionId) ||
@@ -2001,9 +2455,39 @@ export default function OverallResults() {
         extractNumericOrder(question?.questionText) ??
         extractNumericOrder(question?.question) ??
         fallbackOrder,
+      partKey: ["bolum_1_1", "bolum_1_2", "bolum_2", "bolum_3"].includes(
+        String(question?.sectionKey || question?.audio?.sectionKey || ""),
+      )
+        ? (String(
+            question?.sectionKey || question?.audio?.sectionKey,
+          ) as SpeakingResultPartKey)
+        : undefined,
+      audio: normalizeAudioMeta(question),
+      visuals: Array.isArray(visualRefs)
+        ? visualRefs.filter(
+            (visual): visual is string =>
+              typeof visual === "string" && Boolean(visual.trim()),
+          )
+        : undefined,
+      visualContext,
     });
 
     const splitAnswersByOrder = (items: SpeakingAnswerItem[]) => {
+      const canonicalItems = items.filter((item) => item.partKey);
+      if (canonicalItems.length === 0) {
+        const grouped = regroupSpeakingAnswersByExpectedLayout(items);
+        return [
+          grouped.bolum_1_1,
+          grouped.bolum_1_2,
+          grouped.bolum_2,
+          grouped.bolum_3,
+        ] as [
+          SpeakingAnswerItem[],
+          SpeakingAnswerItem[],
+          SpeakingAnswerItem[],
+          SpeakingAnswerItem[],
+        ];
+      }
       const groups: [SpeakingAnswerItem[], SpeakingAnswerItem[], SpeakingAnswerItem[], SpeakingAnswerItem[]] = [
         [],
         [],
@@ -2013,6 +2497,16 @@ export default function OverallResults() {
       const unresolved: SpeakingAnswerItem[] = [];
 
       items.forEach((item) => {
+        if (item.partKey) {
+          const partIndex = [
+            "bolum_1_1",
+            "bolum_1_2",
+            "bolum_2",
+            "bolum_3",
+          ].indexOf(item.partKey);
+          groups[partIndex].push(item);
+          return;
+        }
         const order = extractNumericOrder(item.questionOrder);
         if (!order) {
           unresolved.push(item);
@@ -2195,20 +2689,34 @@ export default function OverallResults() {
     };
 
     const buildSessionParts = (): [SpeakingAnswerItem[], SpeakingAnswerItem[], SpeakingAnswerItem[], SpeakingAnswerItem[]] => {
-      const sessionAnswers = extractSessionSpeakingAnswers();
+      const sessionAnswers = readLegacySpeakingSessionFallback(
+        aiFeedback,
+        extractSessionSpeakingAnswers,
+      );
       if (sessionAnswers.length === 0) return emptySpeakingParts();
       const grouped = splitAnswersByOrder(sessionAnswers);
       const hasAny = grouped.some((group) => group.length > 0);
       return hasAny ? grouped : [sessionAnswers, [], [], []];
     };
 
-    const extractQuestionsFromPart = (part: any): SpeakingAnswerItem[] => {
+    const extractQuestionsFromPart = (
+      part: any,
+      visualContext: "question" | "combined-prompt" = "question",
+    ): SpeakingAnswerItem[] => {
       const collected: SpeakingAnswerItem[] = [];
       if (!part || typeof part !== "object") return collected;
 
       let sequence = 1;
-      const pushWithOrder = (question: any) => {
-        collected.push(toAnswerItem(question, `Soru ${collected.length + 1}`, sequence));
+      const pushWithOrder = (question: any, visualRefs?: unknown) => {
+        collected.push(
+          toAnswerItem(
+            question,
+            `Soru ${collected.length + 1}`,
+            sequence,
+            visualRefs,
+            visualContext,
+          ),
+        );
         sequence += 1;
       };
 
@@ -2218,7 +2726,7 @@ export default function OverallResults() {
           ? section.questions
           : [];
         directQuestions.forEach((q: any) => {
-          pushWithOrder(q);
+          pushWithOrder(q, section?.images);
         });
 
         const subParts = Array.isArray(section?.subParts) ? section.subParts : [];
@@ -2227,7 +2735,7 @@ export default function OverallResults() {
             ? subPart.questions
             : [];
           subQuestions.forEach((q: any) => {
-            pushWithOrder(q);
+            pushWithOrder(q, subPart?.images);
           });
         });
       });
@@ -2236,13 +2744,13 @@ export default function OverallResults() {
       topLevelSubParts.forEach((subPart: any) => {
         const subQuestions = Array.isArray(subPart?.questions) ? subPart.questions : [];
         subQuestions.forEach((q: any) => {
-          pushWithOrder(q);
+          pushWithOrder(q, subPart?.images);
         });
       });
 
       const partQuestions = Array.isArray(part.questions) ? part.questions : [];
       partQuestions.forEach((q: any) => {
-        pushWithOrder(q);
+        pushWithOrder(q, part?.images);
       });
 
       return collected;
@@ -2350,7 +2858,12 @@ export default function OverallResults() {
         if (subParts.length === 0 && directQuestions.length > 0) {
           appendSplitPart1(
             directQuestions.map((q: any, index: number) =>
-              toAnswerItem(q, `Soru ${part11.length + part12.length + index + 1}`)
+              toAnswerItem(
+                q,
+                `Soru ${part11.length + part12.length + index + 1}`,
+                undefined,
+                section?.images,
+              )
             )
           );
         }
@@ -2368,13 +2881,21 @@ export default function OverallResults() {
         if (topLevelSubParts.length === 0 && topLevelQuestions.length > 0) {
           appendSplitPart1(
             topLevelQuestions.map((q: any, index: number) =>
-              toAnswerItem(q, `Soru ${part11.length + part12.length + index + 1}`)
+              toAnswerItem(
+                q,
+                `Soru ${part11.length + part12.length + index + 1}`,
+                undefined,
+                (speaking as any)?.part1?.images,
+              )
             )
           );
         }
       }
 
-      const part2 = extractQuestionsFromPart(speaking?.part2);
+      const part2 = extractQuestionsFromPart(
+        speaking?.part2,
+        "combined-prompt",
+      );
       const part3 = extractQuestionsFromPart(speaking?.part3);
 
       if (
@@ -2534,6 +3055,9 @@ export default function OverallResults() {
       ];
 
       const byQuestionId = new Map<string, string>();
+      const audioByQuestionId = new Map<string, SpeakingAudioMeta>();
+      const audioByPartAndOrder = new Map<string, SpeakingAudioMeta>();
+      const audioByPartIndex: SpeakingAudioMeta[][] = [[], [], [], []];
 
       const setIfBetter = (target: Map<string, string>, key: string, value: string) => {
         const existing = target.get(key);
@@ -2543,23 +3067,72 @@ export default function OverallResults() {
       };
 
       sources.forEach((item) => {
+        const qid = String(item?.questionId || "").trim();
+        if (qid && hasAudioMeta(item) && !audioByQuestionId.has(qid)) {
+          audioByQuestionId.set(qid, item.audio as SpeakingAudioMeta);
+        }
         const text = String(item?.userAnswer ?? "").trim();
         if (!isMeaningfulSpeakingAnswer(text)) return;
 
-        const qid = String(item?.questionId || "").trim();
         if (qid) setIfBetter(byQuestionId, qid, text);
+      });
+      sources.forEach((item) => {
+        if (!hasAudioMeta(item)) return;
+        const order = extractNumericOrder(item?.questionOrder);
+        const groupIndex =
+          order && order <= 3
+            ? 0
+            : order && order <= 6
+              ? 1
+              : order === 7
+                ? 2
+                : order
+                  ? 3
+                  : -1;
+        if (groupIndex < 0) return;
+        const key = `${groupIndex}:${order}`;
+        if (!audioByPartAndOrder.has(key)) {
+          audioByPartAndOrder.set(key, item.audio as SpeakingAudioMeta);
+        }
+      });
+      sources.forEach((item) => {
+        if (!hasAudioMeta(item)) return;
+        const order = extractNumericOrder(item?.questionOrder);
+        const groupIndex =
+          order && order <= 3
+            ? 0
+            : order && order <= 6
+              ? 1
+              : order === 7
+                ? 2
+                : order
+                  ? 3
+                  : -1;
+        if (groupIndex < 0) return;
+        audioByPartIndex[groupIndex].push(item.audio as SpeakingAudioMeta);
       });
 
       const repaired = baseParts.map((group) =>
-        group.map((item) => {
+        group.map((item, index) => {
           const existing = String(item?.userAnswer || "").trim();
-          if (isMeaningfulSpeakingAnswer(existing)) return item;
-
           const qid = String(item?.questionId || "").trim();
+          const groupIndex = baseParts.indexOf(group);
+          const order = extractNumericOrder(item?.questionOrder);
+          const audio =
+            (hasAudioMeta(item) ? item.audio : undefined) ||
+            (qid ? audioByQuestionId.get(qid) : undefined) ||
+            (order ? audioByPartAndOrder.get(`${groupIndex}:${order}`) : undefined) ||
+            audioByPartIndex[groupIndex]?.[index];
+          if (isMeaningfulSpeakingAnswer(existing)) {
+            return audio && !hasAudioMeta(item) ? { ...item, audio } : item;
+          }
+
           if (!qid || !byQuestionId.has(qid)) return item;
           const replacement = String(byQuestionId.get(qid) || "").trim();
-          if (!isMeaningfulSpeakingAnswer(replacement)) return item;
-          return { ...item, userAnswer: replacement };
+          if (!isMeaningfulSpeakingAnswer(replacement)) {
+            return audio && !hasAudioMeta(item) ? { ...item, audio } : item;
+          }
+          return { ...item, userAnswer: replacement, audio };
         })
       ) as [SpeakingAnswerItem[], SpeakingAnswerItem[], SpeakingAnswerItem[], SpeakingAnswerItem[]];
 
@@ -2713,14 +3286,20 @@ export default function OverallResults() {
       const sectionKey = getSpeakingSectionKey(partIndex);
       const section = getSectionFromFeedbackObject(sectionKey);
       const feedbackKey = getSpeakingFeedbackKey(partIndex);
-      return pickMeaningfulText(
-        section?.degerlendirme,
-        section?.["değerlendirme"],
-        section?.feedback,
-        section?.yorum,
-        section?.analysis,
-        typeof aiFeedback === "string" ? extractFeedbackSection(aiFeedback, feedbackKey) : undefined,
-        typeof aiFeedback === "object" ? (aiFeedback as any)?.[feedbackKey] : undefined
+      return sanitizeSpeakingLearnerCopy(
+        pickMeaningfulText(
+          section?.degerlendirme,
+          section?.["değerlendirme"],
+          section?.feedback,
+          section?.yorum,
+          section?.analysis,
+          typeof aiFeedback === "string"
+            ? extractFeedbackSection(aiFeedback, feedbackKey)
+            : undefined,
+          typeof aiFeedback === "object"
+            ? (aiFeedback as any)?.[feedbackKey]
+            : undefined,
+        ),
       );
     };
 
@@ -2743,28 +3322,46 @@ export default function OverallResults() {
         typeof aiFeedback === "object" ? (aiFeedback as any)?.taskAchievement : undefined
       ),
     };
-    const activeSpeakingCriteria = {
+    const activeSpeakingCriteria = sanitizeSpeakingFallbackFields({
       coherence:
         criteriaFromSectionObject.coherence ||
-        criteriaFromSectionNarrative.coherence ||
-        fallbackGlobalSpeakingCriteria.coherence ||
-        "Kısa değerlendirme yok",
+          criteriaFromSectionNarrative.coherence ||
+          fallbackGlobalSpeakingCriteria.coherence,
       grammar:
         criteriaFromSectionObject.grammar ||
-        criteriaFromSectionNarrative.grammar ||
-        fallbackGlobalSpeakingCriteria.grammar ||
-        "Kısa değerlendirme yok",
+          criteriaFromSectionNarrative.grammar ||
+          fallbackGlobalSpeakingCriteria.grammar,
       lexical:
         criteriaFromSectionObject.lexical ||
-        criteriaFromSectionNarrative.lexical ||
-        fallbackGlobalSpeakingCriteria.lexical ||
-        "Kısa değerlendirme yok",
+          criteriaFromSectionNarrative.lexical ||
+          fallbackGlobalSpeakingCriteria.lexical,
       achievement:
         criteriaFromSectionObject.achievement ||
-        criteriaFromSectionNarrative.achievement ||
-        fallbackGlobalSpeakingCriteria.achievement ||
-        "Kısa değerlendirme yok",
-    };
+          criteriaFromSectionNarrative.achievement ||
+          fallbackGlobalSpeakingCriteria.achievement,
+    });
+    const activeSpeakingCriterionCards = [
+      {
+        key: "coherence",
+        label: "Akıcılık ve Bağlılık",
+        text: activeSpeakingCriteria.coherence,
+      },
+      {
+        key: "grammar",
+        label: "Dil Bilgisi",
+        text: activeSpeakingCriteria.grammar,
+      },
+      {
+        key: "lexical",
+        label: "Kelime Kaynağı",
+        text: activeSpeakingCriteria.lexical,
+      },
+      {
+        key: "achievement",
+        label: "Görev Yanıtı",
+        text: activeSpeakingCriteria.achievement,
+      },
+    ].filter((criterion) => criterion.text);
     
     // Get current question and answer based on active part
     const getCurrentQuestionAndAnswer = () => {
@@ -2808,10 +3405,12 @@ export default function OverallResults() {
             sectionNarrative ||
             (aiFeedback as any)?.[feedbackKey] ||
             (aiFeedback as any)?.taskAchievement ||
-            `${partLabel.main} geri bildirimi burada gösterilecek`;
-          partFeedback = typeof rawFeedback === 'string' ? removeBullets(rawFeedback) : rawFeedback;
+            "";
+          partFeedback = sanitizeSpeakingLearnerCopy(
+            typeof rawFeedback === "string" ? removeBullets(rawFeedback) : "",
+          );
         } else {
-          partFeedback = `${partLabel.main} geri bildirimi burada gösterilecek`;
+          partFeedback = "";
         }
         
         return {
@@ -2819,7 +3418,8 @@ export default function OverallResults() {
           answer: isMeaningfulSpeakingAnswer(currentAnswer?.userAnswer)
             ? currentAnswer.userAnswer
             : "Cevap verilmedi",
-          comment: partFeedback
+          comment: partFeedback,
+          audio: currentAnswer?.audio,
         };
       }
       
@@ -2832,44 +3432,263 @@ export default function OverallResults() {
           extractFeedbackSection(aiFeedback, "general") ||
           (aiFeedback as any)?.part1 ||
           (aiFeedback as any)?.taskAchievement ||
-          "Geri bildirim mevcut değil";
-        defaultFeedback = typeof rawFeedback === 'string' ? removeBullets(rawFeedback) : rawFeedback;
+          "";
+        defaultFeedback = sanitizeSpeakingLearnerCopy(
+          typeof rawFeedback === "string" ? removeBullets(rawFeedback) : "",
+        );
       } else {
-        defaultFeedback = "Geri bildirim mevcut değil";
+        defaultFeedback = "";
       }
       
       return {
         question: "Soru metni burada gösterilecek",
         answer: "Cevap verilmedi",
-        comment: defaultFeedback
+        comment: defaultFeedback,
+        audio: undefined,
       };
     };
 
     const currentData = getCurrentQuestionAndAnswer();
 
+    const formatAudioDuration = (seconds?: number | null) => {
+      if (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds <= 0) return "";
+      const rounded = Math.max(1, Math.round(seconds));
+      const min = Math.floor(rounded / 60);
+      const sec = rounded % 60;
+      return min > 0 ? `${min}:${String(sec).padStart(2, "0")}` : `${sec} sn`;
+    };
+
+    const loadAudioUrl = async (audioId: string) => {
+      const cached = audioUrls[audioId];
+      if (cached && cached.expiresAt > Date.now() + 30_000) return cached.url;
+
+      setAudioErrors((prev) => ({ ...prev, [audioId]: "" }));
+      setAudioLoading((prev) => ({ ...prev, [audioId]: true }));
+      try {
+        const response = await axiosPrivate.get(`/api/speaking-submission/audio/${audioId}/url`);
+        const payload = response?.data?.data || response?.data || {};
+        const url = typeof payload?.url === "string" ? payload.url : "";
+        if (!url) throw new Error("AUDIO_URL_MISSING");
+        const replayUrl = await createSpeakingAudioReplayUrl({
+          streamUrl: url,
+          loadBlob: async (privateStreamUrl) => {
+            const audioResponse = await axiosPrivate.get<Blob>(privateStreamUrl, {
+              responseType: "blob",
+              timeout: 30_000,
+            });
+            return audioResponse.data;
+          },
+        });
+        const previousObjectUrl = audioObjectUrlsRef.current.get(audioId);
+        if (previousObjectUrl) URL.revokeObjectURL(previousObjectUrl);
+        audioObjectUrlsRef.current.set(audioId, replayUrl);
+        setAudioUrls((prev) => ({
+          ...prev,
+          [audioId]: {
+            url: replayUrl,
+            expiresAt: Number.POSITIVE_INFINITY,
+          },
+        }));
+        return replayUrl;
+      } catch {
+        setAudioErrors((prev) => ({
+          ...prev,
+          [audioId]: "Ses kaydı şu anda yüklenemedi.",
+        }));
+        return null;
+      } finally {
+        setAudioLoading((prev) => ({ ...prev, [audioId]: false }));
+      }
+    };
+
+    const applyPendingAudioSeek = (
+      audioId: string,
+      player = audioElementRefs.current.get(audioId),
+    ) => {
+      const startSeconds = pendingAudioSeek.current.get(audioId);
+      if (!player || startSeconds === undefined || player.readyState < 1) return;
+      const maximum = Number.isFinite(player.duration)
+        ? Math.max(0, player.duration - 0.05)
+        : startSeconds;
+      player.currentTime = Math.min(Math.max(0, startSeconds), maximum);
+      pendingAudioSeek.current.delete(audioId);
+      void player.play().catch(() => {});
+    };
+
+    const seekSpeakingAudio = async (
+      audio: SpeakingAudioMeta,
+      startSeconds: number,
+    ) => {
+      const audioId = audio.audioId;
+      if (!audioId || !Number.isFinite(startSeconds)) return;
+      pendingAudioSeek.current.set(audioId, Math.max(0, startSeconds));
+      const url = await loadAudioUrl(audioId);
+      if (!url) {
+        pendingAudioSeek.current.delete(audioId);
+        return;
+      }
+      if (typeof window !== "undefined") {
+        window.requestAnimationFrame(() => applyPendingAudioSeek(audioId));
+      }
+    };
+
+    const renderAudioReplay = (
+      audio?: SpeakingAudioMeta,
+      options?: {
+        variant: "flow";
+        issueTimeRanges?: SpeakingFlowTimeRange[];
+      },
+    ) => {
+      if (!audio?.hasAudio || !audio.audioId) return null;
+      const signed = audioUrls[audio.audioId];
+      const isLoading = Boolean(audioLoading[audio.audioId]);
+      const error = audioErrors[audio.audioId];
+
+      if (options?.variant === "flow") {
+        return (
+          <SpeakingFlowAudioPlayer
+            audio={{ ...audio, audioId: audio.audioId }}
+            sourceUrl={signed?.url}
+            isLoading={isLoading}
+            error={error}
+            issueTimeRanges={options.issueTimeRanges}
+            onEnsureSource={() => loadAudioUrl(audio.audioId!)}
+            onRegisterPlayer={(element) => {
+              if (element) {
+                audioElementRefs.current.set(audio.audioId!, element);
+                applyPendingAudioSeek(audio.audioId!, element);
+              } else {
+                audioElementRefs.current.delete(audio.audioId!);
+              }
+            }}
+            onLoadedMetadata={(element) =>
+              applyPendingAudioSeek(audio.audioId!, element)
+            }
+            onPlaybackStart={() =>
+              setAudioErrors((prev) => ({ ...prev, [audio.audioId!]: "" }))
+            }
+            onPlaybackError={() =>
+              setAudioErrors((prev) => ({
+                ...prev,
+                [audio.audioId!]: "Ses kaydı şu anda oynatılamadı.",
+              }))
+            }
+            onSeekRequest={(seconds) => void seekSpeakingAudio(audio, seconds)}
+          />
+        );
+      }
+
+      const durationLabel = formatAudioDuration(audio.durationSeconds);
+
+      return (
+        <div data-speaking-audio-replay className="flex flex-col gap-2 py-1">
+          <div className="flex min-h-10 flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-[13px] text-[var(--tm-text-secondary)]">
+              <Volume2 className="h-4 w-4 text-[var(--tm-text-tertiary)]" />
+              <span className="font-semibold text-[var(--tm-text-primary)]">Ses kaydı</span>
+              {durationLabel && <span>· {durationLabel}</span>}
+            </div>
+            {!signed && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => loadAudioUrl(audio.audioId!)}
+                disabled={isLoading}
+                className="h-8 rounded-[6px] px-2.5 text-[12px] sm:w-auto"
+              >
+                {isLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <PlayCircle className="mr-2 h-4 w-4" />
+                )}
+                Dinle
+              </Button>
+            )}
+          </div>
+          {signed && (
+            <audio
+              ref={(element) => {
+                if (element) {
+                  audioElementRefs.current.set(audio.audioId!, element);
+                  applyPendingAudioSeek(audio.audioId!, element);
+                } else {
+                  audioElementRefs.current.delete(audio.audioId!);
+                }
+              }}
+              className="h-9 w-full"
+              src={signed.url}
+              controls
+              preload="metadata"
+              controlsList="nodownload"
+              onLoadedMetadata={(event) =>
+                applyPendingAudioSeek(audio.audioId!, event.currentTarget)
+              }
+              onError={() =>
+                setAudioErrors((prev) => ({
+                  ...prev,
+                  [audio.audioId!]: "Ses kaydı şu anda oynatılamadı.",
+                }))
+              }
+            />
+          )}
+          {error && <p className="text-[12px] text-red-600">{error}</p>}
+        </div>
+      );
+    };
+
+    const speakingDiscussionPoints = extractSpeakingDiscussionPoints(speaking);
+    const deepReviewSections: SpeakingDeepReviewSection[] = visiblePartEntries.map(
+      ({ index, questions }) => {
+        const sectionKey = getSpeakingSectionKey(index);
+        const sectionQuestions = questions.map((question, questionIndex) => ({
+          id: question.questionId || `${sectionKey}-${questionIndex}`,
+          question: question.questionText,
+          transcript: isMeaningfulSpeakingAnswer(question.userAnswer)
+            ? question.userAnswer
+            : null,
+          audio: question.audio,
+          visuals: question.visuals,
+          visualContext: question.visualContext,
+        }));
+        return {
+          key: sectionKey,
+          label: getPartLabel(index).main,
+          feedback: getSpeakingSectionNarrative(index),
+          discussionPoints:
+            sectionKey === "bolum_3" ? speakingDiscussionPoints : undefined,
+          singleRecordingCombinedPrompt:
+            isExplicitSingleRecordingCombinedPrompt(
+              sectionKey,
+              sectionQuestions,
+            ),
+          questions: sectionQuestions,
+        };
+      },
+    );
+
+    if (deepReviewSections.length > 0) {
+      return (
+        <SpeakingDeepReview
+          aiFeedback={aiFeedback}
+          officialResult={speaking as unknown as Record<string, unknown>}
+          sections={deepReviewSections}
+          submissionId={speakingSubmissionId}
+          score={speakingDisplay.score}
+          level={speakingDisplay.level}
+          evaluationStatus={
+            speaking?.evaluationStatus ?? aiFeedback?.evaluationStatus
+          }
+          summaryMode={reportIsMulti ? "general-only" : "full"}
+          renderAudioReplay={renderAudioReplay}
+          onSeekAudioEvidence={seekSpeakingAudio}
+        />
+      );
+    }
+
     return (
       <div className="w-full">
         <div className="w-full">
-          {/* Header Section */}
-          <div className="mb-8">
-            {!isMultiTest && (
-              <div className="bg-white rounded-lg border border-gray-200 px-6 py-4 h-full mb-8">
-                <div className="h-full flex items-center justify-between gap-4">
-                  <div>
-                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Genel Puan</h2>
-                    <p className="text-sm sm:text-base text-gray-600">Konuşma testi performansınız</p>
-                  </div>
-                  <div className="text-right">
-                    <div className="flex items-center gap-2">
-                      <div className="text-3xl sm:text-4xl font-bold text-red-600">{scores.overall}</div>
-                      {level && <span className="text-base sm:text-lg font-semibold text-gray-700"> / {level}</span>}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
           {/* Part Navigation - Simplified Design */}
           {visiblePartEntries.length > 0 && (
             <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6 mb-6 sm:mb-8">
@@ -2932,7 +3751,8 @@ export default function OverallResults() {
             </div>
           )}
 
-          {/* Bölüm Bazlı Özet - Ham Puan + 4 Kriter */}
+          {/* Bölüm Bazlı Geri Bildirim */}
+          {activeSpeakingCriterionCards.length > 0 ? (
           <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6 mb-6 sm:mb-8">
             <div className="mb-4">
               <h3 className="text-base sm:text-lg font-semibold tracking-tight text-gray-900">
@@ -2940,32 +3760,22 @@ export default function OverallResults() {
               </h3>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              <div className="w-full rounded-lg border border-gray-200 bg-white p-3 sm:p-4">
-                <div className="text-sm font-semibold text-gray-700 mb-2">Akıcılık ve Bağlılık</div>
-                <div className="min-h-[92px] rounded-lg bg-gray-50 p-3 text-sm text-gray-700 whitespace-pre-wrap break-words leading-relaxed">
-                  {removeBullets(activeSpeakingCriteria.coherence)}
+              {activeSpeakingCriterionCards.map((criterion) => (
+                <div
+                  key={criterion.key}
+                  className="w-full rounded-lg border border-gray-200 bg-white p-3 sm:p-4"
+                >
+                  <div className="text-sm font-semibold text-gray-700 mb-2">
+                    {criterion.label}
+                  </div>
+                  <div className="min-h-[92px] rounded-lg bg-gray-50 p-3 text-sm text-gray-700 whitespace-pre-wrap break-words leading-relaxed">
+                    {criterion.text}
+                  </div>
                 </div>
-              </div>
-              <div className="w-full rounded-lg border border-gray-200 bg-white p-3 sm:p-4">
-                <div className="text-sm font-semibold text-gray-700 mb-2">Dil Bilgisi</div>
-                <div className="min-h-[92px] rounded-lg bg-gray-50 p-3 text-sm text-gray-700 whitespace-pre-wrap break-words leading-relaxed">
-                  {removeBullets(activeSpeakingCriteria.grammar)}
-                </div>
-              </div>
-              <div className="w-full rounded-lg border border-gray-200 bg-white p-3 sm:p-4">
-                <div className="text-sm font-semibold text-gray-700 mb-2">Kelime Kaynağı</div>
-                <div className="min-h-[92px] rounded-lg bg-gray-50 p-3 text-sm text-gray-700 whitespace-pre-wrap break-words leading-relaxed">
-                  {removeBullets(activeSpeakingCriteria.lexical)}
-                </div>
-              </div>
-              <div className="w-full rounded-lg border border-gray-200 bg-white p-3 sm:p-4">
-                <div className="text-sm font-semibold text-gray-700 mb-2">Görev Yanıtı</div>
-                <div className="min-h-[92px] rounded-lg bg-gray-50 p-3 text-sm text-gray-700 whitespace-pre-wrap break-words leading-relaxed">
-                  {removeBullets(activeSpeakingCriteria.achievement)}
-                </div>
-              </div>
+              ))}
             </div>
           </div>
+          ) : null}
           {/* Content Sections - Simplified */}
           <div className="space-y-6">
             {/* Answer Section */}
@@ -2973,6 +3783,7 @@ export default function OverallResults() {
               <h2 className="text-base sm:text-lg font-semibold tracking-tight text-gray-900 mb-4">Cevabınız</h2>
               <div className="bg-gray-50 rounded-lg p-4">
                 <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{currentData.answer}</p>
+                {renderAudioReplay(currentData.audio)}
               </div>
             </div>
 
@@ -3089,181 +3900,464 @@ export default function OverallResults() {
     );
   };
 
-  // Check which test types are available
-  const availableTests: Array<"listening" | "reading" | "writing" | "speaking"> = [];
-  if (data?.listening) availableTests.push('listening');
-  if (data?.reading) availableTests.push('reading');
-  if (data?.writing) availableTests.push('writing');
-  if (data?.speaking) availableTests.push('speaking');
+  type ResultTestType = "listening" | "reading" | "writing" | "speaking";
+
+  const availableTests: ResultTestType[] = [];
+  if (data.listening) availableTests.push("listening");
+  if (data.reading) availableTests.push("reading");
+  if (data.writing) availableTests.push("writing");
+  if (data.speaking) availableTests.push("speaking");
+
+  const writingIsV2 = isWritingV2Result(data.writing as any);
+  const writingEvaluationStatus = String(
+    data.writing?.evaluationStatus ||
+      (data.writing?.aiFeedback as any)?.evaluationStatus ||
+      "",
+  ).toUpperCase();
+  const writingStatusLabel =
+    writingIsV2 && writingEvaluationStatus === "FAILED"
+      ? "Değerlendirme tamamlanamadı"
+      : writingIsV2 && writingEvaluationStatus !== "COMPLETED"
+        ? "Değerlendiriliyor"
+        : undefined;
+  const reportSpeakingFeedback = resolveSpeakingResultFeedback(
+    data.speaking?.aiFeedback,
+  ) as Record<string, unknown> | null;
+  const reportCanonicalSpeakingAssessment =
+    reportSpeakingFeedback?.assessmentVersion === "speaking-canonical-v1"
+      ? reportSpeakingFeedback
+      : null;
+  const speakingDisplay = resolveOfficialSpeakingDisplay(
+    speakingEvaluationStatus,
+    (reportCanonicalSpeakingAssessment?.standardScore as number | undefined) ??
+      data.speaking?.score,
+    (reportCanonicalSpeakingAssessment?.cefrLevel as string | undefined) ??
+      (data.speaking?.aiFeedback as any)?.seviye ??
+      data.level,
+  );
 
   const testInfoByType = {
-    listening: { label: "Dinleme", score: wholeScore(data?.listening?.score) },
-    reading: { label: "Okuma", score: wholeScore(data?.reading?.score) },
-    writing: { label: "Yazma", score: wholeScore(data?.writing?.score) },
-    speaking: { label: "Konuşma", score: wholeScore(data?.speaking?.score) },
+    listening: {
+      label: "Dinleme",
+      title: "Dinleme sonucu",
+      description:
+        "Cevaplarınızı, transcript kanıtlarını ve ilgili ses bölümlerini inceleyin.",
+      score: wholeScore(data.listening?.score),
+      statusLabel: undefined as string | undefined,
+      result: data.listening,
+    },
+    reading: {
+      label: "Okuma",
+      title: "Okuma sonucu",
+      description:
+        "Cevaplarınızı, doğru yanıtları ve metindeki gerçek kanıtları karşılaştırın.",
+      score: wholeScore(data.reading?.score),
+      statusLabel: undefined as string | undefined,
+      result: data.reading,
+    },
+    writing: {
+      label: "Yazma",
+      title: "Yazma sonucu",
+      description:
+        "Kriter değerlendirmesini ve kendi metniniz üzerindeki düzeltmeleri inceleyin.",
+      score: wholeScore(data.writing?.score),
+      statusLabel: writingStatusLabel,
+      result: data.writing,
+    },
+    speaking: {
+      label: "Konuşma",
+      title: "Konuşma sonucu",
+      description: undefined,
+      score: speakingDisplay.score,
+      statusLabel:
+        speakingEvaluationView.kind === "pending"
+          ? "Değerlendiriliyor"
+          : speakingEvaluationView.kind === "failed"
+            ? "Tamamlanamadı"
+            : speakingDisplay.score === null
+              ? "—"
+              : (undefined as string | undefined),
+      result: data.speaking,
+    },
   } as const;
 
-  const safeActiveTab = availableTests.includes(activeTab as any) ? activeTab : (availableTests[0] || "listening");
-  const tabGridClass =
-    availableTests.length === 2 ? "grid-cols-2" :
-    availableTests.length === 3 ? "grid-cols-3" :
-    "grid-cols-4";
-
+  const safeActiveTab = availableTests.includes(activeTab as ResultTestType)
+    ? (activeTab as ResultTestType)
+    : availableTests[0] || "listening";
   const scoreList = availableTests
+    .filter((type) => !testInfoByType[type].statusLabel)
     .map((type) => testInfoByType[type].score)
-    .filter((score): score is number => typeof score === "number" && !Number.isNaN(score));
-  const rawOverallScore = (data as any)?.overallScore ?? (data as any)?.score ?? (data as any)?.totalScore;
+    .filter(
+      (score): score is number =>
+        typeof score === "number" && !Number.isNaN(score),
+    );
+  const rawOverallScore =
+    (data as any)?.overallScore ??
+    (data as any)?.score ??
+    (data as any)?.totalScore;
+  const hasNumericValue = (value: unknown) => {
+    if (value === null || value === undefined || value === "") return false;
+    const parsed = typeof value === "number" ? value : Number(value);
+    return Number.isFinite(parsed);
+  };
+  const isFullOfficialReportReady =
+    Boolean(data.isCompleted) &&
+    String(data.status || "").toUpperCase() === "COMPLETED" &&
+    hasNumericValue(rawOverallScore) &&
+    (["listening", "reading", "writing", "speaking"] as const).every(
+      (type) => Boolean(data[type]) && hasNumericValue(data[type]?.score),
+    );
   const parsedOverallScore =
     typeof rawOverallScore === "number"
       ? rawOverallScore
       : typeof rawOverallScore === "string"
         ? Number(rawOverallScore)
         : NaN;
-  const overallScore =
-    !Number.isNaN(parsedOverallScore)
-      ? wholeScore(parsedOverallScore)
-      : scoreList.length > 0
-        ? Math.round(scoreList.reduce((sum, score) => sum + score, 0) / scoreList.length)
-        : 0;
-  const overallLevel = levelFrom75(overallScore) || displayLevel(data?.level) || "B1 altı";
+  const overallScore = !Number.isNaN(parsedOverallScore)
+    ? wholeScore(parsedOverallScore)
+    : scoreList.length > 0
+      ? Math.round(
+          scoreList.reduce((sum, score) => sum + score, 0) / scoreList.length,
+        )
+      : 0;
+  const overallLevel =
+    levelFrom75(overallScore) || displayLevel(data.level) || "B1 altı";
+  const sectionScoreCards = availableTests.map((type) => ({
+    type,
+    label: testInfoByType[type].label,
+    score: testInfoByType[type].score,
+    statusLabel: testInfoByType[type].statusLabel,
+  }));
+  const getObjectiveSectionStats = (
+    result?: TestSonuc,
+  ): PerformanceReportStat[] => {
+    if (!result) return [];
 
-  // If only one test type is available, show it directly without tabs
-  if (availableTests.length === 1) {
-    const testType = availableTests[0];
+    const reviewQuestions = flattenReviewQuestions(result.review);
+    if (reviewQuestions.length > 0) {
+      const correct = reviewQuestions.filter(
+        (question) => question.isCorrect,
+      ).length;
+      const blank = reviewQuestions.filter(
+        (question) =>
+          !question.isCorrect && isBlankReviewAnswer(question.userAnswer),
+      ).length;
+      const incorrect = Math.max(
+        reviewQuestions.length - correct - blank,
+        0,
+      );
+      return [
+        { label: "Doğru", value: correct, tone: "success" },
+        { label: "Yanlış", value: incorrect, tone: "danger" },
+        { label: "Boş", value: blank, tone: "muted" },
+      ];
+    }
+
+    const questions = Array.isArray(result.questions) ? result.questions : [];
+    if (questions.length === 0) return [];
+    let correct = 0;
+    let blank = 0;
+    questions.forEach((question) => {
+      const userAnswers = parseUserAnswerList(question.userAnswer);
+      if (userAnswers.length === 0) {
+        blank += 1;
+        return;
+      }
+      const correctAnswers = normalizeAnswerList(
+        (question.correctAnswers || [])
+          .map((answer) => answer.text)
+          .filter(Boolean),
+      );
+      if (
+        isExactAnswerSetMatch(
+          correctAnswers,
+          normalizeAnswerList(userAnswers),
+        )
+      ) {
+        correct += 1;
+      }
+    });
+    return [
+      { label: "Doğru", value: correct, tone: "success" },
+      {
+        label: "Yanlış",
+        value: Math.max(questions.length - correct - blank, 0),
+        tone: "danger",
+      },
+      { label: "Boş", value: blank, tone: "muted" },
+    ];
+  };
+
+  const getReadingSectionStats = (
+    result?: TestSonuc,
+  ): PerformanceReportSectionStat[] => {
+    const sections = result?.review?.sections || [];
+    if (sections.length === 0) return [];
+
+    const statsByPart = new Map<
+      number,
+      { total: number; correct: number; incorrect: number; blank: number }
+    >();
+    sections.forEach((section, index) => {
+      const partNumber =
+        Number.isInteger(section.partNumber) && Number(section.partNumber) > 0
+          ? Number(section.partNumber)
+          : index + 1;
+      const current = statsByPart.get(partNumber) || {
+        total: 0,
+        correct: 0,
+        incorrect: 0,
+        blank: 0,
+      };
+
+      (section.questions || []).forEach((question) => {
+        current.total += 1;
+        if (isBlankReviewAnswer(question.userAnswer)) {
+          current.blank += 1;
+        } else if (question.isCorrect) {
+          current.correct += 1;
+        } else {
+          current.incorrect += 1;
+        }
+      });
+      statsByPart.set(partNumber, current);
+    });
+
+    return Array.from({ length: 5 }, (_, index) => {
+      const stats = statsByPart.get(index + 1) || {
+        total: 0,
+        correct: 0,
+        incorrect: 0,
+        blank: 0,
+      };
+      return {
+        label: `Bölüm ${index + 1}`,
+        ...stats,
+      };
+    });
+  };
+
+  const getListeningSectionStats = (
+    result?: TestSonuc,
+  ): PerformanceReportSectionStat[] => {
+    const sections = result?.review?.sections || [];
+    if (sections.length === 0) return [];
+
+    const statsByPart = new Map<
+      number,
+      { total: number; correct: number; incorrect: number; blank: number }
+    >();
+    sections.forEach((section, index) => {
+      const partNumber =
+        Number.isInteger(section.partNumber) && Number(section.partNumber) > 0
+          ? Number(section.partNumber)
+          : index + 1;
+      const current = statsByPart.get(partNumber) || {
+        total: 0,
+        correct: 0,
+        incorrect: 0,
+        blank: 0,
+      };
+
+      (section.questions || []).forEach((question) => {
+        current.total += 1;
+        if (isBlankReviewAnswer(question.userAnswer)) {
+          current.blank += 1;
+        } else if (question.isCorrect) {
+          current.correct += 1;
+        } else {
+          current.incorrect += 1;
+        }
+      });
+      statsByPart.set(partNumber, current);
+    });
+
+    return Array.from({ length: 6 }, (_, index) => {
+      const stats = statsByPart.get(index + 1) || {
+        total: 0,
+        correct: 0,
+        incorrect: 0,
+        blank: 0,
+      };
+      return {
+        label: `Bölüm ${index + 1}`,
+        ...stats,
+      };
+    });
+  };
+
+  const formatReportDate = (value?: string) => {
+    if (!value) return "Tarih bilgisi yok";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "Tarih bilgisi yok";
+    return new Intl.DateTimeFormat("tr-TR", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(date);
+  };
+
+  const renderResultSection = (testType: ResultTestType) => {
+    if (testType === "listening") return renderListeningResults();
+    if (testType === "reading") return renderReadingResults();
+    if (testType === "writing") return renderWritingResults();
     return (
       <>
-        {!loading && data && <ConfettiSideCannons key={`confetti-overall-${params.overallId || 'single'}`} />}
-        <div className="min-h-screen bg-gray-50 py-6 sm:py-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Header with PDF Button */}
-            <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-1">
-              {testType === 'listening' && 'Dinleme Testi Sonuçları'}
-              {testType === 'reading' && 'Okuma Testi Sonuçları'}
-              {testType === 'writing' && 'Yazma Testi Sonuçları'}
-              {testType === 'speaking' && 'Konuşma Testi Sonuçları'}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {testType === 'listening' && 'Dinleme testi performansınızı inceleyin'}
-              {testType === 'reading' && 'Okuma testi performansınızı inceleyin'}
-              {testType === 'writing' && 'Yazma testi performansınızı inceleyin'}
-              {testType === 'speaking' && 'Konuşma testi performansınızı inceleyin'}
-            </p>
-            </div>
-
-            {/* PDF Download Button - Top Right */}
-            <Button
-              onClick={handleDownloadPDF}
-              disabled={downloadingPDF}
-              className="theme-important bg-red-600 hover:bg-red-700 text-white w-full sm:w-auto"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              {downloadingPDF ? "İndiriliyor..." : "PDF İndir"}
-            </Button>
-          </div>
-
-          {testType === 'listening' && renderListeningResults()}
-          {testType === 'reading' && renderReadingResults()}
-          {testType === 'writing' && renderWritingResults()}
-          {testType === 'speaking' && renderSpeakingResults()}
-
-            <div className="mt-6 sm:mt-8 flex justify-center">
-            <Button variant="outline" onClick={() => navigate("/test")} className="w-full sm:w-auto">
-              Testlere Dön
-            </Button>
-          </div>
-        </div>
-      </div>
+        {renderSpeakingFeedbackRetry()}
+        {renderSpeakingResults()}
       </>
     );
-  }
+  };
 
-  // If multiple test types are available, show tabs
+  const reportIsMulti = availableTests.length > 1;
+  const singleTestType = availableTests[0] || "reading";
+  const singleTestInfo = testInfoByType[singleTestType];
+  const reportScore = reportIsMulti
+    ? shouldRefreshEvaluation
+      ? Number.NaN
+      : overallScore
+    : singleTestInfo.score;
+  const reportScoreStatus = reportIsMulti
+    ? shouldRefreshEvaluation
+      ? "Değerlendiriliyor"
+      : undefined
+    : singleTestType === "speaking"
+      ? speakingDisplay.score === null
+        ? "—"
+        : undefined
+      : singleTestInfo.statusLabel;
+  const reportLevel = reportIsMulti
+    ? reportScoreStatus
+      ? "—"
+      : overallLevel
+    : singleTestType === "speaking"
+      ? speakingDisplay.level
+      : reportScoreStatus
+        ? "—"
+        : levelFrom75(reportScore) || displayLevel(data.level) || "B1 altı";
+  const reportStats: PerformanceReportStat[] = reportIsMulti
+    ? []
+    : singleTestType === "reading" || singleTestType === "listening"
+      ? getObjectiveSectionStats(singleTestInfo.result)
+      : [];
+  const reportSectionStats =
+    !reportIsMulti && singleTestType === "reading"
+      ? getReadingSectionStats(singleTestInfo.result)
+      : !reportIsMulti && singleTestType === "listening"
+        ? getListeningSectionStats(singleTestInfo.result)
+        : [];
+  const reportCompletedAt =
+    (reportIsMulti
+      ? data.completedAt
+      : singleTestInfo.result?.completedAt) || data.startedAt;
+  const returnToResults = () =>
+    navigate(openedFromReports ? "/app/sonuclar" : "/app/test");
+  const returnLabel = openedFromReports ? "Raporlara dön" : "Testlere dön";
+  const reportActions = (
+    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+      <Button
+        type="button"
+        variant="outline"
+        onClick={returnToResults}
+        className="h-10 rounded-[7px] border-[var(--tm-border-default)] bg-white px-3 text-[13px] font-medium text-[var(--tm-text-primary)] shadow-[0_1px_2px_rgba(15,15,15,0.025)] hover:bg-[#f5f5f3]"
+      >
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        {returnLabel}
+      </Button>
+      {isFullOfficialReportReady && (
+        <Button
+          type="button"
+          onClick={() => void handleDownloadPDF()}
+          disabled={downloadingPDF}
+          className="theme-important h-10 rounded-[7px] bg-[#d53a3a] px-3 text-[13px] font-semibold text-white hover:bg-[#bd3030]"
+        >
+          <Download className="mr-2 h-4 w-4" />
+          {downloadingPDF ? "İndiriliyor…" : "PDF indir"}
+        </Button>
+      )}
+    </div>
+  );
+
+  const reportOverview = (
+    <PerformanceReportOverview
+      eyebrow={undefined}
+      title={reportIsMulti ? "Tam deneme sonucu" : singleTestInfo.title}
+      description={
+        reportIsMulti
+          ? undefined
+          : singleTestType === "reading" ||
+              singleTestType === "listening" ||
+              singleTestType === "writing"
+            ? undefined
+            : singleTestInfo.description
+      }
+      participant={data.user.name}
+      completedAt={formatReportDate(reportCompletedAt)}
+      scoreLabel={reportIsMulti ? "Genel puan" : `${singleTestInfo.label} puanı`}
+      score={typeof reportScore === "number" ? reportScore : Number.NaN}
+      scoreStatus={reportScoreStatus}
+      level={reportLevel}
+      stats={reportStats}
+      sectionStats={reportSectionStats}
+      scoreTone={reportIsMulti ? "goal" : singleTestType}
+      hideDefaultSummary={!reportIsMulti && singleTestType === "speaking"}
+      actions={reportActions}
+      sectionNavigation={undefined}
+      integrateStats={
+        !reportIsMulti &&
+        (singleTestType === "reading" || singleTestType === "listening")
+      }
+      summaryContent={
+        reportIsMulti ? (
+          <FullTestReportSummary
+            score={typeof reportScore === "number" ? reportScore : Number.NaN}
+            scoreStatus={reportScoreStatus}
+            level={reportLevel}
+            activeSection={safeActiveTab}
+            sections={sectionScoreCards}
+            onSectionChange={(section) => setActiveTab(section)}
+          />
+        ) : singleTestType === "writing" && writingIsV2 ? (
+          <WritingV2Summary data={data.writing as any} />
+        ) : undefined
+      }
+    />
+  );
+
   return (
-    <>
-      {!loading && data && <ConfettiSideCannons key={`confetti-overall-${params.overallId || 'multiple'}`} />}
-      <div className="min-h-screen bg-gray-50 py-6 sm:py-10">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header with PDF Button */}
-          <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-lg sm:text-xl font-bold text-foreground">Genel Test Sonuçları</h1>
-              <p className="text-xs sm:text-sm text-muted-foreground mt-1">Tüm test sonuçlarınızı görüntüleyin</p>
-            </div>
-          <Button
-            onClick={handleDownloadPDF}
-            disabled={downloadingPDF}
-            className="theme-important bg-red-600 hover:bg-red-700 text-white w-full sm:w-auto"
+    <div
+      className={`min-h-screen py-6 font-sans tracking-normal text-[var(--tm-text-primary)] sm:py-9 ${
+        !reportIsMulti &&
+        (singleTestType === "reading" || singleTestType === "listening")
+          ? "bg-[var(--tm-bg-page)]"
+          : "bg-[var(--tm-bg-app)]"
+      }`}
+    >
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        {reportIsMulti ? (
+          <Tabs
+            value={safeActiveTab}
+            onValueChange={(value) => setActiveTab(value)}
+            className="w-full"
           >
-            <Download className="w-4 h-4 mr-2" />
-            {downloadingPDF ? "İndiriliyor..." : "PDF İndir"}
-          </Button>
-        </div>
-
-        <Tabs value={safeActiveTab} onValueChange={setActiveTab} className="w-full">
-          <div className="sticky top-0 z-40 bg-gray-50 pb-4">
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3 sm:p-4 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm text-muted-foreground">
-                <span>Katılımcı: {data.user.name}</span>
-                <span>Tarih: {new Date(data.completedAt || data.startedAt).toISOString().replace('T', ' ').substring(0, 19) + " "}</span>
-              </div>
-              <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_168px] items-center gap-3">
-                <TabsList className={`grid h-auto w-full ${tabGridClass} items-start justify-start gap-1 bg-gray-50/80 border border-gray-200 rounded-lg p-1`}>
-                  {availableTests.map((testType) => {
-                    const score = testInfoByType[testType].score;
-                    return (
-                      <TabsTrigger
-                        key={testType}
-                        value={testType}
-                        className="h-12 sm:h-14 flex flex-col items-center justify-center gap-0.5 px-2 sm:px-3 rounded-md data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm"
-                      >
-                        <span className="text-xs sm:text-sm font-semibold text-gray-800">{testInfoByType[testType].label}</span>
-                        <span className="text-xs sm:text-sm font-bold text-red-600 leading-none">
-                          {score}
-                        </span>
-                      </TabsTrigger>
-                    );
-                  })}
-                </TabsList>
-                <div className="flex items-center justify-center">
-                  <div className="h-24 w-24 sm:h-28 sm:w-28 rounded-full border-2 border-gray-200 bg-gray-50 shadow-sm flex flex-col items-center justify-center text-center px-2">
-                    <div className="text-[10px] text-gray-500 leading-none">Toplam</div>
-                    <div className="mt-1 flex flex-col items-center leading-tight">
-                      <span className="text-2xl sm:text-[28px] font-bold text-red-600">{overallScore}</span>
-                      <span className="text-[11px] sm:text-xs font-semibold text-black">{overallLevel}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <TabsContent value="listening" className="mt-6">
-            {renderListeningResults()}
-          </TabsContent>
-
-          <TabsContent value="reading" className="mt-6">
-            {renderReadingResults()}
-          </TabsContent>
-
-          <TabsContent value="writing" className="mt-6">
-            {renderWritingResults()}
-          </TabsContent>
-
-          <TabsContent value="speaking" className="mt-6">
-            {renderSpeakingResults()}
-          </TabsContent>
-        </Tabs>
-
-        <div className="mt-6 sm:mt-8 flex justify-center">
-          <Button variant="outline" onClick={() => navigate("/test")} className="w-full sm:w-auto">
-            Testlere Dön
-          </Button>
-        </div>
+            {reportOverview}
+            {availableTests.map((testType) => (
+              <TabsContent
+                key={testType}
+                value={testType}
+                className="mt-7 focus-visible:outline-none"
+              >
+                {renderResultSection(testType)}
+              </TabsContent>
+            ))}
+          </Tabs>
+        ) : (
+          <>
+            {reportOverview}
+            <div className="mt-5">{renderResultSection(singleTestType)}</div>
+          </>
+        )}
       </div>
     </div>
-    </>
   );
 }
 

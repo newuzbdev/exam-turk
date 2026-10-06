@@ -115,7 +115,7 @@ export default function ListeningPart5({ sections: apiSections }: ListeningPart5
                           ></div>
                         </div>
                         <p className="text-lg leading-relaxed flex-1 mt-1">
-                          {answer.answer}
+                          {answer.displayText ?? answer.answer}
                         </p>
                       </div>
                     );

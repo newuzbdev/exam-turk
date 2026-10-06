@@ -62,7 +62,7 @@ const HomeProgressPreview = () => {
   const level = getCefrLevel(lastResult.overallScore);
 
   return (
-    <section className="bg-gray-50 border-t border-gray-100">
+    <section className="bg-white border-t border-gray-100">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 -mb-16 relative z-10">
         <Card className="shadow-lg border-red-100 bg-white/95 backdrop-blur-sm mt-12">
           <CardContent className="p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -70,14 +70,14 @@ const HomeProgressPreview = () => {
               <p className="text-sm font-semibold text-red-600 uppercase tracking-wide mb-1">
                 Son Test Sonucunuz
               </p>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+              <h3 className="text-2xl font-bold text-[#37352F] mb-2">
                 Seviye: {level}{" "}
-                <span className="text-base font-normal text-gray-600">
+                <span className="text-base font-normal text-[#787774]">
                   (Toplam Puan: {lastResult.overallScore}/75)
                 </span>
               </h3>
               {lastResult.completedAt && (
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-[#787774]">
                   Tamamlanma tarihi:{" "}
                   {new Date(lastResult.completedAt).toLocaleString("tr-TR", {
                     dateStyle: "medium",

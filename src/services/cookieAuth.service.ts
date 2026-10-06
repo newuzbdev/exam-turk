@@ -40,9 +40,7 @@ export const cookieAuthService = {
   // Get current user data (tokens handled by HttpOnly cookies)
   getCurrentUser: async (): Promise<Record<string, unknown> | null> => {
     try {
-      console.log("Fetching user data (tokens via HttpOnly cookies)...");
       const response = await axiosPrivate.get(authEndPoint.me);
-      console.log("User data received:", response.data);
       return response.data;
     } catch (error: unknown) {
       console.error("Error fetching user data:", error);

@@ -7,6 +7,11 @@ import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import "./utils/tokenCleanup"; // Import for global functions
+import { installMediaProtection } from "./utils/mediaProtection";
+import { captureAccessLink } from './utils/access-link-context';
+
+captureAccessLink(window.location);
+installMediaProtection();
 
 createRoot(document.getElementById("root")!).render(
   <QueryProvider>

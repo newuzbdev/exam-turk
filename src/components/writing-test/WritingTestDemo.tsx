@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo, useRef } from "react";
+﻿import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -8,9 +8,19 @@ import { Clock3 } from "lucide-react";
 import writingTestService, {
   type WritingTestItem,
 } from "@/services/writingTest.service";
-// import writingSubmissionService from "@/services/writingSubmission.service";
-import { overallTestFlowStore } from "@/services/overallTest.service";
+import writingSubmissionService from "@/services/writingSubmission.service";
+import {
+  createBackendSyncedTimerState,
+  getBackendSyncedRemainingSeconds,
+  getOverallSectionTimerErrorMessage,
+  overallTestFlowStore,
+  overallTestService,
+  overallTestTokenStore,
+  type BackendSyncedTimerState,
+  type MockSubmitMode,
+} from "@/services/overallTest.service";
 import { normalizeDisplayText } from "@/utils/text";
+import { useOverallSectionHeartbeat } from "@/hooks/use-overall-section-heartbeat";
 
 interface WritingSubPart {
   id: string;
@@ -57,7 +67,7 @@ interface WritingProgressSnapshot {
   updatedAt: number;
 }
 
-const SUBMIT_RETRY_GUIDE = "Cevaplariniz bu tarayicida guvenle saklandi.";
+const SUBMIT_RETRY_GUIDE = "Cevaplarınız bu tarayıcıda saklandı.";
 
 const buildSubmitRetryMessage = (errorLike: unknown, fallback: string) => {
   const raw =
@@ -74,7 +84,7 @@ const buildSubmitRetryMessage = (errorLike: unknown, fallback: string) => {
     /(expired|not found|invalid|suresi|dol|bulunamad|gecersiz)/i.test(normalized);
 
   if (isTokenError) {
-    return "Oturum tarafinda gecici bir hata olustu. Sistem gonderimi otomatik olarak tekrar deneyecek.";
+    return "Bağlantı yenileniyor. Cevaplarınız saklandı; birazdan tekrar deneyin.";
   }
 
   if (base.includes(SUBMIT_RETRY_GUIDE)) return base;
@@ -83,6 +93,7 @@ const buildSubmitRetryMessage = (errorLike: unknown, fallback: string) => {
 
 export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   const navigate = useNavigate();
+  useOverallSectionHeartbeat(testId);
   const [, setTest] = useState<WritingTestItem | null>(null);
   const [sections, setSections] = useState<WritingSection[]>([]);
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
@@ -90,6 +101,11 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [sectionTimerLoading, setSectionTimerLoading] = useState(false);
+  const [sectionTimerReady, setSectionTimerReady] = useState(false);
+  const [sectionTimerError, setSectionTimerError] = useState<string | null>(null);
+  const [draftStatus, setDraftStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [draftLastSavedAt, setDraftLastSavedAt] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState(60 * 60); // 60 minutes in seconds
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [fontScale, setFontScale] = useState(0.95);
@@ -100,6 +116,13 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   const [showShortcuts] = useState(true);
   const hasRestoredProgressRef = useRef(false);
   const hasSubmittedRef = useRef(false);
+  const hasOverallTimerRef = useRef(false);
+  const autoSubmitRef = useRef(false);
+  const backendTimerRef = useRef<BackendSyncedTimerState | null>(null);
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const draftLoadAttemptedRef = useRef(false);
+  const latestAnswersRef = useRef<Record<string, string>>({});
+  const skipNextDraftSaveRef = useRef(false);
   const restoredProgressRef = useRef<Partial<WritingProgressSnapshot> | null>(null);
   const progressStorageKey = `writing_progress_${testId}`;
 
@@ -129,6 +152,10 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   useEffect(() => {
     hasRestoredProgressRef.current = false;
     restoredProgressRef.current = null;
+    draftLoadAttemptedRef.current = false;
+    latestAnswersRef.current = {};
+    setDraftStatus("idle");
+    setDraftLastSavedAt(null);
     if (!testId) {
       hasRestoredProgressRef.current = true;
       return;
@@ -154,7 +181,8 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
       }
 
       const restoredTimeLeft = Number(parsed.timeLeft);
-      if (Number.isFinite(restoredTimeLeft)) {
+      const hasOverallToken = !!overallTestTokenStore.getByTestId(testId);
+      if (Number.isFinite(restoredTimeLeft) && !hasOverallToken) {
         setTimeLeft(Math.max(0, Math.round(restoredTimeLeft)));
       }
 
@@ -178,6 +206,47 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
 
     hasRestoredProgressRef.current = true;
   }, [testId, progressStorageKey]);
+
+  useEffect(() => {
+    let mounted = true;
+    autoSubmitRef.current = false;
+    const hasOverallToken = !!overallTestTokenStore.getByTestId(testId);
+    hasOverallTimerRef.current = hasOverallToken;
+    backendTimerRef.current = null;
+    if (!hasOverallToken) {
+      setSectionTimerLoading(false);
+      setSectionTimerReady(true);
+      setSectionTimerError(null);
+      return;
+    }
+
+    setSectionTimerLoading(true);
+    setSectionTimerReady(false);
+    setSectionTimerError(null);
+    overallTestService
+      .startSectionTimerForTest(testId)
+      .then((timer) => {
+        if (!mounted || !timer) return;
+        const timerState = createBackendSyncedTimerState(timer);
+        backendTimerRef.current = timerState;
+        setTimeLeft(getBackendSyncedRemainingSeconds(timerState) ?? timerState.initialRemainingSeconds);
+        setSectionTimerReady(true);
+      })
+      .catch((error) => {
+        if (!mounted) return;
+        const message = getOverallSectionTimerErrorMessage(error);
+        setSectionTimerError(message);
+        setSectionTimerReady(false);
+        toast.error(message);
+      })
+      .finally(() => {
+        if (mounted) setSectionTimerLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [testId]);
 
   // Fetch test data on component mount
   useEffect(() => {
@@ -220,7 +289,6 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
           try {
             const savedData = JSON.parse(savedAnswers);
             if (savedData.answers && typeof savedData.answers === 'object') {
-              console.log("Loading saved answers:", savedData.answers);
               setAnswers(savedData.answers);
             }
           } catch (e) {
@@ -266,7 +334,6 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
           });
           
           if (Object.keys(mappedAnswers).length > 0) {
-            console.log("Loading answers from API response:", mappedAnswers);
             setAnswers(mappedAnswers);
           }
         }
@@ -282,15 +349,29 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
 
   // Timer countdown
   useEffect(() => {
-    if (showPracticeModal) return;
+    if (sectionTimerLoading) return;
+    if (sectionTimerError) return;
+    if (hasOverallTimerRef.current && !sectionTimerReady) return;
+    if (showPracticeModal && !hasOverallTimerRef.current) return;
     if (timeLeft > 0) {
-      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+      const timer = setTimeout(() => {
+        setTimeLeft((prev) => {
+          const backendRemaining = getBackendSyncedRemainingSeconds(backendTimerRef.current);
+          return backendRemaining === null ? Math.max(0, prev - 1) : Math.min(prev, backendRemaining);
+        });
+      }, 1000);
       return () => clearTimeout(timer);
     } else if (timeLeft === 0) {
       // toast.error("Time is up! Test will be submitted automatically.");
-      handleSubmit();
+      if (!hasOverallTimerRef.current || !autoSubmitRef.current) {
+        autoSubmitRef.current = true;
+        if (hasOverallTimerRef.current) {
+          toast.message("Süre bitti. Cevaplarınız gönderiliyor.");
+        }
+        handleSubmit();
+      }
     }
-  }, [timeLeft, showPracticeModal]);
+  }, [sectionTimerLoading, sectionTimerReady, sectionTimerError, timeLeft, showPracticeModal]);
 
   // Auto-save drafts (debounced)
   useEffect(() => {
@@ -425,14 +506,15 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
     currentSubPartIndex,
   ]);
 
+  const isWritingLocked = hasOverallTimerRef.current && sectionTimerReady && timeLeft <= 0;
+
   const handleAnswerChange = (value: string) => {
-    console.log("Answer change - selectedQuestionId:", selectedQuestionId, "value:", value);
+    if (isWritingLocked || submitting) return;
     setAnswers((prev) => {
       const newAnswers = {
         ...prev,
         [selectedQuestionId]: value,
       };
-      console.log("Updated answers:", newAnswers);
       return newAnswers;
     });
   };
@@ -442,6 +524,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   const handleShortcutKeyDown = (
     e: React.KeyboardEvent<HTMLTextAreaElement>
   ) => {
+    if (isWritingLocked || submitting) return;
     // Only handle when '=' is pressed and selection is collapsed
     if (e.key !== "=") return;
 
@@ -493,6 +576,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   };
 
   const insertChar = (ch: string) => {
+    if (isWritingLocked || submitting) return;
     const ta = textareaRef.current;
     const value = answers[selectedQuestionId] || "";
     if (!ta) {
@@ -680,6 +764,108 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
     return 200; // Default fallback
   };
 
+  useEffect(() => {
+    latestAnswersRef.current = answers;
+  }, [answers]);
+
+  const buildDraftWordCounts = useCallback((draftAnswers: Record<string, string>) => {
+    return Object.entries(draftAnswers || {}).reduce<Record<string, number>>((acc, [key, value]) => {
+      acc[key] = getWordCount(String(value || ""));
+      return acc;
+    }, {});
+  }, []);
+
+  const persistWritingDraft = useCallback(
+    async (draftAnswers: Record<string, string> = latestAnswersRef.current) => {
+      const overallToken = overallTestTokenStore.getByTestId(testId);
+      if (!testId || !overallToken || sectionTimerLoading || sectionTimerError) return false;
+      if (hasOverallTimerRef.current && timeLeft <= 0) return false;
+      setDraftStatus("saving");
+      const response = await writingSubmissionService.saveDraft({
+        sessionToken: overallToken,
+        answers: draftAnswers || {},
+        wordCounts: buildDraftWordCounts(draftAnswers || {}),
+      });
+      if (response?.saved || response?.lastSavedAt) {
+        setDraftStatus("saved");
+        setDraftLastSavedAt(response.lastSavedAt || new Date().toISOString());
+        return true;
+      }
+      setDraftStatus("error");
+      return false;
+    },
+    [buildDraftWordCounts, sectionTimerError, sectionTimerLoading, testId, timeLeft],
+  );
+
+  useEffect(() => {
+    if (!testId || loading || draftLoadAttemptedRef.current) return;
+    const overallToken = overallTestTokenStore.getByTestId(testId);
+    if (!overallToken) return;
+    let mounted = true;
+    draftLoadAttemptedRef.current = true;
+    writingSubmissionService.getDraft(overallToken).then((draft) => {
+      if (!mounted || !draft) return;
+      const draftAnswers = draft.answers && typeof draft.answers === "object" ? draft.answers : {};
+      if (Object.keys(draftAnswers).length > 0) {
+        skipNextDraftSaveRef.current = true;
+        latestAnswersRef.current = draftAnswers;
+        setAnswers(draftAnswers);
+        try {
+          sessionStorage.setItem(
+            `writing_answers_${testId}`,
+            JSON.stringify({
+              testId,
+              answers: draftAnswers,
+              sections,
+              timestamp: draft.lastSavedAt || new Date().toISOString(),
+            }),
+          );
+        } catch {}
+      }
+      if (draft.lastSavedAt) {
+        setDraftStatus("saved");
+        setDraftLastSavedAt(draft.lastSavedAt);
+      }
+      if (
+        typeof draft.remainingSeconds === "number" &&
+        hasOverallTimerRef.current &&
+        sectionTimerReady &&
+        draft.remainingSeconds > 0
+      ) {
+        setTimeLeft((prev) => Math.min(prev, Math.max(0, Math.round(draft.remainingSeconds || 0))));
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [loading, sections, sectionTimerReady, testId]);
+
+  useEffect(() => {
+    if (!testId) return;
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    if (skipNextDraftSaveRef.current) {
+      skipNextDraftSaveRef.current = false;
+      return;
+    }
+    const overallToken = overallTestTokenStore.getByTestId(testId);
+    if (!overallToken || submitting || sectionTimerLoading || sectionTimerError) return;
+    if (hasOverallTimerRef.current && timeLeft <= 0) return;
+    autosaveTimerRef.current = setTimeout(() => {
+      persistWritingDraft(answers);
+    }, 2500);
+    return () => {
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    };
+  }, [
+    answers,
+    persistWritingDraft,
+    sectionTimerError,
+    sectionTimerLoading,
+    submitting,
+    testId,
+    timeLeft,
+  ]);
+
   const renderWithBoldFirstParagraph = (
     text: string,
     baseClass: string
@@ -755,8 +941,6 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   };
 
   const currentAnswer = answers[selectedQuestionId] || "";
-  console.log("Current answer for selectedQuestionId:", selectedQuestionId, "is:", currentAnswer);
-  console.log("All answers:", answers);
   const wordCount = getWordCount(currentAnswer);
   const wordLimit = getWordLimit();
   // const wordsRemaining = Math.max(0, wordLimit - wordCount);
@@ -775,8 +959,89 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
     };
   }, [testId, progressStorageKey]);
 
+  const buildWritingSubmissionPayload = (submitMode: MockSubmitMode) => {
+    const getWritingAnswer = (
+      questionId: string,
+      sectionIndex: number,
+      fallbackId?: string,
+      itemIndex?: number
+    ) => {
+      const direct = answers?.[questionId];
+      if (typeof direct === "string") return direct;
+      const fallback = typeof fallbackId === "string" ? fallbackId : "";
+      const idx = typeof itemIndex === "number" ? String(itemIndex) : "";
+      const keys = [
+        `${sectionIndex}-${questionId}`,
+        `${sectionIndex}-${fallback}`,
+        fallback,
+        idx && fallback ? `${sectionIndex}-${idx}-${fallback}` : "",
+        idx ? `${sectionIndex}-${idx}-${questionId}` : "",
+      ].filter(Boolean);
+      for (const k of keys) {
+        const v = answers?.[k];
+        if (typeof v === "string") return v;
+      }
+      return "";
+    };
+
+    return {
+      writingTestId: testId,
+      submitMode,
+      sections: (sections || []).map((section: any, sectionIndex: number) => {
+        const sectionDescription =
+          (typeof section?.title === "string" && section.title.trim()) ||
+          (typeof section?.description === "string" && section.description.trim()) ||
+          `Section ${section?.order || sectionIndex + 1}`;
+        const sectionData: any = {
+          description: sectionDescription,
+        };
+
+        if (Array.isArray(section.subParts) && section.subParts.length > 0) {
+          sectionData.subParts = section.subParts.map((subPart: any, subPartIndex: number) => {
+            const questions = Array.isArray(subPart.questions) ? subPart.questions : [];
+            const subPartDescription =
+              (typeof subPart?.label === "string" && subPart.label.trim()) ||
+              (typeof subPart?.description === "string" && subPart.description.trim()) ||
+              `Sub Part ${subPart?.order || subPartIndex + 1}`;
+            const answersArr = questions
+              .map((q: any) => {
+                const rawQuestionId = q?.id || q?.questionId;
+                const qid =
+                  typeof rawQuestionId === "string"
+                    ? rawQuestionId
+                    : String(rawQuestionId || "").trim();
+                if (!qid) return null;
+                return { questionId: qid, userAnswer: getWritingAnswer(qid, sectionIndex, subPart?.id, subPartIndex) };
+              })
+              .filter(Boolean);
+            return {
+              description: subPartDescription,
+              answers: answersArr,
+            };
+          });
+        }
+
+        if (Array.isArray(section.questions) && section.questions.length > 0) {
+          sectionData.answers = section.questions
+            .map((q: any, questionIndex: number) => {
+              const rawQuestionId = q?.id || q?.questionId;
+              const qid =
+                typeof rawQuestionId === "string"
+                  ? rawQuestionId
+                  : String(rawQuestionId || "").trim();
+              if (!qid) return null;
+              return { questionId: qid, userAnswer: getWritingAnswer(qid, sectionIndex, section?.id, questionIndex) };
+            })
+            .filter(Boolean);
+        }
+
+        return sectionData;
+      }),
+    };
+  };
+
   const handleSubmit = async () => {
-    if (!testId || submitting) return;
+    if (!testId || submitting || sectionTimerLoading) return;
     hasSubmittedRef.current = true;
     setSubmitting(true);
     setShowSubmitModal(false);
@@ -789,13 +1054,25 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
         sections: sections,
         timestamp: new Date().toISOString()
       };
-      // Debug: Log the answers being stored
-      console.log("Writing answers being stored:", answers);
-      console.log("Writing answers data:", answersData);
       // Store in sessionStorage for later submission
       sessionStorage.setItem(`writing_answers_${testId}`, JSON.stringify(answersData));
 
-      // Just navigate to next test without submitting
+      const overallToken = overallTestTokenStore.getByTestId(testId);
+      if (overallToken) {
+        const submitMode: MockSubmitMode = autoSubmitRef.current ? "AUTO" : "MANUAL";
+        if (submitMode === "MANUAL") {
+          await persistWritingDraft(answers);
+        }
+        const writingResult = await writingSubmissionService.create({
+          ...buildWritingSubmissionPayload(submitMode),
+          sessionToken: overallToken,
+        });
+        if (!writingResult) {
+          throw new Error(getOverallSectionTimerErrorMessage({ message: "WRITING_SUBMIT_FAILED" }));
+        }
+        try { sessionStorage.removeItem(`writing_answers_${testId}`); } catch {}
+      }
+
       const nextPath = overallTestFlowStore.onTestCompleted("WRITING", testId);
       if (nextPath) {
         // Ensure exam mode and fullscreen stay active for next test
@@ -831,7 +1108,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
       setSubmitting(false);
     } catch (error) {
       console.error("Writing navigation error:", error);
-      toast.error(buildSubmitRetryMessage(error, "Test gecisinde hata olustu"));
+      toast.error(buildSubmitRetryMessage(error, "Sonraki ekrana geçilemedi"));
       setSubmitting(false);
     }
   };
@@ -839,6 +1116,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
   const submitAllTests = async (overallId: string) => {
     try {
       // toast.info("Submitting all tests...");
+      let latestWritingResultId: string | null = null;
       
       // Submit all individual tests first
       const { readingSubmissionService } = await import("@/services/readingTest.service");
@@ -870,7 +1148,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
           const overallToken = overallTestTokenStore.getByTestId(readingData.testId);
           
           if (!overallToken) {
-            console.log("?? Okuma testi genel token'siz, standart auth ile devam ediliyor");
+            console.log("?? Okuma testi genel token yok, mock submit atlandi");
           }
           await readingSubmissionService.submitAnswers(
             readingData.testId,
@@ -904,7 +1182,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
           const overallToken = overallTestTokenStore.getByTestId(listeningData.testId);
           
           if (!overallToken) {
-            console.log("?? Dinleme testi genel token'siz, standart auth ile devam ediliyor");
+            console.log("?? Dinleme testi genel token yok, mock submit atlandi");
           }
           await listeningSubmissionService.submitAnswers(
             listeningData.testId, 
@@ -1009,6 +1287,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
         if (!writingResult) {
           throw new Error(`Writing submit-all failed: ${writingData.testId}`);
         }
+        latestWritingResultId = writingResult.id || null;
         try { sessionStorage.removeItem(key); } catch {}
       }
       
@@ -1055,7 +1334,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
           formattedSubmission.sessionToken = overallToken;
         } else {
           console.warn(
-            "Speaking submit-all without overall token; falling back to standard auth:",
+            "Speaking submit-all without overall token; skipping mock submit without overall token:",
             speakingData.testId
           );
         }
@@ -1074,6 +1353,27 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
         } catch {}
       }
       
+      const isWritingOnlySession =
+        overallTestFlowStore.getInitialCount() === 1 &&
+        !!latestWritingResultId;
+
+      if (isWritingOnlySession) {
+        const finalized = await overallTestService.finalizeEarlyExit(overallId);
+        if (!finalized) {
+          setSubmitting(false);
+          return;
+        }
+        if (document.fullscreenElement) {
+          try {
+            document.exitFullscreen().catch(() => {});
+          } catch {}
+        }
+        submitAllRetryRef.current = 0;
+        clearWritingProgress();
+        navigate(`/writing-test/results/${latestWritingResultId}`);
+        return;
+      }
+
       // Now complete the overall test
       if (!overallTestFlowStore.isCompleted()) {
         const { overallTestService } = await import("@/services/overallTest.service");
@@ -1094,12 +1394,12 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
       console.error("Error submitting all tests:", error);
       if (submitAllRetryRef.current < 1) {
         submitAllRetryRef.current += 1;
-        toast.message("Gonderim tekrar deneniyor. Cevaplariniz saklandi.");
+        toast.message("Gönderim tekrar deneniyor. Cevaplarınız saklandı.");
         await new Promise((resolve) => setTimeout(resolve, 1400));
         return await submitAllTests(overallId);
       }
       submitAllRetryRef.current = 0;
-      toast.error(buildSubmitRetryMessage(error, "Testler gonderilirken hata olustu"));
+      toast.error(buildSubmitRetryMessage(error, "Test gönderilemedi"));
       setSubmitting(false);
       return;
     }
@@ -1110,6 +1410,13 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
     const remainingSeconds = seconds % 60;
     return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
   };
+  const currentWritingSectionLabel = hasSubParts
+    ? currentSubPartIndex === 0
+      ? "Bölüm 1.1"
+      : "Bölüm 1.2"
+    : selectedSection?.title
+      ? normalizeDisplayText(selectedSection.title)
+      : `Bölüm ${currentSectionIndex + 1}`;
 
   if (loading) {
     return (
@@ -1137,32 +1444,16 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
       <div className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50 shadow-sm w-full">
         {/* Match horizontal padding with description block below */}
         <div className="px-2 sm:px-4">
-          <div className="flex justify-between items-center h-16 sm:h-[68px]">
+          <div className="flex justify-between items-center h-auto py-2 lg:h-[68px] lg:py-0">
             {/* Mobile Header - Single Line Layout */}
             <div className="block lg:hidden w-full">
-              <div className="flex items-center justify-between">
-                <div className="font-semibold text-base sm:text-lg tracking-[0.08em]">YAZMA</div>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      className="h-7 w-7 rounded border border-gray-200 bg-white text-[11px] font-semibold text-gray-700"
-                      onClick={() => setFontScale((v) => Math.max(0.9, Math.round((v - 0.05) * 100) / 100))}
-                      aria-label="Metni küçült"
-                    >
-                      A-
-                    </button>
-                    <button
-                      type="button"
-                      className="h-7 w-7 rounded border border-gray-200 bg-white text-[11px] font-semibold text-gray-700"
-                      onClick={() => setFontScale((v) => Math.min(1.2, Math.round((v + 0.05) * 100) / 100))}
-                      aria-label="Metni büyült"
-                    >
-                      A+
-                    </button>
-                  </div>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2">
+                <div className="min-w-0 leading-tight">
+                  <div className="text-sm font-bold tracking-[0.08em] truncate">YAZMA</div>
+                  <div className="text-[10px] font-semibold text-gray-500 truncate">{currentWritingSectionLabel}</div>
+                </div>
                   <div
-                  className={`flex items-center gap-2 px-2.5 py-1.5 rounded-full border text-xs font-bold ${
+                  className={`justify-self-center flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-xs font-bold ${
                       timeLeft <= 300
                         ? "bg-red-50 border-red-200 text-red-700"
                         : timeLeft <= 600
@@ -1173,16 +1464,33 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                     <Clock3 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                     <span className="tabular-nums">{formatTime(timeLeft)}</span>
                   </div>
-                  <Button onClick={() => setShowSubmitModal(true)} className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-3 py-1.5 text-xs font-semibold min-h-[34px] touch-manipulation">
-                    GÖNDER
+                  <Button onClick={() => setShowSubmitModal(true)} disabled={sectionTimerLoading || submitting || isWritingLocked} className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-3 py-1.5 text-xs font-semibold min-h-[34px] touch-manipulation disabled:opacity-60">
+                    {sectionTimerLoading ? "Yükleniyor" : isWritingLocked ? "Süre doldu" : "GÖNDER"}
                   </Button>
-                </div>
+              </div>
+              <div className="mt-2 flex items-center justify-end gap-1">
+                <button
+                  type="button"
+                  className="h-7 w-7 rounded border border-gray-200 bg-white text-[11px] font-semibold text-gray-700"
+                  onClick={() => setFontScale((v) => Math.max(0.9, Math.round((v - 0.05) * 100) / 100))}
+                  aria-label="Metni küçült"
+                >
+                  A-
+                </button>
+                <button
+                  type="button"
+                  className="h-7 w-7 rounded border border-gray-200 bg-white text-[11px] font-semibold text-gray-700"
+                  onClick={() => setFontScale((v) => Math.min(1.2, Math.round((v + 0.05) * 100) / 100))}
+                  aria-label="Metni büyült"
+                >
+                  A+
+                </button>
               </div>
             </div>
 
             {/* Desktop Header - Horizontal Layout */}
-            <div className="hidden lg:flex items-center justify-between w-full">
-              <div className="flex items-center">
+            <div className="hidden lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center w-full gap-4">
+              <div className="flex items-center gap-3 min-w-0">
                 <img 
                   src="/logo11.svg" 
                   alt="TURKISHMOCK" 
@@ -1192,9 +1500,24 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                     (e.target as HTMLImageElement).style.display = 'none';
                   }}
                 />
+                <div className="min-w-0 leading-tight">
+                  <div className="font-semibold text-base sm:text-lg tracking-[0.08em] truncate">YAZMA</div>
+                  <div className="text-xs font-semibold text-gray-500 truncate">{currentWritingSectionLabel}</div>
+                </div>
               </div>
-              <div className="font-semibold text-base sm:text-lg tracking-[0.08em]">YAZMA</div>
-              <div className="flex items-center gap-4">
+              <div
+                className={`justify-self-center flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-bold ${
+                  timeLeft <= 300
+                    ? "bg-red-50 border-red-200 text-red-700"
+                    : timeLeft <= 600
+                    ? "bg-amber-50 border-amber-200 text-amber-700"
+                    : "bg-gray-50 border-gray-200 text-slate-700"
+                }`}
+              >
+                <Clock3 className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span className="tabular-nums">{formatTime(timeLeft)}</span>
+              </div>
+              <div className="justify-self-end flex items-center gap-4">
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
@@ -1213,20 +1536,8 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                     A+
                   </button>
                 </div>
-                <div
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-bold ${
-                    timeLeft <= 300
-                      ? "bg-red-50 border-red-200 text-red-700"
-                      : timeLeft <= 600
-                      ? "bg-amber-50 border-amber-200 text-amber-700"
-                      : "bg-gray-50 border-gray-200 text-slate-700"
-                  }`}
-                >
-                  <Clock3 className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  <span className="tabular-nums">{formatTime(timeLeft)}</span>
-                </div>
-                <Button onClick={() => setShowSubmitModal(true)} className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-3 py-1.5 text-xs font-semibold min-h-[34px] touch-manipulation">
-                  GÖNDER
+                <Button onClick={() => setShowSubmitModal(true)} disabled={sectionTimerLoading || submitting || isWritingLocked} className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-3 py-1.5 text-xs font-semibold min-h-[34px] touch-manipulation disabled:opacity-60">
+                  {sectionTimerLoading ? "Yükleniyor" : isWritingLocked ? "Süre doldu" : "GÖNDER"}
                 </Button>
               </div>
             </div>
@@ -1363,6 +1674,23 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                 </label>
               </div>
               <div className="flex flex-wrap gap-2 mb-3 text-xs">
+                <span
+                  className={`rounded-full border px-2 py-1 font-medium ${
+                    draftStatus === "error"
+                      ? "border-red-200 bg-red-50 text-red-700"
+                      : draftStatus === "saving"
+                      ? "border-amber-200 bg-amber-50 text-amber-700"
+                      : "border-gray-200 bg-white text-gray-500"
+                  }`}
+                >
+                  {draftStatus === "saving"
+                    ? "Kaydediliyor"
+                    : draftStatus === "error"
+                    ? "Kaydedilemedi"
+                    : draftLastSavedAt
+                    ? "Kaydedildi"
+                    : "Otomatik kayıt açık"}
+                </span>
               </div>
               <textarea
                 ref={textareaRef}
@@ -1370,7 +1698,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                 value={currentAnswer}
                 onChange={(e) => handleAnswerChange(e.target.value)}
                 placeholder="Yazınızı buraya yazın.."
-                disabled={showPracticeModal}
+                disabled={showPracticeModal || isWritingLocked || submitting}
                 className="w-full h-80 sm:h-96 p-3 sm:p-4 border border-gray-300 rounded-lg resize-y focus:outline-none focus:ring-1 focus:ring-black/15 focus:ring-offset-0 focus:border-gray-400 text-gray-900 placeholder:text-gray-400 text-sm sm:text-base overflow-y-auto bg-[#FEFEFC] disabled:opacity-60 disabled:cursor-not-allowed"
                 dir="ltr"
                 lang="tr"
@@ -1538,6 +1866,23 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
               <ResizablePanel defaultSize={55} className="min-w-0">
                 <div className="bg-[#F7F7F5] rounded-xl shadow-sm p-6 flex-1 min-w-0 h-[calc(100vh-140px)] overflow-y-auto flex flex-col border border-gray-200 text-[#333333]">
                   <div className="flex flex-wrap gap-2 mb-3 text-xs">
+                    <span
+                      className={`rounded-full border px-2 py-1 font-medium ${
+                        draftStatus === "error"
+                          ? "border-red-200 bg-red-50 text-red-700"
+                          : draftStatus === "saving"
+                          ? "border-amber-200 bg-amber-50 text-amber-700"
+                          : "border-gray-200 bg-white text-gray-500"
+                      }`}
+                    >
+                      {draftStatus === "saving"
+                        ? "Kaydediliyor"
+                        : draftStatus === "error"
+                        ? "Kaydedilemedi"
+                        : draftLastSavedAt
+                        ? "Kaydedildi"
+                        : "Otomatik kayıt açık"}
+                    </span>
                   </div>
                   <textarea
                     ref={textareaRef}
@@ -1545,7 +1890,7 @@ export default function WritingTestDemo({ testId }: WritingTestDemoProps) {
                     value={currentAnswer}
                     onChange={(e) => handleAnswerChange(e.target.value)}
                     placeholder="Yazınızı buraya yazın.."
-                    disabled={showPracticeModal}
+                    disabled={showPracticeModal || isWritingLocked || submitting}
                     className="w-full min-h-[300px] h-auto flex-1 p-6 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-black/15 focus:ring-offset-0 focus:border-gray-400 text-gray-900 placeholder:text-gray-400 text-lg bg-[#FEFEFC] disabled:opacity-60 disabled:cursor-not-allowed"
                     dir="ltr"
                     lang="tr"

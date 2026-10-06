@@ -28,7 +28,6 @@ const ProfileHeader = () => {
       const fetchUserData = async () => {
         try {
           const userData = await authService.getCurrentUser();
-          console.log("Profile - User data received:", userData);
           if (userData) {
             setUser({
               ...userData,

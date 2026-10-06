@@ -3,20 +3,33 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { useLocation, useParams } from "react-router-dom";
-import { readingSubmissionService, readingTestService, type ReadingTestItem, type TestResultData } from "@/services/readingTest.service";
+import { readingSubmissionService, type TestResultData } from "@/services/readingTest.service";
 import { Download } from "lucide-react";
 import { overallTestService, overallTestFlowStore } from "@/services/overallTest.service";
+import { useResultScreenProtection } from "@/hooks/use-result-screen-protection";
 
 export default function ReadingTestResults() {
+  useResultScreenProtection();
   const { resultId } = useParams<{ resultId: string }>();
   const [data, setData] = useState<TestResultData | null>(null);
   const [loading, setLoading] = useState(true);
   const [reportId, setReportId] = useState(resultId || "");
-  const [testData, setTestData] = useState<ReadingTestItem | null>(null);
   const [downloadingPDF, setDownloadingPDF] = useState(false);
   const location = useLocation();
   const navState: any = (location && (location as any).state) || {};
   const summary = navState?.summary || null;
+
+  useEffect(() => {
+    document.body.classList.remove("exam-mode");
+    document.documentElement.classList.remove("exam-mode");
+    document.body.style.overflow = "";
+    document.body.style.overflowY = "";
+    document.documentElement.style.overflow = "";
+    document.documentElement.style.overflowY = "";
+    if (document.fullscreenElement) {
+      void document.exitFullscreen().catch(() => undefined);
+    }
+  }, []);
 
   const handleDownloadPDF = async () => {
     // Try to get overall test result ID from session storage, otherwise use individual result ID
@@ -42,19 +55,12 @@ export default function ReadingTestResults() {
       try {
         const res = await readingSubmissionService.getExamResults(resultId);
         setData(res);
-        const effectiveTestId = res?.testId || summary?.testId;
-        if (effectiveTestId) {
-          try {
-            const td = await readingTestService.getTestWithFullData(effectiveTestId);
-            setTestData(td);
-          } catch {}
-        }
       } catch (error) {
         console.error("Error fetching results:", error);
       }
       setLoading(false);
     })();
-  }, [resultId]);
+  }, [resultId, summary?.testId]);
 
   const handleGetReport = async () => {
     if (!reportId) return;
@@ -68,96 +74,33 @@ export default function ReadingTestResults() {
     setLoading(false);
   };
 
-  const examData = data?.userAnswers?.map((ua: any, index: number) => {
-    const doğruAnswer = ua.question.answers.find((a: any) => a.correct);
-    return {
-      no: index + 1,
-      userAnswer: ua.userAnswer || "Seçilmedi",
-      doğruAnswer: doğruAnswer?.variantText || doğruAnswer?.answer || "",
-      result: ua.isCorrect ? "Doğru" : "Yanlış"
-    };
-  }) || [];
-
-  const fullExamData = useMemo(() => {
-    if (!testData) return null;
-    const byId: Record<string, { userAnswer?: string; isCorrect?: boolean }> = {};
-    const byNumber: Record<number, { userAnswer?: string; isCorrect?: boolean }> = {};
-    const byText: Record<string, { userAnswer?: string; isCorrect?: boolean }> = {};
-    const detailed = (data?.userAnswers || []);
-    detailed.forEach((ua: any) => {
-      if (ua?.questionId) byId[ua.questionId] = { userAnswer: ua.userAnswer, isCorrect: ua.isCorrect };
-      const num = ua?.question?.number;
-      if (typeof num === 'number') byNumber[num] = { userAnswer: ua.userAnswer, isCorrect: ua.isCorrect };
-      const txt = (ua?.question?.text || ua?.question?.content || '').toString().trim().toLowerCase();
-      if (txt) byText[txt] = { userAnswer: ua.userAnswer, isCorrect: ua.isCorrect };
-    });
-
-    let flatQuestions: any[] = [];
-    (testData.parts || []).forEach(p => (p.sections || []).forEach(s => (s.questions || []).forEach(q => flatQuestions.push(q))));
-    // Prefer ordering by question.number if present
-    flatQuestions = flatQuestions.sort((a, b) => {
-      const na = typeof a.number === 'number' ? a.number : 1e9;
-      const nb = typeof b.number === 'number' ? b.number : 1e9;
-      if (na !== nb) return na - nb;
-      return 0;
-    });
-
-    const rows: { no: number; userAnswer: string; doğruAnswer: string; result: string; _qid?: string }[] = [];
-    const usedDetailed = new Set<number>();
-
-    for (let i = 0; i < flatQuestions.length; i++) {
-      const q = flatQuestions[i];
-      const doğru = (q.answers || []).find((a: any) => a.doğru);
-      let ua = byId[q.id];
-      if (!ua && typeof q.number === 'number') ua = byNumber[q.number];
-      if (!ua) {
-        const key = (q.text || q.content || '').toString().trim().toLowerCase();
-        if (key && byText[key]) ua = byText[key];
-      }
-      if (!ua) {
-        // Try to match by index to at least show selected ones if ordering matches
-        if (detailed[i]) {
-          ua = { userAnswer: detailed[i].userAnswer, isCorrect: detailed[i].isCorrect };
-          usedDetailed.add(i);
-        }
-      }
-      const userAnswer = ua?.userAnswer || "Seçilmedi";
-      const result = ua?.userAnswer ? (ua?.isCorrect ? "Doğru" : "Yanlış") : "Seçilmedi";
-      rows.push({
-        no: (typeof q.number === 'number' ? q.number : (i + 1)),
-        userAnswer,
-        doğruAnswer: String(doğru?.variantText || doğru?.answer || ""),
-        result,
-        _qid: q.id,
-      });
+  const finalRows = useMemo(() => {
+    const snapshotQuestions = (data?.review?.sections || []).flatMap((section) => section.questions || []);
+    // The completed result owns its questions and answer key. Solving content
+    // hides the key and may belong to a later authoring revision.
+    if (snapshotQuestions.length > 0) {
+      return snapshotQuestions.map((question, index) => ({
+        no: question.number || index + 1,
+        userAnswer: (Array.isArray(question.userAnswer) ? question.userAnswer.join(" / ") : question.userAnswer) || "Seçilmedi",
+        correctAnswer: question.answers.filter((answer) => answer.correct)
+          .map((answer) => answer.variantText || answer.text).join(" / ") || "Belirtilmedi",
+        result: !question.userAnswer || (Array.isArray(question.userAnswer) && question.userAnswer.length === 0)
+          ? "Seçilmedi" : question.isCorrect ? "Doğru" : "Yanlış",
+      })).sort((a, b) => a.no - b.no);
     }
+    return (data?.userAnswers || []).map((answer, index) => ({
+      no: answer.question?.number || index + 1,
+      userAnswer: answer.userAnswer || "Seçilmedi",
+      correctAnswer: (answer.question?.answers || []).filter((option) => option.correct)
+        .map((option) => option.variantText || option.answer).join(" / ") || "Belirtilmedi",
+      result: !answer.userAnswer ? "Seçilmedi" : answer.isCorrect ? "Doğru" : "Yanlış",
+    })).sort((a, b) => a.no - b.no);
+  }, [data]);
 
-    // Append any remaining detailed answers that didn't match by id/number/index
-    for (let i = 0; i < detailed.length; i++) {
-      if (usedDetailed.has(i)) continue;
-      const ua = detailed[i];
-      if (!ua) continue;
-      // Skip if we already have a row with this questionId
-      if (ua.questionId && rows.some(r => r._qid === ua.questionId)) continue;
-      const cAns = (ua.question?.answers || []).find((a: any) => a.doğru);
-      rows.push({
-        no: typeof ua.question?.number === 'number' ? ua.question.number : (rows.length + 1),
-        userAnswer: ua.userAnswer || "Seçilmedi",
-        doğruAnswer: String(cAns?.variantText || cAns?.answer || ""),
-        result: ua.userAnswer ? (ua.isCorrect ? "Doğru" : "Yanlış") : "Seçilmedi",
-      });
-    }
-
-    // Sort by No. at the end for consistent display
-    return rows
-      .map(({ _qid, ...rest }) => rest)
-      .sort((a, b) => a.no - b.no);
-  }, [testData, data]);
-
-  const hasDetailedData = data && data.userAnswers && data.userAnswers.length > 0;
+  const hasDetailedData = finalRows.length > 0;
   const hasSummaryData = summary && summary.score !== undefined;
 
-  const score = summary?.score ?? data?.score ?? 0;
+  const score = data?.score ?? summary?.score ?? 0;
   const normalizeLevel = (raw?: string | null) => {
     if (!raw) return undefined;
     const value = String(raw).trim().toUpperCase();
@@ -173,36 +116,11 @@ export default function ReadingTestResults() {
   const resolvedLevel =
     normalizeLevel((summary as any)?.level ?? (data as any)?.level) ||
     levelFromScore(Number(score) || 0);
-  // Prefer reconstructed rows, but if most are "Seçilmedi", fall back to raw API rows
-  const finalRows = useMemo(() => {
-    if (fullExamData && fullExamData.length) {
-      const notSelectedCount = fullExamData.filter(r => !r.userAnswer || r.userAnswer === "Seçilmedi").length;
-      const ratio = notSelectedCount / fullExamData.length;
-      if (ratio <= 0.5) return fullExamData;
-      // Too many missing matches -> use raw mapping
-    }
-    return examData;
-  }, [fullExamData, examData]);
-  const computedDoğruFromFull = useMemo(() => {
-    if (finalRows) return finalRows.filter(r => r.result === "Doğru").length;
-    if (hasDetailedData) return (data!.userAnswers || []).filter(u => u.isCorrect).length;
-    return undefined;
-  }, [finalRows, hasDetailedData, data]);
-  const computedTotalFromFull = useMemo(() => {
-    if (finalRows) return finalRows.length;
-    if (hasDetailedData) return (data!.userAnswers || []).length;
-    return undefined;
-  }, [finalRows, hasDetailedData, data]);
-  const doğruCount = summary?.doğruCount ?? computedDoğruFromFull;
-  const totalQuestions = summary?.totalQuestions ?? computedTotalFromFull;
+  const doğruCount = hasDetailedData ? finalRows.filter((row) => row.result === "Doğru").length : summary?.doğruCount;
+  const totalQuestions = hasDetailedData ? finalRows.length : summary?.totalQuestions;
   const userName = "JAXONGIRMIRZO";
   const currentDate = new Date().toISOString().replace('T', ' ').substring(0, 19) + " GMT+5";
-  const rowsForDisplay = (fullExamData || examData).map((item: any) => ({
-    no: item.no,
-    userAnswer: item.userAnswer || "Seçilmedi",
-    correctAnswer: item.correctAnswer ?? item.doğruAnswer ?? "",
-    result: item.result,
-  }));
+  const rowsForDisplay = finalRows;
 
   const renderSplitResultsTable = (rows: Array<{ no: number; userAnswer: string; correctAnswer: string; result: string }>) => {
     const firstColumnRows = rows.slice(0, 18);

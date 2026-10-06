@@ -1,18 +1,19 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { useLocation, useParams } from "react-router-dom";
-import { listeningSubmissionService, listeningTestService, type ListeningTestItem, type TestResultData } from "@/services/listeningTest.service";
+import { listeningSubmissionService, type TestResultData } from "@/services/listeningTest.service";
 import { Download } from "lucide-react";
 import { overallTestService, overallTestFlowStore } from "@/services/overallTest.service";
+import { useResultScreenProtection } from "@/hooks/use-result-screen-protection";
 
 export default function ListeningResultsPage() {
+  useResultScreenProtection();
   const { resultId } = useParams<{ resultId: string }>();
   const [data, setData] = useState<TestResultData | null>(null);
   const [loading, setLoading] = useState(true);
   const [reportId, setReportId] = useState(resultId || "");
-  const [testData, setTestData] = useState<ListeningTestItem | null>(null);
   const [downloadingPDF, setDownloadingPDF] = useState(false);
   const location = useLocation();
   const navState: any = (location && (location as any).state) || {};
@@ -45,15 +46,7 @@ export default function ListeningResultsPage() {
         const res = await listeningSubmissionService.getExamResults(resultId);
         console.log("Sonuçs fetched:", res);
         setData(res);
-        // Try to fetch full test to render all questions
-        if (res?.testId) {
-          try {
-            const td = await listeningTestService.getTestWithFullData(res.testId);
-            setTestData(td);
-          } catch (e) {
-            console.warn("Failed to fetch test for results rendering", e);
-          }
-        }
+
       } catch (error) {
         console.error("Error fetching results:", error);
       }
@@ -73,45 +66,30 @@ export default function ListeningResultsPage() {
     setLoading(false);
   };
 
-  // Transform data to match the table format
-  const examData = data?.userAnswers?.map((ua: any, index: number) => {
-    const correctAnswer = ua.question.answers.find((a: any) => a.correct);
-    return {
-      no: index + 1,
-      userAnswer: ua.userAnswer || "Seçilmedi",
-      correctAnswer: correctAnswer?.variantText || correctAnswer?.answer || "",
-      result: ua.isCorrect ? "Doğru" : "Yanlış"
-    };
-  }) || [];
-
-  // Build full results using original test structure to show unanswered as Seçilmedi
   const fullExamData = useMemo(() => {
-    if (!testData) return null;
-    const userAnswerByQ: Record<string, { userAnswer?: string; isCorrect?: boolean }> = {};
-    (data?.userAnswers || []).forEach((ua: any) => {
-      userAnswerByQ[ua.questionId] = { userAnswer: ua.userAnswer, isCorrect: ua.isCorrect };
-    });
-    const rows: { no: number; userAnswer: string; correctAnswer: string; result: string }[] = [];
-    let counter = 1;
-    (testData.parts || []).forEach(p => {
-      (p.sections || []).forEach(s => {
-        (s.questions || []).forEach(q => {
-          const ua = userAnswerByQ[q.id] || {};
-          const correct = (q.answers || []).find((a: any) => a.correct);
-          rows.push({
-            no: counter++,
-            userAnswer: ua.userAnswer || "Seçilmedi",
-            correctAnswer: (correct?.variantText || correct?.answer || "") as string,
-            result: ua.userAnswer ? (ua.isCorrect ? "Doğru" : "Yanlış") : "Seçilmedi",
-          });
-        });
-      });
-    });
-    return rows;
-  }, [testData, data]);
+    const snapshotQuestions = (data?.review?.sections || []).flatMap((section) => section.questions || []);
+    // The completed result owns its questions and answer key. Solving content
+    // hides the key and may belong to a later authoring revision.
+    if (snapshotQuestions.length > 0) {
+      return snapshotQuestions.map((question, index) => ({
+        no: question.number || index + 1,
+        userAnswer: (Array.isArray(question.userAnswer) ? question.userAnswer.join(" / ") : question.userAnswer) || "Seçilmedi",
+        correctAnswer: question.answers.filter((answer) => answer.correct)
+          .map((answer) => answer.variantText || answer.text).join(" / ") || "Belirtilmedi",
+        result: !question.userAnswer || (Array.isArray(question.userAnswer) && question.userAnswer.length === 0)
+          ? "Seçilmedi" : question.isCorrect ? "Doğru" : "Yanlış",
+      })).sort((a, b) => a.no - b.no);
+    }
+    return (data?.userAnswers || []).map((answer, index) => ({
+      no: answer.question?.number || index + 1,
+      userAnswer: answer.userAnswer || "Seçilmedi",
+      correctAnswer: (answer.question?.answers || []).filter((option) => option.correct)
+        .map((option) => option.variantText || option.answer).join(" / ") || "Belirtilmedi",
+      result: !answer.userAnswer ? "Seçilmedi" : answer.isCorrect ? "Doğru" : "Yanlış",
+    })).sort((a, b) => a.no - b.no);
+  }, [data]);
 
-  // If we don't have detailed data but have summary, show a basic message
-  const hasDetailedData = data && data.userAnswers && data.userAnswers.length > 0;
+  const hasDetailedData = fullExamData.length > 0;
   const hasSummaryData = summary && summary.score !== undefined;
 
   const score = summary?.score ?? data?.score ?? 0;
@@ -144,7 +122,7 @@ export default function ListeningResultsPage() {
   const totalQuestions = summary?.totalQuestions ?? computedTotalFromFull;
   const userName = "JAXONGIRMIRZO"; // You can get this from user context or API
   const currentDate = new Date().toISOString().replace('T', ' ').substring(0, 19) + " GMT+5";
-  const rowsForDisplay = fullExamData || examData;
+  const rowsForDisplay = fullExamData;
 
   const renderSplitResultsTable = (rows: Array<{ no: number; userAnswer: string; correctAnswer: string; result: string }>) => {
     const firstColumnRows = rows.slice(0, 18);

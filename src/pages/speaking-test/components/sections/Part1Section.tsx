@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import type { Section } from "@/pages/speaking-test/SpeakingTest";
 import QuestionCard from "../QuestionCard";
 import CountdownTimer from "@/components/speaking-test/CountdownTimer";
+import { protectedImageProps } from "@/utils/mediaProtection";
 
 interface Part1SectionProps {
   section: Section;
@@ -369,6 +370,7 @@ const Part1Section = ({
                 return (
                   <div className="w-full max-w-xl aspect-[4/3] bg-transparent rounded-lg overflow-hidden flex items-center justify-center max-h-[40vh] sm:max-h-[50vh]">
                     <img
+                      {...protectedImageProps}
                       src={imgs[0]}
                       alt={`Speaking test visual 1`}
                       className="w-full h-full object-contain"
@@ -386,6 +388,7 @@ const Part1Section = ({
                     {[imgs[0], imgs[1]].map((src, idx) => (
                       <div key={`img-${idx}`} className="aspect-[4/3] bg-transparent rounded-lg overflow-hidden flex items-center justify-center max-h-[35vh] sm:max-h-[40vh]">
                         <img
+                          {...protectedImageProps}
                           src={src}
                           alt={`Speaking test visual ${idx + 1}`}
                           className="w-full h-full object-contain"

@@ -1,12 +1,16 @@
+import type { MockReviewV1 } from "@/components/results/evidence-review-utils";
 import { SecureStorage } from "@/utils/secureStorage";
 import axiosPrivate from "@/config/api";
 import { toast } from "sonner";
+import { getOverallSectionTimerErrorMessage } from "./overallTest.service";
+import type { MockSubmitMode } from "./overallTest.service";
 
 export interface ReadingAnswer {
   id: string;
   questionId?: string;
   variantText?: string | null;
-  answer: string;
+  displayText?: string | null;
+  answer?: string | null;
   correct?: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -98,6 +102,15 @@ export interface TestResultData {
   createdAt: string;
   updatedAt: string;
   userAnswers: UserAnswerResult[];
+  review?: MockReviewV1 | null;
+}
+
+export interface ExamSectionDraftResponse {
+  answers: Record<string, string | string[]>;
+  lastSavedAt?: string | null;
+  serverNow?: string;
+  remainingSeconds?: number;
+  saved?: boolean;
 }
 
 function extractData<T = any>(res: any): T {
@@ -168,7 +181,11 @@ export const readingTestService = {
     testId: string
   ): Promise<ReadingTestItem | null> => {
     try {
-      const res = await axiosPrivate.get(`/api/test/testaddition/${testId}`);
+      const { overallTestTokenStore } = await import("./overallTest.service");
+      const sessionToken = overallTestTokenStore.getByTestId(testId);
+      const res = await axiosPrivate.get(`/api/test/testaddition/${testId}`, {
+        params: sessionToken ? { sessionToken } : undefined,
+      });
       const testData = extractData<ReadingTestItem>(res);
       return testData;
     } catch (error) {
@@ -180,10 +197,73 @@ export const readingTestService = {
 };
 
 export const readingSubmissionService = {
+  getSessionResult: async (overallTestId: string, testId: string): Promise<{
+    overallTestId: string;
+    overallCompleted: boolean;
+    resultId: string;
+  } | null> => {
+    try {
+      const response = await axiosPrivate.get(`/api/overal-test-result/${encodeURIComponent(overallTestId)}/results`);
+      const result = extractData<{
+        id: string;
+        status: string;
+        isCompleted: boolean;
+        reading?: { resultId: string; test?: { id: string } } | null;
+      }>(response);
+      if (result?.id !== overallTestId || result.reading?.test?.id !== testId || !result.reading.resultId) return null;
+      if (result.status !== "IN_PROGRESS" && result.status !== "COMPLETED") return null;
+      return {
+        overallTestId: result.id,
+        overallCompleted: result.status === "COMPLETED" || result.isCompleted,
+        resultId: result.reading.resultId,
+      };
+    } catch {
+      return null;
+    }
+  },
+  getDraft: async (
+    sessionToken: string
+  ): Promise<ExamSectionDraftResponse | null> => {
+    try {
+      const res = await axiosPrivate.get("/api/exam/sections/reading/draft", {
+        params: { sessionToken },
+      });
+      return extractData<ExamSectionDraftResponse>(res);
+    } catch (error: any) {
+      const status = error?.response?.status;
+      if (status !== 401 && status !== 404) {
+        console.warn("Reading draft fetch failed");
+      }
+      return null;
+    }
+  },
+
+  saveDraft: async (
+    sessionToken: string,
+    answers: Record<string, unknown>
+  ): Promise<ExamSectionDraftResponse | null> => {
+    try {
+      const res = await axiosPrivate.patch("/api/exam/sections/reading/draft", {
+        sessionToken,
+        answers: answers || {},
+      });
+      return extractData<ExamSectionDraftResponse>(res);
+    } catch (error: any) {
+      const status = error?.response?.status;
+      const code = error?.response?.data?.code || error?.response?.data?.message;
+      if (code === "TEST_TIME_EXPIRED" || code === "SECTION_ALREADY_SUBMITTED") return null;
+      if (status !== 401) {
+        console.warn("Reading draft save failed");
+      }
+      return null;
+    }
+  },
+
   submitAnswers: async (
     testId: string,
     answers: { questionId: string; userAnswer: string }[] | Record<string, unknown>,
-    token?: string | null
+    token?: string | null,
+    submitMode: MockSubmitMode = "MANUAL"
   ) => {
     try {
       const { overallTestTokenStore } = await import("./overallTest.service");
@@ -196,15 +276,23 @@ export const readingSubmissionService = {
         toast.error("Javoblarni yuborish uchun tizimga kirishingiz kerak.");
         throw new Error("Authentication required to submit exam results.");
       }
+      if (!overallSessionToken) {
+        const message = "Bu sınav oturumu başlatılmadı. Lütfen testi yeniden başlat.";
+        toast.error(message);
+        throw new Error("SESSION_TOKEN_REQUIRED");
+      }
 
       const payload: {
         testId: string;
         answers: { questionId: string; userAnswer: string }[];
-        sessionToken?: string;
-      } = { testId, answers: normalizedAnswers };
-      if (overallSessionToken) {
-        payload.sessionToken = overallSessionToken;
-      }
+        sessionToken: string;
+        submitMode: MockSubmitMode;
+      } = {
+        testId,
+        answers: normalizedAnswers,
+        sessionToken: overallSessionToken,
+        submitMode,
+      };
 
       const res = await axiosPrivate.post("/api/exam/submit-all", payload);
       const data = extractData<any>(res);
@@ -213,7 +301,15 @@ export const readingSubmissionService = {
       try { if (overallSessionToken) overallTestTokenStore.clearByTestId(testId); } catch {}
       return data ?? res.data ?? res;
     } catch (error: any) {
+      if (error?.message === "SESSION_TOKEN_REQUIRED") {
+        throw error;
+      }
       const status = error?.response?.status;
+      const timerCode = error?.response?.data?.code;
+      if (timerCode === "TEST_TIME_EXPIRED" || timerCode === "SECTION_NOT_STARTED" || timerCode === "SESSION_TOKEN_REQUIRED") {
+        toast.error(getOverallSectionTimerErrorMessage(error));
+        throw error;
+      }
       if (status === 401 || status === 403) {
         toast.error("Javoblarni yuborish uchun tizimga kirishingiz kerak.");
         throw new Error(

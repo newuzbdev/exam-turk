@@ -98,6 +98,10 @@ export const normalizeDisplayText = (value?: string | null) => {
   if (value === null || value === undefined) return '';
   return removeMixedFallbackBlocks(
     repairCollapsedTurkish(fixMojibake(String(value)))
+      .replace(
+        /\bannotationCoverageLow\b/g,
+        'Analiz kapsamı sınırlı: yalnızca metinde güvenle eşleşen kısa düzeltmeler işaretlendi.',
+      )
       .replace(/([A-Za-zÇĞİÖŞÜçğıöşü])\1{2,}/g, '$1')
       .replace(/\uFFFD/g, '')
       .trim(),

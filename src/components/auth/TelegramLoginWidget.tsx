@@ -61,13 +61,13 @@ export default function TelegramLoginWidget({
   }, [botUsername, onAuth]);
 
   return (
-    <div className="space-y-3">
+    <div>
       <div
-        className="flex min-h-14 items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4"
+        className="flex min-h-14 items-center justify-center"
         ref={containerRef}
       />
       {loadError ? (
-        <p className="text-center text-sm text-red-600">{loadError}</p>
+        <p className="mt-3 text-sm text-red-600">{loadError}</p>
       ) : null}
     </div>
   );

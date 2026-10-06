@@ -1,8 +1,33 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { Footer } from "./footer";
 import Navbar from "./navbar";
 import { Outlet, useLocation } from "react-router";
 import { ConfettiSideCannons } from "./ui/confetti-side-cannons";
+import { clearExamPresentation } from "@/utils/examFullscreen";
+
+const ACTIVE_EXAM_ROUTE_PREFIXES = [
+  "/listening-test/",
+  "/reading-test/",
+  "/writing-test/",
+  "/speaking-test/",
+];
+
+const isActiveExamRoute = (pathname: string) => {
+  if (pathname === "/overall-section-ready") return true;
+
+  return ACTIVE_EXAM_ROUTE_PREFIXES.some(
+    (prefix) =>
+      pathname.startsWith(prefix) &&
+      !pathname.startsWith(`${prefix}results/`),
+  );
+};
+
+const isRunningExamRoute = (pathname: string) =>
+  ACTIVE_EXAM_ROUTE_PREFIXES.some(
+    (prefix) =>
+      pathname.startsWith(prefix) &&
+      !pathname.startsWith(`${prefix}results/`),
+  );
 
 const Layout = () => {
   const [isExamMode, setIsExamMode] = useState<boolean>(() => {
@@ -11,6 +36,13 @@ const Layout = () => {
   });
   const location = useLocation();
   const [showConfetti, setShowConfetti] = useState(false);
+  const hideGlobalChrome =
+    isExamMode || isActiveExamRoute(location.pathname);
+
+  useLayoutEffect(() => {
+    if (isRunningExamRoute(location.pathname)) return;
+    void clearExamPresentation();
+  }, [location.pathname]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -47,10 +79,10 @@ const Layout = () => {
 
   return (
     <div className="bg-white">
-      {!isExamMode && <Navbar />}
+      {!hideGlobalChrome && <Navbar />}
       <main>
         <Outlet />
-        {!isExamMode && <Footer />}
+        {!hideGlobalChrome && <Footer />}
       </main>
       {showConfetti && <ConfettiSideCannons key={location.pathname} />}
     </div>

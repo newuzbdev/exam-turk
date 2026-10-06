@@ -5,6 +5,7 @@ import type { Section } from "@/pages/speaking-test/SpeakingTest";
 import { Timer } from "@/components/speaking-test/Timer";
 import CountdownTimer from "@/components/speaking-test/CountdownTimer";
 import { Pause, Play, Square } from "lucide-react";
+import { protectedImageProps } from "@/utils/mediaProtection";
 
 interface Part2SectionProps {
   section: Section;
@@ -150,6 +151,7 @@ const Part2Section = ({
           <div className="flex justify-center">
             <div className="w-full max-w-2xl max-h-[45vh] sm:max-h-[55vh] flex items-center justify-center">
               <img
+                {...protectedImageProps}
                 src={section.images[0]}
                 alt="Speaking test visual"
                 className="max-w-full max-h-full h-auto rounded-lg border border-gray-300 object-contain"

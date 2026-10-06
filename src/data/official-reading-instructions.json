@@ -1,0 +1,46 @@
+{
+  "source": {
+    "file": "listening-reading-turkish-sample.pdf",
+    "sha256": "149a3c63af6057358f57a1c0427486b9c30682a14679cf98ecc462f0226b6d21",
+    "pages": [
+      7,
+      8,
+      10,
+      12,
+      13,
+      14,
+      15,
+      16
+    ]
+  },
+  "parts": {
+    "1": "Sorular 1-6. Aşağıdaki metni okuyunuz ve alttaki sözcükleri (A-H) kullanarak boşlukları (1-6) doldurunuz. Her sözcük yalnızca bir defa kullanılabilir. Seçmemeniz gereken İKİ seçenek bulunmaktadır.",
+    "2": "Sorular 7-14. Aşağıda verilen durumları (A-J) ve bilgi metinlerini (7-14) okuyunuz. Her durum için uygun olan metni bulup uygun seçeneği işaretleyiniz. Her seçenek yalnız bir defa kullanılabilir. Seçilmemesi gereken İKİ seçenek bulunmaktadır.",
+    "3": "Sorular 15-20. Aşağıdaki başlıkları (A-H) ve paragrafları (15-20) okuyunuz. Her paragraf için uygun bir başlık bulunuz. Her başlık yalnız bir defa kullanılabilir.",
+    "4": "21-29. sorular için aşağıdaki metni okuyunuz.",
+    "5": "Sorular 30-35. sorular için aşağıdaki metni okuyunuz."
+  },
+  "groups": {
+    "21-24": {
+      "heading": "Sorular 21-24",
+      "description": "Metne göre doğru seçeneği (A, B, C veya D) işaretleyiniz."
+    },
+    "25-29": {
+      "heading": "Sorular 25-29",
+      "description": "Sorulardaki cümleler metne göre DOĞRU, YANLIŞ ya da VERİLMEMİŞ olabilir. İlgili seçeneği işaretleyiniz."
+    },
+    "30-32": {
+      "heading": "Sorular 30-32",
+      "description": "Metne göre doğru seçeneği (A, B, C veya D) işaretleyiniz."
+    },
+    "33-35": {
+      "heading": "Sorular 33-35",
+      "description": "Aşağıdaki cümleleri (33-35) okuyunuz. Cümlelerin hangi paragraflara (A-E) ait olduğunu bulunuz. Seçilmemesi gereken İKİ paragraf bulunmaktadır."
+    }
+  },
+  "definitions": {
+    "DOĞRU": "cümle, metindeki bilgilerle uygun ve/veya tutarlıysa,",
+    "YANLIŞ": "cümle, metindeki bilgilerle tutarsız ve/veya çelişkiliyse,",
+    "VERİLMEMİŞ": "cümle, metindeki bilgilerde yer almıyor ve/veya belirtilmemişse."
+  }
+}

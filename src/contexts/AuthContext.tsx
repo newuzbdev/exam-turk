@@ -1,5 +1,6 @@
 import React, {
   createContext,
+  useCallback,
   useContext,
   useState,
   useEffect,
@@ -8,8 +9,12 @@ import React, {
 } from "react";
 import { authService } from "@/services/auth.service";
 import { SecureStorage } from "@/utils/secureStorage";
+import { requestReauthentication, REAUTHENTICATION_REQUIRED_EVENT } from "@/utils/authSessionRecovery";
+import { AUTH_INITIAL_FAILURE_GRACE_MS, AUTH_RETRY_INITIAL_DELAY_MS, AUTH_RETRY_MAX_DELAY_MS } from "@/utils/authConnectionRecovery";
 import { paymeService } from "@/services/payme.service";
 import { toast } from "@/utils/toast";
+import { isSubscriptionBillingEnabled } from "@/config/billing";
+import { closeStudentPresenceBeforeLogout } from "@/services/studentPresence.service";
 
 interface User {
   id?: string;
@@ -22,6 +27,7 @@ interface User {
   createdAt?: string;
   balance?: number;
   coin?: number;
+  currentOverallTestId?: string | null;
   accountType?: "STUDENT" | "TEACHER" | "INSTITUTION";
   role?: string;
 }
@@ -53,145 +59,182 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isProcessingLogin, setIsProcessingLogin] = useState(false);
+  const [authIssue, setAuthIssue] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [retryFailed, setRetryFailed] = useState(false);
+  const [initialIssueVisible, setInitialIssueVisible] = useState(false);
+  const authenticatedRef = useRef(false);
+  const processingLoginRef = useRef(false);
+  const authOperationRef = useRef(0);
+  const authIssueRef = useRef(false);
+  const retryDelayRef = useRef(AUTH_RETRY_INITIAL_DELAY_MS);
+  const invalidateAuthOperation = useCallback(() => { ++authOperationRef.current; }, []);
   const autoPurchaseIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoPurchaseInFlightRef = useRef(false);
   const pendingPurchaseStorageKey = "tm_pending_credit_purchase_v1";
 
-  const login = async (accessToken: string, refreshToken?: string) => {
-    // Prevent multiple simultaneous login attempts
-    if (isProcessingLogin) {
-      console.log("Login already in progress, skipping...");
+  const refreshUser = useCallback(async (manualRetry = false) => {
+    if (manualRetry) {
+      setRetryFailed(false);
+      retryDelayRef.current = AUTH_RETRY_INITIAL_DELAY_MS;
+    }
+    const operation = ++authOperationRef.current;
+    const { accessToken, refreshToken } = authService.getStoredTokens();
+    if (!accessToken && !refreshToken) {
+      authenticatedRef.current = false;
+      authIssueRef.current = false;
+      setAuthIssue(false);
+      setRetryFailed(false);
+      setUser(null);
+      setIsAuthenticated(false);
+      setIsLoading(false);
+      setChecking(false);
       return;
     }
-
-    setIsProcessingLogin(true);
+    setChecking(true);
+    if (!authenticatedRef.current) setIsLoading(true);
     try {
-      console.log("Starting login process...");
-      // Store tokens securely
-      authService.storeTokens(accessToken, refreshToken);
-
-      // Fetch user data
+      // The API client renews expired access tokens before rejecting the login.
       const userData = await authService.getCurrentUser();
-      if (userData) {
-        setUser(userData as unknown as User);
-        setIsAuthenticated(true);
-
-        // Store user ID if available
-        const userId = userData.id ?? userData.userId;
-        if (userId) {
-          SecureStorage.setSessionItem("userId", String(userId));
-        }
-        console.log("Login completed successfully");
+      if (operation !== authOperationRef.current) return;
+      if (!userData) throw new Error("Hesap bilgisi alınamadı.");
+      authenticatedRef.current = true;
+      authIssueRef.current = false;
+      setUser(userData as unknown as User);
+      setIsAuthenticated(true);
+      setAuthIssue(false);
+      setRetryFailed(false);
+      const userId = userData.id ?? userData.userId;
+      if (userId) {
+        SecureStorage.setSessionItem("userId", String(userId));
+        window.dispatchEvent(new Event('auth:access-context'));
       }
     } catch (error) {
-      console.error("Error during login:", error);
-      logout();
+      if (operation !== authOperationRef.current) return;
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      if (status === 401) {
+        requestReauthentication();
+      } else {
+        // Do not turn an outage, timeout or server error into a logout.
+        // On initial load, wait for confirmation rather than granting access.
+        authIssueRef.current = true;
+        setAuthIssue(true);
+        if (manualRetry) setRetryFailed(true);
+      }
     } finally {
-      setIsProcessingLogin(false);
+      if (operation === authOperationRef.current) {
+        setIsLoading(false);
+        setChecking(false);
+      }
+    }
+  }, []);
+
+  const login = async (accessToken: string, refreshToken?: string) => {
+    if (processingLoginRef.current) return;
+    processingLoginRef.current = true;
+    try {
+      authService.storeTokens(accessToken, refreshToken);
+      await refreshUser();
+    } finally {
+      processingLoginRef.current = false;
     }
   };
 
   const logout = () => {
+    closeStudentPresenceBeforeLogout();
+    ++authOperationRef.current;
+    authenticatedRef.current = false;
+    authIssueRef.current = false;
     authService.clearStoredTokens();
     setUser(null);
     setIsAuthenticated(false);
-  };
-
-  const refreshUser = async () => {
-    try {
-      const userData = await authService.getCurrentUser();
-      if (userData) {
-        setUser(userData as unknown as User);
-        setIsAuthenticated(true);
-      }
-    } catch (error) {
-      console.error("Error refreshing user data:", error);
-      logout();
-    }
-  };
-
-  const checkAuth = async () => {
-    // Don't check auth if login is already in progress
-    if (isProcessingLogin) {
-      console.log("Login in progress, skipping auth check...");
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
-    
-    const { accessToken } = authService.getStoredTokens();
-    
-    // Debug token status
-    console.log('🔍 Auth check - Token status:', {
-      hasToken: !!accessToken,
-      tokenPreview: accessToken ? accessToken.substring(0, 20) + '...' : 'No token',
-      isExpired: accessToken ? authService.isTokenExpired(accessToken) : 'No token'
-    });
-    
-    // Only clean up tokens if they are actually expired
-    if (accessToken && authService.isTokenExpired(accessToken)) {
-      console.log('Token expired, cleaning up...');
-      authService.cleanupExpiredTokens();
-    }
-
-    if (accessToken) {
-      try {
-        console.log("Checking existing auth...");
-        const userData = await authService.getCurrentUser();
-        if (userData) {
-          setUser(userData as unknown as User);
-          setIsAuthenticated(true);
-
-          // Store user ID if available and not already stored
-          const userId = userData.id ?? userData.userId;
-          if (userId && !SecureStorage.getSessionItem("userId")) {
-            SecureStorage.setSessionItem("userId", String(userId));
-          }
-          console.log("Auth check completed successfully");
-        }
-      } catch (error) {
-        console.error("Error checking auth:", error);
-        logout();
-      }
-    } else {
-      setIsAuthenticated(false);
-      setUser(null);
-    }
-
+    setAuthIssue(false);
+    setRetryFailed(false);
     setIsLoading(false);
+    setChecking(false);
   };
 
   useEffect(() => {
-    checkAuth();
-    // Listen for token changes to refresh user
-    const handler = () => {
-      refreshUser();
+    const handler = () => { void refreshUser(); };
+    const reauthenticationHandler = () => {
+      ++authOperationRef.current;
+      authenticatedRef.current = false;
+      authIssueRef.current = false;
+      setUser(null);
+      setIsAuthenticated(false);
+      setAuthIssue(false);
+      setRetryFailed(false);
+      setIsLoading(false);
+      setChecking(false);
     };
-    // Listen for direct user payload after signup
-    const userHandler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as any;
+    const userHandler = (event: Event) => {
+      const detail = (event as CustomEvent).detail as User | undefined;
       if (detail) {
+        if (detail.id) {
+          SecureStorage.setSessionItem("userId", detail.id);
+          window.dispatchEvent(new Event('auth:access-context'));
+        }
+        ++authOperationRef.current;
+        authenticatedRef.current = true;
+        authIssueRef.current = false;
         setUser(detail);
         setIsAuthenticated(true);
+        setAuthIssue(false);
+        setRetryFailed(false);
+        setIsLoading(false);
+        setChecking(false);
       } else {
-        refreshUser();
+        void refreshUser();
       }
     };
-    if (typeof window !== "undefined") {
-      window.addEventListener("auth:tokens", handler);
-      window.addEventListener("auth:user", userHandler as EventListener);
-    }
+    const retryWhenOnline = () => {
+      if (authIssueRef.current) void refreshUser();
+    };
+    const retryWhenVisible = () => {
+      if (document.visibilityState === "visible") retryWhenOnline();
+    };
+    window.addEventListener("auth:tokens", handler);
+    window.addEventListener(REAUTHENTICATION_REQUIRED_EVENT, reauthenticationHandler);
+    window.addEventListener("auth:user", userHandler);
+    window.addEventListener("online", retryWhenOnline);
+    document.addEventListener("visibilitychange", retryWhenVisible);
+    void refreshUser();
     return () => {
-      if (typeof window !== "undefined") {
-        window.removeEventListener("auth:tokens", handler);
-        window.removeEventListener("auth:user", userHandler as EventListener);
-      }
+      invalidateAuthOperation();
+      window.removeEventListener("auth:tokens", handler);
+      window.removeEventListener(REAUTHENTICATION_REQUIRED_EVENT, reauthenticationHandler);
+      window.removeEventListener("auth:user", userHandler);
+      window.removeEventListener("online", retryWhenOnline);
+      document.removeEventListener("visibilitychange", retryWhenVisible);
     };
-  }, []);
+  }, [refreshUser, invalidateAuthOperation]);
 
   useEffect(() => {
+    if (!authIssue) {
+      retryDelayRef.current = AUTH_RETRY_INITIAL_DELAY_MS;
+      return;
+    }
+    if (checking) return;
+    const timer = window.setTimeout(() => {
+      if (!authIssueRef.current || document.visibilityState !== "visible" || navigator.onLine === false) return;
+      retryDelayRef.current = Math.min(retryDelayRef.current * 2, AUTH_RETRY_MAX_DELAY_MS);
+      void refreshUser();
+    }, retryDelayRef.current);
+    return () => window.clearTimeout(timer);
+  }, [authIssue, checking, refreshUser]);
+
+  useEffect(() => {
+    if (!authIssue || isAuthenticated) {
+      setInitialIssueVisible(false);
+      return;
+    }
+    // A brief API restart should stay a loading state, not flash an outage page.
+    const timer = window.setTimeout(() => setInitialIssueVisible(true), AUTH_INITIAL_FAILURE_GRACE_MS);
+    return () => window.clearTimeout(timer);
+  }, [authIssue, isAuthenticated]);
+
+  useEffect(() => {
+    if (isSubscriptionBillingEnabled) return;
     if (!isAuthenticated) {
       if (autoPurchaseIntervalRef.current) {
         clearInterval(autoPurchaseIntervalRef.current);
@@ -232,7 +275,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         window.localStorage.removeItem(pendingPurchaseStorageKey);
         await refreshUser().catch(() => undefined);
-        toast.success(`${units} kredi otomatik olarak hesabiniza yuklendi.`);
+        toast.success(`${units} kredi otomatik olarak hesabınıza yüklendi.`);
       } catch {
         // Keep pending key and retry in next interval.
       } finally {
@@ -251,7 +294,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         autoPurchaseIntervalRef.current = null;
       }
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, refreshUser]);
 
   const value: AuthContextType = {
     user,
@@ -262,5 +305,41 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     refreshUser,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {authIssue && !isAuthenticated ? (
+        <main className="flex min-h-screen items-center justify-center bg-[var(--tm-bg-page)] px-6">
+          <div role={initialIssueVisible ? "alert" : "status"} className="max-w-sm text-center">
+            {initialIssueVisible ? <>
+            <h1 className="text-lg font-semibold text-[var(--tm-text-primary)]">Hesabınıza şu anda ulaşılamıyor.</h1>
+            <p className="mt-2 text-sm leading-6 text-[var(--tm-text-secondary)]">
+              Oturumunuz silinmedi. Bağlantı kurulunca kaldığınız yerden devam edebilirsiniz.
+            </p>
+            <button type="button" disabled={checking} onClick={() => void refreshUser(true)}
+              className="mt-5 rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50">
+              {checking ? "Kontrol ediliyor…" : "Tekrar dene"}
+            </button>
+            <p role="status" aria-live="polite" className="mt-3 text-xs leading-5 text-[var(--tm-text-secondary)]">
+              {retryFailed ? "Bağlantı hâlâ kurulamadı. Otomatik olarak yeniden deneyeceğiz." : "Bağlantı otomatik olarak yeniden denenecek."}
+            </p>
+            </> : <div className="flex items-center gap-2 text-sm text-[var(--tm-text-secondary)]">
+              <span aria-hidden="true" className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              Hesabınıza bağlanılıyor…
+            </div>}
+          </div>
+        </main>
+      ) : children}
+      {authIssue && isAuthenticated ? (
+        <div role="alert" className="fixed bottom-6 left-1/2 z-[100] flex w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 items-center gap-4 rounded-lg border border-[var(--tm-border-subtle)] bg-white px-4 py-3 shadow-lg">
+          <p role="status" aria-live="polite" className="flex-1 text-sm leading-5 text-[var(--tm-text-secondary)]">
+            {retryFailed ? "Bağlantı hâlâ kurulamadı." : "Hesap bağlantısı kurulamadı."} Oturumunuz ve çalışmanız korunuyor. Otomatik olarak yeniden deneyeceğiz.
+          </p>
+          <button type="button" disabled={checking} onClick={() => void refreshUser(true)}
+            className="shrink-0 text-sm font-semibold text-red-700 disabled:opacity-50">
+            {checking ? "Kontrol ediliyor…" : "Tekrar dene"}
+          </button>
+        </div>
+      ) : null}
+    </AuthContext.Provider>
+  );
 };

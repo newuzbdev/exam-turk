@@ -1,12 +1,19 @@
 import React from "react";
 import { normalizeDisplayText } from "@/utils/text";
+import { getReadingTypographyPreset } from "@/components/reading-test/reading-typography";
 
 interface SimpleTextDisplayProps {
   text: string;
-  isPlaying: boolean;
+  heading?: string;
+  fontScale?: number;
 }
 
-const SimpleTextDisplay: React.FC<SimpleTextDisplayProps> = ({ text, isPlaying }) => {
+const SimpleTextDisplay: React.FC<SimpleTextDisplayProps> = ({
+  text,
+  heading,
+  fontScale = 1,
+}) => {
+  const typography = getReadingTypographyPreset(fontScale);
   const displayText = normalizeDisplayText(text);
   const lines = displayText
     .split(/\r?\n/)
@@ -15,6 +22,7 @@ const SimpleTextDisplay: React.FC<SimpleTextDisplayProps> = ({ text, isPlaying }
 
   const maybeHeading = lines[0] || "";
   const hasSectionHeading = /^bölüm\s*[-:]?\s*\d+(\.\d+)?$/i.test(maybeHeading.toLowerCase());
+  const displayHeading = normalizeDisplayText(heading || maybeHeading).trim();
   const rawBodyLines = hasSectionHeading ? lines.slice(1) : lines;
 
   // Keep comma-continued lines in the same bullet item.
@@ -37,38 +45,32 @@ const SimpleTextDisplay: React.FC<SimpleTextDisplayProps> = ({ text, isPlaying }
   }, []);
 
   return (
-    <div className="w-full min-h-[70vh] flex items-center justify-center bg-white py-6 sm:py-10">
-      <div className="w-full max-w-5xl mx-auto px-3 sm:px-6">
-        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm px-4 sm:px-8 py-5 sm:py-7">
-          {!isPlaying && (
-            <h1
-              className="text-center font-bold text-gray-900 mb-3 sm:mb-4 tracking-tight"
-              style={{ fontSize: "clamp(1.3rem, 3.6vw, 2.1rem)" }}
-            >
-              Bölüm Açıklaması
-            </h1>
-          )}
+    <div
+      className="flex min-h-[62vh] w-full items-center justify-center bg-white px-4 py-8"
+      style={typography.style}
+    >
+      <div className="mx-auto w-full max-w-3xl">
+        {displayHeading && (
+          <h1
+            data-testid="speaking-instruction-heading"
+            className="mb-4 text-[length:var(--reading-passage-title-size)] font-semibold leading-[var(--reading-passage-title-line-height)] text-[var(--tm-text-primary)]"
+          >
+            {displayHeading}
+          </h1>
+        )}
 
-          {hasSectionHeading && (
-            <h2
-              className="text-center font-semibold text-gray-900 mb-3 sm:mb-5"
-              style={{ fontSize: "clamp(1rem, 2.4vw, 1.35rem)" }}
-            >
-              {maybeHeading}
-            </h2>
-          )}
-
+        <div
+          data-testid="speaking-instruction-card"
+          className="rounded-md border border-[var(--tm-border-subtle)] bg-white px-6 py-7 sm:px-9 sm:py-8"
+        >
           <ul
-            className="mx-auto text-gray-800 text-left list-disc list-inside space-y-2 sm:space-y-3"
-            style={{
-              fontSize: "clamp(1rem, 2.2vw, 1.35rem)",
-              lineHeight: 1.72,
-              letterSpacing: "0.002em",
-              maxWidth: "72ch",
-            }}
+            className="space-y-3 text-left text-[length:var(--reading-body-size)] leading-[var(--reading-body-line-height)] text-[var(--tm-text-primary)]"
           >
             {bodyLines.map((line, index) => (
-              <li key={index}>{line}</li>
+              <li key={index} className="flex gap-3">
+                <span className="mt-[0.7em] h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--tm-text-secondary)]" />
+                <span>{line}</span>
+              </li>
             ))}
           </ul>
         </div>

@@ -16,10 +16,17 @@ import {
   User,
 } from "lucide-react";
 import axiosPrivate from "@/config/api";
+import { isSubscriptionBillingEnabled } from "@/config/billing";
 import { authService } from "@/services/auth.service";
 import { paymeService } from "@/services/payme.service";
+import { SubscriptionStatusCard } from "./subscription-status-card";
 
 type ProfileSection = "profile" | "exams" | "transactions";
+
+type ProfilePageProps = {
+  embedded?: boolean;
+  initialSection?: ProfileSection;
+};
 
 interface TestResult {
   id: string;
@@ -91,7 +98,7 @@ const getCefrLevel = (score: number | null | undefined): string => {
   if (score >= 65) return "C1";
   if (score >= 51) return "B2";
   if (score >= 38) return "B1";
-  return "B1 alti";
+  return "B1 altı";
 };
 const wholeScore = (score: number | null | undefined): number =>
   Math.round(Number(score) || 0);
@@ -101,7 +108,7 @@ const getSelectedTests = (test: TestResult) => {
   if (test.readingResultId) selected.push("Okuma");
   if (test.listeningResultId) selected.push("Dinleme");
   if (test.writingResultId) selected.push("Yazma");
-  if (test.speakingResultId) selected.push("Konusma");
+  if (test.speakingResultId) selected.push("Konuşma");
   return selected;
 };
 
@@ -109,23 +116,27 @@ const TEST_INITIALS: Record<string, string> = {
   Okuma: "O",
   Dinleme: "D",
   Yazma: "Y",
-  Konusma: "K",
+  Konuşma: "K",
 };
 
 const compactTestsLabel = (tests: string[]) => {
-  if (!tests.length) return "Sinav";
+  if (!tests.length) return "Sınav";
   return tests
     .map((test) => TEST_INITIALS[test] || test.trim().charAt(0).toUpperCase())
     .filter(Boolean)
     .join(" + ");
 };
 
-export default function ProfilePage() {
+export default function ProfilePage({
+  embedded = false,
+  initialSection = "profile",
+}: ProfilePageProps) {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
-  const [activeSection, setActiveSection] = useState<ProfileSection>("profile");
+  const [activeSection, setActiveSection] =
+    useState<ProfileSection>(initialSection);
 
   const [user, setUser] = useState<any>(null);
   const [results, setResults] = useState<TestResult[]>([]);
@@ -151,7 +162,13 @@ export default function ProfilePage() {
       try {
         const userData = await authService.getCurrentUser();
         if (!userData) {
-          navigate("/login", { replace: true, state: { redirectTo: "/profile" } });
+          navigate("/login", {
+            replace: true,
+            state: {
+              redirectTo:
+                initialSection === "exams" ? "/app/sonuclar" : embedded ? "/app/profil" : "/profile",
+            },
+          });
           return;
         }
 
@@ -198,16 +215,23 @@ export default function ProfilePage() {
         setResults(mergedResults);
       } catch (error) {
         console.error("Error fetching profile page:", error);
-        navigate("/login", { replace: true, state: { redirectTo: "/profile" } });
+        navigate("/login", {
+          replace: true,
+          state: {
+            redirectTo:
+              initialSection === "exams" ? "/app/sonuclar" : embedded ? "/app/profil" : "/profile",
+          },
+        });
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [navigate]);
+  }, [embedded, initialSection, navigate]);
 
   useEffect(() => {
+    if (isSubscriptionBillingEnabled) return;
     let mounted = true;
     (async () => {
       try {
@@ -224,6 +248,7 @@ export default function ProfilePage() {
   }, []);
 
   useEffect(() => {
+    if (isSubscriptionBillingEnabled) return;
     let mounted = true;
     (async () => {
       try {
@@ -271,8 +296,8 @@ export default function ProfilePage() {
                   id: String(item?.id || item?.transactionId || `topup-${index}`),
                   date,
                   source: String(item?.source || item?.provider || item?.paymentMethod || "Payme"),
-                  paidFor: "Kredi Alimi",
-                  type: "Kredi Yukleme",
+                  paidFor: "Kredi Alımı",
+                  type: "Kredi Yükleme",
                   amountCredits: Math.max(0, creditsRaw),
                   amountUzs: Math.max(0, amountUzs),
                   direction: "credit_purchase",
@@ -348,7 +373,7 @@ export default function ProfilePage() {
           amountUzs: Number(result.overallCoin || 0) * coinUnitPrice,
           source: "Kredi Bakiyesi",
           paidFor: compactTestsLabel(getSelectedTests(result)),
-          type: "Sinav Ucreti",
+          type: "Sınav Ücreti",
           direction: "exam_fee",
         })),
     [completedResults, coinUnitPrice],
@@ -418,7 +443,11 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f6f7f9] flex items-center justify-center">
+      <div
+        className={`flex items-center justify-center ${
+          embedded ? "min-h-[320px] bg-transparent" : "min-h-screen bg-[var(--tm-bg-app)]"
+        }`}
+      >
         <Loader2 className="h-7 w-7 animate-spin text-gray-500" />
       </div>
     );
@@ -426,16 +455,40 @@ export default function ProfilePage() {
 
   const sections: Array<{ key: ProfileSection; label: string; icon: React.ComponentType<any> }> = [
     { key: "profile", label: "Profil Bilgileri", icon: User },
-    { key: "exams", label: "Sinav Sonuclari", icon: BookOpenCheck },
-    { key: "transactions", label: "Harcamalar", icon: ReceiptText },
+    { key: "exams", label: "Sınav Sonuçları", icon: BookOpenCheck },
+    ...(!isSubscriptionBillingEnabled
+      ? [{ key: "transactions" as const, label: "Harcamalar", icon: ReceiptText }]
+      : []),
   ];
+  const panelClassName = embedded
+    ? "border border-[var(--tm-border-subtle)] bg-white shadow-none"
+    : "border border-gray-200 bg-white shadow-sm";
 
   return (
-    <div className="min-h-screen bg-[#f6f7f9]">
-      <div className="mx-auto max-w-[1400px] px-4 py-8 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
-          <aside>
-            <Card className="border border-gray-200 bg-white shadow-sm">
+    <div className={embedded ? "min-h-screen bg-transparent" : "min-h-screen bg-[var(--tm-bg-app)]"}>
+      <div
+        className={`mx-auto px-4 py-8 sm:px-6 lg:px-8 ${
+          embedded ? "max-w-6xl" : "max-w-[1400px]"
+        }`}
+      >
+        {embedded ? (
+          <header className="mb-6 border-b border-[var(--tm-border-subtle)] pb-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--tm-text-tertiary)]">
+              Çalışma alanı
+            </p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[var(--tm-text-primary)]">
+              {initialSection === "exams" ? "Sınav sonuçları" : "Profil"}
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--tm-text-secondary)]">
+              {initialSection === "exams"
+                ? "Tamamladığınız sınavları ve puanlarınızı burada inceleyin."
+                : "Hesap bilgilerinizi ve sınav özetinizi tek yerden yönetin."}
+            </p>
+          </header>
+        ) : null}
+        <div className={embedded ? "grid grid-cols-1 gap-6" : "grid grid-cols-1 gap-6 lg:grid-cols-[240px_minmax(0,1fr)]"}>
+          {!embedded ? <aside>
+            <Card className={panelClassName}>
               <CardContent className="p-3">
                 <div className="space-y-1">
                   {sections.map((item) => {
@@ -463,23 +516,24 @@ export default function ProfilePage() {
                 </div>
               </CardContent>
             </Card>
-          </aside>
+          </aside> : null}
 
           <section>
             {activeSection === "profile" && (
               <div className="space-y-4">
-                <Card className="border border-gray-200 bg-white shadow-sm">
+                {isSubscriptionBillingEnabled && <SubscriptionStatusCard />}
+                <Card className={panelClassName}>
                   <CardHeader>
                     <CardTitle>Profil Bilgileri</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-5">
                     <div className="max-w-xl space-y-4">
                       <div>
-                        <label className="mb-1.5 block text-sm font-medium text-gray-700">Kullanici Adi</label>
+                        <label className="mb-1.5 block text-sm font-medium text-gray-700">Kullanıcı Adı</label>
                         <Input
                           value={form.userName}
                           onChange={(e) => setForm((prev) => ({ ...prev, userName: e.target.value }))}
-                          placeholder="Kullanici Adi"
+                          placeholder="Kullanıcı Adı"
                         />
                       </div>
                       <div>
@@ -501,7 +555,7 @@ export default function ProfilePage() {
                             variant="outline"
                             onClick={() => fileInputRef.current?.click()}
                           >
-                            Dosya Sec
+                            Dosya Seç
                           </Button>
                           {avatarFileName ? (
                             <span className="text-sm text-gray-600">{avatarFileName}</span>
@@ -533,9 +587,9 @@ export default function ProfilePage() {
                   </CardContent>
                 </Card>
 
-                <Card className="border border-gray-200 bg-white shadow-sm">
+                <Card className={panelClassName}>
                   <CardHeader>
-                    <CardTitle>Istatistikler</CardTitle>
+                    <CardTitle>İstatistikler</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -544,11 +598,11 @@ export default function ProfilePage() {
                         <p className="mt-1 text-lg font-semibold text-gray-900">{totalTests}</p>
                       </div>
                       <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
-                        <p className="text-xs text-gray-500">Katilim Tarihi</p>
+                        <p className="text-xs text-gray-500">Katılım Tarihi</p>
                         <p className="mt-1 text-lg font-semibold text-gray-900">{latestTestDate}</p>
                       </div>
                       <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
-                        <p className="text-xs text-gray-500">En Yuksek Puan</p>
+                        <p className="text-xs text-gray-500">En Yüksek Puan</p>
                         <p className="mt-1 text-lg font-semibold text-gray-900">
                           {highestScore > 0 ? `${highestScore} / ${getCefrLevel(highestScore)}` : "-"}
                         </p>
@@ -566,9 +620,9 @@ export default function ProfilePage() {
             )}
 
             {activeSection === "exams" && (
-              <Card className="border border-gray-200 bg-white shadow-sm">
+              <Card className={panelClassName}>
                 <CardHeader>
-                  <CardTitle>Sinav Sonuclari</CardTitle>
+                  <CardTitle>Sınav Sonuçları</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="mb-3 flex items-center gap-5 border-b border-gray-100 pb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
@@ -589,9 +643,13 @@ export default function ProfilePage() {
                   </div>
                   {sortedExamResults.length === 0 ? (
                     <div className="rounded-xl border border-dashed border-gray-300 px-4 py-12 text-center">
-                      <p className="text-sm text-gray-600">Henuz tamamlanmis sinav yok.</p>
-                      <Button className="mt-4 bg-red-600 hover:bg-red-700" onClick={() => navigate("/test")}>
-                        Teste Git
+                      <p className="text-sm text-gray-600">Henüz tamamlanmış sınav yok.</p>
+                      <Button
+                        variant="outline"
+                        className="mt-4 border-gray-200 bg-white text-gray-900 shadow-none hover:bg-gray-50 hover:text-gray-900"
+                        onClick={() => navigate(embedded ? "/app/test" : "/test")}
+                      >
+                        Mock Test
                       </Button>
                     </div>
                   ) : (
@@ -613,7 +671,7 @@ export default function ProfilePage() {
                                   </Badge>
                                   <Badge variant="outline" className="border-gray-300 text-gray-600">
                                     <ListChecks className="mr-1 h-3.5 w-3.5" />
-                                    {tests.length} bolum
+                                    {tests.length} bölüm
                                   </Badge>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
@@ -654,8 +712,8 @@ export default function ProfilePage() {
               </Card>
             )}
 
-            {activeSection === "transactions" && (
-              <Card className="border border-gray-200 bg-white shadow-sm">
+            {!isSubscriptionBillingEnabled && activeSection === "transactions" && (
+              <Card className={panelClassName}>
                 <CardHeader>
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <CardTitle>Harcamalar</CardTitle>
@@ -664,7 +722,7 @@ export default function ProfilePage() {
                 <CardContent className="space-y-4">
                   {sortedSpendingRows.length === 0 ? (
                     <div className="rounded-xl border border-dashed border-gray-300 px-4 py-10 text-center text-sm text-gray-600">
-                      Henuz harcama kaydi yok.
+                      Henüz harcama kaydı yok.
                     </div>
                   ) : (
                     <>
@@ -704,13 +762,13 @@ export default function ProfilePage() {
 
                             <div className="space-y-2 text-sm">
                               <div className="flex items-start justify-between gap-3">
-                                <span className="text-gray-500">Ne Icin</span>
+                                <span className="text-gray-500">Ne İçin</span>
                                 <span className="max-w-[68%] break-words text-right font-medium text-gray-800">
                                   {row.paidFor}
                                 </span>
                               </div>
                               <div className="flex items-start justify-between gap-3">
-                                <span className="text-gray-500">Islem Turu</span>
+                                <span className="text-gray-500">İşlem Türü</span>
                                 <span className="max-w-[68%] break-words text-right font-medium text-gray-800">
                                   {row.type}
                                 </span>
@@ -748,12 +806,12 @@ export default function ProfilePage() {
                                   onClick={() => toggleTxSort("date")}
                                   className="inline-flex items-center gap-1 transition hover:text-gray-900"
                                 >
-                                  ISLEM TARIHI {txSortBy === "date" ? (txSortDir === "asc" ? "(ASC)" : "(DESC)") : ""}
+                                  İŞLEM TARİHİ {txSortBy === "date" ? (txSortDir === "asc" ? "(ASC)" : "(DESC)") : ""}
                                 </button>
                               </th>
-                              <th className="px-4 py-3 font-semibold">ODEME YONTEMI</th>
-                              <th className="px-4 py-3 font-semibold">NE ICIN</th>
-                              <th className="px-4 py-3 font-semibold">ISLEM TURU</th>
+                              <th className="px-4 py-3 font-semibold">ÖDEME YÖNTEMİ</th>
+                              <th className="px-4 py-3 font-semibold">NE İÇİN</th>
+                              <th className="px-4 py-3 font-semibold">İŞLEM TÜRÜ</th>
                               <th className="px-4 py-3 text-right font-semibold">
                                 <button
                                   type="button"

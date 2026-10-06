@@ -1,187 +1,116 @@
-﻿import { NavLink } from "react-router-dom";
-import { ArrowRight, Headphones, BookOpen, Pencil, Mic } from "lucide-react";
-import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Surface, tm } from "@/components/tm";
+import { useStudentAction } from "@/hooks/use-student-action";
 
-type FeatureKey = "listening" | "reading" | "writing" | "speaking";
+const modules = [
+  {
+    to: "/dersler",
+    title: "Derslere başla",
+    desc: "Konuları kısa anlatım ve alıştırmalarla pekiştir.",
+    icon: "/icons/turkishmock/lessons.svg",
+    iconClassName: "h-12 w-12",
+  },
+  {
+    to: "/pratik",
+    title: "Pratik yap",
+    desc: "Dinleme, okuma, yazma ve konuşma becerilerini geliştir.",
+    icon: "/icons/turkishmock/practice.svg",
+    iconClassName: "h-12 w-12",
+  },
+  {
+    to: "/test",
+    title: "Deneme çöz",
+    desc: "Süreli denemelerle sınavın provasını yap.",
+    icon: "/icons/turkishmock/mock-test-bank.svg",
+    iconClassName: "h-12 w-12",
+  },
+  {
+    to: "/profile",
+    title: "Sonucunu gör",
+    desc: "Puanını incele, güçlü ve eksik yönlerini gör.",
+    icon: "/icons/turkishmock/results.svg",
+    iconClassName: "h-12 w-12",
+  },
+];
 
 const HeroSection = () => {
-  // Temporary switch: keep feature preview code, but disable opening from cards.
-  const isFeaturePreviewEnabled = false;
-  const [activeFeature, setActiveFeature] = useState<FeatureKey | null>(null);
-
-  const features = [
-    {
-      key: "listening" as FeatureKey,
-      title: "DİNLEME",
-      desc: "Konuşmaları ve duyuruları doğru anlama.",
-      image: "/dinleme.png",
-      icon: Headphones,
-      iconWrapClass: "border-gray-200 bg-gray-50",
-      iconClass: "text-gray-700",
-      demoTitle: "Dinleme Testi Önizlemesi",
-    },
-    {
-      key: "reading" as FeatureKey,
-      title: "OKUMA",
-      desc: "Metinleri çözümleme ve çıkarım yapma.",
-      image: "/okuma.png",
-      icon: BookOpen,
-      iconWrapClass: "border-gray-200 bg-gray-50",
-      iconClass: "text-gray-700",
-      demoTitle: "Okuma Testi Önizlemesi",
-    },
-    {
-      key: "writing" as FeatureKey,
-      title: "YAZMA",
-      desc: "Tutarlı ve amaç odaklı metin yazma.",
-      image: "/yazma.png",
-      icon: Pencil,
-      iconWrapClass: "border-gray-200 bg-gray-50",
-      iconClass: "text-gray-700",
-      demoTitle: "Yazma Testi Önizlemesi",
-    },
-    {
-      key: "speaking" as FeatureKey,
-      title: "KONUŞMA",
-      desc: "Düşünceleri açık ve akıcı ifade etme.",
-      image: "/konusma.png",
-      icon: Mic,
-      iconWrapClass: "border-gray-200 bg-gray-50",
-      iconClass: "text-gray-700",
-      demoTitle: "Konuşma Testi Önizlemesi",
-    },
-  ];
-
-  const selectedFeature = features.find((f) => f.key === activeFeature) || features[0];
+  const openStudentAction = useStudentAction();
 
   return (
-    <div className="relative bg-gray-100 antialiased font-sans">
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_20%_15%,rgba(75,85,99,0.03),transparent_48%),radial-gradient(circle_at_85%_70%,rgba(107,114,128,0.035),transparent_46%),linear-gradient(180deg,rgba(229,231,235,0.08)_0%,rgba(243,244,246,0.06)_100%)]" />
+    <section className="overflow-hidden bg-[var(--tm-bg-page)]">
+      <div className={tm.container}>
+        <div className="relative mx-auto max-w-7xl overflow-hidden pb-10 pt-12 text-center sm:pb-12 sm:pt-14">
+          <div className="relative z-10 mx-auto max-w-5xl">
+            <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-[var(--tm-border-default)] px-3.5 py-1.5 text-xs font-medium tracking-wide text-[var(--tm-text-secondary)] sm:text-sm">
+              <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-[var(--tm-accent)]" />
+              Millî Sertifika · CEFR Hazırlık Platformu
+            </p>
+            <h1 className="relative mx-auto max-w-4xl text-[clamp(1.875rem,8.5vw,3.25rem)] font-semibold leading-[1.08] tracking-[-0.035em] text-[var(--tm-text-primary)] sm:text-[clamp(3.25rem,6vw,4.5rem)]">
+              <span className="block">TÜRKÇE SEVİYENİ</span>
+              <span className="block text-[var(--tm-accent)]">
+                HEMEN ÖĞREN
+              </span>
+            </h1>
+            <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-[var(--tm-text-secondary)]">
+              Gerçek sınav deneyimi, yapay zekâ destekli değerlendirme.
+            </p>
 
-      <section className="pt-10 sm:pt-14 pb-10 sm:pb-12 bg-white/92">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full text-center">
-          <div className="mb-8 space-y-5">
-            <div className="flex justify-center">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white border border-gray-200 rounded-full">
-                <span className="text-xs sm:text-sm text-gray-600 font-medium">
-                  CEFR Standartlarına Uyumlu
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-4 max-w-4xl mx-auto">
-              <h1 className="text-4xl sm:text-6xl leading-[1.08] tracking-tight text-gray-900">
-                <span className="block font-bold text-gray-900">TÜRKÇE SEVİYENİ</span>
-                <span className="block font-bold text-red-600 mt-2">HEMEN ÖĞREN</span>
-              </h1>
-              <p className="text-base sm:text-lg text-gray-500 leading-relaxed max-w-2xl mx-auto font-normal mt-4">
-                Gerçek sınav deneyimi. Yapay zeka destekli değerlendirme.
-              </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-8">
-              <NavLink to="/test">
-                <Button
-                  size="lg"
-                  className="theme-important group bg-red-600 hover:bg-red-700 text-white pl-7 pr-6 py-5 text-base sm:text-lg font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-300"
-                >
-                  Teste Başla
-                  <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
-                </Button>
-              </NavLink>
-
-              <NavLink to="/how-it-works">
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="border-gray-200 text-gray-600 hover:text-gray-900 hover:bg-gray-50 px-8 py-5 text-base sm:text-lg font-medium rounded-xl transition-colors duration-300"
-                >
-                  Nasıl Çalışır?
-                </Button>
-              </NavLink>
+            <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Button
+                size="lg"
+                onClick={() => openStudentAction("/app/test")}
+                className="theme-important group rounded-md bg-[var(--tm-accent)] px-5 py-5 text-sm font-medium text-white shadow-none transition-colors hover:bg-[var(--tm-accent-hover)] sm:text-base"
+              >
+                Denemeye Başla
+                <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+              </Button>
             </div>
           </div>
+
         </div>
-      </section>
 
-      <section className="pb-12 sm:pb-14 bg-white/90">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {features.map((item, index) => (
-              <Card
-                key={item.key}
+        <div className="relative z-20 pb-14 pt-0 sm:pb-16">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {modules.map((item) => (
+              <button
+                key={item.to}
+                type="button"
                 onClick={() =>
-                  isFeaturePreviewEnabled &&
-                  setActiveFeature((prev) => (prev === item.key ? null : item.key))
+                  openStudentAction(
+                    item.to === "/profile"
+                      ? "/app/sonuclar"
+                      : `/app${item.to}`,
+                  )
                 }
-                className={`relative bg-white border rounded-2xl shadow-sm transition-shadow duration-300 hover:shadow-md group overflow-hidden ${
-                  isFeaturePreviewEnabled ? "cursor-pointer" : "cursor-default"
-                } ${
-                  activeFeature === item.key && isFeaturePreviewEnabled
-                    ? "border-red-300 ring-1 ring-red-200"
-                    : "border-gray-200 hover:border-gray-300"
-                }`}
-                style={{
-                  opacity: 0,
-                  animation: "fadeInUp 0.75s ease-out forwards",
-                  animationDelay: `${80 + index * 120}ms`,
-                }}
+                className="group block h-full w-full text-left"
               >
-                <CardContent className="p-7">
-                  <div className="flex flex-col items-start text-left space-y-5">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center border transition-colors duration-300 group-hover:bg-red-600 group-hover:border-red-600 ${item.iconWrapClass}`}>
-                      <item.icon className={`h-6 w-6 transition-colors duration-300 group-hover:text-white ${item.iconClass}`} />
-                    </div>
-
-                    <div className="space-y-2">
-                      <h3 className="text-base font-bold text-gray-900 tracking-wide uppercase transition-colors duration-300">
-                        {item.title}
-                      </h3>
-                      <p className="text-sm sm:text-base text-gray-500 leading-relaxed">
-                        {item.desc}
-                      </p>
-                    </div>
+                <Surface className="flex h-full min-h-[180px] flex-col p-5 transition-colors hover:bg-[var(--tm-bg-hover)] sm:p-6">
+                  <div className="mb-5 flex items-start justify-between gap-3">
+                    <span className="inline-flex h-[52px] w-[52px] items-center justify-center text-[var(--tm-text-primary)]">
+                      <img
+                        src={item.icon}
+                        alt=""
+                        aria-hidden="true"
+                        className={`${item.iconClassName} object-contain`}
+                      />
+                    </span>
                   </div>
-                </CardContent>
-              </Card>
+                  <h3 className="text-xl font-semibold leading-tight tracking-tight text-[var(--tm-text-primary)]">
+                    {item.title}{" "}
+                    <ArrowRight className="inline h-5 w-5 transition-transform group-hover:translate-x-0.5" />
+                  </h3>
+                  <p className="mt-3 flex-1 text-sm leading-6 text-[var(--tm-text-secondary)]">
+                    {item.desc}
+                  </p>
+                </Surface>
+              </button>
             ))}
           </div>
         </div>
-      </section>
-
-      {activeFeature && isFeaturePreviewEnabled && (
-        <section className="pb-14 bg-white/95">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
-              <img
-                src={selectedFeature.image}
-                alt={`${selectedFeature.title} ekran görüntüsü`}
-                className="h-auto w-full rounded-xl border border-gray-200 bg-white shadow-sm lg:col-span-2"
-                loading="lazy"
-              />
-              <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm lg:col-span-2">
-                <iframe
-                  className="aspect-video w-full"
-                  src="https://www.youtube.com/embed/6rVFTG4dU8Q"
-                  title="Anlatıcı Video"
-                  loading="lazy"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  referrerPolicy="strict-origin-when-cross-origin"
-                  allowFullScreen
-                />
-                <div className="border-t border-gray-200 px-4 py-3 text-sm font-medium text-gray-700">
-                  Teste Giriş ve Bölüm Bazlı Arayüz Rehberi
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
-    </div>
+      </div>
+    </section>
   );
 };
 
 export default HeroSection;
-

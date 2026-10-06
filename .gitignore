@@ -8,8 +8,16 @@ pnpm-debug.log*
 lerna-debug.log*
 .env
 node_modules
+dist/
 dist-ssr
+local-bin/
+node-v24*/
 *.local
+
+# Local review screenshots and temporary design sessions
+/.codex-audit/
+/.superpowers/
+/design-assets/
 
 # Editor directories and files
 .vscode/*

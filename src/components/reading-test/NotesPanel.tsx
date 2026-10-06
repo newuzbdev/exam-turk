@@ -1,270 +1,367 @@
 import { useState } from "react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { StickyNote, Plus, Trash2, Edit2 } from "lucide-react";
+import {
+  StickyNote,
+  FileText,
+  Plus,
+  Trash2,
+  Edit2,
+} from "lucide-react";
 import { useReadingNotes, type Note } from "@/contexts/ReadingNotesContext";
-import HighlightableText from "@/pages/reading-test/components/HighlightableText";
 
 interface NotesPanelProps {
   currentPartNumber?: number;
+  variant?: "default" | "practice";
 }
 
-export default function NotesPanel({ currentPartNumber }: NotesPanelProps) {
+interface NoteEditorState {
+  note: Note | null;
+  value: string;
+}
+
+export default function NotesPanel({
+  currentPartNumber,
+  variant = "default",
+}: NotesPanelProps) {
   const { notes, addNote, updateNote, deleteNote, getNotesByPart } = useReadingNotes();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [showAllNotes, setShowAllNotes] = useState(false);
-  const [noteDialog, setNoteDialog] = useState<{
-    note: Note | null;
-    isNew: boolean;
-  } | null>(null);
+  const [editor, setEditor] = useState<NoteEditorState | null>(null);
+  const [deletePendingId, setDeletePendingId] = useState<string | null>(null);
 
-  const displayNotes = (currentPartNumber && !showAllNotes)
+  const currentPartNotes = currentPartNumber
     ? getNotesByPart(currentPartNumber)
     : notes;
+  const isPractice = variant === "practice";
+  const displayNotes = isPractice
+    ? currentPartNotes
+    : showAllNotes
+      ? notes
+      : currentPartNotes;
+  const sortedDisplayNotes = [...displayNotes].sort(
+    (a, b) => b.createdAt - a.createdAt,
+  );
+
+  const handleSheetOpenChange = (open: boolean) => {
+    setIsSheetOpen(open);
+    if (!open) {
+      setEditor(null);
+      setDeletePendingId(null);
+    }
+  };
 
   const handleAddNote = () => {
-    setNoteDialog({
+    setDeletePendingId(null);
+    setEditor({
       note: null,
-      isNew: true,
+      value: "",
     });
   };
 
   const handleEditNote = (note: Note) => {
-    setNoteDialog({
+    setDeletePendingId(null);
+    setEditor({
       note,
-      isNew: false,
+      value: note.text,
     });
   };
 
   const handleSaveNote = () => {
-    if (!noteDialog) return;
+    const noteText = editor?.value.trim();
+    if (!editor || !noteText) return;
 
-    const noteText = (document.getElementById("note-textarea") as HTMLTextAreaElement)?.value.trim() || "";
-
-    if (!noteText) {
-      setNoteDialog(null);
-      return;
-    }
-
-    if (noteDialog.isNew) {
+    if (!editor.note) {
       addNote({
         text: noteText,
         partNumber: currentPartNumber,
       });
-    } else if (noteDialog.note) {
-      // Preserve highlightedText when updating
-      updateNote(noteDialog.note.id, noteText, noteDialog.note.highlightedText);
+    } else {
+      updateNote(editor.note.id, noteText, editor.note.highlightedText);
     }
 
-    setNoteDialog(null);
+    setEditor(null);
   };
 
   const handleDeleteNote = (noteId: string) => {
-    if (confirm("Bu notu silmek istediğinizden emin misiniz?")) {
-      deleteNote(noteId);
+    deleteNote(noteId);
+    setDeletePendingId(null);
+    if (editor?.note?.id === noteId) {
+      setEditor(null);
     }
   };
 
   return (
-    <>
-      <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-        <SheetTrigger asChild>
+    <Sheet open={isSheetOpen} onOpenChange={handleSheetOpenChange}>
+      <SheetTrigger asChild>
+        {isPractice ? (
+          <button
+            type="button"
+            aria-label="Notlar"
+            className={`group relative inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-transparent transition-[background-color,color,box-shadow] ${
+              isSheetOpen
+                ? "bg-white text-[#242424] shadow-[0_1px_3px_rgba(15,23,42,0.12)]"
+                : "bg-transparent text-[#64645f] hover:bg-white hover:text-[#242424] hover:shadow-[0_1px_3px_rgba(15,23,42,0.08)]"
+            }`}
+          >
+            <FileText className="h-4 w-4" strokeWidth={1.75} />
+            <span className="pointer-events-none absolute left-1/2 top-[calc(100%+8px)] z-20 hidden -translate-x-1/2 whitespace-nowrap rounded-full bg-[#111827] px-2.5 py-1 text-[12px] font-medium text-white shadow-sm group-hover:block">
+              Notlar
+            </span>
+          </button>
+        ) : (
           <Button
             variant="outline"
             size="sm"
-            className="relative bg-white hover:bg-gray-50 border-gray-300"
+            className="h-9 border-[#d9d9d6] bg-white px-3 text-[#37352f] shadow-none hover:bg-[#f7f7f5]"
           >
-            <StickyNote className="w-4 h-4 mr-1" />
+            <StickyNote className="mr-1.5 h-4 w-4" />
             Notlar
-            {displayNotes.length > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                {displayNotes.length}
+            {notes.length > 0 && (
+              <span className="ml-2 min-w-5 border-l border-[#dededb] pl-2 text-xs font-medium tabular-nums text-[#787774]">
+                {notes.length}
               </span>
             )}
           </Button>
-        </SheetTrigger>
-        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto bg-gray-50">
-          <SheetHeader className="pb-4 border-b border-gray-200">
-            <SheetTitle className="flex items-center gap-2 text-lg">
-              <StickyNote className="w-5 h-5 text-yellow-600" />
-              Notlarım
-            </SheetTitle>
-            {currentPartNumber && (
-              <p className="text-sm text-gray-600 mt-1">
-                {showAllNotes ? (
-                  <>Tüm notlar: {notes.length} • Bölüm {currentPartNumber}: {getNotesByPart(currentPartNumber).length}</>
-                ) : (
-                  <>Bölüm {currentPartNumber}: {displayNotes.length} / {notes.length} not</>
-                )}
-              </p>
-            )}
-          </SheetHeader>
+        )}
+      </SheetTrigger>
 
-          <div className="mt-6 space-y-4">
-            <div className="flex gap-2">
-              <Button
-                onClick={handleAddNote}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 shadow-sm"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Yeni Not Ekle
-              </Button>
-              {currentPartNumber && notes.length > getNotesByPart(currentPartNumber).length && (
-                <Button
-                  onClick={() => setShowAllNotes(!showAllNotes)}
-                  variant={showAllNotes ? "default" : "outline"}
-                  className={`px-3 ${
-                    showAllNotes 
-                      ? "bg-blue-600 text-white hover:bg-blue-700" 
-                      : "border-gray-300 text-gray-700 hover:bg-gray-50"
-                  }`}
-                  title={showAllNotes ? "Sadece bu bölümü göster" : "Tüm notları göster"}
-                >
-                  {showAllNotes ? "Bölüm" : "Tümü"}
-                </Button>
+      <SheetContent
+        side="right"
+        className="flex w-full flex-col border-l border-[#e5e5e2] bg-white p-0 sm:max-w-[420px]"
+      >
+        <SheetHeader className="border-b border-[#e9e9e6] px-5 py-4 pr-12 text-left">
+          <SheetTitle className="text-[17px] font-semibold tracking-normal text-[#2f2f2c]">
+            Notlar
+          </SheetTitle>
+          <SheetDescription className="sr-only">
+            {isPractice
+              ? "Pratik sırasında aldığınız notları görüntüleyin ve düzenleyin."
+              : "Sınav sırasında aldığınız notları görüntüleyin ve düzenleyin."}
+          </SheetDescription>
+        </SheetHeader>
+
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-8">
+          <div className="sticky top-0 z-10 -mx-5 border-b border-[#eeeeeb] bg-white px-5 py-3">
+            <div
+              className={`flex items-center gap-2 ${isPractice ? "justify-end" : ""}`}
+            >
+              {currentPartNumber && !isPractice && (
+                <div className="grid min-w-0 flex-1 grid-cols-2 rounded-md bg-[#f3f3f1] p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowAllNotes(false)}
+                    className={`h-8 rounded-[5px] px-2 text-xs font-medium transition-colors ${
+                      !showAllNotes
+                        ? "bg-white text-[#37352f] shadow-[0_1px_2px_rgba(15,15,15,0.08)]"
+                        : "text-[#787774] hover:text-[#37352f]"
+                    }`}
+                  >
+                    Bu bölüm
+                    <span className="ml-1 tabular-nums text-[#9b9a97]">
+                      {currentPartNotes.length}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAllNotes(true)}
+                    className={`h-8 rounded-[5px] px-2 text-xs font-medium transition-colors ${
+                      showAllNotes
+                        ? "bg-white text-[#37352f] shadow-[0_1px_2px_rgba(15,15,15,0.08)]"
+                        : "text-[#787774] hover:text-[#37352f]"
+                    }`}
+                  >
+                    Tümü
+                    <span className="ml-1 tabular-nums text-[#9b9a97]">
+                      {notes.length}
+                    </span>
+                  </button>
+                </div>
               )}
+
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleAddNote}
+                className="h-9 shrink-0 border-[#d9d9d6] bg-white px-3 text-xs font-medium text-[#37352f] shadow-none hover:bg-[#f7f7f5]"
+              >
+                <Plus className="mr-1.5 h-3.5 w-3.5" />
+                Yeni not
+              </Button>
             </div>
+          </div>
 
-            {displayNotes.length === 0 ? (
-              <div className="text-center py-12 text-gray-400">
-                <StickyNote className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                <p className="text-sm">Henüz not eklenmedi</p>
-                <p className="text-xs mt-1 text-gray-400">Not eklemek için yukarıdaki butona tıklayın</p>
+          {editor && (
+            <div className="border-b border-[#eeeeeb] py-4">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <p className="text-xs font-semibold text-[#5f5e5a]">
+                  {editor.note
+                    ? "Notu düzenle"
+                    : isPractice
+                      ? "Yeni not"
+                      : `Bölüm ${currentPartNumber ?? ""} için yeni not`}
+                </p>
+                {editor.note?.highlightedText && (
+                  <span className="text-[11px] text-[#9b9a97]">Seçili metne bağlı</span>
+                )}
               </div>
-            ) : (
-              <div className="space-y-3">
-                {displayNotes
-                  .sort((a, b) => b.createdAt - a.createdAt)
-                  .map((note) => (
-                    <div
-                      key={note.id}
-                      className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow relative group"
-                    >
-                      {/* Noted Words at the Top - Most Prominent */}
-                      {note.highlightedText ? (
-                        <div className="mb-3 pb-3 border-b-2 border-yellow-300 bg-yellow-50 -mx-4 -mt-4 px-4 pt-4 rounded-t-lg">
-                          <div className="flex items-start gap-2">
-                            <StickyNote className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
-                            <div className="flex-1">
-                              <p className="text-xs text-yellow-700 font-bold mb-1.5 uppercase tracking-wide">
-                                Not Alınan Metin:
-                              </p>
-                              <p className="text-base text-gray-900 font-semibold leading-relaxed bg-yellow-200 px-3 py-2 rounded border border-yellow-400">
-                                "{note.highlightedText}"
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="mb-3 pb-3 border-b border-gray-200">
-                          <div className="flex items-center gap-2 text-gray-500">
-                            <StickyNote className="w-4 h-4" />
-                            <p className="text-xs font-medium">Genel Not (Metin seçilmedi)</p>
-                          </div>
-                        </div>
-                      )}
 
-                      {/* Part Badge */}
-                      <div className="mb-3 flex items-center gap-2">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                          note.partNumber === currentPartNumber
-                            ? "bg-green-100 text-green-800"
-                            : "bg-blue-100 text-blue-800"
-                        }`}>
-                          Bölüm {note.partNumber || "?"}
-                        </span>
-                        {note.partNumber && note.partNumber !== currentPartNumber && (
-                          <span className="text-xs text-orange-600 font-medium">
-                            (Farklı bölüm)
+              {editor.note?.highlightedText && (
+                <blockquote className="reading-text mb-3 max-h-24 overflow-y-auto whitespace-pre-wrap border-l-2 border-[#b8b7b2] pl-3 pr-1 font-sans">
+                  {editor.note.highlightedText}
+                </blockquote>
+              )}
+
+              <Textarea
+                value={editor.value}
+                onChange={(event) => setEditor({ ...editor, value: event.target.value })}
+                placeholder="Notunuzu yazın"
+                className="min-h-[92px] resize-none border-[#d9d9d6] bg-white text-sm leading-6 text-[#37352f] shadow-none placeholder:text-[#9b9a97] focus-visible:ring-1 focus-visible:ring-[#9b9a97]"
+                autoFocus
+              />
+
+              <div className="mt-3 flex justify-end gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setEditor(null)}
+                  className="h-8 px-3 text-xs text-[#5f5e5a] hover:bg-[#f3f3f1]"
+                >
+                  İptal
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleSaveNote}
+                  disabled={!editor.value.trim()}
+                  className="h-8 bg-[#37352f] px-3 text-xs text-white shadow-none hover:bg-[#2f2f2c] disabled:bg-[#e3e3e0] disabled:text-[#9b9a97]"
+                >
+                  {editor.note ? "Kaydet" : "Ekle"}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {sortedDisplayNotes.length === 0 ? (
+            <div className="py-10 text-center">
+              <p className="text-sm font-medium text-[#5f5e5a]">
+                {isPractice
+                  ? "Bu pratikte henüz not yok."
+                  : showAllNotes
+                    ? "Henüz not yok."
+                    : "Bu bölümde not yok."}
+              </p>
+              <p className="mx-auto mt-1 max-w-[260px] text-xs leading-5 text-[#9b9a97]">
+                Metni seçerek not ekleyebilir veya yukarıdan yeni bir not yazabilirsiniz.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-1">
+              {sortedDisplayNotes.map((note) => (
+                <article
+                  key={note.id}
+                  className="border-b border-[#eeeeeb] py-4 last:border-b-0"
+                >
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-2 text-[11px] text-[#9b9a97]">
+                      {!isPractice ? (
+                        <>
+                          <span className="font-medium text-[#787774]">
+                            Bölüm {note.partNumber ?? "—"}
                           </span>
-                        )}
-                      </div>
-                      <div className="text-sm text-gray-800 leading-relaxed">
-                        <HighlightableText text={note.text} partNumber={currentPartNumber} />
-                      </div>
-                      <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
-                        <div className="flex flex-col gap-1">
-                          <span className="text-xs text-gray-400">
-                            {new Date(note.createdAt).toLocaleString("tr-TR", {
-                              day: "2-digit",
-                              month: "2-digit",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
-                          {note.partNumber && note.partNumber !== currentPartNumber && (
-                            <span className="text-xs text-blue-600 font-medium">
-                              Bu not Bölüm {note.partNumber}'den
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex gap-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 px-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50"
-                            onClick={() => handleEditNote(note)}
-                            title="Düzenle"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 px-2 text-gray-600 hover:text-red-600 hover:bg-red-50"
-                            onClick={() => handleDeleteNote(note.id)}
-                            title="Sil"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
+                          <span aria-hidden="true">·</span>
+                        </>
+                      ) : null}
+                      <time>
+                        {new Date(note.createdAt).toLocaleString("tr-TR", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </time>
+                    </div>
+
+                    <div className="flex shrink-0 items-center gap-0.5">
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-[#787774] hover:bg-[#f3f3f1] hover:text-[#37352f]"
+                        onClick={() => handleEditNote(note)}
+                        title="Notu düzenle"
+                        aria-label="Notu düzenle"
+                      >
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-[#787774] hover:bg-[#fbeceb] hover:text-[#b42318]"
+                        onClick={() => {
+                          setEditor(null);
+                          setDeletePendingId(note.id);
+                        }}
+                        title="Notu sil"
+                        aria-label="Notu sil"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {note.highlightedText && (
+                    <blockquote className="reading-text mb-2 max-h-24 overflow-y-auto whitespace-pre-wrap border-l-2 border-[#b8b7b2] pl-3 pr-1 font-sans">
+                      {note.highlightedText}
+                    </blockquote>
+                  )}
+
+                  <p className="whitespace-pre-wrap text-sm leading-6 text-[#37352f]">
+                    {note.text}
+                  </p>
+
+                  {deletePendingId === note.id && (
+                    <div className="mt-3 flex items-center justify-between gap-3 rounded-md bg-[#f7f7f5] px-3 py-2">
+                      <span className="text-xs text-[#5f5e5a]">Bu not silinsin mi?</span>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setDeletePendingId(null)}
+                          className="h-7 px-2 text-xs text-[#5f5e5a] hover:bg-white"
+                        >
+                          Vazgeç
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDeleteNote(note.id)}
+                          className="h-7 px-2 text-xs text-[#b42318] hover:bg-[#fbeceb]"
+                        >
+                          Sil
+                        </Button>
                       </div>
                     </div>
-                  ))}
-              </div>
-            )}
-          </div>
-        </SheetContent>
-      </Sheet>
-
-      {/* Note Dialog */}
-      <Dialog open={!!noteDialog} onOpenChange={(open) => !open && setNoteDialog(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {noteDialog?.isNew ? "Yeni Not Ekle" : "Notu Düzenle"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <Textarea
-              id="note-textarea"
-              placeholder="Notunuzu buraya yazın..."
-              defaultValue={noteDialog?.note?.text || ""}
-              className="min-h-[150px]"
-              autoFocus
-            />
-          </div>
-          <DialogFooter className="flex gap-2">
-            <Button
-              size="sm"
-              onClick={() => setNoteDialog(null)}
-              variant="outline"
-              className="border-gray-300 text-gray-700 hover:bg-gray-50"
-            >
-              İptal
-            </Button>
-            <Button 
-              size="sm" 
-              onClick={handleSaveNote}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              {noteDialog?.isNew ? "Ekle" : "Kaydet"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+                  )}
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

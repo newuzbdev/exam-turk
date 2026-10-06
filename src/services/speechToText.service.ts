@@ -4,19 +4,38 @@ import { toast } from 'sonner';
 export interface SpeechToTextResponse {
   success: boolean;
   text?: string;
+  audio?: {
+    audioId?: string;
+    hasAudio?: boolean;
+    questionId?: string;
+    sectionKey?: string;
+    mimeType?: string;
+    sizeBytes?: number;
+    durationSeconds?: number;
+  };
   error?: string;
 }
 
 export interface SpeechToTextOptions {
+  sessionToken?: string;
   language?: string;
   prompt?: string;
   context?: string;
   timeoutMs?: number;
   retryCount?: number;
+  questionId?: string;
+  sectionKey?: string;
+  clientAudioId?: string;
+  durationSeconds?: number;
 }
 
 const DEFAULT_STT_TIMEOUT_MS = 45000;
 const DEFAULT_STT_RETRY_COUNT = 1;
+const DEBUG_STT_API = import.meta.env.VITE_DEBUG_API === "true";
+
+const debugSttApi = (event: string, details?: Record<string, unknown>) => {
+  if (DEBUG_STT_API) console.debug("[speech-to-text]", event, details || {});
+};
 
 const wait = (ms: number) =>
   new Promise<void>((resolve) => {
@@ -102,12 +121,23 @@ export const speechToTextService = {
         formData.append('audio', audioBlob, fileName);
         formData.append('mimeType', audioBlob.type || 'application/octet-stream');
         formData.append('language', (options?.language || 'tr').trim());
+        const sessionToken = String(options?.sessionToken || '').trim();
+        if (sessionToken) formData.append('sessionToken', sessionToken);
 
         const prompt = String(options?.prompt || '').trim();
         if (prompt) formData.append('prompt', prompt);
 
         const context = String(options?.context || '').trim();
         if (context) formData.append('context', context);
+        const questionId = String(options?.questionId || '').trim();
+        if (questionId) formData.append('questionId', questionId);
+        const sectionKey = String(options?.sectionKey || '').trim();
+        if (sectionKey) formData.append('sectionKey', sectionKey);
+        const clientAudioId = String(options?.clientAudioId || '').trim();
+        if (clientAudioId) formData.append('clientAudioId', clientAudioId);
+        if (typeof options?.durationSeconds === 'number') {
+          formData.append('durationSeconds', String(options.durationSeconds));
+        }
 
         const response = await axiosPrivate.post(
           '/api/speaking-submission/speech-to-text',
@@ -116,10 +146,20 @@ export const speechToTextService = {
         );
 
         const rawText = response.data?.text ?? response.data?.transcript;
-        if (response.data && rawText !== undefined) {
+        const transcriptionStatus = String(response.data?.transcriptionStatus || '').toUpperCase();
+        if (response.data?.error || response.data?.success === false ||
+            (transcriptionStatus && transcriptionStatus !== 'SUCCESS')) {
+          return {
+            success: false,
+            error: String(response.data?.error || 'Ses çözümlemesi henüz tamamlanmadı.'),
+            audio: response.data?.audio,
+          };
+        }
+        if (typeof rawText === 'string' && (rawText.trim() || transcriptionStatus === 'SUCCESS')) {
           return {
             success: true,
             text: String(rawText || ''),
+            audio: response.data?.audio,
           };
         }
 
@@ -135,7 +175,10 @@ export const speechToTextService = {
       }
     }
 
-    console.error('Speech to text error:', lastError);
+    debugSttApi("speech-to-text-error", {
+      status: lastError?.response?.status,
+      code: lastError?.code,
+    });
     const errorMessage = buildSpeechErrorMessage(lastError);
     toast.error(errorMessage);
 

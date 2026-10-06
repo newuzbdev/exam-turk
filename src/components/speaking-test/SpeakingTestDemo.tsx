@@ -10,6 +10,7 @@ import speakingSubmissionService, {
   type SpeakingSubmissionData,
 } from "@/services/speakingSubmission.service";
 import speechToTextService from "@/services/speechToText.service";
+import { protectedImageProps } from "@/utils/mediaProtection";
 
 interface SpeakingTestDemoProps {
   testId: string;
@@ -306,6 +307,7 @@ const SpeakingTestDemo = ({
             {currentPart.image && (
               <div className="mb-4">
                 <img
+                  {...protectedImageProps}
                   src={currentPart.image}
                   alt="Test görseli"
                   className="w-full max-w-md mx-auto rounded-lg"
@@ -317,6 +319,7 @@ const SpeakingTestDemo = ({
             {currentSubPart?.image && (
               <div className="mb-4">
                 <img
+                  {...protectedImageProps}
                   src={currentSubPart.image}
                   alt="Alt bölüm görseli"
                   className="w-full max-w-md mx-auto rounded-lg"

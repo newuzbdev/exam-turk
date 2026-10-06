@@ -3,6 +3,10 @@ import { authEndPoint } from "@/config/endpoint";
 import { API_BASE_URL } from "@/config/runtime";
 import { toast } from "@/utils/toast";
 import { SecureStorage } from "@/utils/secureStorage";
+import { readStoredAccessToken, readStoredRefreshToken } from "@/utils/authTokenStorage";
+import { requestReauthentication } from "@/utils/authSessionRecovery";
+import { AUTH_REQUEST_TIMEOUT_MS } from "@/utils/authConnectionRecovery";
+import { clearOwnedAccess, clearPendingShare } from '@/utils/access-link-context';
 
 export interface LoginCredentials {
   name: string;
@@ -68,6 +72,79 @@ export interface TelegramWidgetAuthPayload {
 
 // Global variable to track ongoing user fetch requests
 let currentUserRequest: Promise<Record<string, unknown> | null> | null = null;
+let currentUserRequestToken: string | null = null;
+
+const LOCAL_DEV_USER_KEY = "tm_local_dev_user";
+const LOCAL_DEV_USERNAME = "timur";
+const LOCAL_DEV_PASSWORD = "timur123";
+
+const localDevUser: Record<string, unknown> = {
+  id: "local-dev-user",
+  userId: "local-dev-user",
+  name: "Timur Makarov",
+  userName: "timur",
+  username: "timur",
+  phoneNumber: "+998901234567",
+  accountType: "STUDENT",
+  role: "USER",
+  balance: 0,
+  coin: 25,
+};
+
+const isLocalDevAuthEnabled = (): boolean => false;
+
+const encodeJwtPart = (value: Record<string, unknown>): string =>
+  btoa(JSON.stringify(value)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+
+const createLocalDevToken = (): string => {
+  const now = Math.floor(Date.now() / 1000);
+  return [
+    encodeJwtPart({ alg: "none", typ: "JWT" }),
+    encodeJwtPart({
+      id: localDevUser.id,
+      sub: localDevUser.id,
+      name: localDevUser.name,
+      exp: now + 60 * 60 * 24 * 30,
+    }),
+    "local-dev",
+  ].join(".");
+};
+
+const readLocalDevUser = (): Record<string, unknown> | null => {
+  if (!isLocalDevAuthEnabled()) return null;
+
+  const raw =
+    SecureStorage.getSessionItem(LOCAL_DEV_USER_KEY) ||
+    SecureStorage.getItem(LOCAL_DEV_USER_KEY);
+
+  if (!raw) return null;
+
+  try {
+    const user = JSON.parse(raw) as Record<string, unknown>;
+    return user?.id === localDevUser.id ? user : null;
+  } catch {
+    return null;
+  }
+};
+
+const storeLocalDevUser = (): void => {
+  const userJson = JSON.stringify(localDevUser);
+  const token = createLocalDevToken();
+
+  SecureStorage.setSessionItem(LOCAL_DEV_USER_KEY, userJson);
+  SecureStorage.setItem(LOCAL_DEV_USER_KEY, userJson);
+  SecureStorage.setSessionItem("userId", String(localDevUser.id));
+  SecureStorage.setItem("userId", String(localDevUser.id));
+  authService.storeTokens(token, token);
+
+  try {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("auth:user", { detail: localDevUser }));
+    }
+  } catch {
+    // no-op
+  }
+};
 
 const getApiErrorMessage = (error: unknown, fallback: string): string => {
   const err = error as { response?: { data?: Record<string, unknown>; status?: number }; message?: string };
@@ -185,7 +262,16 @@ export const authService = {
     form.append("file", file);
     const res = await axiosPrivate.post(`/api/file/upload`, form);
     const data = res?.data || {};
-    const uploadedUrl = data.url || data.fileUrl || data.path || data.avatarUrl || (data.data && (data.data.url || data.data.path)) || "";
+    const uploadedUrl =
+      data.reference ||
+      data.data?.reference ||
+      data.url ||
+      data.fileUrl ||
+      data.path ||
+      data.avatarUrl ||
+      data.data?.url ||
+      data.data?.path ||
+      "";
     return String(uploadedUrl);
   },
 
@@ -242,6 +328,9 @@ export const authService = {
 
   // Helper function to store tokens securely
   storeTokens: (accessToken: string, refreshToken?: string): void => {
+    if (readStoredAccessToken() !== accessToken) {
+      SecureStorage.removeSessionItem('userId');
+    }
     SecureStorage.setSessionItem("accessToken", accessToken);
     SecureStorage.setItem("accessToken", accessToken);
     // Legacy compatibility keys used in some flows/tools
@@ -279,13 +368,15 @@ export const authService = {
     refreshToken: string | null;
   } => {
     return {
-      accessToken: SecureStorage.getSessionItem("accessToken"),
-      refreshToken: SecureStorage.getSessionItem("refreshToken"),
+      accessToken: readStoredAccessToken(),
+      refreshToken: readStoredRefreshToken(),
     };
   },
 
   // Helper function to clear stored tokens
   clearStoredTokens: (): void => {
+    clearPendingShare();
+    clearOwnedAccess();
     SecureStorage.removeSessionItem("accessToken");
     SecureStorage.removeSessionItem("refreshToken");
     SecureStorage.removeSessionItem("token");
@@ -296,6 +387,8 @@ export const authService = {
     SecureStorage.removeItem("authToken");
     SecureStorage.removeSessionItem("userId");
     SecureStorage.removeItem("userId");
+    SecureStorage.removeSessionItem(LOCAL_DEV_USER_KEY);
+    SecureStorage.removeItem(LOCAL_DEV_USER_KEY);
     
     // Clear all test-related session tokens
     authService.clearAllTestTokens();
@@ -317,7 +410,6 @@ export const authService = {
         }
       });
       
-      console.log('Cleared all test-related tokens');
     } catch (error) {
       console.error('Error clearing test tokens:', error);
     }
@@ -328,14 +420,7 @@ export const authService = {
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
       const currentTime = Math.floor(Date.now() / 1000);
-      const isExpired = payload.exp < currentTime;
-      console.log('ğŸ” Token expiration check:', {
-        exp: payload.exp,
-        currentTime,
-        isExpired,
-        expiresIn: payload.exp - currentTime
-      });
-      return isExpired;
+      return payload.exp < currentTime;
     } catch (error) {
       console.error('Error parsing token:', error);
       // If we can't parse it, don't consider it expired - let the server decide
@@ -351,17 +436,13 @@ export const authService = {
       
       const { accessToken, refreshToken } = tokens;
       
-      // Check if access token is expired
-      if (accessToken && authService.isTokenExpired(accessToken)) {
-        console.log('Access token expired, clearing all tokens');
-        authService.clearStoredTokens();
-        return;
-      }
-      
-      // Check if refresh token is expired
-      if (refreshToken && authService.isTokenExpired(refreshToken)) {
-        console.log('Refresh token expired, clearing all tokens');
-        authService.clearStoredTokens();
+      // An expired access token is renewable. Never discard a valid refresh
+      // token or in-progress answers before the server can try it.
+      if (
+        accessToken && authService.isTokenExpired(accessToken) &&
+        (!refreshToken || authService.isTokenExpired(refreshToken))
+      ) {
+        requestReauthentication();
         return;
       }
       
@@ -385,7 +466,6 @@ export const authService = {
         if (key.includes('overall.sessionToken')) {
           const token = sessionStorage.getItem(key);
           if (token && authService.isTokenExpired(token)) {
-            console.log(`Clearing expired test token: ${key}`);
             sessionStorage.removeItem(key);
           }
         }
@@ -397,19 +477,23 @@ export const authService = {
 
   // Helper function to get current user data (with request deduplication)
   getCurrentUser: async (): Promise<Record<string, unknown> | null> => {
-    // If there's already a request in progress, return that promise
-    if (currentUserRequest) {
-      console.log("Reusing existing user data request...");
+    const localUser = readLocalDevUser();
+    if (localUser) {
+      return localUser;
+    }
+
+    // Share user lookups only within the same login.
+    const requestToken = readStoredAccessToken() || readStoredRefreshToken();
+    if (currentUserRequest && currentUserRequestToken === requestToken) {
       return currentUserRequest;
     }
+    currentUserRequestToken = requestToken;
 
     // Create new request
     currentUserRequest = (async (): Promise<Record<string, unknown> | null> => {
       try {
         // First try the /api/auth/me endpoint
-        console.log("Trying to fetch user data from /api/auth/me...");
-        const response = await axiosPrivate.get(authEndPoint.me);
-        console.log("User data from /api/auth/me:", response.data);
+        const response = await axiosPrivate.get(authEndPoint.me, { timeout: AUTH_REQUEST_TIMEOUT_MS });
 
         const meUser = extractUserFromPayload(response.data);
         if (meUser) {
@@ -423,7 +507,13 @@ export const authService = {
 
         throw new Error("No user data returned from /api/auth/me");
       } catch (error: unknown) {
-        console.error("Error fetching user from /api/auth/me:", error);
+        console.error("Account lookup failed");
+
+        // The same unreachable API cannot recover through a second user route.
+        const failure = error as { response?: { status?: number }; code?: string };
+        const status = failure?.response?.status;
+        if (status === 401 || (status !== undefined && status >= 500) ||
+          ["ERR_NETWORK", "ECONNABORTED", "ETIMEDOUT"].includes(failure?.code ?? "")) throw error;
 
         // If /api/auth/me fails, try to use /api/user/{id} if we have a stored user ID
         let userId =
@@ -439,20 +529,13 @@ export const authService = {
         }
         if (userId) {
           try {
-            console.log(
-              `Trying to fetch user data from /api/user/${userId}...`
-            );
             const userResponse = await axiosPrivate.get(
-              `${authEndPoint.user}/${userId}`
+              `${authEndPoint.user}/${userId}`, { timeout: AUTH_REQUEST_TIMEOUT_MS }
             );
-            console.log("User data from /api/user/{id}:", userResponse.data);
             const userData = extractUserFromPayload(userResponse.data);
             return userData ?? (userResponse.data as Record<string, unknown>);
-          } catch (userError) {
-            console.error(
-              "Error fetching user from /api/user/{id}:",
-              userError
-            );
+          } catch {
+            console.error("Fallback account lookup failed");
           }
         }
 
@@ -460,7 +543,7 @@ export const authService = {
         throw error;
       } finally {
         // Clear the request when done
-        currentUserRequest = null;
+        if (currentUserRequestToken === requestToken) currentUserRequest = null;
       }
     })();
 
@@ -488,40 +571,11 @@ export const authService = {
     }
   },
 
-  // Start Telegram login: call API init, returns sessionToken and botLink
-  // NOTE: Always call production API directly so it does not depend on local axios baseURL.
+  // Start Telegram login: call API init, returns sessionToken and botLink.
   initTelegramAuth: async (): Promise<{ sessionToken: string; botLink: string } | null> => {
     try {
-      const url = "https://api.turkishmock.uz/api/auth/telegram/init";
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({}),
-      });
-
-      if (!response.ok) {
-        let payload: any = {};
-        try {
-          payload = await response.json();
-        } catch {
-          payload = {};
-        }
-        const message = getApiErrorMessage(
-          { response: { data: payload } },
-          "Telegram girişi başlatılamadı",
-        );
-        toast.error(message);
-        return null;
-      }
-
-      let data: any = {};
-      try {
-        data = await response.json();
-      } catch {
-        data = {};
-      }
+      const response = await axiosPrivate.post("/api/auth/telegram/init", {});
+      const data = response?.data ?? {};
 
       const sessionToken = data?.sessionToken ?? data?.data?.sessionToken;
       const botLink = data?.botLink ?? data?.data?.botLink;
@@ -536,8 +590,7 @@ export const authService = {
     }
   },
 
-  // Verify Telegram code with session from init (main API: /api/auth/telegram/verify-code)
-  // NOTE: Always call production API directly so it does not depend on local axios baseURL.
+  // Verify Telegram code with session from init.
   verifyTelegramCode: async (code: string, sessionToken: string): Promise<AuthResult> => {
     try {
       const trimmed = String(code || "").trim();
@@ -546,32 +599,11 @@ export const authService = {
         return { success: false };
       }
 
-      const url = "https://api.turkishmock.uz/api/auth/telegram/verify-code";
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          code: trimmed,
-          sessionToken,
-        }),
+      const response = await axiosPrivate.post("/api/auth/telegram/verify-code", {
+        code: trimmed,
+        sessionToken,
       });
-
-      let data: any = {};
-      try {
-        data = await response.json();
-      } catch {
-        data = {};
-      }
-
-      if (!response.ok) {
-        const message =
-          (typeof data?.message === "string" && data.message) ||
-          "Telegram kodu yanlış veya süresi dolmuş";
-        toast.error(message);
-        return { success: false, message };
-      }
+      const data = response?.data ?? {};
 
       const user = data?.user ?? data?.data?.user ?? {};
       const { accessToken, refreshToken } = extractTokens(data);
@@ -778,6 +810,19 @@ export const authService = {
     navigate: (path: string, options?: any) => void
   ): Promise<AuthResult> => {
     try {
+      const identifier = String(credentials.name || "").trim().toLowerCase();
+      if (
+        isLocalDevAuthEnabled() &&
+        identifier === LOCAL_DEV_USERNAME &&
+        credentials.password === LOCAL_DEV_PASSWORD
+      ) {
+        storeLocalDevUser();
+        toast.success("Local giriş başarılı");
+        navigate("/", { replace: true });
+
+        return { success: true, shouldNavigate: true };
+      }
+
       const response = await axiosPrivate.post(authEndPoint.login, credentials);
 
       const { accessToken, refreshToken } = extractTokens(response.data);
@@ -910,10 +955,7 @@ export const authService = {
     navigate: (path: string, options?: any) => void
   ): Promise<AuthResult & { phoneNumber?: string }> => {
     const phoneWithPrefix = authService.formatPhoneNumber(phone);
-    const baseURL =
-      import.meta.env.VITE_API_URL ||
-      (import.meta.env.DEV ? "http://localhost:3000" : "https://api.turkishmock.uz");
-    const url = `${baseURL}${authEndPoint.otpVerify}`;
+    const url = `${API_BASE_URL}${authEndPoint.otpVerify}`;
     const token = SecureStorage.getSessionItem("accessToken");
 
     try {
@@ -1026,8 +1068,6 @@ export const authService = {
           throw firstError;
         }
       }
-      console.log("Registration response:", response.data); // Debug log
-
       const { accessToken, refreshToken } = extractTokens(response.data);
 
       if (accessToken) {
@@ -1041,18 +1081,12 @@ export const authService = {
         // Store user ID if returned in registration response
         if (response.data.user && response.data.user.id) {
           SecureStorage.setSessionItem("userId", response.data.user.id);
-          console.log("Stored user ID:", response.data.user.id);
         } else if (response.data.data?.user?.id) {
           SecureStorage.setSessionItem("userId", response.data.data.user.id);
-          console.log("Stored user ID:", response.data.data.user.id);
         } else if (response.data.id) {
           SecureStorage.setSessionItem("userId", response.data.id);
-          console.log("Stored user ID from root:", response.data.id);
         } else if (response.data.data?.id) {
           SecureStorage.setSessionItem("userId", response.data.data.id);
-          console.log("Stored user ID from data:", response.data.data.id);
-        } else {
-          console.log("No user ID found in registration response");
         }
 
         // Get user data after successful registration

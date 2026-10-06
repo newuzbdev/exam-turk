@@ -11,6 +11,60 @@ export interface WritingTestItem {
 	updatedAt?: string;
 }
 
+export type WritingTaskCode = "TASK_1_1" | "TASK_1_2" | "TASK_2";
+export type WritingPartCode = "PART_1" | "PART_2";
+
+export interface WritingRichTextNode {
+	type?: string;
+	text?: string;
+	attrs?: Record<string, unknown>;
+	marks?: Array<{
+		type?: string;
+		attrs?: Record<string, unknown>;
+	}>;
+	content?: WritingRichTextNode[];
+}
+
+export interface WritingTestV2Question {
+	id: string;
+	text: string;
+}
+
+export interface WritingTestV2Task {
+	id: string;
+	taskCode: WritingTaskCode;
+	order: number;
+	label: string;
+	promptJson: WritingRichTextNode;
+	register: string;
+	genre: string;
+	targetLevel: string;
+	wordMin: number;
+	wordMax: number;
+	maxRawScore: number;
+	questions: WritingTestV2Question[];
+}
+
+export interface WritingTestV2Section {
+	id: string;
+	partCode: WritingPartCode;
+	order: number;
+	title: string;
+	description?: string | null;
+	subParts: WritingTestV2Task[];
+}
+
+export interface WritingTestV2 {
+	id: string;
+	title: string;
+	instruction?: string | null;
+	formatVersion: 2;
+	status: "PUBLISHED" | "ARCHIVED";
+	durationMinutes: number;
+	sourceEmail: WritingRichTextNode;
+	sections: WritingTestV2Section[];
+}
+
 export const writingTestService = {
 	getAll: async (): Promise<WritingTestItem[]> => {
 		try {
@@ -30,6 +84,19 @@ export const writingTestService = {
 		} catch (error: unknown) {
 			console.error("Failed to fetch writing test", error);
 			toast.error("Yazma testi bulunamadı");
+			return null;
+		}
+	},
+
+	getPublishedV2: async (id: string, sessionToken?: string | null): Promise<WritingTestV2 | null> => {
+		try {
+			const res = await axiosPrivate.get(`/api/writing-test/v2/${id}/student`,
+				sessionToken ? { headers: { "X-Test-Session": sessionToken } } : undefined,
+			);
+			return res.data?.data || res.data || null;
+		} catch (error: unknown) {
+			console.error("Failed to fetch published Writing V2 test", error);
+			toast.error("Yayınlanmış yazma testi bulunamadı");
 			return null;
 		}
 	},

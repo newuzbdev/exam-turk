@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {loadBilling} from './billing-test-fixture.mjs';
+const {lessonsAvailable,remainingPurchaseLabel}=await loadBilling();
+const p=(status='ACTIVE')=>({purchaseId:'p',status,remainingAttempts:2,remainingPractice:9,snapshot:{terms:{kind:'MOCK_PASS',lessonIds:['lesson']}}});
+test('server visibility or current owned lessons open navigation; expired ownership does not',()=>{assert.equal(lessonsAvailable(false,[p()]),true);assert.equal(lessonsAvailable(false,[p('EXPIRED')]),false);assert.equal(lessonsAvailable(true,[]),true);});
+test('owned counts show current balances and exhaustion without changing an offer',()=>{assert.equal(remainingPurchaseLabel(p()),'2 Mock çözme hakkı');assert.equal(remainingPurchaseLabel({...p(),remainingAttempts:0}),'0 Mock çözme hakkı');const practice={...p(),snapshot:{terms:{kind:'PRACTICE_PASS'}},remainingPractice:8};assert.equal(remainingPurchaseLabel(practice),'8 Pratik değerlendirmesi');});

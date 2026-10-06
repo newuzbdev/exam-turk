@@ -4,8 +4,8 @@ import { LEGACY_STUDENT_ROOTS } from "./student-route-paths";
 import { createBrowserRouter, Navigate } from "react-router";
 import RequireStudentAuth from "@/components/auth/require-student-auth";
 import { useAuth } from "@/contexts/AuthContext";
-import { lazy } from "react";
-import { STUDENT_LESSONS_ENABLED } from "@/config/studentFeatures";
+import { lazy, type ReactNode } from "react";
+import { useStudentLessonsEnabled } from "@/config/studentFeatures";
 
 const Home = lazy(() => import("@/pages/home/Home"));
 const GrammarHome = lazy(() => import("@/pages/lessons/GrammarHome"));
@@ -100,6 +100,8 @@ function AppAwareFallbackRoute() {
   return <Navigate to={isAuthenticated ? "/app" : "/"} replace />;
 }
 
+function LessonsGate({children}:{children:ReactNode}){const lessons=useStudentLessonsEnabled();return lessons.pending?<p role="status">Ders erişimi kontrol ediliyor…</p>:lessons.enabled?children:<Navigate to="/app" replace/>;}
+
 export const router = createBrowserRouter([
   { path: "/lesson-editor", element: <LessonEditorPage /> },
   { path: "/login", element: <GuestOnly><Login /></GuestOnly> },
@@ -118,14 +120,10 @@ export const router = createBrowserRouter([
     element: <RequireStudentAuth />, children: [{
       path: "/app", element: <StudentWorkspaceLayout />, children: [
         { index: true, element: <StudentDashboard /> },
-        ...(STUDENT_LESSONS_ENABLED ? [
-          { path: "dersler", element: <GrammarHome basePath="/app/dersler" studentMode /> },
-          { path: "dersler/video/:previewLessonId", element: <LessonVideoPage basePath="/app/dersler" /> },
-          { path: "dersler/:level", element: <GrammarLevel basePath="/app/dersler" studentMode /> },
-          { path: "dersler/:level/:lessonSlug", element: <GrammarLesson basePath="/app/dersler" embeddedInApp /> },
-        ] : [
-          { path: "dersler/*", element: <Navigate to="/app" replace /> },
-        ]),
+        { path: "dersler", element: <LessonsGate><GrammarHome basePath="/app/dersler" studentMode /></LessonsGate> },
+        { path: "dersler/video/:previewLessonId", element: <LessonsGate><LessonVideoPage basePath="/app/dersler" /></LessonsGate> },
+        { path: "dersler/:level", element: <LessonsGate><GrammarLevel basePath="/app/dersler" studentMode /></LessonsGate> },
+        { path: "dersler/:level/:lessonSlug", element: <LessonsGate><GrammarLesson basePath="/app/dersler" embeddedInApp /></LessonsGate> },
         { path: "pratik", element: <PracticeHome basePath="/app/pratik" workspaceMode /> },
         { path: "pratik/dinleme/:id", element: <ListeningPracticeTest /> },
         { path: "pratik/yazma/:id", element: <WritingPracticeTest /> },

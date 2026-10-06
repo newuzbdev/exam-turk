@@ -7,7 +7,7 @@ import {
   Info,
   type LucideIcon,
 } from "lucide-react";
-import { STUDENT_LESSONS_ENABLED } from "@/config/studentFeatures";
+
 
 const DashboardHomeIcon = createLucideIcon("DashboardHome", [
   [
@@ -42,7 +42,7 @@ export type StudentAppNavigationItem = {
   mobileLabel?: string;
 };
 
-export const STUDENT_APP_NAVIGATION: StudentAppNavigationItem[] = [
+export const getStudentAppNavigation = (lessonsEnabled:boolean): StudentAppNavigationItem[] => [
   {
     label: "Dashboard",
     to: "/app",
@@ -52,8 +52,8 @@ export const STUDENT_APP_NAVIGATION: StudentAppNavigationItem[] = [
     label: "Dersler",
     to: "/app/dersler",
     icon: BookOpen,
-    disabled: !STUDENT_LESSONS_ENABLED,
-    badge: STUDENT_LESSONS_ENABLED ? undefined : "Yakında",
+    disabled: !lessonsEnabled,
+    badge: lessonsEnabled ? undefined : "Yakında",
   },
   {
     label: "Pratik",
@@ -88,3 +88,5 @@ export const isStudentAppNavigationActive = (
   }
   return pathname === target || pathname.startsWith(`${target}/`);
 };
+
+export const STUDENT_APP_NAVIGATION = getStudentAppNavigation(false);

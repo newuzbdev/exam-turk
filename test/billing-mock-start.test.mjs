@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {loadBilling} from './billing-test-fixture.mjs';
+const {eligibleMockPurchases}=await loadBilling();
+const r={scope:'MOCK_READING',targetId:'r'},w={scope:'MOCK_WRITING',targetId:'w'},other={scope:'MOCK_WRITING',targetId:'other'};
+const p={purchaseId:'p',status:'ACTIVE',remainingAttempts:1,snapshot:{terms:{attemptLimit:1,mockSelections:[{sections:[r,w]}]}}};
+test('pass choices cover the entire real selection, never unrelated tests or mixed selections',()=>{assert.equal(eligibleMockPurchases([p],[r,w]).length,1);assert.equal(eligibleMockPurchases([p],[r,other]).length,0);assert.equal(eligibleMockPurchases([{...p,snapshot:{terms:{attemptLimit:1,mockSelections:[{sections:[r]},{sections:[w]}]}}}],[r,w]).length,0);assert.equal(eligibleMockPurchases([p],[]).length,0);assert.equal(eligibleMockPurchases([{...p,remainingAttempts:0}],[r]).length,0);assert.equal(eligibleMockPurchases([{...p,status:'EXPIRED'}],[r]).length,0);});

@@ -2,7 +2,7 @@ import type { accessService, AccessTarget, AccessDecision, AccessSessionInput } 
 import type { OwnedAccess } from './access-link-context.ts';
 
 export type AccessEntry = OwnedAccess & { enabled: boolean; decision?: AccessDecision; ownerId?: string };
-export async function prepareAccessEntry(api: Pick<typeof accessService, 'getConfig' | 'redeemShare' | 'createSession' | 'getDecisions'>, target: AccessTarget, token: string | null, saved?: OwnedAccess | null, onRedeemed?: (value: OwnedAccess) => void, isCurrent = () => true): Promise<AccessEntry> {
+export async function prepareAccessEntry(api: Pick<typeof accessService, 'getConfig' | 'redeemShare' | 'createSession' | 'getDecisions'>, target: AccessTarget, token: string | null, saved?: OwnedAccess | null, onRedeemed?: (value: OwnedAccess) => void, isCurrent = () => true, allowMockSelection = false): Promise<AccessEntry> {
   const config = await api.getConfig();
   if (!config.enabled) {
     if (token !== null || saved?.redemptionId) throw new Error('ACCESS_SHARE_FEATURE_DISABLED');
@@ -24,7 +24,7 @@ export async function prepareAccessEntry(api: Pick<typeof accessService, 'getCon
     // Read-only live policy validates redemption ownership/window and actual package coverage.
     const [decision] = await api.getDecisions([target], undefined, shareRedemptionId);
     if (shareRedemptionId && (!decision?.shareTarget || decision.shareTarget.scope !== actual.scope || decision.shareTarget.targetId !== actual.targetId)) throw new Error('ACCESS_SHARE_CONTEXT_INVALID');
-    if (!decision?.canOpen) throw new Error(shareRedemptionId ? 'ACCESS_SHARE_CONTEXT_INVALID' : 'ACCESS_ENTRY_DENIED');
+    if (!decision?.canOpen && !(decision && !shareRedemptionId && allowMockSelection)) throw new Error(shareRedemptionId ? 'ACCESS_SHARE_CONTEXT_INVALID' : 'ACCESS_ENTRY_DENIED');
     return { enabled: true, target: actual, redemptionId: shareRedemptionId, endsAt: decision.endsAt || redemption?.endsAt, decision };
   }
   const input: AccessSessionInput = shareRedemptionId ? { shareRedemptionId } : {};

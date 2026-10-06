@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {useAuth} from '@/contexts/AuthContext';
+import { useMutation, useQuery, useQueryClient, type UseQueryOptions } from "@tanstack/react-query";
 import axiosPrivate from "@/config/api";
 import type {
   LearnContinueLearning,
@@ -28,6 +29,8 @@ interface ApiEnvelope<T> {
 }
 
 const LEARN_REQUEST_TIMEOUT_MS = 12_000;
+function useOwnedLearnQuery<T>(options:UseQueryOptions<T>){const {user}=useAuth();return useQuery({...options,queryKey:[...options.queryKey,'owner',user?.id],enabled:!!user?.id&&options.enabled!==false,staleTime:0,refetchOnMount:'always',refetchOnWindowFocus:'always'});}
+
 
 const unwrapResponse = <T,>(payload: T | ApiEnvelope<T>): T => {
   if (
@@ -84,11 +87,12 @@ const mergeProgress = (
 
 const useProgressMutationEffects = () => {
   const queryClient = useQueryClient();
+  const {user}=useAuth();
 
   return (progress?: LearnProgress) => {
     if (progress) {
       queryClient.setQueryData<LearnProgress[]>(
-        learnQueryKeys.myProgress,
+        [...learnQueryKeys.myProgress,'owner',user?.id],
         (current) => mergeProgress(current, progress),
       );
     }
@@ -102,7 +106,7 @@ const useProgressMutationEffects = () => {
 };
 
 export const usePublicLearnCourses = () =>
-  useQuery({
+  useOwnedLearnQuery({
     queryKey: learnQueryKeys.courses,
     queryFn: async () => {
       const response = await axiosPrivate.get<
@@ -117,7 +121,7 @@ export const usePublicLearnCourses = () =>
   });
 
 export const usePublicLearnCourse = (slug?: string) =>
-  useQuery({
+  useOwnedLearnQuery({
     queryKey: learnQueryKeys.course(slug ?? ""),
     queryFn: async () => {
       const response = await axiosPrivate.get<
@@ -133,7 +137,7 @@ export const usePublicLearnLesson = (
   courseSlug?: string,
   lessonSlug?: string,
 ) =>
-  useQuery({
+  useOwnedLearnQuery({
     queryKey: learnQueryKeys.lesson(courseSlug ?? "", lessonSlug ?? ""),
     queryFn: async () => {
       const response = await axiosPrivate.get<
@@ -148,7 +152,7 @@ export const usePublicLearnLesson = (
   });
 
 export const useMyLearnProgress = (enabled = true) =>
-  useQuery({
+  useOwnedLearnQuery({
     queryKey: learnQueryKeys.myProgress,
     queryFn: async () => {
       const response = await axiosPrivate.get<
@@ -161,7 +165,7 @@ export const useMyLearnProgress = (enabled = true) =>
   });
 
 export const useContinueLearning = (enabled = true) =>
-  useQuery({
+  useOwnedLearnQuery({
     queryKey: learnQueryKeys.continueLearning,
     queryFn: async () => {
       const response = await axiosPrivate.get<
@@ -174,7 +178,7 @@ export const useContinueLearning = (enabled = true) =>
   });
 
 export const useMyLearnSummary = (enabled = true) =>
-  useQuery({
+  useOwnedLearnQuery({
     queryKey: learnQueryKeys.mySummary,
     queryFn: async () => {
       const response = await axiosPrivate.get<
@@ -187,7 +191,7 @@ export const useMyLearnSummary = (enabled = true) =>
   });
 
 export const useMyLearnWeaknesses = (enabled = true) =>
-  useQuery({
+  useOwnedLearnQuery({
     queryKey: learnQueryKeys.myWeaknesses,
     queryFn: async () => {
       const response = await axiosPrivate.get<
@@ -200,7 +204,7 @@ export const useMyLearnWeaknesses = (enabled = true) =>
   });
 
 export const useMyLearnRecommendations = (enabled = true) =>
-  useQuery({
+  useOwnedLearnQuery({
     queryKey: learnQueryKeys.myRecommendations,
     queryFn: async () => {
       const response = await axiosPrivate.get<
@@ -289,7 +293,7 @@ export const useAskLearnAiTeacher = () =>
   });
 
 export const useLearnAiConversations = (lessonId?: string, enabled = true) =>
-  useQuery({
+  useOwnedLearnQuery({
     queryKey: learnQueryKeys.aiConversations(lessonId ?? ""),
     queryFn: async () => {
       const response = await axiosPrivate.get<
@@ -309,7 +313,7 @@ export const useLearnAiConversationMessages = (
   conversationId?: string | null,
   enabled = true,
 ) =>
-  useQuery({
+  useOwnedLearnQuery({
     queryKey: learnQueryKeys.aiConversationMessages(conversationId ?? ""),
     queryFn: async () => {
       const response = await axiosPrivate.get<

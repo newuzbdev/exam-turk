@@ -43,6 +43,7 @@ const api={
  continueMockPaid:async(overallTestId,input)=>{continuations.push({overallTestId,input});return{contextId:'effective-context',decision:open};},
 };
 const mocks={
+ '@/hooks/use-billing-purchases':{useBillingPurchases:()=>({data:[],isPending:false})},
  '@/contexts/AuthContext':{useAuth:()=>({user:{id:owner},isAuthenticated:true})},
  '@/services/access.service':{accessService:api},
  '@/services/writingPractice.service':{default:{
@@ -332,4 +333,9 @@ for (const savedStatus of ['NONE','FAILED','MISSING','PENDING','COMPLETED','UNKN
   }
   if(savedStatus!=='NONE')assert.ok(statusCalls.includes(oldRun.runId));
  }finally{await view.unmount();}
+});
+
+test('a counted purchased Writing Mock can start before its attempt AI allowance is allocated',()=>{
+ const target={scope:'MOCK_WRITING',targetId:'purchased'};
+ assert.equal(getContentStartIssue([target],[{...open,target,sourceKind:'PURCHASED_PACKAGE',remaining:{},remainingAttempts:1}]),null);
 });

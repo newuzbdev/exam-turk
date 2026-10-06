@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { ArrowUpRight, Info, X } from "lucide-react";
-import { STUDENT_LESSONS_ENABLED } from "@/config/studentFeatures";
+import { useStudentLessonsEnabled } from "@/config/studentFeatures";
 import { useDashboardCalendar } from "./dashboard-calendar-api";
 import "./dashboard-study-calendar.css";
 
@@ -23,6 +23,7 @@ export function DashboardStudyCalendar({ today, latestTestHref }: { today: strin
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
   const [focusedDate, setFocusedDate] = useState<string>();
   const [selectedDate, setSelectedDate] = useState<string>();
+  const lessons=useStudentLessonsEnabled();
   const days = useMemo(() => {
     if (!data) return [];
     const records = new Map(data.days.map((day) => [day.date, day.activities]));
@@ -83,7 +84,7 @@ export function DashboardStudyCalendar({ today, latestTestHref }: { today: strin
           className="student-home__study-links"
           aria-label="Çalışmaya devam edin"
         >
-          {STUDENT_LESSONS_ENABLED ? (
+          {lessons.enabled ? (
             <NavLink to="/app/dersler">
               Dersler <ArrowUpRight size={13} />
             </NavLink>

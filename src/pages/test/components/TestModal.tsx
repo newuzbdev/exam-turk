@@ -1,3 +1,5 @@
+import {useBillingPurchases} from '@/hooks/use-billing-purchases';
+import {eligibleMockPurchases} from '@/services/billing-view';
 import { readAccessOwner } from '@/hooks/use-access-link';
 import { useContentAccessDecisions } from '@/hooks/use-content-access';
 import { getContentStartIssue } from '../subscription-preflight';
@@ -112,6 +114,8 @@ const TestModal = ({
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [isCreditModalOpen, setIsCreditModalOpen] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
+  const purchases=useBillingPurchases();
+  const [paidPurchaseId,setPaidPurchaseId]=useState('');
   const [entryMode, setEntryMode] = useState<'AUTO' | 'PAID'>('AUTO');
   const [paidOffer, setPaidOffer] = useState(false);
   const [subscriptionBlockReason, setSubscriptionBlockReason] = useState<string | null>(null);
@@ -150,6 +154,7 @@ const TestModal = ({
         setSelectedSkills([]);
       }
       setShowConfirmationModal(false);
+      setPaidPurchaseId('');
       setIsStarting(false);
       setSubscriptionBlockReason(null);
       setMembershipRequiredOpen(false);
@@ -266,9 +271,21 @@ const TestModal = ({
   }, [readingTests, listeningTests, writingTests, speakingTests]);
   const sectionAccess = useContentAccessDecisions(['reading','listening','writing','speaking'].map(targetForSkill).filter((target): target is AccessTarget => Boolean(target)), accessEntry?.redemptionId);
 
+  const eligiblePasses=eligibleMockPurchases(purchases.data??[],selectedSkills.map(targetForSkill).filter((target):target is AccessTarget=>!!target));
+  const purchaseChoices=eligiblePasses.filter(()=>!accessEntry?.redemptionId);
+  const selectedPurchaseId=purchaseChoices.some(p=>p.purchaseId===paidPurchaseId)?paidPurchaseId:undefined;
+  const purchasePicker=purchaseChoices.length>0?<label className="mb-4 block text-sm font-medium">Kullanılacak Hak<select aria-label="Kullanılacak Hak" className="mt-2 block w-full rounded-md border p-2" value={selectedPurchaseId??''} onChange={e=>setPaidPurchaseId(e.target.value)}><option value="">Mevcut erişimim</option>{purchaseChoices.map(p=><option key={p.purchaseId} value={p.purchaseId}>{p.snapshot.terms.name} · {p.remainingAttempts} çözme hakkı</option>)}</select></label>:null;
+
   const checkSubscriptionCapacity = useCallback(async () => {
     if (!accessEntry?.enabled && !isSubscriptionBillingEnabled) return true;
     try {
+      if(selectedPurchaseId){
+        if(!user?.id||readAccessOwner()!==user.id)throw new Error('Account changed');
+        const targets=selectedSkills.map(targetForSkill).filter((target):target is AccessTarget=>!!target);
+        const decisions=await accessService.getDecisions(targets,'PAID',undefined,selectedPurchaseId);
+        if(readAccessOwner()!==user.id||getContentStartIssue(targets,decisions))throw new Error('Purchased access unavailable');
+        setSubscriptionBlockReason(null);return true;
+      }
       if (accessEntry?.enabled) {
         if (!user?.id || accessEntry.ownerId !== user.id) throw new Error('Account changed');
         const targets = selectedSkills.map(targetForSkill).filter((target): target is AccessTarget => Boolean(target));
@@ -311,7 +328,7 @@ const TestModal = ({
       toast.error(reason);
       return false;
     }
-  }, [selectedSkills, accessEntry, targetForSkill, user?.id, entryMode]);
+  }, [selectedSkills, accessEntry, targetForSkill, user?.id, entryMode,selectedPurchaseId]);
 
   const handleCta = useCallback(async () => {
     if (selectedSkills.length === 0) {
@@ -415,13 +432,13 @@ const TestModal = ({
   // the section picker, then open the existing warning without an extra click.
   useEffect(() => {
     if (
-      !open || !singleSkill || standaloneEntryStarted.current ||
+      !open || !singleSkill || standaloneEntryStarted.current || purchases.isPending || purchaseChoices.length>0 ||
       selectedSkills.length !== 1 || selectedSkills[0] !== singleSkill
     ) return;
 
     standaloneEntryStarted.current = true;
     void handleCta();
-  }, [open, singleSkill, selectedSkills, handleCta]);
+  }, [open, singleSkill, selectedSkills, handleCta,purchases.isPending,purchaseChoices.length]);
 
   const handleContinueSession = () => {
     if (!recoverableSessionPath) return;
@@ -478,7 +495,7 @@ const TestModal = ({
     }
     setIsStarting(true);
     let accessContextId: string | undefined;
-    if (accessEntry?.enabled) {
+    if (accessEntry?.enabled && !selectedPurchaseId) {
       if (!user?.id || accessEntry.ownerId !== user.id) {
         setIsStarting(false);
         setSubscriptionBlockReason('Hesabınız değişti. Bağlantıyı yeniden açın.');
@@ -575,7 +592,7 @@ const TestModal = ({
     // Show loading state
     // toast.info("Starting test session...");
 
-    const startRes = await overallTestService.start({ readingId, listeningId, writingId, speakingId, ...(accessContextId ? { accessContextId } : {}) });
+    const startRes = await overallTestService.start({ readingId, listeningId, writingId, speakingId, ...(accessContextId ? { accessContextId } : {}),...(selectedPurchaseId?{paidPurchaseId:selectedPurchaseId}:{}) });
     if (!startRes) {
       setIsStarting(false);
       return;
@@ -739,7 +756,7 @@ const TestModal = ({
 
   return (
     <>
-      {!showConfirmationModal && !singleSkill && (
+      {!showConfirmationModal && (!singleSkill||purchaseChoices.length>0) && (
       <div 
         className="test-section-overlay"
         onClick={() => onOpenChange(false)}
@@ -768,12 +785,14 @@ const TestModal = ({
           </div>
 
           <div className="test-section-body">
+            {purchasePicker}
             <div className="test-section-grid" role="group" aria-label="Sınav bölümleri">
               {visibleSkillsData.map((skill) => {
                 const isSelected = selectedSkills.includes(skill.id);
                 const target = targetForSkill(skill.id);
                 const decision = target ? sectionAccess.decisionFor(target) : undefined;
-                const contentLocked = accessEntry?.enabled && !decision?.canOpen;
+                const ownedForSkill=target&&eligibleMockPurchases(purchases.data??[],[target]).length>0;
+                const contentLocked = accessEntry?.enabled && !decision?.canOpen && !ownedForSkill;
                 const isAvailable = skill.testCount !== "0 test";
                 const isLocked = Boolean(singleSkill && skill.id === singleSkill && isAvailable);
                 const Icon = skill.icon;
@@ -915,6 +934,7 @@ const TestModal = ({
 
       {/* Confirmation Modal */}
       <TestConfirmationModal
+        sourcePicker={purchasePicker}
         open={showConfirmationModal}
         onOpenChange={setShowConfirmationModal}
         onConfirm={handleConfirmStart}

@@ -1,3 +1,4 @@
+import {useAuth} from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import axiosPrivate from '@/config/api';
 import type { LearnExerciseSubmissionResult } from '../learn-types';
@@ -17,13 +18,13 @@ export const useWorkbookLessons = () => useQuery({
   }, retry: 1,
 });
 
-export const useWorkbookLesson = (idOrSlug?: string) => useQuery({
-  queryKey: workbookQueryKeys.lesson(idOrSlug ?? ''),
+export const useWorkbookLesson = (idOrSlug?: string) => {const {user}=useAuth();return useQuery({
+  queryKey: [...workbookQueryKeys.lesson(idOrSlug ?? ''),'owner',user?.id],
   queryFn: async () => {
     const response = await axiosPrivate.get<ApiEnvelope<WorkbookDocument> | WorkbookDocument>(`/api/learn/workbook-lessons/${encodeURIComponent(idOrSlug ?? '')}`, { timeout: REQUEST_TIMEOUT_MS });
     return unwrapWorkbookPayload(response.data);
-  }, enabled: Boolean(idOrSlug), retry: 1,
-});
+  }, enabled: Boolean(idOrSlug&&user?.id), retry: 1,staleTime:0,refetchOnMount:'always',refetchOnWindowFocus:'always',
+});};
 
 export async function submitWorkbookExercise(submission: StudentExerciseSubmission): Promise<ExerciseSubmitResult> {
   const response = await axiosPrivate.post<ApiEnvelope<LearnExerciseSubmissionResult> | LearnExerciseSubmissionResult>(`/api/learn/exercises/${encodeURIComponent(submission.exerciseId)}/submit`, { answers: submission.answers });

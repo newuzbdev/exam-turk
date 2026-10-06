@@ -7,12 +7,14 @@ export type AccessMockSection = 'READING' | 'LISTENING' | 'WRITING' | 'SPEAKING'
 export type AccessDecision = {
   canOpen: boolean;
   isPublicFree: boolean;
-  sourceKind: 'PAID' | 'ADMIN' | 'PUBLIC' | 'SHARE' | 'LEGACY_FREE' | null;
+  sourceKind: 'PAID' | 'ADMIN' | 'PUBLIC' | 'SHARE' | 'LEGACY_FREE' | 'PURCHASED_PACKAGE' | null;
+  purchaseId?:string;
+  remainingAttempts?:number;
   endsAt: string | null;
   remaining: Partial<Record<'MOCK_WRITING' | 'MOCK_SPEAKING' | 'PRACTICE_AI', number>>;
   blockedReason: 'MEMBERSHIP_REQUIRED' | 'EXPIRED' | 'AI_LIMIT' | null;
 };
-export type AccessSessionInput = { mode?: AccessMode; shareRedemptionId?: string; selectedTargets?: AccessTarget[] };
+export type AccessSessionInput = { mode?: AccessMode; shareRedemptionId?: string; selectedTargets?: AccessTarget[]; paidPurchaseId?:string };
 export type AccessSession = { contextId: string; decision: AccessDecision };
 export type ShareRedemption = { redemptionId: string; target: AccessTarget; endsAt: string };
 export type AccessDecisionItem = AccessDecision & { target: AccessTarget; shareTarget?: AccessTarget; availableSkills?: string[]; publicFreeSkills?: string[] };
@@ -33,8 +35,8 @@ export const accessService = {
       })
       .catch(error => { configRequest = undefined; throw error; });
   },
-  async getDecisions(targets: AccessTarget[], mode?: AccessMode, shareRedemptionId?: string): Promise<AccessDecisionItem[]> {
-    const response = await axiosPrivate.post('/api/access/decisions', { targets, ...(mode ? { mode } : {}), ...(shareRedemptionId ? { shareRedemptionId } : {}) });
+  async getDecisions(targets: AccessTarget[], mode?: AccessMode, shareRedemptionId?: string, paidPurchaseId?:string): Promise<AccessDecisionItem[]> {
+    const response = await axiosPrivate.post('/api/access/decisions', { targets, ...(paidPurchaseId ? {paidPurchaseId}:{}), ...(mode ? { mode } : {}), ...(shareRedemptionId ? { shareRedemptionId } : {}) });
     return unwrap<AccessDecisionItem[]>(response.data);
   },
   async getCatalogSummary(): Promise<{ asOf: string; groups: CatalogGroup[] }> {

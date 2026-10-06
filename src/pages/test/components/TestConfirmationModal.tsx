@@ -1,11 +1,12 @@
 import { BellOff, Check, Clock3, Headphones, Wifi, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 
 import "./TestModal.css";
 import "./TestConfirmationModal.css";
 
 interface TestConfirmationModalProps {
+  sourcePicker?:ReactNode;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
@@ -46,6 +47,7 @@ const TestConfirmationModal = ({
   replacesActiveSession = false,
   restartActiveSession = false,
   isStarting = false,
+  sourcePicker,
 }: TestConfirmationModalProps) => {
   const [isAgreed, setIsAgreed] = useState(false);
 
@@ -91,6 +93,7 @@ const TestConfirmationModal = ({
         </div>
 
         <div className="test-section-body test-confirmation-body">
+          {sourcePicker}
           {replacesActiveSession && (
             <div className="test-confirmation-session-warning">
               <h3>

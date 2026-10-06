@@ -1,2 +1,2 @@
-// Ders içeriği hazır olduğunda öğrenci erişimini buradan yeniden açın.
-export const STUDENT_LESSONS_ENABLED: boolean = false;
+import {useQuery} from '@tanstack/react-query';import {billingService} from '@/services/billing.service';import {lessonsAvailable} from '@/services/billing-view';import {useBillingPurchases} from '@/hooks/use-billing-purchases';
+export function useStudentLessonsEnabled(){const features=useQuery({queryKey:['billing','features'],queryFn:billingService.getFeatures,retry:1,staleTime:0,refetchOnMount:'always',refetchOnWindowFocus:'always'});const owned=useBillingPurchases();return {enabled:lessonsAvailable(features.data?.lessonsVisible===true,owned.data??[]),pending:features.isPending||owned.isPending&&owned.fetchStatus==='fetching'};}

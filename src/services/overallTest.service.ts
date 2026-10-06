@@ -10,6 +10,7 @@ export type TestType = "READING" | "LISTENING" | "WRITING" | "SPEAKING";
 export type MockSubmitMode = "MANUAL" | "AUTO";
 
 export interface StartOverallRequest {
+  paidPurchaseId?:string;
   accessContextId?: string;
   readingId?: string;
   listeningId?: string;

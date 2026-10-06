@@ -10,6 +10,7 @@ catalog.readingTests.push({id:'foreign-reading',ieltsId:'package-other',status:'
 const overall={getCurrentSession:async()=>null,start:async payload=>{starts.push(payload);return null;}};
 const api={getConfig:async()=>({enabled}),getCatalogSummary:async()=>({groups:[]}),getDecisions:async targets=>{decisions.push(...targets);return targets.map(target=>({target,canOpen:true,sourceKind:'PAID',remaining:{MOCK_WRITING:10,MOCK_SPEAKING:10}}));},redeemShare:async()=>{redemptions++;throw Error('ordinary copy cannot redeem');},createSession:async(target,input)=>{contexts.push({target,input});return{contextId:'exact-context'};}};
 const {default:TestPage}=await loadOfflineComponent('src/pages/test/test.tsx',{
+ '@/hooks/use-billing-purchases':{useBillingPurchases:()=>({data:[],isPending:false})},
  '@/contexts/AuthContext':{useAuth:()=>({isAuthenticated:true,user:{id:'offline-user',coin:100},refreshUser:async()=>{}})},
  '@/services/access.service':{accessService:api},'@/config/api':{default:{get:async()=>({data:catalog})},resolveApiResourceUrl:value=>value},
  '@/services/auth.service':{authService:{getStoredTokens:()=>({})}},

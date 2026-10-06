@@ -17,6 +17,7 @@ const catalog = {
 let catalogReads = 0;
 let getStatus = async () => structuredClone(status);
 const mocks = {
+  '@/hooks/use-billing-purchases': {useBillingPurchases:()=>({data:[],isPending:false})},
   '@/services/access.service': { accessService: { getConfig: async () => ({ enabled: false }) } },
   '@/config/api': { default: { get: async () => { catalogReads++; return { data: structuredClone(catalog) }; } } },
   '@/contexts/AuthContext': { useAuth: () => ({ isAuthenticated: true }) },

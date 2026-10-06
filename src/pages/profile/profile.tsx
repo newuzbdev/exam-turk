@@ -1,3 +1,4 @@
+import PurchasedPackages from "./purchased-packages";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
@@ -521,7 +522,7 @@ export default function ProfilePage({
           <section>
             {activeSection === "profile" && (
               <div className="space-y-4">
-                {isSubscriptionBillingEnabled && <SubscriptionStatusCard />}
+                {isSubscriptionBillingEnabled && <><SubscriptionStatusCard /><PurchasedPackages /></>}
                 <Card className={panelClassName}>
                   <CardHeader>
                     <CardTitle>Profil Bilgileri</CardTitle>

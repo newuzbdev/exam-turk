@@ -4,7 +4,7 @@ import { accessService, type AccessTarget } from '@/services/access.service';
 import { clearPendingShare, INVALID_ACCESS_LINK_MESSAGE, readOwnedAccess, readPendingShareForTarget, readPendingShareRevision, removeOwnedAccess, saveOwnedAccess } from '@/utils/access-link-context';
 import { prepareAccessEntry, type AccessEntry } from '@/utils/access-link-entry';
 
-export function useAccessLink(target: AccessTarget | null) {
+export function useAccessLink(target: AccessTarget | null, allowMockSelection = false) {
   const { user, isAuthenticated } = useAuth();
   const userId = user?.id;
   const scope = target?.scope;
@@ -32,7 +32,7 @@ export function useAccessLink(target: AccessTarget | null) {
       if (!active || readAccessOwner() !== userId) throw new Error('ACCESS_ENTRY_INTERRUPTED');
       saveOwnedAccess(userId, currentTarget, value);
       if (readPendingShareForTarget(currentTarget) === token) clearPendingShare();
-    }, () => active && readAccessOwner() === userId).then(entry => {
+    }, () => active && readAccessOwner() === userId, allowMockSelection).then(entry => {
       if (!active || readAccessOwner() !== userId) return;
       if (entry.enabled) saveOwnedAccess(userId, currentTarget, entry);
       setState({ entry: { ...entry, ownerId: userId }, loading: false, error: '', invalid: false, key });
@@ -45,7 +45,7 @@ export function useAccessLink(target: AccessTarget | null) {
       setState({ entry: null, loading: false, error: invalid ? INVALID_ACCESS_LINK_MESSAGE : 'Erişiminiz şu anda doğrulanamadı. Lütfen yeniden deneyin.', invalid, key });
     });
     return () => { active = false; };
-  }, [scope, targetId, userId, isAuthenticated, key, revision, pendingRevision]);
+  }, [scope, targetId, userId, isAuthenticated, key, revision, pendingRevision, allowMockSelection]);
   return { entry: state.key === key ? state.entry : null, loading: Boolean(target) && (state.key !== key || state.loading), error: state.key === key ? state.error : '', invalid: state.key === key && state.invalid, retry: () => setRevision(value => value + 1) };
 }
 function subscribePendingShare(onChange: () => void) {

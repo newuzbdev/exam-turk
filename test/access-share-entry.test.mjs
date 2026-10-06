@@ -140,6 +140,7 @@ test('Mock direct share opens the actual returned test even when another same-sk
   let modalProps;
   const catalog={ieltsData:[{id:'package-one',title:'Paket',category:'CEFR_MOCK',createdAt:'now'}],readingTests:[],listeningTests:[],speakingTests:[{id:'speaking-child',ieltsId:'package-one'}],writingTests:[{id:'wrong-first',ieltsId:'package-one'},{id:'actual-child',ieltsId:'package-one'}]};
   const {default: TestPage}=await loadOfflineComponent('src/pages/test/test.tsx',{
+ '@/hooks/use-billing-purchases':{useBillingPurchases:()=>({data:[],isPending:false})},
     '@/contexts/AuthContext':practiceMocks['@/contexts/AuthContext'],
     '@/services/access.service':{accessService:api},
     '@/config/api':{default:{get:async()=>({data:catalog})}},
@@ -163,6 +164,7 @@ test('Mock context is created only by explicit confirmation with exact published
   sessionStorage.clear();sessionStorage.setItem('userId','offline-user');contextCalls=[];
   let starts=[];
   const {default: Modal}=await loadOfflineComponent('src/pages/test/components/TestModal.tsx',{
+    '@/hooks/use-billing-purchases':{useBillingPurchases:()=>({data:[],isPending:false})},
     '@/contexts/AuthContext':{useAuth:()=>({isAuthenticated:true,user:{id:'offline-user',coin:0},refreshUser:async()=>{}})},
     '@/services/access.service':{accessService:api},
     '@/hooks/use-student-action':{useStudentAction:()=>()=>{}},
@@ -276,6 +278,7 @@ for(const scenario of ['expired','revoked','no-entitlement','wrong-package'])tes
  if(scenario!=='no-entitlement')saveOwnedAccess('offline-user',entry,{target:actual,redemptionId:'r',endsAt:'2000-01-01T00:00:00Z'});
  const catalog={ieltsData:[{id:'package-one',title:'Paket',category:'CEFR_MOCK',createdAt:'now'}],readingTests:[],listeningTests:[],speakingTests:[],writingTests:[{id:'w',ieltsId:'package-one'}]};
  const {default:TestPage}=await loadOfflineComponent('src/pages/test/test.tsx',{
+ '@/hooks/use-billing-purchases':{useBillingPurchases:()=>({data:[],isPending:false})},
  '@/contexts/AuthContext':practiceMocks['@/contexts/AuthContext'],
  '@/services/access.service':{accessService:{getConfig:async()=>({enabled:true}),getDecisions:async()=>[{target:entry,shareTarget:actual,canOpen:false,blockedReason:scenario==='no-entitlement'?'MEMBERSHIP_REQUIRED':'EXPIRED'}]}},
  '@/config/api':{default:{get:async()=>({data:catalog})}},

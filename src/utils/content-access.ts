@@ -11,7 +11,7 @@ export function getContentStartIssue(targets: AccessTarget[], decisions: AccessD
     if (!decision?.canOpen) return decision?.blockedReason || 'MEMBERSHIP_REQUIRED';
     const bucket = target.scope === 'MOCK_WRITING' || target.scope === 'MOCK_SPEAKING' ? target.scope : null;
     // Legacy free entry does not grant AI rights. Allocation remains authoritative.
-    if (bucket && decision.sourceKind !== 'LEGACY_FREE' && (decision.remaining[bucket] ?? 0) < 1) return 'AI_LIMIT';
+    if (bucket && decision.sourceKind !== 'PURCHASED_PACKAGE' && decision.sourceKind !== 'LEGACY_FREE' && (decision.remaining[bucket] ?? 0) < 1) return 'AI_LIMIT';
   }
   return null;
 }

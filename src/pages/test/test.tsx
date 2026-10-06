@@ -1,3 +1,5 @@
+import { useBillingPurchases } from '@/hooks/use-billing-purchases';
+import { eligibleMockPurchases } from '@/services/billing-view';
 import { useContentAccessDecisions, useAccessCatalogSummary } from '@/hooks/use-content-access';
 import { isContentLocked, initialFreeGroup } from '@/utils/content-access';
 import { readDirectMockTarget } from '@/utils/access-direct-entry';
@@ -158,12 +160,19 @@ const TestPage = ({ workspaceMode = false }: { workspaceMode?: boolean }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { isAuthenticated, user } = useAuth();
+  const purchases = useBillingPurchases();
+  function ownedMockForPackage(packageId: string, exact?: AccessTarget | null) {
+    const targets = (['reading', 'listening', 'writing', 'speaking'] as const).flatMap(skill =>
+      (turkishTestData?.[`${skill}Tests`] || []).filter(t => t.ieltsId === packageId).map(t => ({ scope: `MOCK_${skill.toUpperCase()}` as AccessTarget['scope'], targetId: t.id })));
+    return targets.some(t => (!exact || t.scope === exact.scope && t.targetId === exact.targetId) && eligibleMockPurchases(purchases.data || [], [t]).length > 0);
+  }
   const requestedPackageId = workspaceMode ? searchParams.get('package') : null;
   const directSelection = useMemo(() => {
     try { return { target: workspaceMode ? readDirectMockTarget(searchParams) : null, invalid: false }; }
     catch { return { target: null, invalid: true }; }
   }, [workspaceMode, searchParams]);
-  const directAccess = useAccessLink(directSelection.invalid ? null : directSelection.target ?? (requestedPackageId ? { scope: 'MOCK_PACKAGE', targetId: requestedPackageId } : null));
+  const directAccess = useAccessLink(directSelection.invalid ? null : directSelection.target ?? (requestedPackageId ? { scope: 'MOCK_PACKAGE', targetId: requestedPackageId } : null),
+    !!requestedPackageId && ownedMockForPackage(requestedPackageId, directSelection.target));
   const [modalExactTarget, setModalExactTarget] = useState<AccessTarget | null>(null);
   const [modalAccessEntry, setModalAccessEntry] = useState<AccessEntry | null>(null);
   const modalSelectedSkills = useMemo(() => modalExactTarget ? [modalExactTarget.scope.slice(5).toLowerCase()] : initialModalSkills, [modalExactTarget, initialModalSkills]);
@@ -184,7 +193,7 @@ const TestPage = ({ workspaceMode = false }: { workspaceMode?: boolean }) => {
     const free = initialFreeGroup(summary.data.groups.filter(group => group.scope === 'MOCK_PACKAGE'), explicitTab.current);
     if (free?.category && packageTabs.some(tab => tab.value === free.category)) setSelectedPackageTab(free.category as MockPackageCategory);
   }, [summary.data]);
-  const cardLocked = (test: TurkishTest) => access.pending ? true : access.enabled ? isContentLocked(access.decisionFor({ scope: 'MOCK_PACKAGE', targetId: test.id })) : membershipLocked;
+  const cardLocked = (test: TurkishTest) => access.pending || purchases.isPending ? true : ownedMockForPackage(test.id) ? false : access.enabled ? isContentLocked(access.decisionFor({ scope: 'MOCK_PACKAGE', targetId: test.id })) : membershipLocked;
   const requiresMembership = workspaceMode && isSubscriptionBillingEnabled;
   const membershipPending = requiresMembership && isAuthenticated && membership.isPending;
   const membershipLocked = requiresMembership && !membership.data?.isActive;
@@ -323,7 +332,7 @@ const TestPage = ({ workspaceMode = false }: { workspaceMode?: boolean }) => {
 
   const handleTestModalOpen = (test: TurkishTest) => {
     setModalAccessEntry(access.enabled ? { enabled: true, target: { scope: "MOCK_PACKAGE", targetId: test.id }, ownerId: user?.id } : null);
-    if (access.pending || (!access.enabled && membershipPending)) return;
+    if (access.pending || purchases.isPending || (!access.enabled && membershipPending)) return;
     const blocked = access.decisionFor({ scope: 'MOCK_PACKAGE', targetId: test.id })?.blockedReason;
     if (cardLocked(test) && blocked !== 'AI_LIMIT' && blocked !== 'EXPIRED') {
       setMembershipRequiredOpen(true);

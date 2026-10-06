@@ -1,3 +1,4 @@
+import {useStudentLessonsEnabled} from "@/config/studentFeatures";
 import {
   useEffect,
   useLayoutEffect,
@@ -24,7 +25,7 @@ import { cn } from "@/lib/utils";
 import { useStudentOnboarding } from "@/pages/dashboard/onboarding-api";
 import {
   isStudentAppNavigationActive,
-  STUDENT_APP_NAVIGATION,
+  getStudentAppNavigation,
 } from "./student-app-navigation";
 import { StudentProfileMenu } from "./student-profile-menu";
 import { FocusTimerPanel } from "./focus-timer-panel";
@@ -235,6 +236,7 @@ function StudentAppSidebar({
   onFocusDockRef: (element: HTMLDivElement | null) => void;
   showLogoSurprise: boolean;
 }) {
+  const lessons=useStudentLessonsEnabled();
   const location = useLocation();
   const content = (
     <div className="flex h-full min-h-0 w-full flex-col">
@@ -299,7 +301,7 @@ function StudentAppSidebar({
         aria-label="Öğrenci menüsü"
       >
         <div className="space-y-1">
-          {STUDENT_APP_NAVIGATION.map((item) => {
+          {getStudentAppNavigation(lessons.enabled).map((item) => {
             const Icon = item.icon;
             const active = isStudentAppNavigationActive(
               location.pathname,
@@ -367,6 +369,7 @@ function StudentAppSidebar({
 }
 
 function StudentAppBottomNavigation() {
+  const lessons=useStudentLessonsEnabled();
   const location = useLocation();
 
   return (
@@ -379,7 +382,7 @@ function StudentAppBottomNavigation() {
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <div className="grid h-16 grid-cols-6">
-        {STUDENT_APP_NAVIGATION.map((item) => {
+        {getStudentAppNavigation(lessons.enabled).map((item) => {
           const Icon = item.icon;
           const active = isStudentAppNavigationActive(
             location.pathname,

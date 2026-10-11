@@ -39,6 +39,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: python3 deploy/test-contabo-deploy.py
+      - run: python3 deploy/test-public-seo.py deploy/nginx.conf "$RUNNER_TEMP/public-seo-tests.json"
       - run: npm run build
 
   deploy:

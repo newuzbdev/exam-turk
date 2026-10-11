@@ -17,3 +17,11 @@ Frontend/admin include the v31 branding updates; backend includes v29 history to
 
 The working development folders can contain newer unapproved changes. Treat this branch
 as the deployed source baseline, rather than replacing it with an entire local working folder.
+
+Public search routing uses `deploy/public-seo-locations.conf`, copied into the image
+at `/etc/nginx/snippets/public-seo-locations.conf`. Both image and live bound Nginx
+configs must include it in their server block. The one-time bound-config update must
+be reviewed separately; an image push never overwrites the server's protected config.
+Only the public home is included in `public/sitemap.xml`. App/login/legal pages keep
+their existing proxy-level search exclusions. Search rankings and recrawl timing are
+controlled by Google; a successful release or live test does not mean indexing is done.

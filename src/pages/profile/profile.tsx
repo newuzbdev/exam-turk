@@ -1,9 +1,7 @@
-import PurchasedPackages from "./purchased-packages";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   BookOpenCheck,
@@ -13,7 +11,6 @@ import {
   ListChecks,
   Loader2,
   ReceiptText,
-  Save,
   User,
 } from "lucide-react";
 import axiosPrivate from "@/config/api";
@@ -21,6 +18,9 @@ import { isSubscriptionBillingEnabled } from "@/config/billing";
 import { authService } from "@/services/auth.service";
 import { paymeService } from "@/services/payme.service";
 import { SubscriptionStatusCard } from "./subscription-status-card";
+import PublicResultSharingSetting from "@/components/auth/public-result-sharing-setting";
+import { ProfileDetails } from "./profile-details";
+import PurchasedPackages from "./purchased-packages";
 
 type ProfileSection = "profile" | "exams" | "transactions";
 
@@ -41,13 +41,6 @@ interface TestResult {
   speakingResultId: string | null;
   overallScore: number;
   overallCoin: number;
-}
-
-interface ProfileStatsPayload {
-  totalTests?: number;
-  highestScore?: number;
-  latestScore?: number;
-  latestTestDate?: string | null;
 }
 
 interface UnifiedTransactionRow {
@@ -135,22 +128,11 @@ export default function ProfilePage({
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
-  const [savingProfile, setSavingProfile] = useState(false);
   const [activeSection, setActiveSection] =
     useState<ProfileSection>(initialSection);
 
   const [user, setUser] = useState<any>(null);
   const [results, setResults] = useState<TestResult[]>([]);
-  const [profileStats, setProfileStats] = useState<ProfileStatsPayload | null>(null);
-
-  const [form, setForm] = useState<{ name: string; userName: string; avatarUrl: string }>({
-    name: "",
-    userName: "",
-    avatarUrl: "",
-  });
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [avatarFileName, setAvatarFileName] = useState("");
-
   const [examSortBy, setExamSortBy] = useState<"date" | "score">("date");
   const [examSortDir, setExamSortDir] = useState<"desc" | "asc">("desc");
   const [txSortBy, setTxSortBy] = useState<"date" | "amount">("date");
@@ -174,28 +156,7 @@ export default function ProfilePage({
         }
 
         setUser(userData);
-        setForm({
-          name: String(userData.name ?? userData.userName ?? ""),
-          userName: String(userData.username ?? userData.userName ?? ""),
-          avatarUrl: String(userData.avatarUrl ?? userData.avatar ?? ""),
-        });
-
-        const [statsResponse, firstPageResponse] = await Promise.all([
-          axiosPrivate.get("/api/overal-test-result/profile-stats").catch(() => null),
-          axiosPrivate.get("/api/overal-test-result/get-users?page=1&limit=50").catch(() => null),
-        ]);
-
-        const statsRaw =
-          statsResponse?.data?.data || statsResponse?.data || ({} as ProfileStatsPayload);
-        setProfileStats({
-          totalTests: Number(statsRaw.totalTests ?? 0),
-          highestScore: Number(statsRaw.highestScore ?? 0),
-          latestScore: Number(statsRaw.latestScore ?? 0),
-          latestTestDate:
-            typeof statsRaw.latestTestDate === "string" && statsRaw.latestTestDate.trim()
-              ? statsRaw.latestTestDate
-              : null,
-        });
+        const firstPageResponse = await axiosPrivate.get("/api/overal-test-result/get-users?page=1&limit=50").catch(() => null);
 
         const firstPageData = firstPageResponse?.data?.data || [];
         const total = Number(firstPageResponse?.data?.total || firstPageData.length);
@@ -328,29 +289,6 @@ export default function ProfilePage({
     [results],
   );
 
-  const totalTests = Number(profileStats?.totalTests ?? completedResults.length ?? 0);
-  const highestScore =
-    Number(profileStats?.highestScore ?? 0) > 0
-      ? wholeScore(Number(profileStats?.highestScore))
-      : completedResults.length
-        ? wholeScore(Math.max(...completedResults.map((item) => Number(item.overallScore || 0))))
-        : 0;
-
-  const latestByDate = useMemo(() => {
-    if (!completedResults.length) return null;
-    return [...completedResults].sort((a, b) => getResultTimestamp(b) - getResultTimestamp(a))[0];
-  }, [completedResults]);
-
-  const latestScore =
-    Number(profileStats?.latestScore ?? 0) > 0
-      ? wholeScore(Number(profileStats?.latestScore))
-      : wholeScore(Number(latestByDate?.overallScore || 0));
-  const latestTestDate = profileStats?.latestTestDate
-    ? formatDate(profileStats.latestTestDate)
-    : latestByDate
-      ? formatDate(latestByDate.completedAt || latestByDate.createdAt || latestByDate.startedAt)
-      : "-";
-
   const sortedExamResults = useMemo(() => {
     const list = [...completedResults];
     list.sort((a, b) => {
@@ -394,35 +332,6 @@ export default function ProfilePage({
     });
     return list;
   }, [unifiedTransactions, txSortBy, txSortDir]);
-
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const saveProfile = async () => {
-    if (!user?.id) return;
-    try {
-      setSavingProfile(true);
-      const updated = await authService.updateUser(
-        user.id,
-        {
-          name: form.name,
-          userName: form.userName,
-          avatarUrl: form.avatarUrl,
-        },
-        { avatarFile },
-      );
-      setUser((prev: any) => ({
-        ...(prev || {}),
-        ...updated,
-        username: updated.userName || updated.username || prev?.username,
-        avatarUrl: updated.avatarUrl || updated.avatar || prev?.avatarUrl,
-      }));
-      setAvatarFile(null);
-      setAvatarFileName("");
-    } catch {
-    } finally {
-      setSavingProfile(false);
-    }
-  };
 
   const toggleExamSort = (field: "date" | "score") => {
     if (examSortBy === field) {
@@ -474,16 +383,13 @@ export default function ProfilePage({
       >
         {embedded ? (
           <header className="mb-6 border-b border-[var(--tm-border-subtle)] pb-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--tm-text-tertiary)]">
-              Çalışma alanı
-            </p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[var(--tm-text-primary)]">
+            <h1 className="text-3xl font-semibold tracking-tight text-[var(--tm-text-primary)]">
               {initialSection === "exams" ? "Sınav sonuçları" : "Profil"}
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--tm-text-secondary)]">
               {initialSection === "exams"
                 ? "Tamamladığınız sınavları ve puanlarınızı burada inceleyin."
-                : "Hesap bilgilerinizi ve sınav özetinizi tek yerden yönetin."}
+                : "Hesap bilgilerinizi buradan düzenleyin."}
             </p>
           </header>
         ) : null}
@@ -522,101 +428,10 @@ export default function ProfilePage({
           <section>
             {activeSection === "profile" && (
               <div className="space-y-4">
+                {user ? <ProfileDetails key={`profile-${user.id}`} user={user} className={panelClassName}
+                  onSaved={(updated) => setUser((previous: any) => ({ ...previous, ...updated }))} /> : null}
                 {isSubscriptionBillingEnabled && <><SubscriptionStatusCard /><PurchasedPackages /></>}
-                <Card className={panelClassName}>
-                  <CardHeader>
-                    <CardTitle>Profil Bilgileri</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-5">
-                    <div className="max-w-xl space-y-4">
-                      <div>
-                        <label className="mb-1.5 block text-sm font-medium text-gray-700">Kullanıcı Adı</label>
-                        <Input
-                          value={form.userName}
-                          onChange={(e) => setForm((prev) => ({ ...prev, userName: e.target.value }))}
-                          placeholder="Kullanıcı Adı"
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1.5 block text-sm font-medium text-gray-700">Profil Resmi</label>
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0] || null;
-                            setAvatarFile(file);
-                            setAvatarFileName(file?.name || "");
-                          }}
-                        />
-                        <div className="flex items-center gap-3">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => fileInputRef.current?.click()}
-                          >
-                            Dosya Seç
-                          </Button>
-                          {avatarFileName ? (
-                            <span className="text-sm text-gray-600">{avatarFileName}</span>
-                          ) : null}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end">
-                      <Button
-                        type="button"
-                        className="bg-red-600 text-white hover:bg-red-700"
-                        disabled={savingProfile}
-                        onClick={saveProfile}
-                      >
-                        {savingProfile ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Kaydediliyor
-                          </>
-                        ) : (
-                          <>
-                            <Save className="mr-2 h-4 w-4" />
-                            Kaydet
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className={panelClassName}>
-                  <CardHeader>
-                    <CardTitle>İstatistikler</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
-                        <p className="text-xs text-gray-500">Toplam Test</p>
-                        <p className="mt-1 text-lg font-semibold text-gray-900">{totalTests}</p>
-                      </div>
-                      <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
-                        <p className="text-xs text-gray-500">Katılım Tarihi</p>
-                        <p className="mt-1 text-lg font-semibold text-gray-900">{latestTestDate}</p>
-                      </div>
-                      <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
-                        <p className="text-xs text-gray-500">En Yüksek Puan</p>
-                        <p className="mt-1 text-lg font-semibold text-gray-900">
-                          {highestScore > 0 ? `${highestScore} / ${getCefrLevel(highestScore)}` : "-"}
-                        </p>
-                      </div>
-                      <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
-                        <p className="text-xs text-gray-500">En Son Puan</p>
-                        <p className="mt-1 text-lg font-semibold text-gray-900">
-                          {latestScore > 0 ? `${latestScore} / ${getCefrLevel(latestScore)}` : "-"}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <PublicResultSharingSetting key={user?.id} />
               </div>
             )}
 

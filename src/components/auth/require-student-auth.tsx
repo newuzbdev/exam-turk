@@ -1,3 +1,5 @@
+import { hasAdultDeclaration } from "@/utils/studentAgeEligibility";
+import StudentAgeDeclaration from "./student-age-declaration";
 import { Navigate, Outlet, useLocation } from "react-router";
 import { Loader2 } from "lucide-react";
 
@@ -7,7 +9,7 @@ import { captureAccessLink } from '@/utils/access-link-context';
 export default function RequireStudentAuth() {
   const location = useLocation();
   const { safeReturnTo } = captureAccessLink(location);
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   if (new URLSearchParams(location.search).has('share')) return <Navigate to={safeReturnTo} replace state={location.state} />;
 
   if (isLoading) {
@@ -32,5 +34,6 @@ export default function RequireStudentAuth() {
     );
   }
 
+  if (!hasAdultDeclaration(user)) return <StudentAgeDeclaration />;
   return <Outlet />;
 }

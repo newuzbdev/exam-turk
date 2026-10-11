@@ -15,11 +15,12 @@ export default function MembershipRequiredDialog({
   onOpenChange,
   title = "Abonelik gerekli",
   description = "Bu çalışmaya başlamak için önce abone olmanız gerekiyor.",
+  actionLabel = "Abone Ol",
   catalogPath, onContinuePaid, busy = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  title?: string; description?: string; catalogPath?: string; onContinuePaid?: () => void; busy?: boolean;
+  title?: string; description?: string; actionLabel?: string; catalogPath?: string; onContinuePaid?: () => void; busy?: boolean;
 }) {
   const navigate = useNavigate();
 
@@ -51,7 +52,7 @@ export default function MembershipRequiredDialog({
               navigate("/app/fiyatlar#fiyatlandirma");
             }}
           >
-            Abone Ol
+            {actionLabel}
           </Button>
           <Button
             variant="outline"

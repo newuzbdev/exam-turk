@@ -7,6 +7,7 @@ import {
   type ReactNode,
   type TouchEvent as ReactTouchEvent,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -50,6 +51,10 @@ import ReadingQuestionNumber from "@/components/reading-test/ui/ReadingQuestionN
 import ReadingSplitHandle from "@/components/reading-test/ui/ReadingSplitHandle";
 import NotesPanel from "@/components/reading-test/NotesPanel";
 import {
+  splitPracticeHighlights,
+  type PracticeHighlight,
+} from "./reading-practice-highlights";
+import {
   ReadingNotesProvider,
   useReadingNotes,
 } from "@/contexts/ReadingNotesContext";
@@ -88,6 +93,7 @@ import {
   wordOccurrenceAt,
 } from "./reading-practice-dictionary";
 import {
+  getReadingNoteEditorPosition,
   getReadingSelectionEndRect,
   getReadingSelectionToolbarPosition,
 } from "@/lib/reading-selection-toolbar-position";
@@ -925,7 +931,8 @@ function ToolbarIconButton({
 }
 
 function ReadingPracticeTestContent() {
-  const { addNote } = useReadingNotes();
+  const { notes, addNote, updateNote, deleteNote } = useReadingNotes();
+  const activeNoteIds = new Set(notes.map((note) => note.id));
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const navigate = useNavigate();
@@ -993,12 +1000,21 @@ function ReadingPracticeTestContent() {
   const [selectionNoteEditor, setSelectionNoteEditor] = useState<{
     x: number;
     y: number;
+    top: number;
+    boundaryLeft?: number;
+    boundaryRight?: number;
     text: string;
     paragraphLabel: string;
     note: string;
+    noteId?: string;
+  } | null>(null);
+  const noteEditorRef = useRef<HTMLDivElement>(null);
+  const [noteEditorPosition, setNoteEditorPosition] = useState<{
+    left: number;
+    top: number;
   } | null>(null);
   const [manualHighlights, setManualHighlights] = useState<
-    Record<string, string[]>
+    Record<string, PracticeHighlight[]>
   >({});
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [focusedPresentation, setFocusedPresentation] = useState(true);
@@ -1026,6 +1042,49 @@ function ReadingPracticeTestContent() {
           boundaryRight: selectionMenu.boundaryRight,
         })
       : undefined;
+  useLayoutEffect(() => {
+    if (!selectionNoteEditor) {
+      setNoteEditorPosition(null);
+      return;
+    }
+    const editor = noteEditorRef.current;
+    if (!editor) return;
+    const paragraph = Array.from(
+      document.querySelectorAll<HTMLElement>("[data-paragraph-label]"),
+    ).find(
+      (element) =>
+        element.dataset.paragraphLabel === selectionNoteEditor.paragraphLabel,
+    );
+    const positionEditor = () => {
+      const editorRect = editor.getBoundingClientRect();
+      const boundaryRect = paragraph?.getBoundingClientRect();
+      const position = getReadingNoteEditorPosition({
+        anchorX: selectionNoteEditor.x,
+        selectionTop: selectionNoteEditor.top,
+        selectionBottom: selectionNoteEditor.y,
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+        editorWidth: editorRect.width,
+        editorHeight: editorRect.height,
+        boundaryLeft: boundaryRect?.left ?? selectionNoteEditor.boundaryLeft,
+        boundaryRight: boundaryRect?.right ?? selectionNoteEditor.boundaryRight,
+      });
+      setNoteEditorPosition((current) =>
+        current?.left === position.left && current?.top === position.top
+          ? current
+          : position,
+      );
+    };
+    positionEditor();
+    window.addEventListener("resize", positionEditor);
+    const observer = new ResizeObserver(positionEditor);
+    observer.observe(editor);
+    if (paragraph) observer.observe(paragraph);
+    return () => {
+      window.removeEventListener("resize", positionEditor);
+      observer.disconnect();
+    };
+  }, [selectionNoteEditor]);
   const isSectionPractice =
     passage?.practiceType === "SECTION" && Boolean(passage.sectionNumber);
   const sectionNumber = isSectionPractice
@@ -2295,36 +2354,34 @@ function ReadingPracticeTestContent() {
   ): ReactNode[] => {
     const snippets = manualHighlights[paragraphLabel] || [];
     if (!snippets.length) return nodes;
-    return snippets.reduce<ReactNode[]>(
-      (currentNodes, snippet, snippetIndex) => {
-        const output: ReactNode[] = [];
-        currentNodes.forEach((node, nodeIndex) => {
-          if (typeof node !== "string") {
-            output.push(node);
-            return;
-          }
-          const matchIndex = node
-            .toLocaleLowerCase("tr")
-            .indexOf(snippet.toLocaleLowerCase("tr"));
-          if (matchIndex < 0) {
-            output.push(node);
-            return;
-          }
-          output.push(node.slice(0, matchIndex));
-          output.push(
-            <mark
-              key={`${paragraphLabel}-${snippetIndex}-${nodeIndex}`}
-              className="rounded-[2px] bg-[#ffd86a] px-[1px] text-inherit"
-            >
-              {node.slice(matchIndex, matchIndex + snippet.length)}
-            </mark>,
-          );
-          output.push(node.slice(matchIndex + snippet.length));
-        });
-        return output;
-      },
-      nodes,
-    );
+    return nodes.flatMap<ReactNode>((node, nodeIndex) => {
+      // Guide spans keep their green background; saved notes remain distinct inside them.
+      if (
+        isValidElement<{ children?: ReactNode; className?: string }>(node) &&
+        node.type === "span" && node.props.className === "bg-[#dff2c5]"
+      ) {
+        const children = node.props.children;
+        return [cloneElement(
+          node,
+          undefined,
+          ...applyManualHighlights(Array.isArray(children) ? children : [children], paragraphLabel),
+        )];
+      }
+      if (typeof node !== "string") return [node];
+      return splitPracticeHighlights(node, snippets, activeNoteIds).map(
+        (segment, segmentIndex) => segment.kind === "plain" ? segment.text : (
+          <mark
+            key={`${paragraphLabel}-${nodeIndex}-${segmentIndex}`}
+            className={`rounded-[3px] px-0.5 text-inherit ${segment.kind === "note"
+              ? "bg-[#edf3f7] underline decoration-[#8091a2] decoration-dashed decoration-1 underline-offset-[3px]"
+              : "bg-[#fff0a8]"}`}
+            title={segment.noteId ? notes.find((note) => note.id === segment.noteId)?.text : undefined}
+          >
+            {segment.text}
+          </mark>
+        ),
+      );
+    });
   };
 
   const applyDictionaryHighlights = (
@@ -2431,16 +2488,17 @@ function ReadingPracticeTestContent() {
     return output;
   };
 
-  const appendManualHighlight = (paragraphLabel: string, text: string) => {
-    setManualHighlights((current) => ({
-      ...current,
-      [paragraphLabel]: Array.from(
-        new Set([
-          ...(current[paragraphLabel] || []),
-          text,
-        ]),
-      ),
-    }));
+  const appendManualHighlight = (paragraphLabel: string, text: string, noteId?: string) => {
+    setManualHighlights((current) => {
+      const items = current[paragraphLabel] || [];
+      const existing = items.find((item) => item.text === text);
+      return {
+        ...current,
+        [paragraphLabel]: existing
+          ? items.map((item) => item === existing && noteId ? { ...item, noteId } : item)
+          : [...items, { text, ...(noteId ? { noteId } : {}) }],
+      };
+    });
   };
 
   const addManualHighlight = () => {
@@ -2452,21 +2510,17 @@ function ReadingPracticeTestContent() {
 
   const clearManualHighlight = () => {
     if (!selectionMenu) return;
+    const overlapsSelection = (item: PracticeHighlight) =>
+      item.text.toLocaleLowerCase("tr").includes(selectionMenu.text.toLocaleLowerCase("tr")) ||
+      selectionMenu.text.toLocaleLowerCase("tr").includes(item.text.toLocaleLowerCase("tr"));
+    (manualHighlights[selectionMenu.paragraphLabel] || [])
+      .filter(overlapsSelection)
+      .forEach((item) => { if (item.noteId) deleteNote(item.noteId); });
     setManualHighlights((current) => ({
       ...current,
       [selectionMenu.paragraphLabel]: (
         current[selectionMenu.paragraphLabel] || []
-      ).filter(
-        (item) =>
-          !(
-            item
-              .toLocaleLowerCase("tr")
-              .includes(selectionMenu.text.toLocaleLowerCase("tr")) ||
-            selectionMenu.text
-              .toLocaleLowerCase("tr")
-              .includes(item.toLocaleLowerCase("tr"))
-          ),
-      ),
+      ).filter((item) => !overlapsSelection(item)),
     }));
     window.getSelection()?.removeAllRanges();
     setSelectionMenu(null);
@@ -2474,9 +2528,14 @@ function ReadingPracticeTestContent() {
 
   const openSelectionNoteEditor = () => {
     if (!selectionMenu) return;
+    const highlight = (manualHighlights[selectionMenu.paragraphLabel] || []).find(
+      (item) => item.text === selectionMenu.text && item.noteId && activeNoteIds.has(item.noteId),
+    );
+    const note = notes.find((item) => item.id === highlight?.noteId);
     setSelectionNoteEditor({
       ...selectionMenu,
-      note: "",
+      note: note?.text || "",
+      noteId: note?.id,
     });
     setSelectionMenu(null);
     window.getSelection()?.removeAllRanges();
@@ -2487,16 +2546,23 @@ function ReadingPracticeTestContent() {
     const noteText = selectionNoteEditor.note.trim();
     if (!noteText) return;
 
-    appendManualHighlight(
-      selectionNoteEditor.paragraphLabel,
-      selectionNoteEditor.text,
-    );
-    addNote({
+    if (selectionNoteEditor.noteId && activeNoteIds.has(selectionNoteEditor.noteId)) {
+      updateNote(selectionNoteEditor.noteId, noteText);
+      setSelectionNoteEditor(null);
+      return;
+    }
+
+    const note = addNote({
       text: noteText,
       partNumber: sectionNumber || undefined,
       highlightedText: selectionNoteEditor.text,
       highlightId: `practice-${selectionNoteEditor.paragraphLabel}-${Date.now()}`,
     });
+    appendManualHighlight(
+      selectionNoteEditor.paragraphLabel,
+      selectionNoteEditor.text,
+      note.id,
+    );
     setSelectionNoteEditor(null);
   };
 
@@ -4996,12 +5062,12 @@ function ReadingPracticeTestContent() {
             onClick={clearManualHighlight}
             disabled={!(manualHighlights[selectionMenu.paragraphLabel] || []).some(
               (item) =>
-                item
+                item.text
                   .toLocaleLowerCase("tr")
                   .includes(selectionMenu.text.toLocaleLowerCase("tr")) ||
                 selectionMenu.text
                   .toLocaleLowerCase("tr")
-                  .includes(item.toLocaleLowerCase("tr")),
+                  .includes(item.text.toLocaleLowerCase("tr")),
             )}
             className="flex h-8 w-full items-center justify-start gap-1.5 rounded px-2.5 text-left text-sm font-medium text-[#37352f] hover:bg-[#f5f5f3] disabled:opacity-35"
           >
@@ -5021,19 +5087,21 @@ function ReadingPracticeTestContent() {
 
       {selectionNoteEditor ? (
         <div
+          ref={noteEditorRef}
           role="dialog"
           aria-label="Metin notu"
           data-exam-selection-ignore="true"
-          className="fixed z-[90] w-[min(21rem,calc(100vw-1.5rem))] -translate-x-1/2 rounded-md border border-[#dededb] bg-white p-3 shadow-[0_12px_32px_rgba(15,23,42,0.16)]"
+          className="fixed z-[90] flex max-h-[calc(100dvh-1.5rem)] w-[min(21rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-md border border-[#dededb] bg-white p-3 shadow-[0_12px_32px_rgba(15,23,42,0.16)]"
           style={{
-            left: selectionNoteEditor.x,
-            top: selectionNoteEditor.y + 8,
+            left: noteEditorPosition?.left ?? 12,
+            top: noteEditorPosition?.top ?? 12,
+            visibility: noteEditorPosition ? "visible" : "hidden",
           }}
           onMouseDown={(event) => event.stopPropagation()}
           onPointerDown={(event) => event.stopPropagation()}
           onClick={(event) => event.stopPropagation()}
         >
-          <div className="mb-2 flex items-start justify-between gap-3">
+          <div className="mb-2 flex shrink-0 items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-sm font-semibold text-[#37352f]">Not al</p>
               <p className="mt-0.5 line-clamp-2 text-xs leading-5 text-[#787774]">
@@ -5049,18 +5117,20 @@ function ReadingPracticeTestContent() {
               <X className="h-4 w-4" />
             </button>
           </div>
-          <Textarea
-            value={selectionNoteEditor.note}
-            onChange={(event) =>
-              setSelectionNoteEditor((current) =>
-                current ? { ...current, note: event.target.value } : current,
-              )
-            }
-            placeholder="Notunuzu yazın"
-            className="min-h-[88px] resize-none border-[#d9d9d6] bg-white text-sm leading-6 text-[#37352f] shadow-none placeholder:text-[#9b9a97] focus-visible:ring-1 focus-visible:ring-[#9b9a97]"
-            autoFocus
-          />
-          <div className="mt-3 flex justify-end gap-2">
+          <div className="min-h-0 overflow-y-auto">
+            <Textarea
+              value={selectionNoteEditor.note}
+              onChange={(event) =>
+                setSelectionNoteEditor((current) =>
+                  current ? { ...current, note: event.target.value } : current,
+                )
+              }
+              placeholder="Notunuzu yazın"
+              className="min-h-[88px] resize-none border-[#d9d9d6] bg-white text-sm leading-6 text-[#37352f] shadow-none placeholder:text-[#9b9a97] focus-visible:ring-1 focus-visible:ring-[#9b9a97]"
+              autoFocus
+            />
+          </div>
+          <div className="mt-3 flex shrink-0 justify-end gap-2">
             <Button
               type="button"
               size="sm"

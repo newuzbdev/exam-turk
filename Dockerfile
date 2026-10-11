@@ -5,6 +5,8 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
 # These are public browser settings, never private service credentials.
+ARG VITE_LEGAL_DRAFT_PREVIEW=false
+ENV VITE_LEGAL_DRAFT_PREVIEW=$VITE_LEGAL_DRAFT_PREVIEW
 ARG VITE_API_URL
 ARG VITE_GOOGLE_CLIENT_ID
 ARG VITE_TELEGRAM_BOT_USERNAME

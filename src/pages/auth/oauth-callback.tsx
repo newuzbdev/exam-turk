@@ -1,4 +1,4 @@
-﻿import { useEffect } from "react";
+﻿import { useEffect, useRef } from "react";
 import { captureAccessLink } from '@/utils/access-link-context';
 import { useNavigate, useSearchParams } from "react-router";
 import { toast } from "@/utils/toast";
@@ -13,8 +13,12 @@ const OAuthCallback = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { login } = useAuth();
+  const callbackStarted = useRef(false);
 
   useEffect(() => {
+    // Auth updates can change login's identity while this callback is still pending.
+    if (callbackStarted.current) return;
+    callbackStarted.current = true;
     const handleCallback = async () => {
       try {
         const accessToken = searchParams.get("accessToken");

@@ -1,5 +1,5 @@
 import {useBillingPurchases} from '@/hooks/use-billing-purchases';
-import {eligibleMockPurchases} from '@/services/billing-view';
+import {eligibleMockPurchases, remainingPurchaseLabel} from '@/services/billing-view';
 import { readAccessOwner } from '@/hooks/use-access-link';
 import { useContentAccessDecisions } from '@/hooks/use-content-access';
 import { getContentStartIssue } from '../subscription-preflight';
@@ -271,10 +271,51 @@ const TestModal = ({
   }, [readingTests, listeningTests, writingTests, speakingTests]);
   const sectionAccess = useContentAccessDecisions(['reading','listening','writing','speaking'].map(targetForSkill).filter((target): target is AccessTarget => Boolean(target)), accessEntry?.redemptionId);
 
-  const eligiblePasses=eligibleMockPurchases(purchases.data??[],selectedSkills.map(targetForSkill).filter((target):target is AccessTarget=>!!target));
-  const purchaseChoices=eligiblePasses.filter(()=>!accessEntry?.redemptionId);
-  const selectedPurchaseId=purchaseChoices.some(p=>p.purchaseId===paidPurchaseId)?paidPurchaseId:undefined;
-  const purchasePicker=purchaseChoices.length>0?<label className="mb-4 block text-sm font-medium">Kullanılacak Hak<select aria-label="Kullanılacak Hak" className="mt-2 block w-full rounded-md border p-2" value={selectedPurchaseId??''} onChange={e=>setPaidPurchaseId(e.target.value)}><option value="">Mevcut erişimim</option>{purchaseChoices.map(p=><option key={p.purchaseId} value={p.purchaseId}>{p.snapshot.terms.name} · {p.remainingAttempts} çözme hakkı</option>)}</select></label>:null;
+  const packageTargets = ['reading','listening','writing','speaking'].map(targetForSkill)
+    .filter((target): target is AccessTarget => !!target);
+  const sectionPasses = (purchases.data ?? []).filter(p =>
+    p.snapshot.terms.mockUsage === 'PER_SECTION' && packageTargets.some(target =>
+      eligibleMockPurchases([p], [target]).length > 0));
+  const eligiblePasses = eligibleMockPurchases(purchases.data ?? [], selectedSkills.map(targetForSkill)
+    .filter((target): target is AccessTarget => !!target)).filter(p => p.snapshot.terms.mockUsage !== 'PER_SECTION');
+  const purchaseChoices = [...sectionPasses, ...eligiblePasses].filter(() => !accessEntry?.redemptionId);
+  // Prefer existing access; choose the only section pass when normal access
+  // cannot cover this exam. Selecting "Mevcut erişimim" stays an explicit choice.
+  const defaultSectionPass = !sectionAccess.pending && sectionPasses.length === 1 &&
+    packageTargets.some(target => !sectionAccess.decisionFor(target)?.canOpen)
+    ? sectionPasses[0].purchaseId : undefined;
+  const selectedPurchaseId = purchaseChoices.some(p => p.purchaseId === paidPurchaseId)
+    ? paidPurchaseId : !paidPurchaseId && !accessEntry?.redemptionId ? defaultSectionPass : undefined;
+  const selectedPurchase = purchaseChoices.find(p => p.purchaseId === selectedPurchaseId);
+  const sectionProgress = selectedPurchase?.singleMockProgress;
+  useEffect(() => {
+    if (!selectedPurchaseId || !sectionProgress) return;
+    setSelectedSkills(previous => {
+      const remaining = previous.filter(skill => {
+        const target = targetForSkill(skill);
+        return !!target && sectionProgress.remainingSections.some(section =>
+          section.scope === target.scope && section.targetId === target.targetId);
+      });
+      return remaining.length === previous.length ? previous : remaining;
+    });
+  }, [selectedPurchaseId, sectionProgress, targetForSkill]);
+  const purchasePicker = purchaseChoices.length > 0 ? (
+    <div className="mb-4">
+      <label className="block text-sm font-medium">Kullanılacak Hak
+        <select aria-label="Kullanılacak Hak" className="mt-2 block w-full rounded-md border p-2"
+          value={selectedPurchaseId ?? 'AUTO'} onChange={e => setPaidPurchaseId(e.target.value)}>
+          <option value="AUTO">Mevcut erişimim</option>
+          {purchaseChoices.map(p => <option key={p.purchaseId} value={p.purchaseId}>
+            {p.snapshot.terms.name}{p.snapshot.terms.mockUsage !== 'PER_SECTION' || p.singleMockProgress?.selectedPackageId
+              ? ` · ${remainingPurchaseLabel(p)}` : ''}
+          </option>)}
+        </select>
+      </label>
+      {sectionProgress && <p className="mt-2 text-sm text-[var(--tm-text-secondary)]">
+        Her bölümü bir kez, ayrı ayrı tamamlayabilirsiniz.
+      </p>}
+    </div>
+  ) : null;
 
   const checkSubscriptionCapacity = useCallback(async () => {
     if (!accessEntry?.enabled && !isSubscriptionBillingEnabled) return true;
@@ -746,6 +787,9 @@ const TestModal = ({
     return (
       <MembershipRequiredDialog
         open
+        title="Paket seçin"
+        description="Bu sınavı açmak için tek Mock Test paketi veya abonelik seçebilirsiniz."
+        actionLabel="Paketleri gör"
         onOpenChange={(nextOpen) => {
           setMembershipRequiredOpen(nextOpen);
           if (!nextOpen) onOpenChange(false);
@@ -794,6 +838,8 @@ const TestModal = ({
                 const ownedForSkill=target&&eligibleMockPurchases(purchases.data??[],[target]).length>0;
                 const contentLocked = accessEntry?.enabled && !decision?.canOpen && !ownedForSkill;
                 const isAvailable = skill.testCount !== "0 test";
+                const usedSection = !!target && !!sectionProgress?.usedSections.some(section =>
+                  section.scope === target.scope && section.targetId === target.targetId);
                 const isLocked = Boolean(singleSkill && skill.id === singleSkill && isAvailable);
                 const Icon = skill.icon;
 
@@ -801,7 +847,7 @@ const TestModal = ({
                   <button
                     type="button"
                     key={skill.id}
-                    disabled={!isAvailable || isLocked}
+                    disabled={!isAvailable || isLocked || usedSection}
                     onClick={() => { if (contentLocked && decision?.blockedReason !== 'AI_LIMIT' && decision?.blockedReason !== 'EXPIRED') { setMembershipRequiredOpen(true); return; } if (isAvailable && !isLocked) toggleSkill(skill.id); }}
                     aria-pressed={isSelected}
                     className="test-section-card"
@@ -811,11 +857,11 @@ const TestModal = ({
                     <span className="test-section-card-top">
                       <Icon size={21} strokeWidth={1.8} aria-hidden="true" />
                       <span className="test-section-check" aria-hidden="true">
-                        {isSelected && <Check size={13} strokeWidth={2.5} />}
+                        <Check size={13} strokeWidth={2.5} />
                       </span>
                     </span>
-                    <span className="test-section-name">{skill.name}{decision?.isPublicFree ? " · Ücretsiz" : ""}</span>
-                    {contentLocked && <MembershipLockBadge />}
+                    <span className="test-section-name">{skill.name}{usedSection ? ' · Kullanıldı' : decision?.isPublicFree ? " · Ücretsiz" : ""}</span>
+                    {contentLocked && !usedSection && <MembershipLockBadge label="Erişim gerekli" />}
                   </button>
                 );
               })}
@@ -884,7 +930,7 @@ const TestModal = ({
           </div>
         </div>
       )}
-      {singleSkill && !subscriptionBlockReason && !showConfirmationModal && !showResumeChoiceModal && !isCreditModalOpen && (
+      {singleSkill && purchaseChoices.length === 0 && !subscriptionBlockReason && !showConfirmationModal && !showResumeChoiceModal && !isCreditModalOpen && (
         <div className="test-section-overlay" role="status" aria-live="polite">
           <div className="test-section-dialog" style={{ padding: 24 }}>
             Sınav hazırlığı kontrol ediliyor…

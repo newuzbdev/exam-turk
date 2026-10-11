@@ -54,6 +54,12 @@ export function lessonsAvailable(visible: boolean, purchases: OwnedPackage[]) {
   );
 }
 export function remainingPurchaseLabel(p: OwnedPackage) {
+  if (p.snapshot.terms.mockUsage === 'PER_SECTION') {
+    const progress = p.singleMockProgress;
+    return progress?.selectedPackageId
+      ? `${progress.remainingSections.length} bölüm`
+      : progress?.remainingSections.length ? '1 tam Mock Test' : '0 bölüm';
+  }
   return p.snapshot.terms.kind === "PRACTICE_PASS"
     ? `${p.remainingPractice} Pratik değerlendirmesi`
     : `${p.remainingAttempts} Mock çözme hakkı`;
@@ -66,7 +72,11 @@ export function eligibleMockPurchases(
     ? purchases.filter(
         (p) =>
           p.status === "ACTIVE" &&
-          p.remainingAttempts > 0 &&
+          (p.snapshot.terms.mockUsage === 'PER_SECTION'
+            ? !!p.singleMockProgress && targets.every(target =>
+                p.singleMockProgress!.remainingSections.some(section =>
+                  section.scope === target.scope && section.targetId === target.targetId))
+            : p.remainingAttempts > 0) &&
           p.snapshot.terms.mockSelections.some((s) =>
             targets.every((t) =>
               s.sections.some(

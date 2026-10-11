@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ChevronDown } from "lucide-react";
-import { overallTestService } from "@/services/overallTest.service";
+import axiosPrivate from "@/config/api";
 import { toApiUrl } from "@/config/runtime";
 import { SectionHeader, tm } from "@/components/tm";
 
 import { formatSectionScore } from "./home-results-data";
+import { fillWithExampleResults, type HomeResult } from "./home-result-examples";
 import "./home-results.css";
 
 const TEST_SCOPE_OPTIONS = [
@@ -17,19 +18,6 @@ const TEST_SCOPE_OPTIONS = [
   { key: "FULL", label: "Tam Test" },
 ] as const;
 type TestScopeOption = (typeof TEST_SCOPE_OPTIONS)[number]["key"];
-
-interface UserResult {
-  id: string;
-  name: string;
-  avatarUrl?: string;
-  date: string;
-  dinleme: number | null;
-  okuma: number | null;
-  yazma: number | null;
-  konusma: number | null;
-  overallScore: number;
-  level: string;
-}
 
 interface ApiUser {
   id: string;
@@ -74,26 +62,26 @@ const formatDate = (dateString: string | null | undefined): string => {
 };
 
 const HomeLastMonthTopResults = () => {
-  const [users, setUsers] = useState<UserResult[]>([]);
+  const [users, setUsers] = useState<HomeResult[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [selectedTestScope, setSelectedTestScope] = useState<TestScopeOption>("ALL");
 
   useEffect(() => {
     let cancelled = false;
-    const fetchRecentResults = async () => {
+    const fetchRecentResults = async (initial = false) => {
       try {
-        setLoading(true);
+        if (initial) setLoading(true);
         // The API applies the selected scope before limiting the result set.
-        const data = await overallTestService.getRecentQualifiedOverallTests(
-          15,
-          undefined,
-          true,
-          selectedTestScope,
-        );
+        // Do not turn a failed API request into apparently successful examples.
+        const response = await axiosPrivate.get("/api/overal-test-result/recent", {
+          params: { limit: 15, uniqueUsers: true, scope: selectedTestScope },
+          timeout: 15000,
+        });
+        const recentResults = response.data?.data ?? response.data;
+        if (!Array.isArray(recentResults)) throw new Error("Invalid recent results response");
 
-        const recentResults = data as ApiResult[];
-
-        const mappedUsers: UserResult[] = recentResults.map((item: ApiResult) => {
+        const mappedUsers: HomeResult[] = recentResults.map((item: ApiResult) => {
           const resultUser: ApiUser = item.user || { id: "", name: "Anonim" };
           const date = item.completedAt || item.updatedAt || item.createdAt || "";
           const avatarUrl = resultUser.avatarUrl || resultUser.avatar;
@@ -118,17 +106,26 @@ const HomeLastMonthTopResults = () => {
           };
         });
 
-        if (!cancelled) setUsers(mappedUsers);
+        if (!cancelled) {
+          setUsers(fillWithExampleResults(mappedUsers, selectedTestScope));
+          setLoadFailed(false);
+        }
       } catch (error) {
         console.error("Error fetching recent results:", error);
-        if (!cancelled) setUsers([]);
+        if (!cancelled) {
+          setUsers([]);
+          setLoadFailed(true);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
     };
 
-    fetchRecentResults();
-    return () => { cancelled = true; };
+    void fetchRecentResults(true);
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") void fetchRecentResults();
+    }, 60000);
+    return () => { cancelled = true; window.clearInterval(interval); };
   }, [selectedTestScope]);
 
   return (
@@ -136,7 +133,7 @@ const HomeLastMonthTopResults = () => {
       <div className="mx-auto max-w-[960px] px-4 sm:px-6 lg:px-8">
         <SectionHeader
           title="Son Sınav Sonuçları"
-          description="En yeni deneme sonuçları ve beceri puanları."
+          description="Sınav sonuçları ve beceri puanları."
           align="center"
         />
         <div className="home-results__toolbar">
@@ -151,6 +148,8 @@ const HomeLastMonthTopResults = () => {
         </div>
         {loading ? (
           <p className="home-results__empty" role="status">Sonuçlar yükleniyor…</p>
+        ) : loadFailed ? (
+          <p className="home-results__empty" role="status">Sonuçlar şu anda yüklenemedi. Lütfen biraz sonra yeniden deneyin.</p>
         ) : users.length === 0 ? (
           <p className="home-results__empty" role="status">Bu sınav türünde henüz sonuç yok.</p>
         ) : (
@@ -179,7 +178,7 @@ const HomeLastMonthTopResults = () => {
                       </Avatar>
                       <div className="home-results__identity">
                         <span className="home-results__name">{user.name}</span>
-                        <span className="home-results__date">{user.date}</span>
+                        <span className="home-results__date">{user.date}{user.isExample ? " · Örnek sonuç" : ""}</span>
                       </div>
                     </div>
                   </th>

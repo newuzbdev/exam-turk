@@ -57,8 +57,12 @@
 .test-section-card[data-locked] { cursor: default; }
 .test-section-card-top { display: contents; color: var(--section-fg); }
 .test-section-card-top > svg { grid-column: 1; grid-row: 1; }
-.test-section-check { grid-column: 3; grid-row: 1; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; }
-.test-section-check svg { width: 16px; height: 16px; }
+.test-section-check { grid-column: 3; grid-row: 1; position: relative; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; }
+.test-section-check::before { content: ""; position: absolute; width: 14px; height: 14px; border: 1.5px solid #aaa79f; border-radius: 50%; transition: opacity 140ms ease, transform 140ms ease; }
+.test-section-check svg { width: 16px; height: 16px; opacity: 0; transform: scale(.85); transition: opacity 140ms ease, transform 140ms ease; }
+.test-section-card[aria-pressed="true"] .test-section-check::before { opacity: 0; transform: scale(.85); }
+.test-section-card[aria-pressed="true"] .test-section-check svg { opacity: 1; transform: scale(1); }
+.test-section-card:disabled:not([data-locked]) .test-section-check::before { opacity: 0; }
 .test-section-name { grid-column: 2; grid-row: 1; font-size: 16px; line-height: 22px; font-weight: 600; }
 
 @media (hover: hover) and (pointer: fine) {
@@ -91,5 +95,6 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .test-section-card { transition: none; }
+  .test-section-check::before, .test-section-check svg { transition: none; }
   .test-section-card:not(:disabled):hover { transform: none; }
 }

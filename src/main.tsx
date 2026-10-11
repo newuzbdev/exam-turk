@@ -1,3 +1,5 @@
+import { isPublicLegalPath } from "./config/legal";
+import { LegalEntry } from "./pages/legal/LegalEntry";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import { QueryProvider } from "./providers/query-provider";
@@ -14,7 +16,9 @@ captureAccessLink(window.location);
 installMediaProtection();
 
 createRoot(document.getElementById("root")!).render(
-  <QueryProvider>
+  isPublicLegalPath(window.location.pathname) ? (
+    <ThemeProvider><LegalEntry pathname={window.location.pathname} /></ThemeProvider>
+  ) : <QueryProvider>
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
       <ThemeProvider>
         <AuthProvider>

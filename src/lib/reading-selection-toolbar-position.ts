@@ -72,3 +72,52 @@ export function getReadingSelectionToolbarPosition({
 
   return { left, top };
 }
+
+interface ReadingNoteEditorPositionOptions
+  extends Omit<ReadingSelectionToolbarPositionOptions, "bottomReserved"> {
+  editorWidth: number;
+  editorHeight: number;
+}
+
+export function getReadingNoteEditorPosition({
+  anchorX,
+  selectionTop,
+  selectionBottom,
+  viewportWidth,
+  viewportHeight,
+  editorWidth,
+  editorHeight,
+  boundaryLeft = 0,
+  boundaryRight = viewportWidth,
+  gap = 8,
+  padding = 12,
+}: ReadingNoteEditorPositionOptions) {
+  const width = Math.min(editorWidth, Math.max(0, viewportWidth - padding * 2));
+  const height = Math.min(editorHeight, Math.max(0, viewportHeight - padding * 2));
+  const safeBoundaryLeft = Math.max(0, boundaryLeft);
+  const safeBoundaryRight = Math.min(viewportWidth, boundaryRight);
+  const panelCanContainEditor =
+    safeBoundaryRight - safeBoundaryLeft >= width + padding * 2;
+  const horizontalStart = panelCanContainEditor
+    ? safeBoundaryLeft + padding
+    : padding;
+  const horizontalEnd = panelCanContainEditor
+    ? safeBoundaryRight - padding
+    : viewportWidth - padding;
+  const left = clamp(
+    anchorX - width / 2,
+    horizontalStart,
+    Math.max(horizontalStart, horizontalEnd - width),
+  );
+  const maximumTop = Math.max(padding, viewportHeight - padding - height);
+  const belowTop = selectionBottom + gap;
+  const aboveTop = selectionTop - height - gap;
+  const top =
+    belowTop >= padding && belowTop <= maximumTop
+      ? belowTop
+      : aboveTop >= padding && aboveTop <= maximumTop
+        ? aboveTop
+        : clamp(belowTop, padding, maximumTop);
+
+  return { left, top };
+}

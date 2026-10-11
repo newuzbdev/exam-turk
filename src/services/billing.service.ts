@@ -10,6 +10,7 @@ export type PackageTerms = {
   quotas: { MOCK_WRITING: number; MOCK_SPEAKING: number; PRACTICE_AI: number };
   lessonIds: string[];
   mockSelections: { packageId?: string; sections: AccessTarget[] }[];
+  mockUsage?: 'PER_SECTION';
   standardMockAccess: boolean;
   practiceScopes: AccessTarget["scope"][];
   attemptLimit: number;
@@ -37,6 +38,11 @@ export type OwnedPackage = {
   snapshot: PackageOffer;
   remainingAttempts: number;
   remainingPractice: number;
+  singleMockProgress?: {
+    selectedPackageId: string | null;
+    remainingSections: AccessTarget[];
+    usedSections: AccessTarget[];
+  };
   lessons?: { id: string; title: string; slug: string; courseSlug: string; workbook: boolean }[];
 };
 const unwrap = <T>(response: { data: T | { data: T } }): T => {

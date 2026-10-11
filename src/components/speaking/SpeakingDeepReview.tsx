@@ -2084,6 +2084,23 @@ const mapUtterancesToTranscript = (
   });
 };
 
+// Timing evidence may end just outside the recorded duration or omit tokens.
+// In that case show the entire transcript untimed instead of hiding its gaps.
+const selectCompleteTranscriptSegments = <Segment extends { textStart: number; textEnd: number }>(
+  transcript: string,
+  segments: Segment[],
+): Segment[] => {
+  let textEnd = 0;
+  for (const segment of segments) {
+    if (!Number.isInteger(segment.textStart) || !Number.isInteger(segment.textEnd) ||
+        segment.textStart < textEnd || segment.textEnd <= segment.textStart ||
+        segment.textEnd > transcript.length ||
+        transcript.slice(textEnd, segment.textStart).trim()) return [];
+    textEnd = segment.textEnd;
+  }
+  return transcript.slice(textEnd).trim() ? [] : segments;
+};
+
 const formatTimestamp = (seconds: number) => {
   const safeSeconds = Math.max(0, Math.floor(seconds));
   const minutes = Math.floor(safeSeconds / 60);
@@ -2341,10 +2358,14 @@ export default function SpeakingDeepReview({
     speechEvidence?.utterances || [],
     recordingDurationSeconds,
   );
+  const completeSentenceSegments = selectCompleteTranscriptSegments(
+    reviewedTranscript,
+    sentenceTimelineSegments,
+  );
   const timedTranscriptSegments =
-    sentenceTimelineSegments.length > 0
-      ? sentenceTimelineSegments
-      : fallbackTranscriptSegments;
+    completeSentenceSegments.length > 0
+      ? completeSentenceSegments
+      : selectCompleteTranscriptSegments(reviewedTranscript, fallbackTranscriptSegments);
   const selectedAnnotations = canonicalAssessment
     ? officialSectionFeedback.annotations
     : selectSpeakingQuestionAnnotations(

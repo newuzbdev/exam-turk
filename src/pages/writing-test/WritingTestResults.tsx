@@ -1,4 +1,4 @@
-﻿import { ArrowLeft, Download } from "lucide-react";
+﻿import { ArrowLeft } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -8,7 +8,6 @@ import WritingV2Results, {
   isWritingV2Result,
 } from "@/components/results/WritingV2Results";
 import writingSubmissionService from "@/services/writingSubmission.service";
-import { overallTestService, overallTestFlowStore } from "@/services/overallTest.service";
 import { normalizeDisplayText, normalizeFeedbackText } from "@/utils/text";
 import { useResultScreenProtection } from "@/hooks/use-result-screen-protection";
 
@@ -48,23 +47,7 @@ export default function WritingTestResults() {
   const [answerViewMode, setAnswerViewMode] = useState<"original" | "feedback">("feedback");
   const [activeCorrectionTab, setActiveCorrectionTab] = useState<CorrectionTabKey>("summary");
   const [activeCorrectionId, setActiveCorrectionId] = useState<number | null>(null);
-  const [downloadingPDF, setDownloadingPDF] = useState(false);
   const [retryingFeedback, setRetryingFeedback] = useState(false);
-
-  const handleDownloadPDF = async () => {
-    // Try to get overall test result ID from session storage, otherwise use individual result ID
-    const overallId = overallTestFlowStore.getOverallId() || resultId;
-    if (!overallId) return;
-    
-    setDownloadingPDF(true);
-    try {
-      await overallTestService.downloadPDF(overallId, `writing-certificate-${overallId}.pdf`);
-    } catch (error) {
-      console.error("Error downloading PDF:", error);
-    } finally {
-      setDownloadingPDF(false);
-    }
-  };
 
   useEffect(() => {
     if (!resultId) {
@@ -1776,14 +1759,6 @@ export default function WritingTestResults() {
 
         {/* Action Buttons */}
         <div className="mt-6 flex items-center justify-center gap-3">
-          <Button
-            onClick={handleDownloadPDF}
-            disabled={downloadingPDF}
-            className="bg-red-600 hover:bg-red-700 text-white h-9 px-4 text-sm"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            {downloadingPDF ? "İndiriliyor..." : "Sertifikayı İndir (PDF)"}
-          </Button>
           <Button
             onClick={() => navigate("/app/test")}
             variant="outline"

@@ -1,3 +1,4 @@
+import LegalPage from "@/pages/legal/LegalPage";
 import Layout from "@/components/layout";
 import { GuestOnly, LegacyStudentRedirect } from "./student-route-guards";
 import { LEGACY_STUDENT_ROOTS } from "./student-route-paths";
@@ -103,6 +104,8 @@ function AppAwareFallbackRoute() {
 function LessonsGate({children}:{children:ReactNode}){const lessons=useStudentLessonsEnabled();return lessons.pending?<p role="status">Ders erişimi kontrol ediliyor…</p>:lessons.enabled?children:<Navigate to="/app" replace/>;}
 
 export const router = createBrowserRouter([
+  { path: "/privacy-policy", element: <LegalPage document="privacy" /> },
+  { path: "/terms-of-service", element: <LegalPage document="terms" /> },
   { path: "/lesson-editor", element: <LessonEditorPage /> },
   { path: "/login", element: <GuestOnly><Login /></GuestOnly> },
   { path: "/signup", element: <Navigate to="/login" replace /> },

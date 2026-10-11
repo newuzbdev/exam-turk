@@ -1,3 +1,5 @@
+import { hasAdultDeclaration, type StudentAgeDeclaration } from "@/utils/studentAgeEligibility";
+import type { PublicResultSharingConsent } from "@/utils/publicResultSharing";
 import {useQueryClient} from '@tanstack/react-query';
 import React, {
   createContext,
@@ -17,7 +19,7 @@ import { toast } from "@/utils/toast";
 import { isSubscriptionBillingEnabled } from "@/config/billing";
 import { closeStudentPresenceBeforeLogout } from "@/services/studentPresence.service";
 
-interface User {
+interface User extends StudentAgeDeclaration, PublicResultSharingConsent {
   id?: string;
   userName?: string;
   username?: string;
@@ -159,6 +161,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     const handler = () => { void refreshUser(); };
+    const eligibilityHandler = (event: Event) => {
+      const code = (event as CustomEvent<string>).detail;
+      setUser((current) => current ? { ...current, ageStatus: code === "AGE_INELIGIBLE" ? "INELIGIBLE" : "UNKNOWN" } : null);
+      void refreshUser();
+    };
     const reauthenticationHandler = () => {
       ++authOperationRef.current;
       authenticatedRef.current = false;
@@ -197,6 +204,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (document.visibilityState === "visible") retryWhenOnline();
     };
     window.addEventListener("auth:tokens", handler);
+    window.addEventListener("auth:eligibility-required", eligibilityHandler);
     window.addEventListener(REAUTHENTICATION_REQUIRED_EVENT, reauthenticationHandler);
     window.addEventListener("auth:user", userHandler);
     window.addEventListener("online", retryWhenOnline);
@@ -205,6 +213,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => {
       invalidateAuthOperation();
       window.removeEventListener("auth:tokens", handler);
+      window.removeEventListener("auth:eligibility-required", eligibilityHandler);
       window.removeEventListener(REAUTHENTICATION_REQUIRED_EVENT, reauthenticationHandler);
       window.removeEventListener("auth:user", userHandler);
       window.removeEventListener("online", retryWhenOnline);
@@ -238,7 +247,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     if (isSubscriptionBillingEnabled) return;
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !hasAdultDeclaration(user)) {
       if (autoPurchaseIntervalRef.current) {
         clearInterval(autoPurchaseIntervalRef.current);
         autoPurchaseIntervalRef.current = null;
@@ -297,7 +306,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         autoPurchaseIntervalRef.current = null;
       }
     };
-  }, [isAuthenticated, refreshUser]);
+  }, [isAuthenticated, user?.ageStatus, user?.ageDeclaredAt, user?.ageDeclarationVersion, refreshUser]);
 
   const value: AuthContextType = {
     user,

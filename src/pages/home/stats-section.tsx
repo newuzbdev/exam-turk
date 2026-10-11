@@ -1,14 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import axiosPrivate from "@/config/api";
 
 interface PublicStats {
   activeUsers: number | null;
   completedTests: number | null;
-  evaluatedWriting: number | null;
-  evaluatedSpeaking: number | null;
   averageResultSeconds: number | null;
 }
+
+// Approximate historical totals reported by the platform owner; no legacy users
+// or results were imported into the new database.
+const LEGACY_TOTALS = { users: 4_200, completedTests: 4_200 };
 
 const validNumber = (value: unknown): number | null =>
   typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
@@ -55,11 +57,15 @@ const RollingDigit = ({ value }: { value: string }) => {
   );
 };
 
-const RollingCount = ({ value, className }: { value: number | null | undefined; className: string }) => {
-  const text = formatCount(value);
+const RollingCount = ({ value, className, approximate = false }: {
+  value: number | null | undefined;
+  className: string;
+  approximate?: boolean;
+}) => {
+  const text = `${formatCount(value)}${approximate && value != null ? "+" : ""}`;
   return (
     <div className={className}>
-      <span className="sr-only">{text}</span>
+      <span className="sr-only">{approximate ? "Yaklaşık " : ""}{text}</span>
       <span aria-hidden="true">
         {Array.from(text).map((digit, index) => (
           <RollingDigit key={text.length - index} value={digit} />
@@ -70,8 +76,6 @@ const RollingCount = ({ value, className }: { value: number | null | undefined; 
 };
 
 const StatsSection = () => {
-  const [showSpeaking, setShowSpeaking] = useState(false);
-  const [paused, setPaused] = useState(false);
   const { data } = useQuery<PublicStats>({
     queryKey: ["public-home-stats"],
     queryFn: async () => {
@@ -80,8 +84,6 @@ const StatsSection = () => {
       return {
         activeUsers: validNumber(payload?.activeUsers),
         completedTests: validNumber(payload?.completedTests),
-        evaluatedWriting: validNumber(payload?.evaluatedWriting),
-        evaluatedSpeaking: validNumber(payload?.evaluatedSpeaking),
         averageResultSeconds: validNumber(payload?.averageResultSeconds),
       };
     },
@@ -90,11 +92,31 @@ const StatsSection = () => {
     retry: 1,
   });
 
-  useEffect(() => {
-    if (paused || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const timer = window.setInterval(() => setShowSpeaking((value) => !value), 5000);
-    return () => window.clearInterval(timer);
-  }, [paused]);
+  const { data: practiceCount } = useQuery<number>({
+    queryKey: ["public-home-practice-count"],
+    queryFn: async () => {
+      const [reading, ...otherPractices] = await Promise.all([
+        axiosPrivate.get("/api/reading-practice", { params: { page: 1, limit: 1 } }),
+        axiosPrivate.get("/api/listening-practice"),
+        axiosPrivate.get("/api/writing-practice"),
+        axiosPrivate.get("/api/speaking-practice"),
+      ]);
+      const readingTotal = validNumber(reading.data?.total ?? reading.data?.data?.total);
+      if (readingTotal == null || !Number.isSafeInteger(readingTotal)) {
+        throw new Error("Okuma pratiklerinin toplamı alınamadı.");
+      }
+      return otherPractices.reduce((total, response) => {
+        const practices = response.data?.data ?? response.data;
+        if (!Array.isArray(practices)) {
+          throw new Error("Yayındaki pratiklerin toplamı alınamadı.");
+        }
+        return total + practices.length;
+      }, readingTotal);
+    },
+    staleTime: 5 * 60_000,
+    refetchInterval: 5 * 60_000,
+    retry: 1,
+  });
 
   const valueClass = "mb-1 text-3xl font-semibold text-red-600 sm:text-4xl tabular-nums";
   const labelClass = "text-sm text-[#787774] sm:text-base";
@@ -104,30 +126,17 @@ const StatsSection = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 gap-4 rounded-lg bg-white text-center lg:grid-cols-4">
           <div className="rounded-md px-5 py-5 transition-colors hover:bg-[#F1F1EF]">
-            <RollingCount className={valueClass} value={data?.activeUsers} />
-            <div className={labelClass}>Aktif Kullanıcı</div>
+            <RollingCount className={valueClass} value={LEGACY_TOTALS.users + (data?.activeUsers ?? 0)} approximate />
+            <div className={labelClass}>Toplam Kullanıcı</div>
           </div>
           <div className="rounded-md px-5 py-5 transition-colors hover:bg-[#F1F1EF]">
-            <RollingCount className={valueClass} value={data?.completedTests} />
+            <RollingCount className={valueClass} value={LEGACY_TOTALS.completedTests + (data?.completedTests ?? 0)} approximate />
             <div className={labelClass}>Tamamlanan Test</div>
           </div>
-          <button
-            type="button"
-            onClick={() => { setPaused(true); setShowSpeaking((value) => !value); }}
-            onMouseEnter={() => setPaused(true)}
-            onMouseLeave={() => setPaused(false)}
-            onFocus={() => setPaused(true)}
-            onBlur={() => setPaused(false)}
-            className="relative grid rounded-md px-5 py-5 transition-colors hover:bg-[#F1F1EF] focus-visible:outline-2 focus-visible:outline-red-600"
-            aria-label={`${showSpeaking ? "Değerlendirilen Konuşma" : "Değerlendirilen Yazı"}: ${formatCount(showSpeaking ? data?.evaluatedSpeaking : data?.evaluatedWriting)}. Diğer istatistiği göster`}
-          >
-            {[false, true].map((speaking) => (
-              <span key={String(speaking)} aria-hidden="true" className={`col-start-1 row-start-1 transition-opacity duration-500 motion-reduce:transition-none ${showSpeaking === speaking ? "opacity-100" : "opacity-0"}`}>
-                <span className={`block ${valueClass}`}>{formatCount(speaking ? data?.evaluatedSpeaking : data?.evaluatedWriting)}</span>
-                <span className={`block ${labelClass}`}>{speaking ? "Değerlendirilen Konuşma" : "Değerlendirilen Yazı"}</span>
-              </span>
-            ))}
-          </button>
+          <div className="rounded-md px-5 py-5 transition-colors hover:bg-[#F1F1EF]" title="Yayındaki okuma, dinleme, yazma ve konuşma pratikleri">
+            <RollingCount className={valueClass} value={practiceCount} />
+            <div className={labelClass}>Pratik Sayısı</div>
+          </div>
           <div className="rounded-md px-5 py-5 transition-colors hover:bg-[#F1F1EF]">
             <div className={valueClass}>{data?.averageResultSeconds != null ? "≈ " : ""}{formatDuration(data?.averageResultSeconds)}</div>
             <div className={labelClass}>Sonuç Süresi</div>

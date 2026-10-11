@@ -138,6 +138,13 @@ axiosPrivate.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    const eligibilityCode = error.response?.data?.code;
+    if (error.response.status === 403 && ["AGE_DECLARATION_REQUIRED", "AGE_INELIGIBLE"].includes(eligibilityCode) &&
+      error.config && requestSessions.get(error.config) === readStoredRefreshToken()) {
+      window.dispatchEvent(new CustomEvent("auth:eligibility-required", { detail: eligibilityCode }));
+      return Promise.reject(error);
+    }
+
     console.error(
       `[API] Request failed: ${error.config?.method?.toUpperCase()} ${error.config?.url} - Status: ${error.response?.status}`,
       error.message,

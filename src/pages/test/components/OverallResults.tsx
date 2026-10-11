@@ -8,7 +8,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import {
   ArrowLeft,
-  Download,
   Loader2,
   PlayCircle,
   RefreshCw,
@@ -62,7 +61,6 @@ import { createSpeakingAudioReplayUrl } from "@/services/speakingAudioReplay";
 import writingSubmissionService from "@/services/writingSubmission.service";
 import { useResultScreenProtection } from "@/hooks/use-result-screen-protection";
 import { clearExamPresentation } from "@/utils/examFullscreen";
-import { overallTestService } from "@/services/overallTest.service";
 
 const resolveOfficialSpeakingDisplay = (
   status: unknown,
@@ -216,7 +214,6 @@ export default function OverallResults() {
   const [activeTask1Part, setActiveTask1Part] = useState("part1");
   const [activeSpeakingPart, setActiveSpeakingPart] = useState(0);
   const [activeSpeakingQuestion, setActiveSpeakingQuestion] = useState(0);
-  const [downloadingPDF, setDownloadingPDF] = useState(false);
   const [audioUrls, setAudioUrls] = useState<Record<string, { url: string; expiresAt: number }>>({});
   const [audioLoading, setAudioLoading] = useState<Record<string, boolean>>({});
   const [audioErrors, setAudioErrors] = useState<Record<string, string>>({});
@@ -240,20 +237,6 @@ export default function OverallResults() {
     },
     [],
   );
-
-  const handleDownloadPDF = async () => {
-    const id = params.overallId;
-    if (!id) return;
-
-    setDownloadingPDF(true);
-    try {
-      await overallTestService.downloadPDF(id, `certificate-${id}.pdf`);
-    } catch (error) {
-      console.error("Error downloading PDF:", error);
-    } finally {
-      setDownloadingPDF(false);
-    }
-  };
 
   const fetchOverallResults = useCallback(async (showLoading = true) => {
     const id = params.overallId;
@@ -3995,18 +3978,6 @@ export default function OverallResults() {
     (data as any)?.overallScore ??
     (data as any)?.score ??
     (data as any)?.totalScore;
-  const hasNumericValue = (value: unknown) => {
-    if (value === null || value === undefined || value === "") return false;
-    const parsed = typeof value === "number" ? value : Number(value);
-    return Number.isFinite(parsed);
-  };
-  const isFullOfficialReportReady =
-    Boolean(data.isCompleted) &&
-    String(data.status || "").toUpperCase() === "COMPLETED" &&
-    hasNumericValue(rawOverallScore) &&
-    (["listening", "reading", "writing", "speaking"] as const).every(
-      (type) => Boolean(data[type]) && hasNumericValue(data[type]?.score),
-    );
   const parsedOverallScore =
     typeof rawOverallScore === "number"
       ? rawOverallScore
@@ -4263,17 +4234,6 @@ export default function OverallResults() {
         <ArrowLeft className="mr-2 h-4 w-4" />
         {returnLabel}
       </Button>
-      {isFullOfficialReportReady && (
-        <Button
-          type="button"
-          onClick={() => void handleDownloadPDF()}
-          disabled={downloadingPDF}
-          className="theme-important h-10 rounded-[7px] bg-[#d53a3a] px-3 text-[13px] font-semibold text-white hover:bg-[#bd3030]"
-        >
-          <Download className="mr-2 h-4 w-4" />
-          {downloadingPDF ? "İndiriliyor…" : "PDF indir"}
-        </Button>
-      )}
     </div>
   );
 

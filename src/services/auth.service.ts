@@ -475,6 +475,21 @@ export const authService = {
     }
   },
 
+  declareAge: async (declaration: "ADULT" | "UNDER_18", version: string, sharing?: { publicResultSharing: boolean; publicResultSharingVersion: string; legalAccepted: boolean; legalVersion: string }) => {
+    const response = await axiosPrivate.post("/api/auth/age-declaration", { declaration, version, ...sharing }, { timeout: AUTH_REQUEST_TIMEOUT_MS });
+    // A lookup started before the declaration must not supply the old account state.
+    currentUserRequest = null;
+    currentUserRequestToken = null;
+    return response.data;
+  },
+
+  setPublicResultSharing: async (enabled: boolean, version: string) => {
+    const response = await axiosPrivate.post("/api/auth/public-result-sharing", { enabled, version }, { timeout: AUTH_REQUEST_TIMEOUT_MS });
+    currentUserRequest = null;
+    currentUserRequestToken = null;
+    return response.data;
+  },
+
   // Helper function to get current user data (with request deduplication)
   getCurrentUser: async (): Promise<Record<string, unknown> | null> => {
     const localUser = readLocalDevUser();

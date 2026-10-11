@@ -4,11 +4,14 @@ import { tm } from "@/components/tm";
 import { footerExamHeading } from "@/components/footer-exam-status";
 import axiosPrivate from "@/config/api";
 import { EXAM_SOURCES } from "@/data/exam-information";
+import { LegalLinks } from "@/components/legal-links";
+import { LEGAL_DOCUMENTS_AVAILABLE, LEGAL_OPERATOR } from "@/config/legal";
+import { SUPPORT_TELEGRAM_URL } from "@/config/support";
 
 const footerLinks = [
   { href: "/#fiyatlandirma", label: "Fiyatlandırma" },
   { href: "/#sss", label: "Sıkça sorulan sorular" },
-  { href: "/#contact", label: "Destek" },
+  { href: SUPPORT_TELEGRAM_URL, label: "Destek", external: true },
 ];
 
 const platformLinks = [
@@ -200,6 +203,8 @@ export const Footer = () => {
                   <li key={link.href}>
                     <a
                       href={link.href}
+                      target={link.external ? "_blank" : undefined}
+                      rel={link.external ? "noopener noreferrer" : undefined}
                       className="text-sm font-medium text-[var(--tm-text-secondary)] transition-colors hover:text-[var(--tm-text-primary)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--tm-focus)]"
                     >
                       {link.label}
@@ -214,8 +219,9 @@ export const Footer = () => {
         </div>
 
         <div className="mt-10 flex flex-col gap-3 border-t border-[var(--tm-border-subtle)] pt-5 text-xs leading-5 text-[var(--tm-text-tertiary)] sm:flex-row sm:items-center sm:justify-between">
-          <p>&copy; {new Date().getFullYear()} TURKISHMOCK. Tüm hakları saklıdır.</p>
-          <div className="flex flex-wrap gap-x-4 gap-y-1">
+          <p>&copy; {new Date().getFullYear()} {LEGAL_OPERATOR.name}. Tüm hakları saklıdır.</p>
+          <LegalLinks className="justify-end sm:ml-auto" />
+          {!LEGAL_DOCUMENTS_AVAILABLE && <div className="flex flex-wrap gap-x-4 gap-y-1">
             <a
               href="https://t.me/timur_makarov"
               target="_blank"
@@ -224,15 +230,7 @@ export const Footer = () => {
             >
               Kurucu: Timur Makarov
             </a>
-            <a
-              href="https://t.me/new_uzb_dev"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="transition-colors hover:text-[var(--tm-text-primary)]"
-            >
-              Geliştirme: Ochilov Jahongirmirzo
-            </a>
-          </div>
+          </div>}
         </div>
       </div>
     </footer>

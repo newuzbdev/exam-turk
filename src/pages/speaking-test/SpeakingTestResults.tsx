@@ -1,4 +1,4 @@
-﻿import { ArrowLeft, Download, Loader2, PlayCircle, Volume2 } from "lucide-react";
+﻿import { ArrowLeft, Loader2, PlayCircle, Volume2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useRef } from "react";
 import { useLayoutEffect } from "react";
@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import speakingSubmissionService from "@/services/speakingSubmission.service";
 import { createSpeakingAudioReplayUrl } from "@/services/speakingAudioReplay";
 import axiosPrivate from "@/config/api";
-import { overallTestService, overallTestFlowStore } from "@/services/overallTest.service";
 import {
   resolveSpeakingSubmissionTransition,
   shouldRefreshOverallEvaluation,
@@ -179,7 +178,6 @@ export default function SpeakingTestResults() {
   const [loading, setLoading] = useState(true);
   const [activePart, setActivePart] = useState(0);
   const [activeQuestion, setActiveQuestion] = useState(0);
-  const [downloadingPDF, setDownloadingPDF] = useState(false);
   const [audioUrls, setAudioUrls] = useState<Record<string, { url: string; expiresAt: number }>>({});
   const [audioLoading, setAudioLoading] = useState<Record<string, boolean>>({});
   const [audioErrors, setAudioErrors] = useState<Record<string, string>>({});
@@ -198,24 +196,6 @@ export default function SpeakingTestResults() {
     },
     [],
   );
-
-  const handleDownloadPDF = async () => {
-    // Try to get overall test result ID from session storage, otherwise use individual result ID
-    const overallId = overallTestFlowStore.getOverallId() || resultId;
-    if (!overallId) return;
-    
-    setDownloadingPDF(true);
-    try {
-      await overallTestService.downloadPDF(overallId, `speaking-certificate-${overallId}.pdf`);
-    } catch (error: any) {
-      debugSpeakingResults("download-pdf-error", {
-        status: error?.response?.status,
-        code: error?.code,
-      });
-    } finally {
-      setDownloadingPDF(false);
-    }
-  };
 
   const loadResult = useCallback(async (showLoading = true) => {
     if (!resultId) {
@@ -2139,14 +2119,6 @@ export default function SpeakingTestResults() {
 
         {/* Action Buttons */}
         <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-          <Button
-            onClick={handleDownloadPDF}
-            disabled={downloadingPDF}
-            className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200"
-          >
-            <Download className="w-5 h-5 mr-2" />
-            {downloadingPDF ? "İndiriliyor..." : "Sertifikayı İndir (PDF)"}
-          </Button>
           <Button
             onClick={() => navigate("/app/test")}
             variant="outline"

@@ -1,3 +1,4 @@
+import { LegalLinks } from "@/components/legal-links";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import {
@@ -31,6 +32,7 @@ import { clearExamPresentation } from "@/utils/examFullscreen";
 import TelegramLoginWidget, {
   type TelegramWidgetUser,
 } from "@/components/auth/TelegramLoginWidget";
+
 import { captureAccessLink } from '@/utils/access-link-context';
 
 type LoginStep = "entry" | "telegramApproval";
@@ -249,7 +251,7 @@ export default function Login() {
   return (
     <main className="relative flex min-h-screen flex-col overflow-hidden bg-white">
       <header className="h-14 w-full border-b border-[var(--tm-border-subtle)] bg-[var(--tm-bg-app)]/95">
-        <div className="mx-auto flex h-full w-full max-w-7xl items-center justify-between gap-2 px-3 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-full w-full max-w-6xl items-center justify-between gap-2 px-6 sm:px-10 lg:px-8">
           <button
             type="button"
             className="flex shrink-0 items-center justify-center"
@@ -257,9 +259,9 @@ export default function Login() {
             aria-label="Ana sayfaya dön"
           >
             <img
-              src="/logo11.svg"
+              src="/logo11-aligned.svg"
               alt="TURKISHMOCK"
-              className="block h-9 w-auto object-contain sm:h-10 md:h-[44px]"
+              className="block h-10 w-auto object-contain sm:h-11 md:h-12"
             />
           </button>
           <button
@@ -333,11 +335,15 @@ export default function Login() {
         </section>
       </div>
 
+      <footer className="absolute bottom-5 right-6 left-6 flex justify-end sm:right-10 sm:left-10">
+        <LegalLinks className="justify-end text-xs leading-5 text-[var(--tm-text-secondary)]" />
+      </footer>
+
       {import.meta.env.DEV && import.meta.env.VITE_ENABLE_LOCAL_PASSWORD_LOGIN === "true" ? (
         <button
           type="button"
           onClick={() => setLocalLoginOpen(true)}
-          className="absolute bottom-5 right-6 text-[11px] text-[var(--tm-text-tertiary)] underline decoration-[var(--tm-border-default)] underline-offset-4 transition-colors hover:text-[var(--tm-text-primary)] sm:right-10"
+          className="absolute bottom-14 left-6 text-[11px] text-[var(--tm-text-tertiary)] underline decoration-[var(--tm-border-default)] underline-offset-4 transition-colors hover:text-[var(--tm-text-primary)] sm:left-10"
         >
           Giriş
         </button>

@@ -36,12 +36,12 @@ export const deferred = () => {
 };
 
 // Bundle local TS/TSX in memory. No Vite listener, app bootstrap or API client loads.
-export async function loadOfflineComponent(entryPoint, mocks = {}) {
+export async function loadOfflineComponent(entryPoint, mocks = {}, { env = {} } = {}) {
   globalThis.__writingTestDependencies = mocks;
   const result = await build({
     entryPoints: [entryPoint], bundle: true, write: false, platform: 'node', format: 'cjs',
     packages: 'external', jsx: 'automatic', tsconfig: 'tsconfig.app.json',
-    define: { 'import.meta.env': '{}' },
+    define: { 'import.meta.env': JSON.stringify(env) },
     plugins: [{ name: 'offline-boundaries', setup(builder) {
       builder.onResolve({ filter: /.*/ }, (args) => Object.hasOwn(mocks, args.path) ? { path: args.path, namespace: 'offline' } : undefined);
       builder.onLoad({ filter: /.*/, namespace: 'offline' }, (args) => ({

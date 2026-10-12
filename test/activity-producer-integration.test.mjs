@@ -37,7 +37,7 @@ const stores = await loadOfflineComponent('src/services/overallTest.service.ts',
 });
 const presence = await loadOfflineComponent('src/hooks/use-student-presence.ts', {
   '@/services/overallTest.service': stores,
-  '@/services/studentPresence.service': { studentPresenceEnabled: true, STUDENT_PRESENCE_LOGOUT_EVENT: 'fixture:logout', studentPresenceService: { report: async (body, options) => { reports.push({ body, options }); }, close: async () => {} } },
+  '@/services/studentPresence.service': { studentPresenceEnabled: true, STUDENT_PRESENCE_LOGOUT_EVENT: 'fixture:logout', studentPresenceService: { isEnabled: async () => true, report: async (body, options) => { reports.push({ body, options }); }, close: async () => {} } },
 });
 const read = path => presence.readStudentPresenceRouteState(owner, path);
 const { classifyStudentPage } = await loadOfflineComponent('src/utils/student-presence-route.ts');

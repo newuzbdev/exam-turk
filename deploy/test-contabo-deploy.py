@@ -1,5 +1,7 @@
 from pathlib import Path
 import importlib.util, io, tarfile, tempfile, unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location('deploy', Path(__file__).with_name('contabo-deploy.py'))
 deploy = importlib.util.module_from_spec(spec)
@@ -7,6 +9,34 @@ spec.loader.exec_module(deploy)
 REVISION = 'a' * 40
 
 class DeploymentGuards(unittest.TestCase):
+    def test_frontend_receiver_enables_presence_for_both_public_origins(self):
+        # Exercise the receiver's actual Docker arguments without starting Docker,
+        # reading runtime secrets, or changing a live Compose configuration.
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config = root / 'application.compose.yml'
+            config.write_text('services:\n')
+            (root / 'baselines.json').write_text('{}')
+            commands = []
+            current = {'backend': {'health': 'healthy'}}
+            with patch.multiple(deploy, BASE=root, CONFIG=config, snapshot=lambda: current,
+                                protected_hashes=lambda: {'protected': 'unchanged'},
+                                unpack=lambda archive, destination, revision: None,
+                                run=lambda args, **kwargs: commands.append(args)), \
+                 patch.object(deploy.socket, 'gethostname', return_value='vmi3646355'), \
+                 patch.object(deploy.shutil, 'disk_usage', return_value=SimpleNamespace(free=10 * 1024**3)), \
+                 patch.object(deploy.sys, 'stdin', SimpleNamespace(buffer=io.BytesIO(b'fixture archive'))):
+                deploy.main('frontend', 'check ' + REVISION)
+            builds = [command for command in commands if command[:2] == ['docker', 'build']]
+            self.assertEqual(len(builds), 2)
+            for build in builds:
+                arguments = [build[index + 1] for index, value in enumerate(build[:-1]) if value == '--build-arg']
+                self.assertIn('VITE_ADMIN_LAUNCH_FEATURES_ENABLED=true', arguments)
+                self.assertIn('VITE_LEGAL_DRAFT_PREVIEW=false', arguments)
+            self.assertIn('VITE_API_URL=https://api.195-88-87-174.sslip.io', builds[0])
+            self.assertIn('VITE_API_URL=https://api.turkishmock.uz', builds[1])
+            self.assertEqual(config.read_text(), 'services:\n')
+
     def test_only_bound_application_commands_are_allowed(self):
         self.assertEqual(deploy.parse_command('frontend', 'deploy ' + REVISION), ('deploy', REVISION))
         for command in ['id', 'deploy main', 'deploy ' + REVISION + '; cat /run/secrets/backend.env', 'deploy ' + REVISION + ' extra']:

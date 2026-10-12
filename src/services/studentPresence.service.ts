@@ -11,7 +11,7 @@ type Receipt = { accepted: boolean; serverNow: string };
 const timeout = 5_000;
 const validateStatus = () => true;
 // Telemetry shares the API origin, but never its mutable auth/refresh interceptors.
-const transport = axios.create({ baseURL: sharedApi.defaults.baseURL, timeout, validateStatus });
+const transport = axios.create({ baseURL: sharedApi.defaults.baseURL, timeout, validateStatus, withCredentials: false });
 const safeInput = (input: PresenceInput): PresenceInput => {
   const result: PresenceInput = { sessionId: input.sessionId, sequence: input.sequence, visible: input.visible, page: STUDENT_PAGES.includes(input.page) ? input.page : 'OTHER' };
   for (const key of ['overallTestId', 'readingPracticeAttemptId', 'practiceId', 'evaluationRunId'] as const) if (isPresenceUuid(input[key])) result[key] = input[key];
@@ -19,6 +19,17 @@ const safeInput = (input: PresenceInput): PresenceInput => {
   return result;
 };
 export const studentPresenceService = {
+  async isEnabled(options: { signal: AbortSignal }): Promise<boolean> {
+    // The server rollout remains authoritative. Do not cache a disabled result
+    // or let a configuration outage touch the student's auth/refresh lifecycle.
+    const response = await transport.get('/api/access/config', {
+      signal: options.signal, timeout, validateStatus,
+      headers: { 'Cache-Control': 'no-store' },
+    });
+    const config = response.data?.data;
+    if (response.status < 200 || response.status >= 300 || response.data?.success !== true || typeof config?.enabled !== 'boolean') throw new Error('Presence unavailable');
+    return config.enabled;
+  },
   async report(input: PresenceInput, options: { signal: AbortSignal; mockSectionToken?: string }): Promise<Receipt> {
     const token = readStoredAccessToken();
     if (!token) throw new Error('Presence unavailable');

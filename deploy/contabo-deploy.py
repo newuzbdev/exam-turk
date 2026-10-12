@@ -15,7 +15,7 @@ PUBLIC = {
     'VITE_GOOGLE_CLIENT_ID': '816519766562-6q30ok84uh49jj2eh6d9vbjnmqu0uoti.apps.googleusercontent.com',
     'VITE_TELEGRAM_BOT_USERNAME': 'turkishmockbot',
     'VITE_ADMIN_APP_URL': 'https://admin.turkishmock.uz',
-    'VITE_ADMIN_LAUNCH_FEATURES_ENABLED': 'false',
+    'VITE_ADMIN_LAUNCH_FEATURES_ENABLED': 'true',
     'VITE_LEGAL_DRAFT_PREVIEW': 'false',
     'VITE_STUDENT_APP_URL': 'https://turkishmock.uz',
 }

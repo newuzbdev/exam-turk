@@ -4,20 +4,62 @@ import { readFile } from 'node:fs/promises';
 import axios, { AxiosError } from 'axios';
 import { React, act, createRoot, deferred, fakeWindowClock, loadOfflineComponent, mount } from './helpers/offline-react.mjs';
 
-let reports = [], closes = [], response = () => Promise.resolve({ accepted: true }), route = { pathname: '/app' }, owner = 'student-a';
+let reports = [], closes = [], configReads = [], configuration = () => Promise.resolve(true), response = () => Promise.resolve({ accepted: true }), route = { pathname: '/app' }, owner = 'student-a';
 let currentProps;
 const { useStudentPresence } = await loadOfflineComponent('src/hooks/use-student-presence.ts', {
   '@/services/studentPresence.service': {
     studentPresenceEnabled: true,
     STUDENT_PRESENCE_LOGOUT_EVENT: 'student-presence:logout',
-    studentPresenceService: { report(input, options) { reports.push({ input, options }); return response(); }, close(id) { closes.push(id); return Promise.resolve(); } },
+    studentPresenceService: { isEnabled(options) { configReads.push(options); return configuration(); }, report(input, options) { reports.push({ input, options }); return response(); }, close(id) { closes.push(id); return Promise.resolve(); } },
   },
   '@/services/overallTest.service': { overallTestFlowStore: { getOverallId: () => null, getQueue: () => [], getPendingNextSection: () => null }, overallTestTokenStore: { getByTestId: () => { throw new Error('No mock on dashboard'); } } },
   '@/utils/access-link-context': { readCurrentActivity: () => null },
 });
 function Entry() { currentProps = React.useState(0)[1]; useStudentPresence({ userId: owner, routeContext: route }); return React.createElement('textarea', { defaultValue: 'unsaved draft' }); }
-function reset(hidden = false) { reports = []; closes = []; response = () => Promise.resolve({ accepted: true }); route = { pathname: '/app' }; owner = 'student-a'; sessionStorage.setItem('userId', owner); Object.defineProperty(document, 'visibilityState', { configurable: true, value: hidden ? 'hidden' : 'visible' }); }
+function reset(hidden = false) { reports = []; closes = []; configReads = []; configuration = () => Promise.resolve(true); response = () => Promise.resolve({ accepted: true }); route = { pathname: '/app' }; owner = 'student-a'; sessionStorage.setItem('userId', owner); Object.defineProperty(document, 'visibilityState', { configurable: true, value: hidden ? 'hidden' : 'visible' }); }
 async function rerender() { await act(async () => currentProps(n => n + 1)); }
+
+test('disabled or unavailable server configuration sends no presence and retries only on the ordinary interval', async () => {
+  for (const configure of [() => Promise.resolve(false), () => Promise.reject(new Error('fixture configuration outage'))]) {
+    reset(); configuration = configure; const clock = fakeWindowClock(); const view = await mount(Entry);
+    try {
+      assert.equal(reports.length, 0);
+      await clock.advance(29_999); assert.equal(configReads.length, 1); assert.equal(reports.length, 0);
+      await clock.advance(1); assert.equal(configReads.length, 2); assert.equal(reports.length, 0);
+      configuration = () => Promise.resolve(true);
+      await clock.advance(30_000); assert.equal(reports.length, 1); assert.equal(reports[0].input.sequence, 1);
+      configuration = () => Promise.resolve(false);
+      await clock.advance(30_000); assert.equal(reports.length, 1);
+    } finally { await view.unmount(); clock.restore(); }
+  }
+});
+
+test('server configuration and report share one five-second deadline', async () => {
+  reset(); const config = deferred(); const pending = deferred(); configuration = () => config.promise; response = () => pending.promise;
+  const clock = fakeWindowClock(); const view = await mount(Entry);
+  try {
+    await clock.advance(4_000); assert.equal(reports.length, 0);
+    await act(async () => config.resolve(true)); assert.equal(reports.length, 1);
+    assert.equal(reports[0].options.signal, configReads[0].signal);
+    await clock.advance(999); assert.equal(reports[0].options.signal.aborted, false);
+    await clock.advance(1); assert.equal(reports[0].options.signal.aborted, true);
+  } finally { await view.unmount(); clock.restore(); }
+});
+
+test('logout or account replacement while server configuration is pending cannot report the old session', async () => {
+  for (const action of ['logout', 'account replacement', 'unmount']) {
+    reset(); const pending = deferred(); configuration = () => pending.promise;
+    const clock = fakeWindowClock(); const view = await mount(Entry);
+    try {
+      assert.equal(reports.length, 0);
+      if (action === 'logout') await act(async () => window.dispatchEvent(new Event('student-presence:logout')));
+      if (action === 'account replacement') sessionStorage.setItem('userId', 'student-b');
+      if (action === 'unmount') await view.unmount();
+      await act(async () => pending.resolve(true));
+      await clock.advance(120_000); assert.equal(reports.length, 0); assert.equal(closes.length, 0);
+    } finally { await view.unmount(); clock.restore(); }
+  }
+});
 
 test('visible initial +30 +60 and hidden initial +60; sequences increase in one session', async () => {
   for (const [hidden, count] of [[false, 3], [true, 2]]) {
@@ -69,10 +111,14 @@ test('visibility resets interval; logout initiates close and stops callbacks imm
   } finally { await view.unmount(); clock.restore(); }
 });
 
-test('StrictMode re-setup creates a fresh UUID and leaves one periodic loop', async () => {
+test('StrictMode cancels pre-report setup and leaves one session and periodic loop', async () => {
   reset(); const clock = fakeWindowClock(); const container = document.createElement('div'); const root = createRoot(container);
   await act(async () => root.render(React.createElement(React.StrictMode, null, React.createElement(Entry))));
-  try { assert.equal(reports.length, 2); assert.notEqual(reports[0].input.sessionId, reports[1].input.sessionId); await clock.advance(60_000); assert.equal(reports.length, 4); }
+  try {
+    assert.equal(configReads.length, 2); assert.equal(configReads[0].signal.aborted, true); assert.equal(configReads[1].signal.aborted, false);
+    assert.equal(reports.length, 1); assert.equal(closes.length, 0);
+    await clock.advance(60_000); assert.equal(reports.length, 3); assert.equal(new Set(reports.map(x => x.input.sessionId)).size, 1);
+  }
   finally { await act(async () => root.unmount()); clock.restore(); }
 });
 
@@ -134,6 +180,45 @@ test('default-off browser gate schedules nothing', async () => {
   finally { await view.unmount(); clock.restore(); }
 });
 
+test('enabled browser build sends only configuration and authenticated presence on a dashboard', async () => {
+  reset(); sessionStorage.setItem('accessToken', 'fixture-live-access');
+  const requests = [];
+  const { useStudentPresence: enabledHook } = await loadOfflineComponent('src/hooks/use-student-presence.ts', {
+    axios: { default: { create(options) {
+      const transport = axios.create(options);
+      transport.defaults.adapter = async config => {
+        requests.push(config);
+        if (config.url === '/api/access/config') return { status: 200, statusText: 'OK', config, headers: {}, data: { success: true, data: { enabled: true } } };
+        if (config.url === '/api/me/presence') return { status: 200, statusText: 'OK', config, headers: {}, data: { success: true, data: { accepted: true, serverNow: '2026-10-12T00:00:00Z' } } };
+        if (config.method === 'delete' && /^\/api\/me\/presence\/[0-9a-f-]+$/.test(config.url)) return { status: 200, statusText: 'OK', config, headers: {}, data: { success: true, data: {} } };
+        throw new Error(`Presence requested unrelated API: ${config.url}`);
+      };
+      return transport;
+    } } },
+    '@/config/api': { default: { defaults: { baseURL: 'http://offline.test' } }, resolveApiResourceUrl: value => value },
+  }, { env: { VITE_ADMIN_LAUNCH_FEATURES_ENABLED: 'true' } });
+  const Enabled = () => { enabledHook({ userId: owner, routeContext: { pathname: '/app' } }); return null; };
+  const clock = fakeWindowClock(); const view = await mount(Enabled);
+  try {
+    await clock.advance(60_000);
+    assert.deepEqual(requests.map(config => [config.method, config.url]), [
+      ['get', '/api/access/config'], ['post', '/api/me/presence'],
+      ['get', '/api/access/config'], ['post', '/api/me/presence'],
+      ['get', '/api/access/config'], ['post', '/api/me/presence'],
+    ]);
+    const bodies = requests.filter(config => config.method === 'post').map(config => JSON.parse(config.data));
+    assert.deepEqual(bodies.map(input => input.sequence), [1, 2, 3]);
+    assert.equal(new Set(bodies.map(input => input.sessionId)).size, 1);
+    for (const request of requests) {
+      assert.equal(request.withCredentials, false); assert.equal(request.headers['Cache-Control'], 'no-store');
+      assert.equal(request.headers['x-mock-section-token'], undefined);
+      assert.equal(request.headers.Authorization, request.method === 'post' ? 'Bearer fixture-live-access' : undefined);
+    }
+    assert.deepEqual(Object.keys(bodies[0]).sort(), ['page', 'sequence', 'sessionId', 'visible']);
+    assert.equal(bodies[0].page, 'DASHBOARD');
+  } finally { await view.unmount(); clock.restore(); sessionStorage.clear(); }
+});
+
 test('actual authenticated Axios service projects DTO, sends transient header, and HTTP telemetry failures cannot refresh or logout', async () => {
   sessionStorage.clear(); localStorage.clear();
   const { transport: api, studentPresenceService } = await presenceTransportFixture();
@@ -175,6 +260,34 @@ async function presenceTransportFixture() {
   const { studentPresenceService } = await loadOfflineComponent('src/services/studentPresence.service.ts', { '@/config/api': { default: sharedApi }, axios: { default: narrowAxios } });
   return { transport: dedicated ?? sharedApi, sharedApi, studentPresenceService };
 }
+
+test('actual server configuration transport accepts only a successful boolean and cannot refresh or logout', async () => {
+  const { transport, studentPresenceService } = await presenceTransportFixture();
+  sessionStorage.setItem('accessToken', 'fixture-access'); sessionStorage.setItem('refreshToken', 'fixture-refresh');
+  let refreshCalls = 0, authEvents = 0, captured; const oldAdapter = axios.defaults.adapter;
+  axios.defaults.adapter = () => { refreshCalls++; throw new Error('Refresh is forbidden'); };
+  const authEvent = () => authEvents++; window.addEventListener('auth:reauthentication-required', authEvent);
+  try {
+    for (const [status, data, expected] of [
+      [200, { success: true, data: { enabled: true } }, true],
+      [200, { success: true, data: { enabled: false } }, false],
+      [200, { success: true, data: { enabled: 'true' } }, undefined],
+      [200, { success: false, data: { enabled: true } }, undefined],
+      [401, { success: false }, undefined], [403, { success: false }, undefined], [503, { success: false }, undefined],
+    ]) {
+      transport.defaults.adapter = async config => { captured = config; return { status, statusText: 'fixture', config, headers: {}, data }; };
+      const signal = new AbortController().signal;
+      const pending = studentPresenceService.isEnabled({ signal });
+      if (expected === undefined) await assert.rejects(pending, /Presence unavailable/);
+      else assert.equal(await pending, expected);
+      assert.equal(captured.url, '/api/access/config'); assert.equal(captured.method, 'get');
+      assert.equal(captured.timeout, 5_000); assert.equal(captured.signal, signal);
+      assert.equal(captured.headers.Authorization, undefined); assert.equal(captured.headers['x-mock-section-token'], undefined);
+      assert.equal(captured.withCredentials, false);
+    }
+    assert.equal(refreshCalls, 0); assert.equal(authEvents, 0); assert.equal(sessionStorage.getItem('refreshToken'), 'fixture-refresh');
+  } finally { axios.defaults.adapter = oldAdapter; window.removeEventListener('auth:reauthentication-required', authEvent); sessionStorage.clear(); }
+});
 
 for (const operation of ['report', 'close']) test(`${operation} preserves call-time identity when credentials are replaced before actual dispatch`, async () => {
   sessionStorage.clear(); localStorage.clear(); sessionStorage.setItem('accessToken', 'fixture-account-A');
@@ -220,7 +333,7 @@ test('known Mock token is read only from producer store and passed only in trans
   sessionStorage.setItem('userId', owner);
   let tokenReads = 0, received = [], closes = [];
   const { useStudentPresence: knownHook } = await loadOfflineComponent('src/hooks/use-student-presence.ts', {
-    '@/services/studentPresence.service': { studentPresenceEnabled: true, STUDENT_PRESENCE_LOGOUT_EVENT: 'student-presence:logout', studentPresenceService: { report(input, options) { received.push({ input, options }); return Promise.resolve({ accepted: true }); }, close(id) { closes.push(id); return Promise.resolve(); } } },
+    '@/services/studentPresence.service': { studentPresenceEnabled: true, STUDENT_PRESENCE_LOGOUT_EVENT: 'student-presence:logout', studentPresenceService: { isEnabled: async () => true, report(input, options) { received.push({ input, options }); return Promise.resolve({ accepted: true }); }, close(id) { closes.push(id); return Promise.resolve(); } } },
     '@/services/overallTest.service': { overallTestFlowStore: { getOverallId: () => attempt, getQueue: () => [{ testType: 'READING', testId: id }], getPendingNextSection: () => ({ next: { testId: id } }) }, overallTestTokenStore: { getByTestId(testId) { assert.equal(testId, id); tokenReads++; return 'known-mock-token'; } } },
     '@/utils/access-link-context': { readCurrentActivity: () => ({ contentId: attempt, attemptId: attempt }) },
   });

@@ -76,6 +76,9 @@ export function useStudentPresence({ userId, routeContext }: { userId?: string; 
       const request = { controller, timeout: window.setTimeout(() => { controller.abort(); if (flight === request) flight = undefined; }, 5_000) };
       flight = request;
       try {
+        // One deadline bounds both the rollout check and report. A late config
+        // response must never attach the old tab UUID to a replacement account.
+        if (!await studentPresenceService.isEnabled({ signal: controller.signal }) || stopped || controller.signal.aborted || sessionStorage.getItem('userId') !== userId) return;
         const state = readStudentPresenceRouteState(userId, routeRef.current);
         const page = classifyStudentPage(routeRef.current, state);
         // Token goes to a transient header only and only for the known selected Mock.
@@ -99,7 +102,7 @@ export function useStudentPresence({ userId, routeContext }: { userId?: string; 
       window.removeEventListener(STUDENT_PRESENCE_LOGOUT_EVENT, stop);
       // An account switch must not send the previous tab UUID with new credentials.
       try {
-        if (sessionStorage.getItem('userId') === userId) void studentPresenceService.close(sessionId).catch(() => undefined);
+        if (sequence > 0 && sessionStorage.getItem('userId') === userId) void studentPresenceService.close(sessionId).catch(() => undefined);
       } catch { /* With no trusted owner pointer, expiry is the safe fallback. */ }
     };
     const tracker = { routeChanged, stop };

@@ -1,6 +1,7 @@
 from pathlib import Path
 import argparse
 import json
+import re
 import shutil
 import subprocess
 import tempfile
@@ -41,6 +42,15 @@ def check(config, output, image):
         snippets.mkdir()
         if (FRONTEND / 'deploy/public-seo-locations.conf').exists():
             shutil.copyfile(FRONTEND / 'deploy/public-seo-locations.conf', snippets / 'public-seo-locations.conf')
+        redirects = []
+        image_redirects = FRONTEND / 'deploy/optimized-image-redirects.conf'
+        if image_redirects.exists():
+            shutil.copyfile(image_redirects, snippets / image_redirects.name)
+            redirects = re.findall(r'location = (/\S+) \{ return 301 (/\S+); \}', image_redirects.read_text())
+            for _, target in redirects:
+                destination = site / target.lstrip('/')
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(FRONTEND / 'public' / target.lstrip('/'), destination)
         try:
             container = run('docker', 'run', '--rm', '-d', '--name', 'turkishmock-seo-check-' + uuid.uuid4().hex[:10],
                             '--read-only', '--tmpfs', '/var/cache/nginx', '--tmpfs', '/var/run',
@@ -106,9 +116,16 @@ def check(config, output, image):
                    lambda s, h, b: s == 200 and 'noindex' in h.get('X-Robots-Tag', ''))
             expect('missing JS cannot return the HTML app', '/assets/missing-1234abcd.js',
                    lambda s, h, b: s == 404)
+            for old, target in redirects:
+                expect('retired public image keeps its old address', old,
+                       lambda s, h, b, target=target: s == 301 and h.get('Location') == target)
+                expect('replacement is a real WebP with media search protection', target,
+                       lambda s, h, b: s == 200 and h.get_content_type() == 'image/webp'
+                       and b[:4] == b'RIFF' and b[8:12] == b'WEBP'
+                       and 'noindex' in h.get('X-Robots-Tag', ''))
         finally:
             if container:
-                subprocess.run(['docker', 'stop', container], check=True, stdout=subprocess.DEVNULL)
+                subprocess.run(['docker', 'stop', container], check=False, stdout=subprocess.DEVNULL)
     output.write_text(json.dumps(results, ensure_ascii=False, indent=2) + '\n')
     print(json.dumps({'config': str(config), 'passed': sum(x['passed'] for x in results), 'total': len(results),
                       'failed': [x for x in results if not x['passed']]}, ensure_ascii=False, indent=2))

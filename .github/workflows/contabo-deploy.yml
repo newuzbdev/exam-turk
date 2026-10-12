@@ -69,4 +69,5 @@ jobs:
           git archive --format=tar.gz "$GITHUB_SHA" | ssh \
             -i "$key_file" -o BatchMode=yes -o IdentitiesOnly=yes \
             -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$hosts_file" \
-            -o ConnectTimeout=20 root@195.88.87.174 "deploy $GITHUB_SHA"
+            -o ConnectTimeout=20 -o ServerAliveInterval=30 -o ServerAliveCountMax=20 \
+            root@195.88.87.174 "deploy $GITHUB_SHA"

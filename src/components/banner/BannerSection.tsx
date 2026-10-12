@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { usePageDataQuery } from '@/hooks/use-page-data-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,41 +16,13 @@ export const BannerSection: React.FC<BannerSectionProps> = ({
   position = 'middle',
   className = ''
 }) => {
-  const [banners, setBanners] = useState<Banner[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [dismissedBanners, _setDismissedBanners] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    fetchBanners();
-  }, [position]);
-
-  const fetchBanners = async () => {
-    try {
-      setLoading(true);
-      const allBanners = await bannerService.getAllBanners();
-      
-      // Filter banners by position and active status
-      // If no position is specified in banner, show it for 'top' position
-      const filteredBanners = allBanners.filter(banner => {
-        const hasCorrectPosition = !banner.position || banner.position === position;
-        const isActive = banner.isActive !== false;
-        return hasCorrectPosition && isActive;
-      });
-      
-      // If no banners found and we're looking for 'top' position, show banners without position
-      if (filteredBanners.length === 0 && position === 'top') {
-        const fallbackBanners = allBanners.filter(banner => banner.isActive !== false);
-        setBanners(fallbackBanners);
-        return;
-      }
-      
-      setBanners(filteredBanners);
-    } catch (error) {
-      // Silently handle errors
-    } finally {
-      setLoading(false);
-    }
-  };
+  const query = usePageDataQuery({ queryKey: ['public', 'banners'], queryFn: bannerService.getAllBanners });
+  const allBanners = query.data ?? [];
+  const loading = query.isPending;
+  const filteredBanners = allBanners.filter(banner => (!banner.position || banner.position === position) && banner.isActive !== false);
+  const banners = filteredBanners.length === 0 && position === 'top'
+    ? allBanners.filter(banner => banner.isActive !== false) : filteredBanners;
+  const [dismissedBanners] = useState<Set<string>>(new Set());
 
   // Dismiss handler is not currently used; remove to avoid unused warnings
 
@@ -95,7 +68,7 @@ export const BannerSection: React.FC<BannerSectionProps> = ({
   return (
     <div className={`w-full bg-gray-50 py-8 ${className}`}>
       {activeBanners.map((banner) => (
-        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
+        <div key={banner.id} className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
           <Card 
             key={banner.id} 
             className={`relative overflow-hidden transition-all duration-300 hover:shadow-xl border-0 shadow-lg min-h-[400px] bg-white ${

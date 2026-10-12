@@ -1,3 +1,4 @@
+import { usePageDataQuery } from "@/hooks/use-page-data-query";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -26,7 +27,11 @@ export default function Home() {
   const [isProcessingOAuth, setIsProcessingOAuth] = useState(false);
   const processedTokenRef = useRef<string | null>(null);
   const homeRootRef = useRef<HTMLDivElement>(null);
-  const [hasActiveBanners, setHasActiveBanners] = useState(false);
+  const banners = usePageDataQuery({ queryKey: ['public', 'banners'], queryFn: bannerService.getAllBanners });
+  const now = Date.now();
+  const hasActiveBanners = Boolean(banners.data?.some(banner => banner.isActive !== false &&
+    (!banner.startDate || new Date(banner.startDate).getTime() <= now) &&
+    (!banner.endDate || new Date(banner.endDate).getTime() >= now)));
 
   useEffect(() => {
     const accessToken = searchParams.get("accessToken");
@@ -60,31 +65,6 @@ export default function Home() {
       handleOAuthLogin();
     }
   }, [searchParams, navigate, login, isProcessingOAuth]);
-
-  useEffect(() => {
-    const checkActiveBanners = async () => {
-      try {
-        const allBanners = await bannerService.getAllBanners();
-        const activeBanners = allBanners.filter((banner) => {
-          const isActive = banner.isActive !== false;
-          const now = new Date();
-          const startDate = banner.startDate ? new Date(banner.startDate) : null;
-          const endDate = banner.endDate ? new Date(banner.endDate) : null;
-
-          if (startDate && now < startDate) return false;
-          if (endDate && now > endDate) return false;
-
-          return isActive;
-        });
-
-        setHasActiveBanners(activeBanners.length > 0);
-      } catch {
-        setHasActiveBanners(false);
-      }
-    };
-
-    checkActiveBanners();
-  }, []);
 
   useEffect(() => {
     const root = homeRootRef.current;

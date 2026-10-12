@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { usePageDataQuery } from "@/hooks/use-page-data-query";
+import { useAuth } from "@/contexts/AuthContext";
 import axiosPrivate from "@/config/api";
 import type { DashboardPeriod } from "./dashboard-home-data";
 
@@ -17,7 +18,9 @@ export type DashboardActivitySummary = {
 };
 
 export function useDashboardActivity(period: DashboardPeriod) {
-  return useQuery({
+  const { user, isAuthenticated } = useAuth();
+  return usePageDataQuery({
+    enabled: isAuthenticated && Boolean(user?.id),
     queryKey: ["dashboard", "activity", period],
     staleTime: 30_000,
     retry: 1,

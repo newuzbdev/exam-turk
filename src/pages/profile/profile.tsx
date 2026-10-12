@@ -1,3 +1,7 @@
+import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
+import { usePageDataQuery, pageDataKey } from "@/hooks/use-page-data-query";
+import { useDashboardResults } from "@/pages/dashboard/dashboard-results-api";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
@@ -19,7 +23,7 @@ import { authService } from "@/services/auth.service";
 import { paymeService } from "@/services/payme.service";
 import { SubscriptionStatusCard } from "./subscription-status-card";
 import PublicResultSharingSetting from "@/components/auth/public-result-sharing-setting";
-import { ProfileDetails } from "./profile-details";
+import { ProfileDetails, type ProfileUser } from "./profile-details";
 import PurchasedPackages from "./purchased-packages";
 
 type ProfileSection = "profile" | "exams" | "transactions";
@@ -127,12 +131,23 @@ export default function ProfilePage({
 }: ProfilePageProps) {
   const navigate = useNavigate();
 
-  const [loading, setLoading] = useState(true);
+  const { user: authUser, isAuthenticated, isLoading: authLoading } = useAuth();
+  const queryClient = useQueryClient();
   const [activeSection, setActiveSection] =
     useState<ProfileSection>(initialSection);
 
-  const [user, setUser] = useState<any>(null);
-  const [results, setResults] = useState<TestResult[]>([]);
+  const profile = usePageDataQuery({
+    queryKey: ['profile'],
+    queryFn: authService.getCurrentUser,
+    enabled: isAuthenticated && Boolean(authUser?.id),
+    initialData: authUser as Awaited<ReturnType<typeof authService.getCurrentUser>>,
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
+  const user = (profile.data ?? authUser) as (ProfileUser & Record<string, unknown>) | null;
+  const history = useDashboardResults(activeSection !== 'profile');
+  const results = useMemo(() => (history.data ?? []) as TestResult[], [history.data]);
+  const loading = (!user && profile.isPending) || (activeSection === 'exams' && history.isPending);
   const [examSortBy, setExamSortBy] = useState<"date" | "score">("date");
   const [examSortDir, setExamSortDir] = useState<"desc" | "asc">("desc");
   const [txSortBy, setTxSortBy] = useState<"date" | "amount">("date");
@@ -141,56 +156,11 @@ export default function ProfilePage({
   const [topupTransactions, setTopupTransactions] = useState<UnifiedTransactionRow[]>([]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const userData = await authService.getCurrentUser();
-        if (!userData) {
-          navigate("/login", {
-            replace: true,
-            state: {
-              redirectTo:
-                initialSection === "exams" ? "/app/sonuclar" : embedded ? "/app/profil" : "/profile",
-            },
-          });
-          return;
-        }
-
-        setUser(userData);
-        const firstPageResponse = await axiosPrivate.get("/api/overal-test-result/get-users?page=1&limit=50").catch(() => null);
-
-        const firstPageData = firstPageResponse?.data?.data || [];
-        const total = Number(firstPageResponse?.data?.total || firstPageData.length);
-        const limit = Number(firstPageResponse?.data?.limit || 50) || 50;
-        const totalPages = Math.max(1, Math.ceil(total / limit));
-
-        let mergedResults: TestResult[] = Array.isArray(firstPageData) ? firstPageData : [];
-        if (totalPages > 1) {
-          for (let page = 2; page <= totalPages; page += 1) {
-            const pageResponse = await axiosPrivate.get(
-              `/api/overal-test-result/get-users?page=${page}&limit=${limit}`,
-            );
-            const pageData = pageResponse?.data?.data || [];
-            if (Array.isArray(pageData)) mergedResults = mergedResults.concat(pageData);
-          }
-        }
-
-        setResults(mergedResults);
-      } catch (error) {
-        console.error("Error fetching profile page:", error);
-        navigate("/login", {
-          replace: true,
-          state: {
-            redirectTo:
-              initialSection === "exams" ? "/app/sonuclar" : embedded ? "/app/profil" : "/profile",
-          },
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [embedded, initialSection, navigate]);
+    if (!authLoading && !isAuthenticated) navigate('/login', {
+      replace: true,
+      state: { redirectTo: initialSection === 'exams' ? '/app/sonuclar' : embedded ? '/app/profil' : '/profile' },
+    });
+  }, [authLoading, isAuthenticated, embedded, initialSection, navigate]);
 
   useEffect(() => {
     if (isSubscriptionBillingEnabled) return;
@@ -429,7 +399,13 @@ export default function ProfilePage({
             {activeSection === "profile" && (
               <div className="space-y-4">
                 {user ? <ProfileDetails key={`profile-${user.id}`} user={user} className={panelClassName}
-                  onSaved={(updated) => setUser((previous: any) => ({ ...previous, ...updated }))} /> : null}
+                  onSaved={(updated) => {
+                    const key = pageDataKey(['profile'], authUser?.id);
+                    if (!queryClient.getQueryState(key)) return;
+                    // A slow pre-save GET must not overwrite the accepted edit.
+                    void queryClient.cancelQueries({ queryKey: key, exact: true });
+                    queryClient.setQueryData(key, { ...user, ...updated });
+                  }} /> : null}
                 {isSubscriptionBillingEnabled && <><SubscriptionStatusCard /><PurchasedPackages /></>}
                 <PublicResultSharingSetting key={user?.id} />
               </div>

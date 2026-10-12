@@ -2,6 +2,7 @@ import ContentAccessRecovery from '@/components/subscription/ContentAccessRecove
 import { readWritingPracticeAccess, saveWritingPracticeAccess, saveWritingPracticePaidContinuation } from '@/pages/writing-practice/writing-practice-storage';
 import { saveOwnedAccess } from '@/utils/access-link-context';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePageDataQuery } from '@/hooks/use-page-data-query';
 import { useContentAccessDecisions } from '@/hooks/use-content-access';
 import { isContentLocked } from '@/utils/content-access';
 import { bindNormalAccess } from '@/utils/normal-access-entry';
@@ -108,13 +109,17 @@ export default function PracticeList({
 }) {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [items, setItems] = useState<PracticeListItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState(() => readSavedFilters(domain));
   const [continueDialogItem, setContinueDialogItem] =
     useState<PracticeListItem | null>(null);
   const [membershipRequiredOpen, setMembershipRequiredOpen] = useState(false);
   const { level, section, sort } = filters;
+  const catalog = usePageDataQuery({
+    queryKey: ['practice', domain, 'catalog', sort],
+    queryFn: () => serviceByDomain[domain].list({ order: sort }),
+  });
+  const items = useMemo(() => catalog.data ?? [], [catalog.data]);
+  const loading = catalog.isPending;
   const targetFor = (id: string) => ({ scope: `PRACTICE_${domain}` as const, targetId: id });
   const access = useContentAccessDecisions(items.map(item => targetFor(item.id)));
   const [blockedItem, setBlockedItem] = useState<PracticeListItem | null>(null);
@@ -130,19 +135,6 @@ export default function PracticeList({
       // Filters remain usable when browser storage is unavailable.
     }
   }, [domain, filters]);
-
-  useEffect(() => {
-    let mounted = true;
-    setLoading(true);
-    serviceByDomain[domain]
-      .list({ order: sort })
-      .then((rows) => mounted && setItems(rows))
-      .catch(() => mounted && setItems([]))
-      .finally(() => mounted && setLoading(false));
-    return () => {
-      mounted = false;
-    };
-  }, [domain, sort]);
 
   const filtered = useMemo(
     () =>

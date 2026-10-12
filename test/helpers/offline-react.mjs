@@ -3,6 +3,14 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 
 const require = createRequire(import.meta.url);
+// Query inactivity expiry should not keep a completed Node DOM-test worker
+// alive for minutes. The timers still run while tests have active work.
+const nativeSetTimeout = globalThis.setTimeout;
+globalThis.setTimeout = (callback, delay, ...args) => {
+  const timer = nativeSetTimeout(callback, delay, ...args);
+  if (Number(delay) >= 300_000) timer.unref?.();
+  return timer;
+};
 // The sibling admin workspace already owns the DOM test dependency.
 const { JSDOM } = require(require.resolve('jsdom', { paths: [process.cwd(), path.resolve('../admin')] }));
 const dom = new JSDOM('<!doctype html><html><body></body></html>', { url: 'http://offline.test/' });

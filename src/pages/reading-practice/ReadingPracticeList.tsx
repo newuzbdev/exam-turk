@@ -32,6 +32,10 @@ import { useStudentAction } from "@/hooks/use-student-action";
 import MembershipLockBadge from "@/components/subscription/MembershipLockBadge";
 import MembershipRequiredDialog from "@/components/subscription/MembershipRequiredDialog";
 import PracticeCoverImage from "@/components/practice/PracticeCoverImage";
+import { usePageDataQuery } from '@/hooks/use-page-data-query';
+
+const EMPTY_ITEMS: ReadingPracticeListItem[] = [];
+const EMPTY_COMPLETED_IDS: string[] = [];
 
 const DEFAULT_COVER =
   "linear-gradient(135deg, rgba(17,24,39,0.86) 0%, rgba(55,65,81,0.58) 55%, rgba(185,28,28,0.24) 100%)";
@@ -154,23 +158,41 @@ export default function ReadingPracticeList({
   const { isAuthenticated, user, refreshUser } = useAuth();
   const openStudentAction = useStudentAction();
   const handledStartIntentRef = useRef<string | null>(null);
-  const [items, setItems] = useState<ReadingPracticeListItem[]>([]);
   const [{ levelFilter, sectionFilter, sortMode }, setFilters] = useState(
     () => readSavedFilters(workspaceMode),
   );
   const targetFor = (id: string) => ({ scope: 'PRACTICE_READING' as const, targetId: id });
+  const order = sortMode === 'eski' ? 'oldest' : 'newest';
+  const catalog = usePageDataQuery({
+    queryKey: ['practice', 'reading', 'catalog', order, initialStartId ?? null],
+    queryFn: async () => {
+      const rows = await readingPracticeService.getAll({ order });
+      if (initialStartId && !rows.some(item => item.id === initialStartId)) {
+        const sharedItem = await readingPracticeService.getPreview(initialStartId);
+        if (sharedItem?.isPublished) return [sharedItem, ...rows];
+      }
+      return rows;
+    },
+  });
+  const completed = usePageDataQuery({
+    queryKey: ['practice', 'reading', 'completed'],
+    queryFn: readingPracticeService.getCompletedPassageIds,
+    enabled: workspaceMode && isAuthenticated,
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
+  const items = catalog.data ?? EMPTY_ITEMS;
   const access = useContentAccessDecisions(items.map(item => targetFor(item.id)));
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
-  const [requestVersion, setRequestVersion] = useState(0);
+  const loading = catalog.isPending;
+  const loadError = catalog.isError && !catalog.data;
   const [paymeOpen, setPaymeOpen] = useState(false);
   const [continueDialogItem, setContinueDialogItem] = useState<ReadingPracticeListCard | null>(null);
   const [membershipRequiredOpen, setMembershipRequiredOpen] = useState(false);
   const [paidConfirmItem, setPaidConfirmItem] = useState<ReadingPracticeListCard | null>(null);
   const [pendingPurchaseItem, setPendingPurchaseItem] = useState<ReadingPracticeListCard | null>(null);
   const [startingId, setStartingId] = useState<string | null>(null);
-  const [completedPassageIds, setCompletedPassageIds] = useState<Set<string>>(
-    () => new Set(),
+  const completedPassageIds = useMemo(
+    () => new Set(completed.data ?? EMPTY_COMPLETED_IDS), [completed.data],
   );
 
   useEffect(() => {
@@ -183,40 +205,6 @@ export default function ReadingPracticeList({
       // Filters still work when browser storage is unavailable.
     }
   }, [levelFilter, sectionFilter, sortMode, workspaceMode]);
-
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      setLoading(true);
-      setLoadError(false);
-      try {
-        const [listedItems, completedIds] = await Promise.all([
-          readingPracticeService.getAll({ order: sortMode === "eski" ? "oldest" : "newest" }),
-          workspaceMode && isAuthenticated
-            ? readingPracticeService.getCompletedPassageIds()
-            : Promise.resolve([]),
-        ]);
-        if (!mounted) return;
-        let data = listedItems;
-        if (initialStartId && !listedItems.some((item) => item.id === initialStartId)) {
-          const sharedItem = await readingPracticeService.getPreview(initialStartId);
-          if (!mounted) return;
-          if (sharedItem?.isPublished) data = [sharedItem, ...listedItems];
-        }
-        setItems(data);
-        setCompletedPassageIds(new Set(completedIds));
-      } catch {
-        if (!mounted) return;
-        setItems([]);
-        setLoadError(true);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, [initialStartId, isAuthenticated, requestVersion, workspaceMode, sortMode]);
 
   const itemsWithState = useMemo(
     () =>
@@ -572,7 +560,7 @@ export default function ReadingPracticeList({
               </p>
               <button
                 type="button"
-                onClick={() => setRequestVersion((value) => value + 1)}
+                onClick={() => void catalog.refetch()}
                 className={`${tm.subtleButton} mt-5 h-9 px-3 text-sm font-semibold`}
               >
                 Tekrar dene
@@ -725,5 +713,4 @@ export default function ReadingPracticeList({
     </main>
   );
 }
-
 

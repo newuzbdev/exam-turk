@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { usePageDataQuery } from "@/hooks/use-page-data-query";
+import { useAuth } from "@/contexts/AuthContext";
 
 import axiosPrivate from "@/config/api";
 import type { DashboardOverallResult } from "./dashboard-performance";
@@ -56,12 +57,15 @@ const fetchDashboardResults = async (): Promise<DashboardOverallResult[]> => {
   return results;
 };
 
-export const useDashboardResults = () =>
-  useQuery({
+export const useDashboardResults = (enabled = true) => {
+  const { user, isAuthenticated } = useAuth();
+  return usePageDataQuery({
+    enabled: enabled && isAuthenticated && Boolean(user?.id),
     queryKey: ["dashboard", "overall-results"],
     queryFn: fetchDashboardResults,
     retry: 1,
     staleTime: 60_000,
+    refetchOnMount: 'always',
     refetchInterval: (query) => {
       const results = query.state.data;
       const hasPendingEvaluation = results?.some(
@@ -74,3 +78,4 @@ export const useDashboardResults = () =>
       return hasPendingEvaluation ? 2_500 : false;
     },
   });
+};

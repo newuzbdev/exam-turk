@@ -9,11 +9,9 @@ import type { AccessEntry } from '@/utils/access-link-entry';
 import { INVALID_ACCESS_LINK_MESSAGE } from '@/utils/access-link-context';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import axiosPrivate from "@/config/api";
-import { toast } from "sonner";
 import TestModal from "./components/TestModal";
 import EmptyState from "./components/EmptyState";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { authService } from "@/services/auth.service";
 import { tm } from "@/components/tm";
 import {
   overallTestFlowStore,
@@ -21,6 +19,7 @@ import {
 } from "@/services/overallTest.service";
 import { ArrowRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { usePageDataQuery } from "@/hooks/use-page-data-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { isSubscriptionBillingEnabled } from "@/config/billing";
 import { subscriptionService, subscriptionStatusQueryKey } from "@/services/subscription.service";
@@ -144,10 +143,6 @@ const loadTurkishTestCatalog = async (): Promise<TurkishTestResponse> => {
 };
 
 const TestPage = ({ workspaceMode = false }: { workspaceMode?: boolean }) => {
-  const [turkishTestData, setTurkishTestData] = useState<TurkishTestResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
-  const [requestVersion, setRequestVersion] = useState(0);
   const [_selectedTest, setSelectedTest] = useState<TurkishTest | null>(null);
   const [_selectedTestType, setSelectedTestType] = useState<"all" | "listening" | "speaking" | "reading" | "writing">("all");
   const [showTestModal, setShowTestModal] = useState(false);
@@ -160,6 +155,13 @@ const TestPage = ({ workspaceMode = false }: { workspaceMode?: boolean }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { isAuthenticated, user } = useAuth();
+  const catalog = usePageDataQuery({
+    queryKey: ['mock', 'catalog'],
+    queryFn: loadTurkishTestCatalog,
+  });
+  const turkishTestData = catalog.data ?? null;
+  const loading = catalog.isPending;
+  const loadError = catalog.isError && !catalog.data;
   const purchases = useBillingPurchases();
   function ownedMockForPackage(packageId: string, exact?: AccessTarget | null) {
     const targets = (['reading', 'listening', 'writing', 'speaking'] as const).flatMap(skill =>
@@ -235,41 +237,13 @@ const TestPage = ({ workspaceMode = false }: { workspaceMode?: boolean }) => {
   }, [sessionExpired, workspaceMode]);
 
   useEffect(() => {
-    const fetchTurkishTestData = async () => {
-      setLoading(true);
-      setLoadError(false);
-      try {
-        const catalog = await loadTurkishTestCatalog();
-        setTurkishTestData(catalog);
-
-        if (location.state) {
-          const { selectedTestId, selectedTestType: navTestType } = location.state as any;
-          if (selectedTestId && navTestType) {
-            const test = catalog.ieltsData.find((t: TurkishTest) => t.id === selectedTestId);
-            if (test) {
-              setSelectedTest(test);
-              setSelectedTestType(navTestType);
-            }
-          }
-        }
-      } catch (error: any) {
-        console.error("Error fetching Turkish test data:", error);
-        setTurkishTestData(null);
-        setLoadError(true);
-        const { accessToken } = authService.getStoredTokens();
-        if (accessToken) {
-          toast.error("Sınavlar yüklenirken bir sorun oluştu.");
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTurkishTestData();
-  }, [
-    location.state,
-    requestVersion,
-  ]);
+    if (!turkishTestData || !location.state) return;
+    const { selectedTestId, selectedTestType: navTestType } = location.state as { selectedTestId?: string; selectedTestType?: 'all' | 'listening' | 'speaking' | 'reading' | 'writing' };
+    if (selectedTestId && navTestType) {
+      const test = turkishTestData.ieltsData.find(test => test.id === selectedTestId);
+      if (test) { setSelectedTest(test); setSelectedTestType(navTestType); }
+    }
+  }, [location.state, turkishTestData]);
 
   useEffect(() => {
     if (directSelection.invalid) { setDirectError(INVALID_ACCESS_LINK_MESSAGE); return; }
@@ -410,7 +384,7 @@ const TestPage = ({ workspaceMode = false }: { workspaceMode?: boolean }) => {
               </p>
               <button
                 type="button"
-                onClick={() => setRequestVersion((value) => value + 1)}
+                onClick={() => void catalog.refetch()}
                 className={`${tm.subtleButton} mt-5 inline-flex h-10 items-center justify-center px-4 text-sm font-semibold`}
               >
                 Tekrar dene

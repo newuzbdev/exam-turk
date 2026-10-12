@@ -196,9 +196,13 @@ test('gifted platform access renders separately and never rewrites paid period/c
  });
  const view=await setup(SubscriptionStatusCard);
  try{
-  const gift=view.container.querySelector('[aria-label="Hediye platform erişimi"]');assert.ok(gift);assert.match(gift.textContent,/120/);assert.match(gift.textContent,/2026/);
-  assert.deepEqual([...view.container.querySelectorAll('dd')].map(node=>node.textContent),['7','3','4']);
-  assert.equal(view.client.getQueryData(['subscription','status',owner]).periodEnd,paid.periodEnd);
+  const gift=view.container.querySelector('[aria-label="Hediye haklar"]');assert.ok(gift);
+  assert.deepEqual([...gift.querySelectorAll('dd')].map(node=>node.textContent),['120','10','10']);
+  assert.equal(gift.querySelector('time').getAttribute('datetime'),'2026-12-01T00:00:00Z');
+  assert.deepEqual([...view.container.querySelectorAll('dd')].filter(node=>!gift.contains(node)).map(node=>node.textContent),['7','3','4']);
+  const paidEnd=[...view.container.querySelectorAll('time')].find(node=>!gift.contains(node));
+  assert.equal(paidEnd.getAttribute('datetime'),paid.periodEnd);
+  assert.deepEqual(view.client.getQueryData(['subscription','status',owner]),paid);
   const query=view.client.getQueryCache().getAll().find(query=>query.queryKey[0]==='own-access');assert.equal(query.queryKey[1],owner);assert.equal(query.meta.persist,false);
  }finally{await view.unmount();}
 });

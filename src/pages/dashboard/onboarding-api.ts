@@ -1,4 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
+import { usePageDataQuery, pageDataKey } from "@/hooks/use-page-data-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import axiosPrivate from "@/config/api";
 import { officialExamsKey } from "@/data/official-exams-api";
@@ -68,8 +70,10 @@ const unwrapResponse = <T>(payload: T | ApiEnvelope<T>): T => {
 
 export const onboardingQueryKey = ["student", "me", "onboarding"] as const;
 
-export const useStudentOnboarding = () =>
-  useQuery({
+export const useStudentOnboarding = () => {
+  const { user, isAuthenticated } = useAuth();
+  return usePageDataQuery({
+    enabled: isAuthenticated && Boolean(user?.id),
     queryKey: onboardingQueryKey,
     queryFn: async () => {
       const response = await axiosPrivate.get<
@@ -80,12 +84,21 @@ export const useStudentOnboarding = () =>
     retry: 1,
   });
 
+};
+
 export const useSaveStudentOnboarding = (
   existing: StudentOnboarding | null | undefined,
 ) => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation({
+    onMutate: () => ({
+      ownerId: user?.id,
+      query: queryClient.getQueryCache().find({
+        queryKey: pageDataKey(onboardingQueryKey, user?.id), exact: true,
+      }),
+    }),
     mutationFn: async (input: StudentOnboardingInput | Pick<StudentOnboardingInput, 'targetLevel'>) => {
       // Legacy create requires these fields; a target-only edit must never resend them.
       const creationInput = 'goal' in input ? input : {
@@ -103,9 +116,13 @@ export const useSaveStudentOnboarding = (
       const response = await request;
       return unwrapResponse(response.data);
     },
-    onSuccess: (profile) => {
+    onSuccess: (profile, _input, context) => {
+      if (!context?.ownerId || context.ownerId !== user?.id) return;
+      const key = pageDataKey(onboardingQueryKey, context.ownerId);
+      // Logout removes this query. A late save must not recreate it or update a new session.
+      if (!context.query || queryClient.getQueryCache().find({ queryKey: key, exact: true }) !== context.query) return;
       void queryClient.invalidateQueries({queryKey:officialExamsKey});
-      queryClient.setQueryData(onboardingQueryKey, profile);
+      queryClient.setQueryData(key, profile);
     },
   });
 };

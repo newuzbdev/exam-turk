@@ -43,6 +43,11 @@ async function setup({ active = false, route = '/app/test', pending = false } = 
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity, staleTime: Infinity } } });
   if (!pending) client.setQueryData(['subscription', 'status'], { ...status, isActive: active });
   const view = await mount(Harness, { props: { client }, route });
+  const deadline = Date.now() + 1000;
+  while (!view.container.querySelector('.mock-test-tabs') && Date.now() < deadline) {
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 10)); });
+  }
+  assert.ok(view.container.querySelector('.mock-test-tabs'), 'wait for the catalog before testing its controls');
   return { ...view, client, async unmount() { await view.unmount(); client.clear(); } };
 }
 const route = view => view.container.querySelector('[data-route]').textContent;

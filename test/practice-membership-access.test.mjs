@@ -48,6 +48,11 @@ async function setup(domain) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity, staleTime: Infinity } } });
   client.setQueryData(['subscription', 'status'], structuredClone(status));
   const view = await mount(Harness, { props: { client }, route: `/app/pratik?bolum=${domain}` });
+  const deadline = Date.now() + 1000;
+  while (!view.container.querySelector('article') && Date.now() < deadline) {
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 10)); });
+  }
+  assert.ok(view.container.querySelector('article'), 'wait for practice cards before testing membership controls');
   return { ...view, client, async unmount() { await view.unmount(); client.clear(); } };
 }
 const card = (view, title) => [...view.container.querySelectorAll('article')].find(node => node.textContent.includes(title));

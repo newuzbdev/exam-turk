@@ -61,7 +61,16 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const queryClient=useQueryClient();
-  useEffect(()=>{const privateQuery=(query:{queryKey:readonly unknown[]})=>(query.queryKey[0]==='learn'||query.queryKey[0]==='billing'&&query.queryKey[1]==='purchases'||query.queryKey[0]==='subscription'&&query.queryKey[1]==='status')&&query.queryKey[query.queryKey.length-1]!==user?.id;void queryClient.cancelQueries({predicate:privateQuery});queryClient.removeQueries({predicate:privateQuery});},[user?.id,queryClient]);
+  useEffect(() => {
+    const privateQuery = (query: { queryKey: readonly unknown[]; meta?: Record<string, unknown> }) =>
+      (query.meta?.pageData === true && query.meta.ownerId !== (user?.id ?? null)) ||
+      (query.queryKey[0] === 'learn' ||
+        query.queryKey[0] === 'billing' && query.queryKey[1] === 'purchases' ||
+        query.queryKey[0] === 'subscription' && query.queryKey[1] === 'status') &&
+        query.queryKey[query.queryKey.length - 1] !== user?.id;
+    void queryClient.cancelQueries({ predicate: privateQuery });
+    queryClient.removeQueries({ predicate: privateQuery });
+  }, [user?.id, queryClient]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [authIssue, setAuthIssue] = useState(false);

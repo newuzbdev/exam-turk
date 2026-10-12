@@ -84,7 +84,7 @@ const counts = (html) => [...html.matchAll(/<dd[^>]*>(\d+)<\/dd>/g)].map((match)
 
 test("active membership shows all three separate remaining balances", () => {
   const html = render("Membership");
-  assert.match(html, /Üyeliğim/);
+  assert.match(html, /Üyeliğiniz/);
   assert.match(html, /Kalan Haklarınız/);
   assert.deepEqual(counts(html), [120, 10, 10]);
 });

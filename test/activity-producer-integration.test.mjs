@@ -76,15 +76,20 @@ for (const shared of [false, true]) test(`real exact Mock ${shared ? 'share' : '
   share = shared;
   const catalog = { ieltsData: [{ id: packageId, title: 'Paket', category: 'CEFR_MOCK' }], readingTests: [{ id, ieltsId: packageId, status: 'PUBLISHED' }], listeningTests: [], writingTests: [], speakingTests: [] };
   const { default: Page } = await loadOfflineComponent('src/pages/test/test.tsx', {
-    ...base, '@/config/api': { default: { get: async () => ({ data: catalog }) }, resolveApiResourceUrl: value => value },
+    ...base, '@/config/api': { default: { get: async url => {
+      if (url.startsWith('/api/ielts')) return { data: catalog };
+      if (url === '/api/billing/me') return { data: { data: [] } };
+      throw new Error(`Unexpected fixture GET: ${url}`);
+    } }, resolveApiResourceUrl: value => value },
     '@/services/overallTest.service': { ...stores, default: { ...stores.overallTestService, getCurrentSession: async () => null }, overallTestService: { ...stores.overallTestService, getCurrentSession: async () => null } },
     '@/services/readingTest.service': { readingTestService: { getTestWithFullData: async () => ({}) } },
     '@/services/testCoinPrice.service': { default: { getAll: async () => [] } },
     './TestConfirmationModal': { default: props => props.open ? React.createElement('button', { onClick: props.onConfirm }, 'Hazırım') : null },
   });
   const route = `/app/test?package=${packageId}&skills=reading${shared ? '' : `&test=${id}`}`;
-  const view = await setup(Page, route, { workspaceMode: true }, () => { if (shared) captureAccessLink(`${route}&share=${'a'.repeat(43)}`); });
+  let view;
   try {
+    view = await setup(Page, route, { workspaceMode: true }, () => { if (shared) captureAccessLink(`${route}&share=${'a'.repeat(43)}`); });
     assert.equal(read(`/app/reading-test/${id}`).overallTestId, undefined);
     await click('Hazırım');
     assert.equal(starts.length, 1);
@@ -112,7 +117,7 @@ for (const shared of [false, true]) test(`real exact Mock ${shared ? 'share' : '
       stores.overallTestFlowStore.setOverallId(second);
       assert.equal(read(`/app/reading-test/${id}`).overallTestId, undefined);
     } finally { await tracker.unmount(); clock.restore(); }
-  } finally { await view.close(); share = false; }
+  } finally { share = false; if (view) await view.close(); }
 });
 
 for (const resume of [false, true]) test(`normal Reading ${resume ? 'verified resume' : 'successful repeat starts'} reaches real route reader`, async () => {

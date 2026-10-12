@@ -137,7 +137,7 @@ export default function ReportsPage() {
             />
           ))}
         </div>
-      ) : resultsQuery.isError ? (
+      ) : resultsQuery.isError && !resultsQuery.data ? (
         <section className="rounded-lg border border-[var(--tm-border-subtle)] bg-white px-5 py-12 text-center">
           <RefreshCw
             className="mx-auto h-5 w-5 text-[var(--tm-text-tertiary)]"

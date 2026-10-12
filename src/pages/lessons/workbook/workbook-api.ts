@@ -1,5 +1,6 @@
 import {useAuth} from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
+import { usePageDataQuery } from '@/hooks/use-page-data-query';
 import axiosPrivate from '@/config/api';
 import type { LearnExerciseSubmissionResult } from '../learn-types';
 import type { ExerciseSubmitResult } from './WorkbookExercise';
@@ -10,13 +11,13 @@ type ApiEnvelope<T> = { success: boolean; data: T; error: unknown };
 const REQUEST_TIMEOUT_MS = 12_000;
 export const workbookQueryKeys = { lessons: ['learn', 'workbook-lessons'] as const, lesson: (idOrSlug: string) => ['learn', 'workbook-lessons', idOrSlug] as const };
 
-export const useWorkbookLessons = () => useQuery({
+export const useWorkbookLessons = () => { const { user, isAuthenticated } = useAuth(); return usePageDataQuery({
   queryKey: workbookQueryKeys.lessons,
   queryFn: async () => {
     const response = await axiosPrivate.get<ApiEnvelope<{ data: WorkbookDocumentSummary[] }> | { data: WorkbookDocumentSummary[] }>('/api/learn/workbook-lessons', { timeout: REQUEST_TIMEOUT_MS });
     return unwrapWorkbookPayload(response.data).data;
-  }, retry: 1,
-});
+  }, enabled: isAuthenticated && Boolean(user?.id), retry: 1,
+}); };
 
 export const useWorkbookLesson = (idOrSlug?: string) => {const {user}=useAuth();return useQuery({
   queryKey: [...workbookQueryKeys.lesson(idOrSlug ?? ''),'owner',user?.id],

@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { usePageDataQuery } from "@/hooks/use-page-data-query";
 import { ChevronDown } from "lucide-react";
 import axiosPrivate from "@/config/api";
 import { toApiUrl } from "@/config/runtime";
@@ -61,25 +62,15 @@ const formatDate = (dateString: string | null | undefined): string => {
 };
 
 const HomeLastMonthTopResults = () => {
-  const [users, setUsers] = useState<HomeResult[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadFailed, setLoadFailed] = useState(false);
-  const [selectedTestScope, setSelectedTestScope] = useState<TestScopeOption>("ALL");
-
-  useEffect(() => {
-    let cancelled = false;
-    const fetchRecentResults = async (initial = false) => {
-      try {
-        if (initial) setLoading(true);
-        // The API applies the selected scope before limiting the result set.
-        // Do not turn a failed API request into apparently successful examples.
-        const response = await axiosPrivate.get("/api/overal-test-result/recent", {
-          params: { limit: 15, uniqueUsers: true, scope: selectedTestScope },
-          timeout: 15000,
-        });
-        const recentResults = response.data?.data ?? response.data;
-        if (!Array.isArray(recentResults)) throw new Error("Invalid recent results response");
-
+  const [selectedTestScope, setSelectedTestScope] = useState<TestScopeOption>('ALL');
+  const recent = usePageDataQuery({
+    queryKey: ['public', 'recent-results', selectedTestScope],
+    queryFn: async () => {
+      const response = await axiosPrivate.get('/api/overal-test-result/recent', {
+        params: { limit: 15, uniqueUsers: true, scope: selectedTestScope }, timeout: 15_000,
+      });
+      const recentResults = response.data?.data ?? response.data;
+      if (!Array.isArray(recentResults)) throw new Error('Invalid recent results response');
         const mappedUsers: HomeResult[] = recentResults.map((item: ApiResult) => {
           const resultUser: ApiUser = item.user || { id: "", name: "Anonim" };
           const date = item.completedAt || item.updatedAt || item.createdAt || "";
@@ -105,27 +96,14 @@ const HomeLastMonthTopResults = () => {
           };
         });
 
-        if (!cancelled) {
-          setUsers(fillWithExampleResults(mappedUsers, selectedTestScope));
-          setLoadFailed(false);
-        }
-      } catch (error) {
-        console.error("Error fetching recent results:", error);
-        if (!cancelled) {
-          setUsers([]);
-          setLoadFailed(true);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    void fetchRecentResults(true);
-    const interval = window.setInterval(() => {
-      if (document.visibilityState === "visible") void fetchRecentResults();
-    }, 60000);
-    return () => { cancelled = true; window.clearInterval(interval); };
-  }, [selectedTestScope]);
+      return fillWithExampleResults(mappedUsers, selectedTestScope);
+    },
+    refetchInterval: 60_000,
+    retry: 1,
+  });
+  const users = recent.data ?? [];
+  const loading = recent.isPending;
+  const loadFailed = recent.isError && !recent.data;
 
   return (
     <section id="son-sinav-sonuclari" className={`${tm.section} home-results scroll-mt-20`}>

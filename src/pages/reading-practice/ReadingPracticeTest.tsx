@@ -1,5 +1,6 @@
 import { readAccessOwner } from '@/hooks/use-access-link';
 import { readOwnedAccess } from '@/utils/access-link-context';
+import PresentationImage from "@/components/practice/PresentationImage";
 import {
   type DragEvent,
   type MouseEvent as ReactMouseEvent,
@@ -3085,7 +3086,7 @@ function ReadingPracticeTestContent() {
                   <div
                     className={`${showVisiblePassageTitle ? "mt-3" : "mt-0"} aspect-[4/1] w-full overflow-hidden rounded-[4px] border border-[#e5e5e2] bg-[#f7f7f5]`}
                   >
-                    <img
+                    <PresentationImage
                       src={textImage.imageUrl}
                       alt={visiblePassageTitle || passage.title}
                       className="h-full w-full object-cover"

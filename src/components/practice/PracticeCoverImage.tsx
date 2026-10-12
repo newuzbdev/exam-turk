@@ -57,9 +57,7 @@ export function practiceCoverSources(practiceId: string, src: string) {
     url.searchParams.set("cardWidth", String(variant.width));
     return { width: variant.width, src: url.href };
   });
-  if (entry.originalWidth > variants[variants.length - 1].width) {
-    variants.push({ width: entry.originalWidth, src });
-  }
+  // Keep the original for error recovery, not as a high-density card candidate.
   return {
     src: variants.find((variant) => variant.width >= 960)?.src ?? variants[variants.length - 1].src,
     srcSet: variants.map((variant) => `${variant.src} ${variant.width}w`).join(", "),

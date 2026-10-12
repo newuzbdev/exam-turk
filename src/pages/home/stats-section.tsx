@@ -87,8 +87,8 @@ const StatsSection = () => {
         averageResultSeconds: validNumber(payload?.averageResultSeconds),
       };
     },
-    staleTime: 10_000,
-    refetchInterval: 10_000,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
     retry: 1,
   });
 

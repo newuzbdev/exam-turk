@@ -1,10 +1,21 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { stat } from 'node:fs/promises';
 import { build } from 'esbuild';
 
 const compiled = await build({ entryPoints: ['src/pages/home/ui/home-result-examples.ts'], bundle: true, write: false, format: 'esm', platform: 'node' });
 const { HOME_RESULT_EXAMPLES, fillWithExampleResults } = await import(`data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`);
 const real = n => Array.from({ length: n }, (_, i) => ({ ...HOME_RESULT_EXAMPLES[0], id: `real-${i}`, name: `User ${i}`, isExample: undefined }));
+
+test('example avatar payload fits small result-table thumbnails', async () => {
+  const avatarRows = HOME_RESULT_EXAMPLES.filter(row => row.avatarUrl);
+  const sizes = await Promise.all(avatarRows.map(async row => {
+    const { size } = await stat(`public${row.avatarUrl}`);
+    assert.ok(size <= 16_000, `${row.name}: thumbnail downloads ${size} bytes`);
+    return size;
+  }));
+  assert.ok(sizes.reduce((sum, size) => sum + size, 0) <= 64_000);
+});
 
 test('real results replace examples and remain unmodified in their API order', () => {
   const inputs = real(15);

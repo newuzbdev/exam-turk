@@ -328,8 +328,10 @@ export default function Login() {
         <section className="relative z-10 hidden min-h-[540px] items-center justify-center lg:flex" aria-hidden="true">
           <div className="absolute inset-x-[12%] top-1/2 h-48 -translate-y-1/2 rounded-full bg-[var(--tm-bg-muted)] blur-3xl" />
           <img
-            src="/turkishmock-login-entry-alt-door.png"
+            src="/turkishmock-login-entry-alt-door-v1.webp"
             alt=""
+            width={1448}
+            height={1086}
             className="relative z-10 max-h-[610px] w-full max-w-[700px] object-contain"
           />
         </section>

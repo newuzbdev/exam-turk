@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ChevronDown } from "lucide-react";
 import axiosPrivate from "@/config/api";
 import { toApiUrl } from "@/config/runtime";
@@ -167,15 +166,17 @@ const HomeLastMonthTopResults = () => {
                 <tr key={user.id}>
                   <th scope="row">
                     <div className="home-results__person">
-                      <Avatar className="h-10 w-10 shrink-0" data-protected-media="avatar"
+                      <span className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-100 text-sm font-semibold text-gray-700" data-protected-media="avatar"
                         onContextMenu={event => event.preventDefault()} onDragStart={event => event.preventDefault()}>
-                        <AvatarImage src={user.avatarUrl} alt="" draggable={false}
-                          className="pointer-events-none select-none object-cover"
-                          referrerPolicy="no-referrer" loading="lazy" decoding="async" />
-                        <AvatarFallback className="bg-gray-100 text-gray-700 text-sm font-semibold">
+                        <span>
                           {user.name.trim().split(/\s+/).map(part => part[0]).slice(0, 2).join("").toLocaleUpperCase("tr-TR")}
-                        </AvatarFallback>
-                      </Avatar>
+                        </span>
+                        {user.avatarUrl && <img key={user.avatarUrl} src={user.avatarUrl} alt="" draggable={false}
+                          width={40} height={40}
+                          className="pointer-events-none absolute inset-0 h-full w-full select-none object-cover"
+                          referrerPolicy="no-referrer" loading="lazy" decoding="async"
+                          onError={event => { event.currentTarget.hidden = true; }} />}
+                      </span>
                       <div className="home-results__identity">
                         <span className="home-results__name">{user.name}</span>
                         <span className="home-results__date">{user.date}{user.isExample ? " · Örnek sonuç" : ""}</span>

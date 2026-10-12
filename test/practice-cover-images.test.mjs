@@ -20,13 +20,13 @@ const protectedCard = Object.entries(registry).find(([, entry]) => entry.scope =
 const reference = (key, scope) => `pmr.v1.${Buffer.from(JSON.stringify({ key, scope })).toString('base64url')}.fixture`;
 const accessUrl = (key, scope) => `https://api.example.test/api/file/media/pma.v1.${Buffer.from(JSON.stringify({ reference: reference(key, scope) })).toString('base64url')}.fixture`;
 
-test('public card selects lossless responsive copies and retains the full original', () => {
+test('public cards offer small responsive copies without a multi-megabyte original candidate', () => {
   const [id, entry] = publicCard;
   const original = entry.identities.find(key => key.startsWith('/generated/'));
   const sources = practiceCoverSources(id, original);
-  assert.match(sources.src, /practice-covers-v1\/.+-960\.webp$/);
+  assert.match(sources.src, /practice-covers-v\d+\/.+-960\.webp$/);
   assert.match(sources.srcSet, /480w/);
-  assert.ok(sources.srcSet.includes(`${original} ${entry.originalWidth}w`));
+  assert.ok(!sources.srcSet.includes(original));
   const html = renderToStaticMarkup(React.createElement(Cover, { practiceId: id, src: original, alt: 'Kapak' }));
   assert.match(html, /loading="lazy"/);
   assert.match(html, /decoding="async"/);
@@ -40,7 +40,7 @@ test('private cover variants retain the original protected URL and never use pub
   assert.equal(new URL(sources.src).pathname, new URL(url).pathname);
   assert.equal(new URL(sources.src).searchParams.get('cardWidth'), '960');
   assert.doesNotMatch(sources.srcSet, /generated/);
-  assert.ok(sources.srcSet.includes(`${url} ${entry.originalWidth}w`));
+  assert.ok(!sources.srcSet.includes(`${url} ${entry.originalWidth}w`));
   assert.equal(practiceCoverSources(id, accessUrl(entry.identities[0], 'OWNER')), null);
 });
 

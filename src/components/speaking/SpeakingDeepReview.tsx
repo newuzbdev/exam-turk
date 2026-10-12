@@ -10,6 +10,7 @@ import {
 } from "@/services/pronunciationAnalysis.service";
 import { normalizeFeedbackText } from "@/utils/text";
 import { protectedImageProps } from "@/utils/mediaProtection";
+import PresentationImage from "@/components/practice/PresentationImage";
 import {
   buildSpeakingSentenceTimeline,
   findSpeakingEvidenceTimeRange,
@@ -2880,9 +2881,11 @@ export default function SpeakingDeepReview({
                           : "aspect-[4/3]",
                       )}
                     >
-                      <img
+                      <PresentationImage
                         {...protectedImageProps}
                         src={visual}
+                        thumbnail
+                        loading="lazy"
                         alt={`Konuşma sorusu görseli ${index + 1}`}
                         className="h-full w-full object-contain p-1"
                       />

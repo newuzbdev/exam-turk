@@ -46,7 +46,7 @@ def check(config, output, image):
         image_redirects = FRONTEND / 'deploy/optimized-image-redirects.conf'
         if image_redirects.exists():
             shutil.copyfile(image_redirects, snippets / image_redirects.name)
-            redirects = re.findall(r'location = (/\S+) \{ return 301 (/\S+); \}', image_redirects.read_text())
+            redirects = re.findall(r'location = (/\S+) \{ absolute_redirect off; return 301 (/\S+); \}', image_redirects.read_text())
             for _, target in redirects:
                 destination = site / target.lstrip('/')
                 destination.parent.mkdir(parents=True, exist_ok=True)

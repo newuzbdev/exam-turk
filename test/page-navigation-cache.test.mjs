@@ -7,6 +7,7 @@ globalThis.DocumentFragment = window.DocumentFragment;
 
 let owner = 'student-a';
 let listCalls = 0;
+let profileCalls = 0;
 let listResponse;
 let completionResponse;
 const row = title => ({ id: title, title, level: 'B1', sectionCode: 'PART_1', createdAt: '2026-10-12',
@@ -27,7 +28,7 @@ const { default: Reading } = await loadOfflineComponent('src/pages/reading-pract
 const { default: Other } = await loadOfflineComponent('src/components/practice/PracticeList.tsx', mocks);
 const flush = () => act(async () => { await new Promise(resolve => setTimeout(resolve, 20)); });
 const client = () => new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
-function reset() { owner = 'student-a'; listCalls = 0; listResponse = null; completionResponse = null; sessionStorage.clear(); localStorage.clear(); }
+function reset() { owner = 'student-a'; listCalls = 0; profileCalls = 0; listResponse = null; completionResponse = null; sessionStorage.clear(); localStorage.clear(); }
 async function show(cache, domain = 'READING') {
   const Harness = () => React.createElement(QueryClientProvider, { client: cache },
     domain === 'READING' ? React.createElement(Reading, { embedded: true, workspaceMode: true }) : React.createElement(Other, { domain }));
@@ -137,7 +138,7 @@ const { default: Profile } = await loadOfflineComponent('src/pages/profile/profi
   ...mocks,
   '@/config/billing': { isSubscriptionBillingEnabled: true },
   '@/config/api': { default: { get: async () => { throw Error('Profile must not wait for report history'); } } },
-  '@/services/auth.service': { authService: { getCurrentUser: async () => completionResponse ? await completionResponse.promise : ({ id: owner, name: 'Saved profile' }) } },
+  '@/services/auth.service': { authService: { getCurrentUser: async () => { profileCalls++; return completionResponse ? await completionResponse.promise : ({ id: owner, name: 'Saved profile' }); } } },
   './subscription-status-card': { SubscriptionStatusCard: () => null },
   './purchased-packages': { default: () => null },
   '@/components/auth/public-result-sharing-setting': { default: () => null },
@@ -147,6 +148,56 @@ test('Profile displays the authenticated name while background profile refresh i
   const Harness = () => React.createElement(QueryClientProvider, { client: cache }, React.createElement(Profile, { embedded: true }));
   try { view = await mount(Harness); await flush(); assert.match(view.container.textContent, /Saved profile/); }
   finally { completionResponse.resolve({ id: owner, name: 'Saved profile' }); if (view) await view.unmount(); cache.clear(); }
+});
+
+test('returning to a fresh profile does not renew its avatar URL with another account request', async () => {
+  reset(); const cache = client(); let view;
+  const Harness = () => React.createElement(QueryClientProvider, { client: cache }, React.createElement(Profile, { embedded: true }));
+  try {
+    view = await mount(Harness); await flush(); assert.equal(profileCalls, 1);
+    await view.unmount(); view = null;
+    view = await mount(Harness); await flush();
+    assert.match(view.container.textContent, /Saved profile/);
+    assert.equal(profileCalls, 1);
+  } finally { if (view) await view.unmount(); cache.clear(); }
+});
+
+const { default: PracticeHome } = await loadOfflineComponent('src/pages/reading-practice/PracticeHome.tsx', {
+  ...mocks,
+  '@/services/subscription.service': { subscriptionStatusQueryKey: ['subscription', 'status'], subscriptionService: { getStatus: async () => ({ isActive: false }) } },
+});
+test('visited practice categories retain their card nodes while only the chosen panel is visible', async () => {
+  reset(); const cache = client(); let view;
+  const Harness = () => React.createElement(QueryClientProvider, { client: cache }, React.createElement(PracticeHome, { workspaceMode: true }));
+  try {
+    view = await mount(Harness, { route: '/app/pratik?bolum=reading' }); await flush();
+    const card = view.container.querySelector('[role="tabpanel"] h3'); assert.ok(card);
+    assert.equal(listCalls, 1, 'unvisited categories must not be downloaded');
+    const tab = name => [...view.container.querySelectorAll('[role="tab"]')].find(el => el.textContent === name);
+    await act(async () => tab('Dinleme').dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true, button: 0 }))); await flush();
+    assert.equal(view.container.contains(card), true, 'returning must reuse the loaded reading card node');
+    assert.equal(card.closest('[role="tabpanel"]').hidden, true);
+    assert.equal(listCalls, 2);
+    await act(async () => tab('Okuma').dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true, button: 0 }))); await flush();
+    assert.equal(card.closest('[role="tabpanel"]').hidden, false);
+    assert.equal(view.container.querySelector('[role="tabpanel"]:not([hidden]) h3'), card);
+    assert.equal(listCalls, 2);
+  } finally { if (view) await view.unmount(); cache.clear(); }
+});
+
+const { ProfileDetails } = await loadOfflineComponent('src/pages/profile/profile-details.tsx', {
+  '@/services/auth.service': { authService: { updateUser: async () => { throw Error('No real edit in this image test'); } } },
+});
+test('profile photo renders one native image immediately instead of waiting for a separate preload', async () => {
+  const view = await mount(ProfileDetails, { props: { user: { id: 'photo-owner', name: 'Örnek Kullanıcı', avatarUrl: 'https://example.test/photo.webp' }, onSaved: () => {} } });
+  try {
+    const image = view.container.querySelector('img[alt="Profil fotoğrafı önizlemesi"]');
+    assert.ok(image, 'the authorized URL should be rendered directly before its load event');
+    assert.equal(image.getAttribute('src'), 'https://example.test/photo.webp');
+    await act(async () => image.dispatchEvent(new Event('error')));
+    assert.equal(view.container.querySelector('img[alt="Profil fotoğrafı önizlemesi"]'), null);
+    assert.match(view.container.textContent, /ÖK/);
+  } finally { await view.unmount(); }
 });
 
 const { default: RecentResults } = await loadOfflineComponent('src/pages/home/ui/home-last-month-top-results.tsx', {

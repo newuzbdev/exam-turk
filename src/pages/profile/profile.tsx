@@ -141,8 +141,9 @@ export default function ProfilePage({
     queryFn: authService.getCurrentUser,
     enabled: isAuthenticated && Boolean(authUser?.id),
     initialData: authUser as Awaited<ReturnType<typeof authService.getCurrentUser>>,
-    staleTime: 0,
-    refetchOnMount: 'always',
+    // Auth supplies the immediate display, then one fresh profile read. Quick
+    // route returns reuse it rather than issuing another signed avatar URL.
+    initialDataUpdatedAt: 0,
   });
   const user = (profile.data ?? authUser) as (ProfileUser & Record<string, unknown>) | null;
   const history = useDashboardResults(activeSection !== 'profile');

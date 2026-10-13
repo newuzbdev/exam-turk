@@ -102,10 +102,12 @@ export default function PracticeList({
   domain,
   hasActiveMembership = false,
   membershipPending = false,
+  active = true,
 }: {
   domain: PracticeDomain;
   hasActiveMembership?: boolean;
   membershipPending?: boolean;
+  active?: boolean;
 }) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -117,11 +119,12 @@ export default function PracticeList({
   const catalog = usePageDataQuery({
     queryKey: ['practice', domain, 'catalog', sort],
     queryFn: () => serviceByDomain[domain].list({ order: sort }),
+    enabled: active,
   });
   const items = useMemo(() => catalog.data ?? [], [catalog.data]);
   const loading = catalog.isPending;
   const targetFor = (id: string) => ({ scope: `PRACTICE_${domain}` as const, targetId: id });
-  const access = useContentAccessDecisions(items.map(item => targetFor(item.id)));
+  const access = useContentAccessDecisions(active ? items.map(item => targetFor(item.id)) : []);
   const [blockedItem, setBlockedItem] = useState<PracticeListItem | null>(null);
   const [entering, setEntering] = useState(false);
 

@@ -21,7 +21,7 @@ const COPY = {
   remaining: "Kalan Haklarınız",
   note: "Pratik hakları yazma ve konuşma için ortaktır.",
   renew: "Yenile",
-  inactive: "Aktif üyeliğiniz yok. Yazma ve konuşma değerlendirmelerini kullanmak için üyelik paketi alabilirsiniz.",
+  inactive: "Aktif üyeliğiniz yok. Okuma, dinleme, yazma ve konuşma için mock test ve pratik paketlerini inceleyebilirsiniz.",
   frozen: (count: number) => `${count} ek hakkınız üyelik yenilenene kadar bekliyor.`,
   details: "Abone Ol",
   gift: "Hediye haklar",
@@ -110,7 +110,7 @@ export function SubscriptionStatusCard() {
             {status.data.frozenAddOnAssessmentRemaining > 0 && (
               <p>{copy.frozen(status.data.frozenAddOnAssessmentRemaining)}</p>
             )}
-            <Link className="inline-flex min-h-10 items-center rounded-lg bg-black px-4 py-2 font-semibold text-white hover:bg-[#262626]" to="/app/fiyatlar#fiyatlandirma">
+            <Link className="inline-flex min-h-10 items-center rounded-lg bg-brand-red px-4 py-2 font-semibold text-white hover:bg-brand-red-dark" to="/app/fiyatlar#fiyatlandirma">
               {copy.details}
             </Link>
           </>

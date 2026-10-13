@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { Camera, Check, Copy, Loader2, Pencil, Save, X } from "lucide-react";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AccountAvatar } from "@/components/ui/account-avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -123,16 +123,15 @@ export function ProfileDetails({ user, onSaved, className }: {
                 <input id={fileId} ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp"
                   className="sr-only" disabled={!editing || saving}
                   onChange={(event) => { chooseAvatar(event.target.files?.[0]); event.target.value = ""; }} />
-                <Avatar className="h-20 w-20 border border-gray-200">
-                  <AvatarImage src={avatarUrl || undefined} alt="Profil fotoğrafı önizlemesi" className="object-cover"
-                    onLoadingStatusChange={(status) => {
-                      if (status === "error" && selectedAvatar) {
+                <AccountAvatar className="h-20 w-20 border border-gray-200"
+                  src={avatarUrl || undefined} alt="Profil fotoğrafı önizlemesi" initials={initials}
+                  fallbackClassName="text-xl font-semibold text-gray-600"
+                    onImageError={() => {
+                      if (selectedAvatar) {
                         setSelectedAvatar(null);
                         setError("Bu fotoğraf açılamadı. Başka bir fotoğraf seçin.");
                       }
                     }} />
-                  <AvatarFallback className="bg-gray-100 text-xl font-semibold text-gray-600">{initials}</AvatarFallback>
-                </Avatar>
                 {editing && <Button type="button" variant="outline" size="icon" disabled={saving}
                   className="absolute -right-1 -bottom-1 rounded-full bg-white text-gray-700 shadow-sm"
                   onClick={() => fileInput.current?.click()} aria-label={avatarUrl ? "Fotoğrafı değiştir" : "Fotoğraf ekle"}

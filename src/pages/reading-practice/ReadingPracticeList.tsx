@@ -104,6 +104,7 @@ type ReadingPracticeListProps = {
   workspaceMode?: boolean;
   hasActiveMembership?: boolean;
   membershipPending?: boolean;
+  active?: boolean;
   initialStartId?: string | null;
   onStartIntentHandled?: () => void;
   onBack?: () => void;
@@ -150,6 +151,7 @@ export default function ReadingPracticeList({
   workspaceMode = false,
   hasActiveMembership = false,
   membershipPending = false,
+  active = true,
   initialStartId,
   onStartIntentHandled,
   onBack,
@@ -165,6 +167,7 @@ export default function ReadingPracticeList({
   const order = sortMode === 'eski' ? 'oldest' : 'newest';
   const catalog = usePageDataQuery({
     queryKey: ['practice', 'reading', 'catalog', order, initialStartId ?? null],
+    enabled: active,
     queryFn: async () => {
       const rows = await readingPracticeService.getAll({ order });
       if (initialStartId && !rows.some(item => item.id === initialStartId)) {
@@ -177,12 +180,12 @@ export default function ReadingPracticeList({
   const completed = usePageDataQuery({
     queryKey: ['practice', 'reading', 'completed'],
     queryFn: readingPracticeService.getCompletedPassageIds,
-    enabled: workspaceMode && isAuthenticated,
+    enabled: active && workspaceMode && isAuthenticated,
     staleTime: 0,
     refetchOnMount: 'always',
   });
   const items = catalog.data ?? EMPTY_ITEMS;
-  const access = useContentAccessDecisions(items.map(item => targetFor(item.id)));
+  const access = useContentAccessDecisions(active ? items.map(item => targetFor(item.id)) : []);
   const loading = catalog.isPending;
   const loadError = catalog.isError && !catalog.data;
   const [paymeOpen, setPaymeOpen] = useState(false);
@@ -713,4 +716,3 @@ export default function ReadingPracticeList({
     </main>
   );
 }
-

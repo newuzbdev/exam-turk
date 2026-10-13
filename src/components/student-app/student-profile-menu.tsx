@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 import { CircleHelp, CreditCard, LogOut, User } from "lucide-react";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AccountAvatar } from "@/components/ui/account-avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -66,12 +66,8 @@ export function StudentProfileMenu({
             compact ? "w-11 justify-center" : "w-full px-2 py-1.5",
           )}
         >
-          <Avatar className="h-7 w-7 shrink-0">
-            <AvatarImage src={avatar ? toApiUrl(avatar) : undefined} alt="" />
-            <AvatarFallback className="bg-[var(--tm-bg-hover)] text-xs font-semibold text-[var(--tm-text-secondary)]">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
+          <AccountAvatar className="h-7 w-7" src={avatar ? toApiUrl(avatar) : undefined} alt="" initials={initials}
+            fallbackClassName="bg-[var(--tm-bg-hover)] text-xs font-semibold text-[var(--tm-text-secondary)]" />
           {!compact && (
             <span className="min-w-0 flex-1">
               <span className="block truncate text-[13px] font-medium leading-5 text-[var(--tm-text-primary)]">

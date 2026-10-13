@@ -102,6 +102,13 @@ export default function PracticeHome({
   }, [summary.data, params]);
   const selected = bolumler.find(item => item.category === params.get('bolum'))?.category ?? defaultDomain;
   const startPracticeId = params.get('start');
+  const [visited, setVisited] = useState({ ownerId: user?.id, categories: [selected] });
+  useEffect(() => {
+    setVisited(previous => previous.ownerId !== user?.id
+      ? { ownerId: user?.id, categories: [selected] }
+      : previous.categories.includes(selected) ? previous
+      : { ...previous, categories: [...previous.categories, selected] });
+  }, [selected, user?.id]);
 
   return (
     <StudentPageShell
@@ -115,17 +122,20 @@ export default function PracticeHome({
         <Tabs.List className="lesson-category-tabs" aria-label="Pratik bölümleri">
           {bolumler.map(item => <Tabs.Trigger key={item.category} value={item.category} className="lesson-category-tab">{item.baslik}</Tabs.Trigger>)}
         </Tabs.List>
-        {bolumler.map((bolum) => {
+        {bolumler.filter(bolum => bolum.category === selected ||
+          visited.ownerId === user?.id && visited.categories.includes(bolum.category)).map((bolum) => {
           const isReady = bolum.hazir && Boolean(bolum.yol);
           const Ikon = bolum.ikon;
 
           return (
-            <Tabs.Content key={bolum.category} value={bolum.category} className="mt-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tm-focus)]">
+            <Tabs.Content key={`${user?.id ?? 'guest'}:${bolum.category}`} value={bolum.category} forceMount hidden={selected !== bolum.category}
+              className="mt-4 data-[state=inactive]:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tm-focus)]">
             {bolum.category === 'reading' ? (
               <ReadingPracticeList
                 embedded
                 inlineToolbar
                 workspaceMode={workspaceMode}
+                active={selected === bolum.category}
                 hasActiveMembership={hasActiveMembership}
                 membershipPending={membershipPending}
                 onStartIntentHandled={() => setParams(previous => {
@@ -135,11 +145,11 @@ export default function PracticeHome({
                 }, { replace: true })}
               />
             ) : bolum.category === 'listening' ? (
-              <PracticeList domain="LISTENING" hasActiveMembership={hasActiveMembership} membershipPending={membershipPending} />
+              <PracticeList domain="LISTENING" active={selected === bolum.category} hasActiveMembership={hasActiveMembership} membershipPending={membershipPending} />
             ) : bolum.category === 'writing' ? (
-              <PracticeList domain="WRITING" hasActiveMembership={hasActiveMembership} membershipPending={membershipPending} />
+              <PracticeList domain="WRITING" active={selected === bolum.category} hasActiveMembership={hasActiveMembership} membershipPending={membershipPending} />
             ) : bolum.category === 'speaking' ? (
-              <PracticeList domain="SPEAKING" hasActiveMembership={hasActiveMembership} membershipPending={membershipPending} />
+              <PracticeList domain="SPEAKING" active={selected === bolum.category} hasActiveMembership={hasActiveMembership} membershipPending={membershipPending} />
             ) : !isReady ? <p className="py-8 text-sm text-[var(--tm-text-secondary)]">Hazırlanıyor</p> :
             <button
               key={bolum.baslik}

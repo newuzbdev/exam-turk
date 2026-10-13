@@ -2,6 +2,7 @@
 export const LEGAL_DOCUMENTS_PUBLISHED = true;
 export const LEGAL_DOCUMENTS_AVAILABLE = import.meta.env.DEV || LEGAL_DOCUMENTS_PUBLISHED || import.meta.env.VITE_LEGAL_DRAFT_PREVIEW === "true";
 export const LEGAL_VERSION = "2026-10-10";
+export const PRIVACY_DOCUMENT_VERSION = "2026-10-13";
 export type LegalLanguage = "tr" | "uz";
 
 export function getLegalLanguage(search: string): LegalLanguage {

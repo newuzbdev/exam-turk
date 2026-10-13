@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Navigate } from "react-router";
-import { getLegalLanguage, LEGAL_DOCUMENTS_AVAILABLE, LEGAL_DOCUMENTS_PUBLISHED, LEGAL_OPERATOR, LEGAL_VERSION, type LegalLanguage } from "@/config/legal";
+import { getLegalLanguage, LEGAL_DOCUMENTS_AVAILABLE, LEGAL_DOCUMENTS_PUBLISHED, LEGAL_OPERATOR, LEGAL_VERSION, PRIVACY_DOCUMENT_VERSION, type LegalLanguage } from "@/config/legal";
 import { SUPPORT_TELEGRAM_USERNAME, SUPPORT_TELEGRAM_URL } from "@/config/support";
 import { LegalLinks } from "@/components/legal-links";
 import { privacyDocument, privacyDocumentUz, termsDocument, termsDocumentUz } from "./legal-content";
@@ -85,7 +85,7 @@ export default function LegalPage({ document, language = getLegalLanguage(typeof
           <p className="text-xs font-medium uppercase tracking-widest text-[#262626]">TurkishMock · {LEGAL_OPERATOR.name}</p>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">{content.title}</h1>
           <p className="mt-4 text-base leading-7 text-[#262626]">{content.introduction}</p>
-          <p className="mt-3 text-sm text-[#262626]">{copy.updatedDate} · {LEGAL_VERSION}</p>
+          <p className="mt-3 text-sm text-[#262626]">{document === "privacy" ? (language === "uz" ? "Yangilangan sana: 13-oktabr 2026" : "Son güncelleme: 13 Ekim 2026") : copy.updatedDate} · {document === "privacy" ? PRIVACY_DOCUMENT_VERSION : LEGAL_VERSION}</p>
         </div>
         <div className="grid items-start gap-10 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-16">
           <nav aria-label={copy.sections} className="rounded-lg border border-[var(--tm-border-subtle)] p-4 lg:sticky lg:top-6">

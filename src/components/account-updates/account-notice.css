@@ -1,0 +1,231 @@
+.account-update-notice {
+  box-sizing: border-box;
+  position: fixed;
+  z-index: 1050;
+  right: 22px;
+  bottom: 22px;
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  width: min(360px, calc(100vw - 32px));
+  padding: 16px;
+  background: #fff;
+  border: 1px solid #e5e5e1;
+  border-radius: 12px;
+  color: #36352f;
+  box-shadow: 0 8px 30px #00000014;
+  font-family: inherit;
+}
+.account-update-icon {
+  background: #fff0f0;
+  color: #e72125;
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+}
+.account-update-notice > div {
+  flex: 1;
+  min-width: 0;
+}
+.account-update-notice strong {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  display: block;
+}
+.account-update-notice p {
+  font-size: 12px;
+  color: #77766f;
+  margin: 3px 0 7px;
+  line-height: 1.6;
+}
+.account-update-link {
+  font: inherit;
+  font-size: 12px;
+  background: none;
+  border: 0;
+  color: #36352f;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+.account-update-close {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  display: flex;
+  padding: 3px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: #888;
+}
+.account-update-notice button:focus-visible {
+  outline: 2px solid #e72125;
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .account-update-notice {
+    animation: account-update-enter 0.16s ease-out;
+  }
+}
+@keyframes account-update-enter {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (max-width: 500px) {
+  .account-update-notice {
+    right: 16px;
+    bottom: 16px;
+  }
+}
+
+.account-update-notice--gift,
+.account-update-notice--success {
+  border-color: #dcebdd;
+  box-shadow: 0 8px 30px #17542b12;
+}
+.account-update-notice--gift .account-update-icon,
+.account-update-notice--success .account-update-icon {
+  background: #eaf7ee;
+  color: #22934b;
+  position: relative;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 12px;
+}
+.account-gift-check {
+  position: absolute;
+  right: -4px;
+  bottom: -3px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #22934b;
+  color: white;
+  box-sizing: border-box;
+}
+.account-gift-lid {
+  transform-origin: 16px 12px;
+}
+.account-gift-spark {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  background: #54b574;
+  border-radius: 1px;
+  opacity: 0;
+}
+.account-gift-spark--one {
+  left: -4px;
+  top: 6px;
+}
+.account-gift-spark--two {
+  right: -3px;
+  top: -1px;
+  background: #e2b254;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .account-update-notice--gift .account-gift-box {
+    animation: gift-arrive 1.35s ease-out both;
+  }
+  .account-update-notice--gift .account-gift-lid {
+    animation: gift-open 1.35s ease-out both;
+  }
+  .account-update-notice--gift .account-gift-check {
+    animation: gift-check 0.35s 0.65s cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
+  }
+  .account-update-notice--gift .account-update-icon::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: 1px solid #74bf8b;
+    border-radius: 12px;
+    pointer-events: none;
+    animation: gift-ring 0.85s 0.4s ease-out both;
+  }
+  .account-gift-spark--one {
+    animation: gift-spark 0.7s 0.45s ease-out both;
+  }
+  .account-gift-spark--two {
+    animation: gift-spark 0.7s 0.55s ease-out both;
+  }
+}
+@keyframes gift-arrive {
+  0% {
+    transform: scale(0.85) rotate(-7deg);
+  }
+  25% {
+    transform: scale(1.08) rotate(4deg);
+  }
+  45% {
+    transform: scale(1) rotate(-2deg);
+  }
+  70%,
+  100% {
+    transform: scale(1) rotate(0);
+  }
+}
+@keyframes gift-open {
+  0%,
+  20% {
+    transform: translateY(0) rotate(0);
+  }
+  45%,
+  65% {
+    transform: translateY(-4px) rotate(-12deg);
+  }
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+}
+@keyframes gift-check {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes gift-ring {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  25% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.55);
+  }
+}
+@keyframes gift-spark {
+  0% {
+    opacity: 0;
+    transform: translateY(3px) rotate(0) scale(0.4);
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px) rotate(65deg) scale(0.4);
+  }
+}

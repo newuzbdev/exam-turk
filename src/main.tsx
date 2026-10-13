@@ -9,20 +9,28 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import "./utils/tokenCleanup"; // Import for global functions
 import { installMediaProtection } from "./utils/mediaProtection";
-import { captureAccessLink } from './utils/access-link-context';
+import SignupOriginCapture from "./components/account-updates/signup-origin-capture";
+import { captureSignupAttribution } from "./utils/signup-attribution";
+import { captureAccessLink } from "./utils/access-link-context";
 
+captureSignupAttribution(window.location.href, document.referrer);
 captureAccessLink(window.location);
 installMediaProtection();
 
 createRoot(document.getElementById("root")!).render(
   isPublicLegalPath(window.location.pathname) ? (
-    <ThemeProvider><LegalEntry pathname={window.location.pathname} /></ThemeProvider>
-  ) : <QueryProvider>
+    <ThemeProvider>
+      <LegalEntry pathname={window.location.pathname} />
+    </ThemeProvider>
+  ) : (
+    <QueryProvider>
       <ThemeProvider>
         <AuthProvider>
+          <SignupOriginCapture />
           <RouterProviders />
           <Toaster />
         </AuthProvider>
       </ThemeProvider>
-  </QueryProvider>
+    </QueryProvider>
+  ),
 );

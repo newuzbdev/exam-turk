@@ -24,6 +24,7 @@ export const privacyDocument: LegalDocument = {
       "Hesap ayarları: belirttiğiniz hedef seviye ve sınav tarihi gibi bilgiler.",
       "Ödeme bilgileri: ödeme özelliğini kullandığınızda siparişiniz, ödeme durumu ve ödeme kuruluşunun sağladığı işlem kimliği.",
       "Teknik bilgiler: IP adresiniz, tarayıcı bilgileri ve hizmetin çalışması ile güvenliği için tutulan teknik kayıtlar.",
+      "Katılım bilgileri: kayıt yönteminizi, yaklaşık ülke/şehir bilgisini ve varsa sizi platforma getiren bağlantının kaynak ve kampanya etiketini saklarız. Bunları destek vermek ve tanıtımların etkisini anlamak için kullanırız. Bu kayıtta IP adresi veya kesin konum saklamayız.",
     ] },
     { id: "purposes", title: "3. Veriler hangi amaçlarla kullanılır?", paragraphs: [
       "Verilerinizi hesabınıza giriş yapabilmeniz, pratikleri ve testleri kullanabilmeniz, cevaplarınızın değerlendirilmesi ve sonuç geçmişinizi görebilmeniz için kullanırız. Aboneliğinizi yönetmek, destek taleplerinizi yanıtlamak ve hizmetin güvenliğini sağlamak için de ilgili bilgilerinizden yararlanırız.",
@@ -125,6 +126,7 @@ export const privacyDocumentUz: LegalDocument = {
       "Hisob sozlamalari: belgilagan maqsad darajangiz va imtihon sanasi kabi ma’lumotlar.",
       "To‘lov ma’lumotlari: to‘lov imkoniyatidan foydalanganingizda buyurtmangiz, to‘lov holati va to‘lov tashkiloti taqdim etgan tranzaksiya identifikatori.",
       "Texnik ma’lumotlar: IP manzilingiz, brauzer ma’lumotlari hamda xizmat ishlashi va xavfsizligi uchun saqlanadigan texnik qaydlar.",
+      "Ro‘yxatdan o‘tish ma’lumotlari: kirish usulingiz, taxminiy mamlakat/shahar hamda mavjud bo‘lsa, platformaga olib kelgan havolaning manba va kampaniya yorlig‘ini saqlaymiz. Ulardan yordam ko‘rsatish va reklamalarning samarasini tushunish uchun foydalanamiz. Ushbu qaydda IP manzilingiz yoki aniq joylashuvingizni saqlamaymiz.",
     ] },
     { id: "purposes", title: "3. Ma’lumotlar nima uchun ishlatiladi?", paragraphs: [
       "Ma’lumotlaringizdan hisobingizga kirishingiz, mashq va sinovlardan foydalanishingiz, javoblaringizni baholash va natijalar tarixini ko‘rishingiz uchun foydalanamiz. Obunangizni boshqarish, yordam so‘rovlaringizga javob berish va xizmat xavfsizligini ta’minlash uchun ham tegishli ma’lumotlaringizdan foydalanamiz.",

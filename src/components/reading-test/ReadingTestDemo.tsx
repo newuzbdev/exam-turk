@@ -1,5 +1,6 @@
 ﻿import { useCallback, useEffect, useRef, useState } from "react";
 import officialReadingInstructions from "@/data/official-reading-instructions.json";
+import { isMobilePresentation, useMobilePresentation } from "@/hooks/use-mobile-presentation";
 import { useNavigate } from "react-router-dom";
 import {
   createBackendSyncedTimerState,
@@ -19,7 +20,7 @@ import {
   readingTestService,
   type ReadingTestItem,
 } from "@/services/readingTest.service";
-import { ReadingNotesProvider } from "@/contexts/ReadingNotesContext";
+import { ReadingNotesProvider, textAnnotationScope, annotationFingerprint } from "@/contexts/ReadingNotesContext";
 import ReadingPart1 from "./ui/ReadingPart1";
 import ReadingPart2 from "./ui/ReadingPart2";
 import ReadingPart3 from "./ui/ReadingPart3";
@@ -59,6 +60,12 @@ interface ReadingProgressSnapshot {
   updatedAt: number;
 }
 
+import {
+  activateMobileExamPresentation,
+  clearMobileExamPresentation,
+  getMobileExamPresentationElement,
+} from "@/utils/examFullscreen";
+
 type FullscreenDocument = Document & {
   webkitFullscreenElement?: Element | null;
   msFullscreenElement?: Element | null;
@@ -78,12 +85,14 @@ const getActiveFullscreenElement = () => {
     document.fullscreenElement ||
     fullscreenDocument.webkitFullscreenElement ||
     fullscreenDocument.msFullscreenElement ||
+    getMobileExamPresentationElement() ||
     null
   );
 };
 
 export default function ReadingPage({ testId }: { testId: string }) {
   const navigate = useNavigate();
+  const mobile = useMobilePresentation();
   useOverallSectionHeartbeat(testId);
   const TOTAL_TIME = 60 * 60;
   const [timeLeft, setTimeLeft] = useState(TOTAL_TIME);
@@ -104,7 +113,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [autoSubmitAttempts, setAutoSubmitAttempts] = useState(0);
   const [, setDraftStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
-  const [showDescription, setShowDescription] = useState(true);
+  const [showDescription, setShowDescription] = useState(() => !isMobilePresentation());
   const [fontScale, setFontScale] = useState(1);
   const [showAllQuestionNumbers, setShowAllQuestionNumbers] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(() =>
@@ -204,7 +213,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
       else if (root.msRequestFullscreen) await root.msRequestFullscreen();
       else throw new Error("Fullscreen API unavailable");
 
-      if (!getActiveFullscreenElement()) {
+      if (!getActiveFullscreenElement() && !activateMobileExamPresentation()) {
         if (notifyFailure) {
           toast.error("Tam ekran açılamadı. Tarayıcı izinlerini kontrol edip tekrar deneyin.");
         }
@@ -216,6 +225,12 @@ export default function ReadingPage({ testId }: { testId: string }) {
       setShowFullscreenPrompt(false);
       return true;
     } catch {
+      if (activateMobileExamPresentation()) {
+        fullscreenWasActiveRef.current = true;
+        setIsFullscreen(true);
+        setShowFullscreenPrompt(false);
+        return true;
+      }
       if (notifyFailure) {
         toast.error("Tam ekran açılamadı. Tarayıcı izinlerini kontrol edip tekrar deneyin.");
       }
@@ -224,6 +239,12 @@ export default function ReadingPage({ testId }: { testId: string }) {
   }, []);
 
   const exitExamFullscreen = useCallback(async () => {
+    if (getMobileExamPresentationElement()) {
+      clearMobileExamPresentation();
+      setIsFullscreen(false);
+      setShowFullscreenPrompt(true);
+      return;
+    }
     if (!getActiveFullscreenElement()) return;
     const fullscreenDocument = document as FullscreenDocument;
     try {
@@ -1278,13 +1299,17 @@ export default function ReadingPage({ testId }: { testId: string }) {
     });
   };
 
-  const typographyPreset = getReadingTypographyPreset(fontScale);
+  const typographyPreset = getReadingTypographyPreset(mobile ? 1 : fontScale);
   const selectedFontScale = typographyPreset.menuValue;
 
   return (
-    <ReadingNotesProvider>
+    <ReadingNotesProvider
+      key={testId}
+      scopeKey={textAnnotationScope("reading-mock", testId, overallTestFlowStore.getOverallId() ||
+        (overallTestTokenStore.getByTestId(testId) ? annotationFingerprint(overallTestTokenStore.getByTestId(testId)!) : null))}
+    >
       <div
-        className={`notranslate reading-exam-page min-h-screen h-full bg-white font-sans text-[#37352f] pb-44 sm:pb-52 lg:flex lg:h-dvh lg:min-h-0 lg:flex-col lg:overflow-hidden lg:pb-0 ${
+        className={`notranslate reading-exam-page mock-reading-page min-h-screen h-full bg-white font-sans text-[#37352f] pb-44 sm:pb-52 lg:flex lg:h-dvh lg:min-h-0 lg:flex-col lg:overflow-hidden lg:pb-0 ${
           currentPartNumber >= 2 && currentPartNumber <= 5 ? "overflow-y-hidden" : "overflow-y-auto"
         }`}
         translate="no"
@@ -1295,9 +1320,10 @@ export default function ReadingPage({ testId }: { testId: string }) {
           <div className="px-2 sm:px-4">
             <div className="flex h-auto items-center justify-between py-2 lg:h-[60px] lg:py-0">
               <div className="block lg:hidden w-full">
-                <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2">
-                  <div className="min-w-0 truncate text-sm font-semibold">
-                    Okuma
+                <div className="reading-mobile-header-row grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2">
+                  <div className="flex min-w-0 items-center">
+                    <img src="/logo11.svg" alt="TURKISHMOCK" className="reading-mobile-logo hidden h-8 w-[118px] shrink-0 object-contain" />
+                    <span data-exam-section-title className="min-w-0 truncate text-sm font-semibold">Okuma</span>
                   </div>
                   <div
                     className={`justify-self-center rounded-md border px-2.5 py-1.5 text-xs font-semibold tabular-nums ${
@@ -1310,7 +1336,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
                     {sectionTimerLoading ? "Yükleniyor" : "GÖNDER"}
                   </Button>
                 </div>
-                <div className="mt-2 flex items-center justify-end gap-2">
+                <div className="reading-mock-font-controls mt-2 flex items-center justify-end gap-2">
                   <div className="flex items-center gap-1">
                   <button
                     type="button"
@@ -1340,10 +1366,11 @@ export default function ReadingPage({ testId }: { testId: string }) {
                     className="h-10 w-auto shrink-0 object-contain"
                   />
                   <span
+                    data-exam-section-divider
                     aria-hidden="true"
                     className="h-5 w-px shrink-0 bg-[#dededb]"
                   />
-                  <span className="truncate text-[17px] font-semibold text-[#37352f]">
+                  <span data-exam-section-title className="truncate text-[17px] font-semibold text-[#37352f]">
                     Okuma
                   </span>
                 </div>
@@ -1400,7 +1427,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
           </div>
         </header>
 
-      <section className="mx-2 mt-2 border-b border-[#e5e5e2] bg-white px-3 py-3.5 sm:mx-4 sm:px-4">
+      <section className="mock-section-heading mx-2 mt-2 border-b border-[#e5e5e2] bg-white px-3 py-3.5 sm:mx-4 sm:px-4">
           <div className={`flex items-center justify-between gap-3 ${showDescription ? "mb-1.5" : ""}`}>
             <h2 className="reading-part-heading">
               Bölüm {currentPartNumber}
@@ -1409,6 +1436,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
               type="button"
               onClick={() => setShowDescription((v) => !v)}
               className="flex h-8 w-8 items-center justify-center rounded-md text-[#6f6d67] hover:bg-[#f1f1ef] hover:text-[#37352f]"
+              aria-expanded={showDescription}
               aria-label={showDescription ? "Anlatımı gizle" : "Anlatımı göster"}
               title={showDescription ? "Anlatımı gizle" : "Anlatımı göster"}
             >
@@ -1702,7 +1730,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
             </div>
 
             {/* Mobile Layout - compact prev/next with center progress */}
-            <div className="lg:hidden fixed bottom-[max(0.5rem,env(safe-area-inset-bottom))] right-2 left-2 grid grid-cols-[auto_1fr_auto] items-center gap-2 px-2 py-2 bg-white/98 backdrop-blur-sm rounded-lg shadow-sm border border-gray-300/80 z-50">
+            <div className="mock-mobile-navigation lg:hidden fixed bottom-[max(0.5rem,env(safe-area-inset-bottom))] right-2 left-2 grid grid-cols-[auto_1fr_auto] items-center gap-2 px-2 py-2 bg-white/98 backdrop-blur-sm rounded-lg shadow-sm border border-gray-300/80 z-50">
               <div className="justify-self-start">
                 <Button
                   onClick={handlePrevPart}
@@ -1719,7 +1747,7 @@ export default function ReadingPage({ testId }: { testId: string }) {
                 </div>
                 <div className="mt-1 h-1.5 w-full rounded-full bg-gray-200 overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-[#438553] transition-all duration-200 ease-out"
+                    className="mock-mobile-progress-fill h-full rounded-full bg-[#438553] transition-all duration-200 ease-out"
                     style={{ width: `${currentPartProgress}%` }}
                   />
                 </div>

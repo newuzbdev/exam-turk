@@ -12,10 +12,12 @@ export default function PracticeDurationControl({
   minutes,
   contextKey,
   paused = false,
+  className = "",
 }: {
   minutes: number;
   contextKey: string;
   paused?: boolean;
+  className?: string;
 }) {
   const [enabled, setEnabled] = useState(true);
   const [selectedMinutes, setSelectedMinutes] = useState(clampMinutes(minutes));
@@ -129,7 +131,7 @@ export default function PracticeDurationControl({
   }, [open]);
 
   return (
-    <div ref={rootRef} className="relative flex items-center gap-2">
+    <div ref={rootRef} className={`relative flex items-center gap-2 ${className}`}>
       {enabled ? (
         <span
           aria-label="Kalan süre"

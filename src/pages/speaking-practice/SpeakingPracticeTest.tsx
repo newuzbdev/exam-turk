@@ -1,9 +1,9 @@
+import { loadSpeakingPracticeDraft, saveSpeakingPracticeDraft, deleteSpeakingPracticeDraft, speakingPracticeDraftScope } from "@/services/speakingPracticeDraft.store";
 import { publishCurrentActivity } from '@/utils/access-link-context';
 import ContentAccessRecovery from '@/components/subscription/ContentAccessRecovery';
 import { notifyAccessAllowanceChanged } from '@/utils/access-events';
 import { readAccessOwner, useOwnedAccessContext } from '@/hooks/use-access-link';
 import { useQueryClient } from "@tanstack/react-query";
-import PracticeAllowance from "@/components/practice/PracticeAllowance";
 import { subscriptionStatusQueryKey } from "@/services/subscription.service";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SPEAKING_PART_3_PRACTICE_INSTRUCTION } from "@/config/speakingInstructions";
@@ -23,6 +23,7 @@ import { ExamAudioController } from "@/utils/examAudio";
 import { protectedImageProps } from "@/utils/mediaProtection";
 import { normalizeDisplayText } from "@/utils/text";
 import { SpeakingPracticeAudioPlayer } from "./SpeakingPracticeAudioPlayer";
+import SpeakingMobileDiscussionCard from "@/components/speaking-test/SpeakingMobileDiscussionCard";
 
 type SpeakingQuestion = {
   id: string;
@@ -137,6 +138,13 @@ export default function SpeakingPracticeTest() {
   const [evaluation, setEvaluation] = useState<SpeakingPracticeEvaluation | null>(null);
   const [evaluating, setEvaluating] = useState(false);
   const [runId, setRunId] = useState(createPracticeRunId);
+  const [restoredDraftScope, setRestoredDraftScope] = useState<string | null>(null);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [draftSaveFailed, setDraftSaveFailed] = useState(false);
+  const draftSaveFailedRef = useRef(false);
+  const pendingDraftSaveRef = useRef<Promise<boolean>>(Promise.resolve(true));
+  const exitingRef = useRef(false);
+  const stopResolveRef = useRef<(() => void) | null>(null);
   const recordingsRef = useRef<Record<string, RecordedAnswer>>({});
   const recorderRef = useRef<MediaRecorder | null>(null);
   const startingRecordingRef = useRef(false);
@@ -210,7 +218,54 @@ export default function SpeakingPracticeTest() {
   const evaluationIsCurrent = evaluation?.version === "2.3.0";
   const legacyEvaluation = Boolean(evaluation && !evaluationIsCurrent);
   const resultLocked = Boolean(evaluation);
-  const busy = evaluating || startingRecording;
+  const draftScope = id && task ? speakingPracticeDraftScope(readAccessOwner(), id, ownedAccess.accessContextId,
+    groupedResponse ? [task.id] : responseQuestions.map(item => item.id)) : null;
+  const restoringDraft = Boolean(draftScope && restoredDraftScope !== draftScope);
+  const busy = evaluating || startingRecording || restoringDraft;
+
+  useEffect(() => {
+    if (!draftScope || !task) return;
+    let active = true;
+    void loadSpeakingPracticeDraft(draftScope).then(draft => {
+      if (!active) return;
+      Object.values(recordingsRef.current).forEach(item => URL.revokeObjectURL(item.url));
+      const restored = Object.fromEntries(Object.entries(draft?.recordings || {}).map(([key, item]) =>
+        [key, { ...item, url: URL.createObjectURL(item.blob) }]));
+      recordingsRef.current = restored;
+      setRecordings(restored);
+      if (draft) {
+        setRunId(draft.runId);
+        setQuestionIndex(Math.min(draft.questionIndex, Math.max(0, responseQuestions.length - 1)));
+        paidContextRef.current = draft.paidAccessContextId;
+      }
+      setRestoredDraftScope(draftScope);
+    });
+    return () => { active = false; };
+  }, [draftScope, task, responseQuestions.length]);
+
+  useEffect(() => {
+    if (!recording && !startingRecording && !evaluating && !savingDraft && !draftSaveFailed) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [recording, startingRecording, evaluating, savingDraft, draftSaveFailed]);
+
+  const persistRecordings = (next: Record<string, RecordedAnswer>) => {
+    setSavingDraft(true);
+    const save = saveSpeakingPracticeDraft(draftScope, {
+      version: 1, runId, questionIndex, updatedAt: Date.now(), paidAccessContextId: paidContextRef.current,
+      recordings: Object.fromEntries(Object.entries(next).map(([key, item]) => [key, { blob: item.blob, durationSeconds: item.durationSeconds }])),
+    }).then(saved => {
+      draftSaveFailedRef.current = !saved;
+      if (mountedRef.current) {
+        setDraftSaveFailed(!saved);
+        if (!saved) toast.error("Tarayıcı ses taslağını saklayamadı. Kayıtları kaybetmemek için bu sayfayı açık tutun.");
+      }
+      return saved;
+    }).finally(() => { if (mountedRef.current && pendingDraftSaveRef.current === save) setSavingDraft(false); });
+    pendingDraftSaveRef.current = save;
+    return save;
+  };
 
   const startRecording = async () => {
     if (!question || recording || startingRecordingRef.current || busy || resultLocked) return;
@@ -241,11 +296,12 @@ export default function SpeakingPracticeTest() {
         const pausedMs = timing.pausedMs + (timing.pausedAt ? now - timing.pausedAt : 0);
         const durationSeconds = Math.max(1, (now - timing.startedAt - pausedMs) / 1000);
         const url = URL.createObjectURL(blob);
-        setRecordings((current) => {
-          const previous = current[recordingKey];
-          if (previous) URL.revokeObjectURL(previous.url);
-          return { ...current, [recordingKey]: { blob, url, durationSeconds } };
-        });
+        const previous = recordingsRef.current[recordingKey];
+        if (previous) URL.revokeObjectURL(previous.url);
+        const next = { ...recordingsRef.current, [recordingKey]: { blob, url, durationSeconds } };
+        recordingsRef.current = next;
+        setRecordings(next);
+        void persistRecordings(next).finally(() => { stopResolveRef.current?.(); stopResolveRef.current = null; });
         recordingStream.getTracks().forEach((track) => track.stop());
         void playRecordingCue("end");
       };
@@ -271,13 +327,15 @@ export default function SpeakingPracticeTest() {
     }
   };
 
-  const stopRecording = () => {
-    if (!recorderRef.current || recorderRef.current.state === "inactive") return;
+  const stopRecording = (): Promise<void> => {
+    if (!recorderRef.current || recorderRef.current.state === "inactive") return Promise.resolve();
+    const stopped = new Promise<void>(resolve => { stopResolveRef.current = resolve; });
     recordingTimingRef.current.stoppedAt = performance.now();
     recorderRef.current.stop();
     recorderRef.current = null;
     setRecording(false);
     setPaused(false);
+    return stopped;
   };
 
   const togglePause = () => {
@@ -309,7 +367,7 @@ export default function SpeakingPracticeTest() {
   }, [paused, recording, recordingSecondsLeft]);
 
   const evaluateRecording = async () => {
-    if (!id || !task || busy) return;
+    if (!id || !task || busy || savingDraft) return;
     if (evaluationIsCurrent) {
       toast.info("Bu çalışma değerlendirildi. Yeniden değerlendirmek için pratiği baştan başlatın.");
       return;
@@ -333,6 +391,7 @@ export default function SpeakingPracticeTest() {
         evaluationAccess,
       );
       setEvaluation(result);
+      void deleteSpeakingPracticeDraft(draftScope);
       toast.success("Konuşmanız değerlendirildi.");
     } catch (reason) {
       setAccessError(reason);
@@ -345,6 +404,9 @@ export default function SpeakingPracticeTest() {
   };
 
   const restartPractice = () => {
+    void deleteSpeakingPracticeDraft(draftScope);
+    draftSaveFailedRef.current = false;
+    setDraftSaveFailed(false);
     Object.values(recordingsRef.current).forEach((item) => URL.revokeObjectURL(item.url));
     recordingsRef.current = {};
     setRecordings({});
@@ -354,14 +416,20 @@ export default function SpeakingPracticeTest() {
     setRunId(createPracticeRunId());
   };
 
-  const confirmExit = () => {
-    setShowExit(false);
-    if (recording) stopRecording();
-    navigate("/app/pratik?bolum=speaking");
+  const confirmExit = async () => {
+    if (exitingRef.current) return;
+    exitingRef.current = true;
+    try {
+      if (recording) await stopRecording();
+      await pendingDraftSaveRef.current;
+      if (draftSaveFailedRef.current) return;
+      setShowExit(false);
+      navigate("/app/pratik?bolum=speaking");
+    } finally { exitingRef.current = false; }
   };
 
   if (!id) return <Navigate to="/app/pratik?bolum=speaking" replace />;
-  if (loading) return <div className="flex min-h-screen items-center justify-center">Yükleniyor…</div>;
+  if (loading || restoringDraft) return <div className="flex min-h-screen items-center justify-center">Yükleniyor…</div>;
   if (!practice || !section || !task || !question) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white px-6 text-center">
@@ -374,12 +442,12 @@ export default function SpeakingPracticeTest() {
   const currentRecording = recordings[recordingKey];
 
   return (
-    <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-white text-[#242424]">
+    <div className="speaking-practice-page flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-white text-[#242424]" data-section-code={practice.sectionCode}>
       <header className="z-50 flex min-h-[60px] shrink-0 items-center justify-between gap-2 border-b border-[#e5e5e2] bg-white px-3 sm:px-4">
         <div className="flex min-w-0 items-center gap-3">
           <img src="/logo11.svg" alt="TURKISHMOCK" className="h-10 w-[115px] object-contain sm:w-[150px]" />
-          <span className="hidden h-5 w-px bg-[#dededb] sm:block" />
-          <span className="hidden truncate text-[17px] font-semibold sm:block">Konuşma</span>
+          <span data-exam-section-divider className="hidden h-5 w-px bg-[#dededb] sm:block" />
+          <span data-exam-section-title className="hidden truncate text-[17px] font-semibold sm:block">Konuşma</span>
         </div>
         <div className="flex items-center justify-end gap-2">
           <button
@@ -394,7 +462,7 @@ export default function SpeakingPracticeTest() {
           <Button
             type="button"
             onClick={() => void evaluateRecording()}
-            disabled={recording || busy || resultLocked}
+            disabled={recording || busy || savingDraft || resultLocked}
             className="h-9 min-h-9 gap-1.5 rounded-md bg-red-600 px-4 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-60"
           >
             <Check className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
@@ -408,10 +476,9 @@ export default function SpeakingPracticeTest() {
           </Button>
         </div>
       </header>
-      <PracticeAllowance target={{ scope: 'PRACTICE_SPEAKING', targetId: id }} />
       <ContentAccessRecovery error={accessError} target={{ scope: 'PRACTICE_SPEAKING', targetId: id }} onClose={() => setAccessError(null)} onPaid={contextId => { paidContextRef.current = contextId; setRunId(createPracticeRunId()); }} />
 
-      <section className="shrink-0 border-b border-[#e5e5e2] px-5 py-3.5">
+      <section className="practice-section-heading shrink-0 border-b border-[#e5e5e2] px-5 py-3.5">
         <button
           type="button"
           onClick={() => setShowInstructions((value) => !value)}
@@ -429,7 +496,7 @@ export default function SpeakingPracticeTest() {
       </section>
 
       <main className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-4 py-6 sm:px-8">
-        <div className="flex w-full max-w-[1480px] flex-1 flex-col items-center justify-center">
+        <div className="speaking-practice-content flex w-full max-w-[1480px] flex-1 flex-col items-center justify-center">
           {practice.sectionCode === "TASK_1_2" && taskImages.length > 0 ? (
             <div
               data-testid="speaking-practice-comparison-images"
@@ -455,11 +522,16 @@ export default function SpeakingPracticeTest() {
           ) : null}
 
           {section.type === "PART3" ? (
-            <div className="mb-6 w-full max-w-5xl overflow-hidden border border-[#242424] bg-white">
-              <div className="border-b border-[#242424] px-5 py-4 text-center text-lg font-semibold">{normalizeDisplayText(question.questionText)}</div>
+            <SpeakingMobileDiscussionCard
+              title={normalizeDisplayText(question.questionText)}
+              advantages={(section.points ?? []).filter(point => point.type === "ADVANTAGE").map(point => pointText(point.example)).filter(Boolean).map(normalizeDisplayText)}
+              disadvantages={(section.points ?? []).filter(point => point.type === "DISADVANTAGE").map(point => pointText(point.example)).filter(Boolean).map(normalizeDisplayText)}
+            >
+            <div className="speaking-practice-discussion-card mb-6 w-full max-w-5xl overflow-hidden border border-[#242424] bg-white">
+              <div className="speaking-practice-discussion-title border-b border-[#242424] px-5 py-4 text-center text-lg font-semibold">{normalizeDisplayText(question.questionText)}</div>
               <div className="grid md:grid-cols-2">
                 {(["ADVANTAGE", "DISADVANTAGE"] as const).map((type, index) => (
-                  <div key={type} className={`p-5 ${index === 0 ? "border-b border-[#242424] md:border-b-0 md:border-r" : ""}`}>
+                  <div key={type} className={`speaking-practice-discussion-points p-5 ${index === 0 ? "border-b border-[#242424] md:border-b-0 md:border-r" : ""}`}>
                     <h3 className="mb-3 font-semibold">{type === "ADVANTAGE" ? "Lehine" : "Aleyhine"}</h3>
                     <ul className="list-disc space-y-2 pl-5">
                       {(section.points ?? []).filter((point) => point.type === type).map((point) => pointText(point.example)).filter(Boolean).map((text, pointIndex) => <li key={pointIndex}>{normalizeDisplayText(text)}</li>)}
@@ -468,6 +540,7 @@ export default function SpeakingPracticeTest() {
                 ))}
               </div>
             </div>
+            </SpeakingMobileDiscussionCard>
           ) : section.type === "PART2" ? (
             <div className={taskImages.length > 0
               ? "mb-6 grid w-full max-w-5xl items-center gap-7 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:gap-10"
@@ -488,7 +561,7 @@ export default function SpeakingPracticeTest() {
               <ul className="list-disc space-y-3 pl-6 text-[17px] leading-7">{questions.map((item) => <li key={item.id}>{normalizeDisplayText(item.questionText)}</li>)}</ul>
             </div>
           ) : (
-            <div className="mb-7 w-full max-w-3xl">
+            <div className="speaking-practice-question-card mb-7 w-full max-w-3xl">
               <p className="mb-3 text-center text-sm text-[#787774]">Soru {questionIndex + 1} / {responseQuestions.length}</p>
               <div className="grid grid-cols-[44px_minmax(0,1fr)_44px] items-center gap-3 sm:gap-5" aria-label="Soru geçişleri">
                 <button
@@ -516,8 +589,8 @@ export default function SpeakingPracticeTest() {
             </div>
           )}
 
-          <div className="flex w-full max-w-xl items-center gap-3 rounded-lg border border-[#dededb] bg-[#fafaf9] px-4 py-4 sm:gap-5 sm:px-5">
-            <div className="min-w-0 flex-1">
+          <div className="speaking-practice-recorder flex w-full max-w-xl items-center gap-3 rounded-lg border border-[#dededb] bg-[#fafaf9] px-4 py-4 sm:gap-5 sm:px-5">
+            <div className="speaking-practice-recording-status min-w-0 flex-1">
               <p className="flex items-center gap-2 text-sm font-medium" role="status">
                 <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${recording && !paused ? "animate-pulse bg-red-600" : "bg-[#a6a59f]"}`} />
                 {startingRecording ? "Mikrofon açılıyor…" : recording ? (paused ? "Duraklatıldı" : "Kaydediliyor") : currentRecording ? "Cevap kaydedildi" : "Hazır"}
@@ -525,12 +598,12 @@ export default function SpeakingPracticeTest() {
               {!groupedResponse ? <p className="mt-1 text-xs text-[#787774]">{Object.keys(recordings).length} / {responseQuestions.length} cevap kaydedildi</p> : null}
             </div>
             <span
-              className={`shrink-0 text-[24px] font-normal tabular-nums tracking-tight ${recordingSecondsLeft <= 10 && recording ? "text-red-700" : "text-[#37352f]"}`}
+              className={`speaking-practice-recording-time shrink-0 text-[24px] font-normal tabular-nums tracking-tight ${recordingSecondsLeft <= 10 && recording ? "text-red-700" : "text-[#37352f]"}`}
               aria-label={recording ? "Kalan konuşma süresi" : "Konuşma süresi"}
             >
               {formatDuration(recording ? recordingSecondsLeft : recordingDurationSeconds)}
             </span>
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="speaking-practice-recording-actions flex shrink-0 items-center gap-2">
               {!recording ? (
                 <button
                   type="button"
@@ -682,7 +755,7 @@ export default function SpeakingPracticeTest() {
         title={recording || Object.keys(recordings).length > 0 ? "Testten çıkılsın mı?" : "Çıkmak istiyor musun?"}
         message={
           recording || Object.keys(recordings).length > 0
-            ? "Bu çalışmada kaydettiğin konuşmalar silinir. Çıkmak istiyor musun?"
+            ? "Kaydettiğiniz cevaplar son kayıttan itibaren 24 saat boyunca bu tarayıcıda taslak olarak saklanır. Devam eden kayıt bitirilip saklanacaktır. Çıkmak istiyor musunuz?"
             : "Henüz cevap vermedin. Daha sonra tekrar başlayabilirsin."
         }
         confirmText="Çık"

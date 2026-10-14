@@ -10,21 +10,18 @@ import { createPortal } from "react-dom";
 import { Eraser, Highlighter } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { useTextHighlights } from "@/contexts/ReadingNotesContext";
 import { useExamTextSelection } from "@/hooks/use-exam-text-selection";
-
-interface Highlight {
-  id: string;
-  start: number;
-  end: number;
-}
 
 interface HighlightableTextSimpleProps {
   text: string;
+  annotationId?: string;
   onPlainClick?: () => void;
 }
 
 export default function HighlightableTextSimple({
   text,
+  annotationId = "text",
   onPlainClick,
 }: HighlightableTextSimpleProps) {
   const containerRef = useRef<HTMLSpanElement>(null);
@@ -36,7 +33,7 @@ export default function HighlightableTextSimple({
     dragged: boolean;
   } | null>(null);
   const suppressNextPlainClickRef = useRef(false);
-  const [highlights, setHighlights] = useState<Highlight[]>([]);
+  const [highlights, setHighlights] = useTextHighlights(text, annotationId);
   const [tooltip, setTooltip] = useState<{
     viewportX: number;
     viewportTop: number;
@@ -62,9 +59,8 @@ export default function HighlightableTextSimple({
   }, [tooltip]);
 
   useEffect(() => {
-    setHighlights([]);
     setTooltip(null);
-  }, [text]);
+  }, [text, annotationId]);
 
   const handleNativeTouchSelection = () => {
     const selection = window.getSelection();

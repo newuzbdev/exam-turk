@@ -41,6 +41,8 @@ import {
   type SpeakingPhaseState,
 } from "@/services/speakingPhase.service"
 import SimpleTextDisplay from "@/components/speaking-test/SimpleTextDisplay"
+import SpeakingMobileDiscussionCard from "@/components/speaking-test/SpeakingMobileDiscussionCard"
+import { useMobilePresentation } from "@/hooks/use-mobile-presentation"
 import { getReadingTypographyPreset } from "@/components/reading-test/reading-typography"
 import { Button } from "@/components/ui/button"
 import {
@@ -59,7 +61,7 @@ import {
   clearExamPresentation,
   EXAM_FULLSCREEN_EVENTS,
   exitExamFullscreen,
-  getExamFullscreenElement,
+  getExamPresentationElement,
   requestExamFullscreen,
 } from "@/utils/examFullscreen"
 import {
@@ -290,12 +292,13 @@ export default function ImprovedSpeakingTest() {
   // exam mode (fullscreen + hide headers + lock back)
   const [isExamMode, setIsExamMode] = useState(false)
   const [fontScale, setFontScale] = useState(1)
+  const mobile = useMobilePresentation()
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false)
   const fullscreenWasActiveRef = useRef(false)
   const typographyPreset = useMemo(
-    () => getReadingTypographyPreset(fontScale),
-    [fontScale],
+    () => getReadingTypographyPreset(mobile ? 1 : fontScale),
+    [fontScale, mobile],
   )
   const selectedFontScale = typographyPreset.menuValue
   const popHandlerRef = useRef<(e: PopStateEvent) => void | null>(null)
@@ -393,7 +396,7 @@ export default function ImprovedSpeakingTest() {
       examStarted = sessionStorage.getItem(examStartedStorageKey) === "1"
     } catch {}
 
-    const fullscreenActive = Boolean(getExamFullscreenElement())
+    const fullscreenActive = Boolean(getExamPresentationElement())
     setIsExamMode(examStarted)
     setIsFullscreen(fullscreenActive)
     fullscreenWasActiveRef.current = examStarted
@@ -1545,7 +1548,7 @@ export default function ImprovedSpeakingTest() {
 
   useEffect(() => {
     const reconcileFullscreenState = () => {
-      const fullscreenActive = Boolean(getExamFullscreenElement())
+      const fullscreenActive = Boolean(getExamPresentationElement())
 
       setIsFullscreen(fullscreenActive)
       if (!isExamMode || isTestComplete) {
@@ -2802,7 +2805,7 @@ export default function ImprovedSpeakingTest() {
   if (showSectionDescription && currentSection) {
     return (
       <motion.div
-        className="h-[100dvh] overflow-y-auto overscroll-contain touch-pan-y bg-white text-[#242424]"
+        className="speaking-exam-preparation h-[100dvh] overflow-y-auto overscroll-contain touch-pan-y bg-white text-[#242424]"
         style={typographyPreset.style}
         initial="initial"
         animate="animate"
@@ -2837,8 +2840,8 @@ export default function ImprovedSpeakingTest() {
           <header className="sticky top-0 z-50 grid min-h-[60px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-[#e5e5e2] bg-white px-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:px-4">
             <div className="flex min-w-0 items-center gap-3">
               <img src="/logo11.svg" alt="TURKISHMOCK" className="h-10 max-w-[150px] shrink-0 object-contain sm:max-w-none" />
-              <span className="hidden h-5 w-px shrink-0 bg-[#dededb] sm:block" />
-              <span className="hidden truncate text-[17px] font-semibold text-[#37352f] sm:block">Konuşma</span>
+              <span data-exam-section-divider className="hidden h-5 w-px shrink-0 bg-[#dededb] sm:block" />
+              <span data-exam-section-title className="hidden truncate text-[17px] font-semibold text-[#37352f] sm:block">Konuşma</span>
             </div>
 
             <nav className="hidden shrink-0 items-center gap-1 sm:flex" aria-label="Konuşma bölümleri">
@@ -2918,7 +2921,7 @@ export default function ImprovedSpeakingTest() {
                 || normalizeDisplayText(currentSection.description)
                 || "Bu bölüm için talimat bulunamadı."
             })()}
-            fontScale={fontScale}
+            fontScale={mobile ? 1 : fontScale}
           />
           <div
             data-testid="speaking-instruction-footer"
@@ -2978,7 +2981,9 @@ export default function ImprovedSpeakingTest() {
 
   return (
     <motion.div
-      className="h-[100dvh] min-h-0 relative overflow-x-hidden overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch] flex flex-col bg-white text-[#242424]"
+      className="speaking-exam-page h-[100dvh] min-h-0 relative overflow-x-hidden overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch] flex flex-col bg-white text-[#242424]"
+      data-speaking-part={currentSection.type}
+      data-speaking-subpart={currentSubPartIndex}
       style={typographyPreset.style}
       initial="initial"
       animate="animate"
@@ -2995,8 +3000,8 @@ export default function ImprovedSpeakingTest() {
               (event.target as HTMLImageElement).style.display = "none"
             }}
           />
-          <span className="hidden h-5 w-px shrink-0 bg-[#dededb] sm:block" />
-          <p className="min-w-0 truncate text-[17px] font-semibold leading-6 text-[#242424]">Konuşma</p>
+          <span data-exam-section-divider className="hidden h-5 w-px shrink-0 bg-[#dededb] sm:block" />
+          <p data-exam-section-title className="min-w-0 truncate text-[17px] font-semibold leading-6 text-[#242424]">Konuşma</p>
         </div>
 
         <nav className="hidden shrink-0 items-center gap-1 sm:flex" aria-label="Konuşma bölümleri">
@@ -3207,6 +3212,16 @@ export default function ImprovedSpeakingTest() {
               )
             })()
           ) : currentSection?.type === "PART3" ? (
+            <SpeakingMobileDiscussionCard
+              title={(() => {
+                const subPart = currentSection.subParts?.[currentSubPartIndex]
+                const questions = subPart?.questions ? [...subPart.questions].sort((a, b) => a.order - b.order) : []
+                const activeQuestion = currentQuestion || questions[currentQuestionIndex] || questions[0]
+                return normalizeDisplayText(activeQuestion?.questionText || currentSection.description || "")
+              })()}
+              advantages={(currentSection as any).points?.filter((point: any) => point.type === 'ADVANTAGE').flatMap((point: any) => point.example || []).sort((a: any, b: any) => (a.order || 0) - (b.order || 0)).map((example: any) => normalizeDisplayText(example.text)) || []}
+              disadvantages={(currentSection as any).points?.filter((point: any) => point.type === 'DISADVANTAGE').flatMap((point: any) => point.example || []).sort((a: any, b: any) => (a.order || 0) - (b.order || 0)).map((example: any) => normalizeDisplayText(example.text)) || []}
+            >
             <div className="mx-auto mb-5 w-full max-w-5xl overflow-hidden border border-[#242424] bg-white">
               {(() => {
                 const sp = currentSection?.subParts?.[currentSubPartIndex]
@@ -3240,9 +3255,10 @@ export default function ImprovedSpeakingTest() {
                 </div>
               </div>
             </div>
+            </SpeakingMobileDiscussionCard>
               ) : (
                 <h2
-                  className="mx-auto max-w-3xl break-words px-2 text-center text-[length:var(--reading-body-size)] font-normal leading-[var(--reading-body-line-height)] text-[#242424] sm:px-4"
+                  className="speaking-mock-question mx-auto max-w-3xl break-words px-2 text-center text-[length:var(--reading-body-size)] font-normal leading-[var(--reading-body-line-height)] text-[#242424] sm:px-4"
                 >
                   {normalizeDisplayText(currentQuestion?.questionText)}
                 </h2>
@@ -3255,11 +3271,12 @@ export default function ImprovedSpeakingTest() {
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`mt-2 flex min-h-[72px] w-full max-w-xl flex-wrap items-center gap-3 rounded-md border px-4 py-3 ${
+            data-phase-error={Boolean(phaseError) || undefined}
+            className={`speaking-mock-recorder mt-2 flex min-h-[72px] w-full max-w-xl flex-wrap items-center gap-3 rounded-md border px-4 py-3 ${
               phaseError ? "border-[#efb5b0] bg-[#fff7f6]" : "border-[#dededb] bg-[#fafaf9]"
             }`}
           >
-            <div className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${
+            <div className={`speaking-mock-recording-indicator relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${
               isRecording ? "bg-[#dc2626] text-white" : "bg-[#eeeeec] text-[#565550]"
             }`}>
               {isRecording && !isPaused && (
@@ -3271,7 +3288,7 @@ export default function ImprovedSpeakingTest() {
               {isPlayingTTS ? <Volume2 className="relative h-5 w-5" /> : <Mic className="relative h-5 w-5" />}
             </div>
 
-            <div className="min-w-[8rem] flex-1">
+            <div className="speaking-mock-recording-status min-w-[8rem] flex-1">
               <p className={`break-words text-[15px] font-semibold leading-5 ${phaseError ? "text-[#b42318]" : "text-[#242424]"}`}>
                 {isAnswerRecording
                   ? "Kaydediliyor"
@@ -3288,7 +3305,7 @@ export default function ImprovedSpeakingTest() {
             )}
 
             {(isPrepRunning || isAnswerRecording) && (
-              <span className="shrink-0 font-mono text-xl font-semibold tabular-nums text-[#242424]">
+              <span className="speaking-mock-recording-time shrink-0 font-mono text-xl font-semibold tabular-nums text-[#242424]">
                 {formatTime(isPrepRunning ? prepSeconds : timeLeft)}
               </span>
             )}

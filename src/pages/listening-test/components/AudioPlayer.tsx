@@ -2,10 +2,12 @@ import React, {
   forwardRef,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
 import { Play, Volume2, VolumeX } from "lucide-react";
+import { useMobilePresentation } from "@/hooks/use-mobile-presentation";
 
 interface AudioPlayerProps {
   src: string;
@@ -21,6 +23,9 @@ interface AudioPlayerProps {
   manualStartRequired?: boolean;
   onBeforeManualStart?: () => Promise<void>;
   showManualStartControl?: boolean;
+  preparedAudioElement?: HTMLAudioElement | null;
+  preparedAudioMountedExternally?: boolean;
+  startAtMs?: number | null;
 }
 
 export interface AudioPlayerHandle {
@@ -43,17 +48,71 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(
       manualStartRequired = false,
       onBeforeManualStart,
       showManualStartControl = true,
+      preparedAudioElement = null,
+      preparedAudioMountedExternally = false,
+      startAtMs = null,
     }: AudioPlayerProps,
     ref,
   ) {
   const [volume, setVolume] = useState(0.7);
+  const deviceVolume = useMobilePresentation();
   const [playbackIssue, setPlaybackIssue] = useState<
     "start-required" | "autoplay-blocked" | "load-error" | null
   >(null);
   const [isStartingPlayback, setIsStartingPlayback] = useState(false);
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const hasStartedRef = useRef(false);
-  const hasAppliedResumeTimeRef = useRef(false);
+  const audioRef = useRef<HTMLAudioElement | null>(preparedAudioElement);
+  const preparedAudioContainerRef = useRef<HTMLSpanElement>(null);
+  const endedCallbackRef = useRef(onAudioEnded);
+  const startingPlaybackRef = useRef(false);
+  const playbackMountedRef = useRef(false);
+  const delayedStartRef = useRef<() => Promise<boolean>>(async () => false);
+  const [countdown, setCountdown] = useState(() =>
+    startAtMs ? Math.max(0, Math.ceil((startAtMs - Date.now()) / 1000)) : 0,
+  );
+
+  useLayoutEffect(() => { endedCallbackRef.current = onAudioEnded; }, [onAudioEnded]);
+
+  useLayoutEffect(() => {
+    if (!preparedAudioElement) return;
+    audioRef.current = preparedAudioElement;
+    const player = preparedAudioElement;
+    const ended = () => endedCallbackRef.current();
+    const failed = () => {
+      hasStartedRef.current = false;
+      setPlaybackIssue("load-error");
+    };
+    if (!preparedAudioMountedExternally) preparedAudioContainerRef.current?.append(player);
+    player.addEventListener("ended", ended);
+    player.addEventListener("error", failed);
+    return () => {
+      player.removeEventListener("ended", ended);
+      player.removeEventListener("error", failed);
+      if (!preparedAudioMountedExternally) {
+        player.pause();
+        player.remove();
+      }
+    };
+  }, [preparedAudioElement, preparedAudioMountedExternally]);
+
+  useEffect(() => {
+    playbackMountedRef.current = true;
+    const player = audioRef.current;
+    return () => {
+      playbackMountedRef.current = false;
+      if (!preparedAudioElement) player?.pause();
+    };
+  }, [src, preparedAudioElement]);
+
+  useEffect(() => {
+    if (!startAtMs) { setCountdown(0); return; }
+    const update = () => setCountdown(Math.max(0, Math.ceil((startAtMs - Date.now()) / 1000)));
+    update();
+    const timer = window.setInterval(update, 100);
+    return () => window.clearInterval(timer);
+  }, [startAtMs]);
+  const alreadyPlaying = !!preparedAudioElement && !preparedAudioElement.paused;
+  const hasStartedRef = useRef(alreadyPlaying);
+  const hasAppliedResumeTimeRef = useRef(alreadyPlaying);
   const resumeTimeRef = useRef(0);
   const retryAttemptsRef = useRef(0);
   const startTimerRef = useRef<number | null>(null);
@@ -74,6 +133,9 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(
   };
 
   useEffect(() => {
+    // Timer activation updates authoritative progress without replacing or
+    // stopping the prepared player that has just begun playback.
+    if (preparedAudioElement && (hasStartedRef.current || startingPlaybackRef.current)) return;
     // Reset playback flags for new source and rehydrate persisted progress.
     hasStartedRef.current = false;
     hasAppliedResumeTimeRef.current = false;
@@ -122,6 +184,7 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(
   }, [
     src,
     persistKey,
+    preparedAudioElement,
     authoritativePositionSeconds,
     authoritativeCapturedAtMs,
     onMutedChange,
@@ -180,7 +243,7 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(
       !src ||
       hasStartedRef.current ||
       !autoPlay ||
-      manualStartRequired
+      (manualStartRequired && !startAtMs)
     ) {
       return;
     }
@@ -200,6 +263,10 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(
 
     const tryAutoPlay = async () => {
       if (disposed || hasStartedRef.current) return;
+      if (manualStartRequired && startAtMs) {
+        await delayedStartRef.current();
+        return;
+      }
 
       try {
         if (audio.readyState < 2) {
@@ -234,18 +301,19 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(
       }
     };
 
-    startTimerRef.current = window.setTimeout(tryAutoPlay, 500);
+    startTimerRef.current = window.setTimeout(
+      tryAutoPlay,
+      startAtMs ? Math.max(0, startAtMs - Date.now()) : 500,
+    );
 
     return () => {
       disposed = true;
       clearPendingTimers();
-      try {
-        audio.pause();
-      } catch {}
     };
   }, [
     src,
     autoPlay,
+    startAtMs,
     authoritativePositionSeconds,
     authoritativeCapturedAtMs,
     manualStartRequired,
@@ -257,10 +325,10 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(
   useEffect(() => {
     const audio = audioRef.current;
     if (audio) {
-      audio.muted = muted || volume === 0;
-      audio.volume = volume;
+      audio.muted = deviceVolume ? false : muted || volume === 0;
+      audio.volume = deviceVolume ? 1 : volume;
     }
-  }, [muted, volume]);
+  }, [deviceVolume, muted, volume]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -275,8 +343,8 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(
           persistKey,
           JSON.stringify({
             currentTime: audio.currentTime || 0,
-            volume: audio.volume,
-            muted: audio.muted,
+            volume: deviceVolume ? volume : audio.volume,
+            muted: deviceVolume ? muted : audio.muted,
             ended: endedOverride || audio.ended,
             updatedAt: now,
           })
@@ -310,7 +378,7 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(
       window.removeEventListener("beforeunload", onBeforeUnload);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [persistKey, src]);
+  }, [persistKey, src, deviceVolume, muted, volume]);
 
   const handleEnded = () => {
     onAudioEnded();
@@ -323,8 +391,10 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(
 
   const handleManualStart = async (): Promise<boolean> => {
     const audio = audioRef.current;
-    if (!audio || !src || isStartingPlayback) return false;
+    if (!audio || !src || startingPlaybackRef.current || hasStartedRef.current) return false;
+    if (startAtMs && Date.now() < startAtMs) return false;
 
+    startingPlaybackRef.current = true;
     setIsStartingPlayback(true);
     try {
       if (audio.readyState === 0) {
@@ -332,6 +402,8 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(
       }
       applyResumeTime();
       await audio.play();
+      if (!playbackMountedRef.current) { audio.pause(); return false; }
+      hasStartedRef.current = true;
       if (onBeforeManualStart) {
         await onBeforeManualStart();
       }
@@ -354,9 +426,12 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(
       );
       return false;
     } finally {
-      setIsStartingPlayback(false);
+      startingPlaybackRef.current = false;
+      if (playbackMountedRef.current) setIsStartingPlayback(false);
     }
   };
+
+  useEffect(() => { delayedStartRef.current = handleManualStart; });
 
   useImperativeHandle(ref, () => ({
     start: handleManualStart,
@@ -391,38 +466,38 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(
 
   const effectiveVolume = muted ? 0 : volume;
 
-  if (!controlsVisible) {
-    return (
-      <audio
-        ref={audioRef}
-        src={src}
-        crossOrigin="anonymous"
-        preload="auto"
-        onError={handlePlaybackError}
-        onEnded={handleEnded}
-        aria-hidden="true"
-      />
-    );
-  }
+  const playerElement = preparedAudioElement ? (
+    preparedAudioMountedExternally ? null : <span ref={preparedAudioContainerRef} hidden aria-hidden="true" />
+  ) : (
+    <audio
+      ref={audioRef}
+      src={src}
+      crossOrigin="anonymous"
+      preload="auto"
+      onError={handlePlaybackError}
+      onEnded={handleEnded}
+      aria-hidden="true"
+    />
+  );
+
+  if (!controlsVisible) return playerElement;
 
   return (
     <div
-      className={`items-center rounded-md border border-[#dededb] bg-[#f7f7f5] text-[#5f5e5a] ${
+      className={`listening-audio-player items-center rounded-md border border-[#dededb] bg-[#f7f7f5] text-[#5f5e5a] ${
         compact
           ? "inline-flex h-8 w-fit max-w-full gap-2 px-2.5"
           : "flex gap-2 px-3 py-1.5"
       }`}
     >
-      <audio 
-        ref={audioRef} 
-        src={src} 
-        crossOrigin="anonymous"
-        preload="auto"
-        onError={handlePlaybackError}
-        onEnded={handleEnded}
-      />
+      {playerElement}
+      {countdown > 0 && (
+        <span role="status" aria-live="polite" className="text-xs font-medium tabular-nums">
+          Ses {countdown} saniye sonra başlayacak
+        </span>
+      )}
 
-      {playbackIssue && showManualStartControl && (
+      {playbackIssue && showManualStartControl && !(startAtMs && playbackIssue === "start-required") && countdown === 0 && (
         <div
           className="flex min-w-0 items-center gap-2 text-xs text-[#5f5e5a]"
           role="status"
@@ -453,7 +528,7 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(
       )}
 
       {/* Volume Slider */}
-      <div className={`min-w-0 flex items-center ${compact ? "gap-1.5" : "gap-2"}`}>
+      <div className={`listening-volume-controls min-w-0 flex items-center ${compact ? "gap-1.5" : "gap-2"}`}>
         <button
           type="button"
           data-listening-audio-mute
@@ -478,12 +553,14 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(
           value={effectiveVolume}
           onChange={handleVolumeChange}
           aria-label="Ses düzeyi"
+          aria-valuetext={`${Math.round(effectiveVolume * 100)}%`}
           className={`${compact ? "w-20" : "w-12 sm:w-16 lg:w-24"} listening-volume-range h-1.5 appearance-none rounded-full bg-[#dededb] cursor-pointer`}
           style={{
-            background: `linear-gradient(to right, #6f6d67 0%, #6f6d67 ${effectiveVolume * 100}%, #dededb ${effectiveVolume * 100}%, #dededb 100%)`
-          }}
+            background: `linear-gradient(to right, #6f6d67 0%, #6f6d67 ${effectiveVolume * 100}%, #dededb ${effectiveVolume * 100}%, #dededb 100%)`,
+            "--listening-volume-fill": `${effectiveVolume * 100}%`,
+          } as React.CSSProperties}
         />
-        <span className={compact ? "hidden min-w-[40px] text-right text-xs tabular-nums text-[#5f5e5a] sm:inline" : "min-w-[40px] text-right text-xs tabular-nums text-[#5f5e5a]"}>
+        <span className={`listening-volume-value ${compact ? "hidden min-w-[40px] text-right text-xs tabular-nums text-[#5f5e5a] sm:inline" : "min-w-[40px] text-right text-xs tabular-nums text-[#5f5e5a]"}`}>
           {muted ? "Kapalı" : `${Math.round(volume * 100)}%`}
         </span>
       </div>

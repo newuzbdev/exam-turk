@@ -78,6 +78,7 @@ export default function ReadingPart1({
         parts.push(
           <HighlightableText
             key={`${keyPrefix}-t-${lastIndex}`}
+            annotationId={`body:${sourceOffset + lastIndex}`}
             text={chunk}
             partNumber={partNumber}
             as="span"
@@ -195,6 +196,7 @@ export default function ReadingPart1({
       parts.push(
         <HighlightableText
           key={`${keyPrefix}-t-end`}
+          annotationId={`body:${sourceOffset + lastIndex}`}
           text={text.slice(lastIndex)}
           partNumber={partNumber}
           as="span"
@@ -244,7 +246,7 @@ export default function ReadingPart1({
   return (
     <div className="mx-2 reading-body reading-body-part1-mobile overflow-hidden pr-2 text-slate-800">
       {/* Mobile Layout - Stacked */}
-      <div className="block lg:hidden">
+      <div className="reading-mobile-layout block lg:hidden">
         <div className="overflow-hidden rounded-md border reading-surface">
           <div className="reading-surface p-3">
             {contentTitle && (
@@ -273,7 +275,7 @@ export default function ReadingPart1({
               <div className="space-y-4 reading-text reading-primary-copy reading-passage-copy">
                 {contentTitle && (
                   <div className="reading-passage-title mb-3">
-                    <HighlightableText text={contentTitle} partNumber={partNumber} />
+                    <HighlightableText text={contentTitle} annotationId="title" partNumber={partNumber} />
                   </div>
                 )}
                 {contentBody && renderContentWithBlanks(false)}

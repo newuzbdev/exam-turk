@@ -5,7 +5,6 @@ import ContentAccessRecovery from '@/components/subscription/ContentAccessRecove
 import { notifyAccessAllowanceChanged } from '@/utils/access-events';
 import { readAccessOwner, useOwnedAccessContext } from '@/hooks/use-access-link';
 import { useQueryClient } from "@tanstack/react-query";
-import PracticeAllowance from "@/components/practice/PracticeAllowance";
 import { subscriptionStatusQueryKey } from "@/services/subscription.service";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
@@ -90,7 +89,9 @@ export default function WritingPracticeTest() {
     useState<WritingPracticeEvaluation | null>(null);
   const [evaluating, setEvaluating] = useState(false);
   const [evaluationError, setEvaluationError] = useState("");
-  const [showDescription, setShowDescription] = useState(true);
+  const [showDescription, setShowDescription] = useState(() =>
+    typeof window === "undefined" || !window.matchMedia("(max-width: 767px)").matches,
+  );
   const [showEvaluate, setShowEvaluate] = useState(false);
   const [showExit, setShowExit] = useState(false);
   const [characterCase, setCharacterCase] = useState<"lower" | "upper">(
@@ -396,27 +397,28 @@ export default function WritingPracticeTest() {
 
   return (
     <div
-      className="notranslate flex h-dvh min-h-0 flex-col overflow-hidden bg-white font-sans text-[#37352f]"
+      className="notranslate writing-practice-page flex h-dvh min-h-0 flex-col overflow-hidden bg-white font-sans text-[#37352f]"
       translate="no"
       style={{ color: "#37352f", ...typography.style }}
     >
       <header className="z-50 shrink-0 border-b border-[#e5e5e2] bg-white">
-        <div className="grid min-h-[60px] grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-2 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-3 md:px-4 md:py-0">
+        <div className="writing-practice-header-grid grid min-h-[60px] grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-2 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-3 md:px-4 md:py-0">
           <div className="flex min-w-0 items-center gap-3">
             <img
               src="/logo11.svg"
               alt="TURKISHMOCK"
               className="h-10 max-w-[120px] object-contain md:max-w-[150px]"
             />
-            <span className="hidden h-5 w-px bg-[#dededb] sm:block" />
-            <span className="truncate text-[17px] font-semibold">Yazma</span>
+            <span data-exam-section-divider className="hidden h-5 w-px bg-[#dededb] sm:block" />
+            <span data-exam-section-title className="truncate text-[17px] font-semibold">Yazma</span>
           </div>
           <PracticeDurationControl
+            className="writing-practice-duration"
             minutes={practice.estimatedMinutes}
             contextKey={`writing_${id}`}
             paused={evaluating || !!evaluation}
           />
-          <div className="col-span-2 flex flex-wrap items-center justify-end gap-2 md:col-span-1">
+          <div className="writing-practice-header-actions col-span-2 flex flex-wrap items-center justify-end gap-2 md:col-span-1">
             <Select
               value={inputMode ?? "turkish-keyboard"}
               disabled={evaluating || !!evaluation}
@@ -490,7 +492,6 @@ export default function WritingPracticeTest() {
           </div>
         </div>
       </header>
-      <PracticeAllowance target={{ scope: 'PRACTICE_WRITING', targetId: id }} />
       <ContentAccessRecovery error={accessError} target={{ scope: 'PRACTICE_WRITING', targetId: id }} onClose={() => setAccessError(null)} onPaid={async contextId => {
         const currentOwner = readAccessOwner();
         if (!id || !currentOwner) throw new Error('Hesabınız doğrulanamadı.');
@@ -507,7 +508,7 @@ export default function WritingPracticeTest() {
         setEvaluationError('');
       }} />
 
-      <section className="shrink-0 border-b border-[#e5e5e2] bg-white px-5 py-3.5">
+      <section className="practice-section-heading shrink-0 border-b border-[#e5e5e2] bg-white px-5 py-3.5">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
             <h1 className="reading-part-heading">
@@ -524,6 +525,7 @@ export default function WritingPracticeTest() {
             type="button"
             onClick={() => setShowDescription((value) => !value)}
             className="flex h-8 w-8 items-center justify-center rounded-md text-[#6f6d67] hover:bg-[#f1f1ef]"
+            aria-expanded={showDescription}
             aria-label="Bölüm açıklamasını aç veya kapat"
           >
             {showDescription ? (

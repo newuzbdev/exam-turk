@@ -50,25 +50,27 @@ export function StudentPageShell({
   title,
   description,
   actions,
+  headerAlignment = "end",
   children,
 }: {
   eyebrow?: string;
   title: string;
   description?: string;
   actions?: ReactNode;
+  headerAlignment?: "end" | "center";
   children: ReactNode;
 }) {
   return (
-    <main className="min-h-screen bg-[var(--tm-bg-app)] font-sans text-[var(--tm-text-primary)]">
+    <main className="student-page-shell min-h-screen bg-[var(--tm-bg-app)] font-sans text-[var(--tm-text-primary)]">
       <div className="mx-auto max-w-[1120px] px-5 pb-16 pt-8 sm:px-6 lg:px-8">
-        <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className={cn("flex flex-wrap justify-between gap-4", headerAlignment === "center" ? "items-center" : "items-end")}>
           <div>
             {eyebrow && (
               <p className="text-[12px] font-semibold text-[var(--tm-text-tertiary)]">
                 {eyebrow}
               </p>
             )}
-            <h1 className="mt-1 text-[30px] font-semibold leading-none tracking-[-0.02em]">
+            <h1 className={cn("mt-1 text-[30px] font-semibold leading-none tracking-[-0.02em]", headerAlignment === "center" && "mt-0 [text-box:trim-both_cap_alphabetic]")}>
               {title}
             </h1>
             {description && (

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetDescription,
   SheetHeader,
@@ -15,6 +16,7 @@ import {
   Plus,
   Trash2,
   Edit2,
+  X,
 } from "lucide-react";
 import { useReadingNotes, type Note } from "@/contexts/ReadingNotesContext";
 
@@ -136,12 +138,18 @@ export default function NotesPanel({
 
       <SheetContent
         side="right"
-        className="flex w-full flex-col border-l border-[#e5e5e2] bg-white p-0 sm:max-w-[420px]"
+        className="reading-notes-sheet flex w-full flex-col border-l border-[#e5e5e2] bg-white p-0 sm:max-w-[420px]"
       >
         <SheetHeader className="border-b border-[#e9e9e6] px-5 py-4 pr-12 text-left">
           <SheetTitle className="text-[17px] font-semibold tracking-normal text-[#2f2f2c]">
             Notlar
           </SheetTitle>
+          <SheetClose
+            aria-label="Notları kapat"
+            className="reading-notes-mobile-close absolute right-4 top-3 hidden h-11 items-center gap-2 rounded-md px-3 text-sm font-medium text-[#5f5e5a] hover:bg-[#f3f3f1]"
+          >
+            Kapat <X className="h-4 w-4" aria-hidden="true" />
+          </SheetClose>
           <SheetDescription className="sr-only">
             {isPractice
               ? "Pratik sırasında aldığınız notları görüntüleyin ve düzenleyin."

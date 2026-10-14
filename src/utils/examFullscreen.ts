@@ -33,6 +33,32 @@ export const getExamFullscreenElement = (): Element | null => {
   );
 };
 
+export const getMobileExamPresentationElement = (): Element | null => {
+  if (typeof document === "undefined") return null;
+  return document.documentElement.dataset.mobileExamPresentation === "active"
+    ? document.documentElement
+    : null;
+};
+
+export const activateMobileExamPresentation = (): boolean => {
+  if (typeof document === "undefined" || typeof navigator === "undefined") return false;
+  const mobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (!mobileDevice) return false;
+  // A separate exam view keeps the native Fullscreen API state truthful.
+  document.documentElement.dataset.mobileExamPresentation = "active";
+  return true;
+};
+
+export const clearMobileExamPresentation = () => {
+  if (typeof document !== "undefined") {
+    delete document.documentElement.dataset.mobileExamPresentation;
+  }
+};
+
+export const getExamPresentationElement = (): Element | null =>
+  getExamFullscreenElement() || getMobileExamPresentationElement();
+
 const nextPaint = (): Promise<void> =>
   new Promise((resolve) => {
     if (typeof window === "undefined") {
@@ -100,7 +126,7 @@ const waitForFullscreenState = (
 
 export const requestExamFullscreen = async (): Promise<boolean> => {
   if (typeof document === "undefined") return false;
-  if (getExamFullscreenElement()) return true;
+  if (getExamPresentationElement()) return true;
 
   const root = document.documentElement as VendorFullscreenElement;
   const request =
@@ -109,17 +135,18 @@ export const requestExamFullscreen = async (): Promise<boolean> => {
     root.webkitRequestFullScreen?.bind(root) ||
     root.msRequestFullscreen?.bind(root);
 
-  if (!request) return false;
+  if (!request) return activateMobileExamPresentation();
 
   try {
     await Promise.resolve(request());
-    return waitForFullscreenState(true);
+    return (await waitForFullscreenState(true)) || activateMobileExamPresentation();
   } catch {
-    return false;
+    return activateMobileExamPresentation();
   }
 };
 
 export const exitExamFullscreen = async (): Promise<boolean> => {
+  clearMobileExamPresentation();
   if (typeof document === "undefined") return true;
   if (!getExamFullscreenElement()) return true;
 

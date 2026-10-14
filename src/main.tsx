@@ -2,6 +2,7 @@ import { isPublicLegalPath } from "./config/legal";
 import { LegalEntry } from "./pages/legal/LegalEntry";
 import { createRoot } from "react-dom/client";
 import "./index.css";
+import "./mobile.css";
 import { QueryProvider } from "./providers/query-provider";
 import { RouterProviders } from "./providers/route-provider";
 import { Toaster } from "@/components/ui/sonner";

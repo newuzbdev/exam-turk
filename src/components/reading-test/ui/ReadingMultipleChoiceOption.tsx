@@ -8,6 +8,7 @@ interface ReadingMultipleChoiceOptionProps {
   selected: boolean;
   reviewState: ReadingReviewOptionState;
   partNumber?: number;
+  annotationId?: string;
   onSelect: () => void;
 }
 
@@ -17,6 +18,7 @@ export default function ReadingMultipleChoiceOption({
   selected,
   reviewState,
   partNumber,
+  annotationId,
   onSelect,
 }: ReadingMultipleChoiceOptionProps) {
   const rowTone =
@@ -76,6 +78,7 @@ export default function ReadingMultipleChoiceOption({
           <HighlightableText
             text={fixMojibake(text)}
             partNumber={partNumber}
+            annotationId={annotationId || `option:${letter}`}
             onPlainClick={onSelect}
             as="span"
             wrapperAs="span"

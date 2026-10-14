@@ -26,7 +26,6 @@ import {
   Minimize2,
   MoveHorizontal,
   PencilLine,
-  Play,
   VolumeX,
   X,
 } from "lucide-react";
@@ -42,10 +41,7 @@ import {
   type BackendSyncedTimerState,
   type MockSubmitMode,
 } from "@/services/overallTest.service";
-import {
-  AudioPlayer,
-  type AudioPlayerHandle,
-} from "@/pages/listening-test/components/AudioPlayer";
+import { AudioPlayer } from "@/pages/listening-test/components/AudioPlayer";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { ConfirmationModal } from "../ui/confirmation-modal";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -56,8 +52,11 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
+import { TextAnnotationsProvider, textAnnotationScope, annotationFingerprint } from "@/contexts/ReadingNotesContext";
 import HighlightableTextSimple from "@/components/listening-test/HighlightableTextSimple";
 import MapWithDrawing from "@/components/listening-test/MapWithDrawing";
+import ListeningMobileSplitPanels from "./ListeningMobileSplitPanels";
+import { isMobilePresentation } from "@/hooks/use-mobile-presentation";
 import { getReadingTypographyPreset } from "@/components/reading-test/reading-typography";
 import ReadingQuestionNumber from "@/components/reading-test/ui/ReadingQuestionNumber";
 import { toast } from "sonner";
@@ -67,7 +66,7 @@ import { assignListeningAnswer } from "./listening-answer-rules";
 import { orderListeningQuestions } from "./listening-question-order";
 import { countOptionSelections } from "@/utils/selection-count";
 import { useOverallSectionHeartbeat } from "@/hooks/use-overall-section-heartbeat";
-import { listeningPreparationStore } from "@/services/listeningPreparation.store";
+import { listeningPreparationStore, prepareListeningAudioPlayback, type PreparedListeningAudioPlayback } from "@/services/listeningPreparation.store";
 import listeningPracticeService from "@/services/listeningPractice.service";
 import {
   getPracticeErrorMessage,
@@ -86,6 +85,7 @@ type ListeningPreparationState =
   | "error";
 
 interface ListeningOptionProps {
+  annotationId: string;
   letter: string;
   text: string;
   selected: boolean;
@@ -94,6 +94,7 @@ interface ListeningOptionProps {
 }
 
 function ListeningOption({
+  annotationId,
   letter,
   text,
   selected,
@@ -145,6 +146,7 @@ function ListeningOption({
         </span>
         <span className="reading-text reading-option-copy min-w-0 font-normal">
           <HighlightableTextSimple
+            annotationId={annotationId}
             text={fixMojibake(text)}
             onPlainClick={onSelect}
           />
@@ -190,11 +192,15 @@ function ListeningBooleanChoice({
           />
         </span>
       </span>
+      <span className="listening-boolean-label" style={{ display: "none" }} aria-hidden="true">
+        {label}
+      </span>
     </button>
   );
 }
 
 function ListeningOptionLegendRow({
+  annotationId,
   letter,
   text,
   selectionCount,
@@ -202,6 +208,7 @@ function ListeningOptionLegendRow({
   letter: string;
   text: string;
   selectionCount: number;
+  annotationId: string;
 }) {
   return (
     <div
@@ -214,7 +221,7 @@ function ListeningOptionLegendRow({
           {letter}.
         </span>
         <span className="reading-text reading-option-copy min-w-0 font-normal">
-          <HighlightableTextSimple text={fixMojibake(text)} />
+          <HighlightableTextSimple annotationId={annotationId} text={fixMojibake(text)} />
         </span>
       </span>
       {selectionCount > 1 ? (
@@ -284,39 +291,6 @@ const getActiveFullscreenElement = () => {
 
 const PART_FOUR_MATCHING_OPTIONS = ["A", "B", "C", "D", "E", "F", "G", "H"];
 
-const waitForAudioReady = (url: string, timeoutMs = 20_000) =>
-  new Promise<void>((resolve, reject) => {
-    const audio = document.createElement("audio");
-    let settled = false;
-    const timeoutId = window.setTimeout(() => {
-      finish(new Error("Dinleme sesi hazırlanamadı."));
-    }, timeoutMs);
-
-    const cleanup = () => {
-      window.clearTimeout(timeoutId);
-      audio.removeEventListener("canplay", handleReady);
-      audio.removeEventListener("error", handleError);
-      audio.removeAttribute("src");
-      audio.load();
-    };
-    const finish = (error?: Error) => {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      if (error) reject(error);
-      else resolve();
-    };
-    const handleReady = () => finish();
-    const handleError = () =>
-      finish(new Error("Dinleme sesi hazırlanamadı."));
-
-    audio.preload = "auto";
-    audio.addEventListener("canplay", handleReady, { once: true });
-    audio.addEventListener("error", handleError, { once: true });
-    audio.src = url;
-    audio.load();
-  });
-
 export default function ListeningTestDemo({
   testId,
   practiceMode = false,
@@ -326,13 +300,21 @@ export default function ListeningTestDemo({
   practiceMode?: boolean;
   accessContextId?: string;
 }) {
+  const attemptId = practiceMode ? accessContextId || "study" :
+    overallTestFlowStore.getOverallId() ||
+    (overallTestTokenStore.getByTestId(testId) ? annotationFingerprint(overallTestTokenStore.getByTestId(testId)!) : null);
   return (
-    <ListeningAttempt
+    <TextAnnotationsProvider
       key={`${practiceMode ? "practice" : "exam"}-${testId}`}
-      testId={testId}
-      practiceMode={practiceMode}
-      accessContextId={accessContextId}
-    />
+      scopeKey={textAnnotationScope(practiceMode ? "listening-practice" : "listening-mock", testId, attemptId)}
+    >
+      <ListeningAttempt
+        key={`${practiceMode ? "practice" : "exam"}-${testId}`}
+        testId={testId}
+        practiceMode={practiceMode}
+        accessContextId={accessContextId}
+      />
+    </TextAnnotationsProvider>
   );
 }
 
@@ -355,7 +337,7 @@ function ListeningAttempt({
   const [contentRetryKey, setContentRetryKey] = useState(0);
   const [timeLeft, setTimeLeft] = useState<number>(600); // 10 minutes in seconds
   const [timerActive, setTimerActive] = useState<boolean>(false);
-  const [showDescription, setShowDescription] = useState(true);
+  const [showDescription, setShowDescription] = useState(() => !isMobilePresentation());
   const [showReviewNotice, setShowReviewNotice] = useState(false);
   const [audioMuted, setAudioMuted] = useState(false);
   const [activeAudioUrl, setActiveAudioUrl] = useState<string | null>(null);
@@ -389,10 +371,17 @@ function ListeningAttempt({
   const [audioPreparationAttempt, setAudioPreparationAttempt] = useState(0);
   const [canRetryAudioPreparation, setCanRetryAudioPreparation] =
     useState(false);
-  const [
-    shouldAutoStartPreparedListening,
-    setShouldAutoStartPreparedListening,
-  ] = useState(false);
+  const [preparedAudioElement, setPreparedAudioElement] = useState<HTMLAudioElement | null>(null);
+  const [preparedStartAtMs, setPreparedStartAtMs] = useState<number | null>(null);
+  const preparedAudioHostRef = useRef<HTMLSpanElement>(null);
+
+  // Keep the native player outside the responsive control branches. Removing
+  // and reinserting it when the header changes can restart playback in browsers.
+  useLayoutEffect(() => {
+    if (!preparedAudioElement) return;
+    preparedAudioHostRef.current?.append(preparedAudioElement);
+    return () => { preparedAudioElement.remove(); };
+  }, [preparedAudioElement]);
   const [listeningPhase, setListeningPhase] = useState<"AUDIO" | "REVIEW" | null>(null);
   const [, setDraftStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [isLg, setIsLg] = useState<boolean>(false);
@@ -414,7 +403,6 @@ function ListeningAttempt({
     capturedAtMs: number;
   } | null>(null);
   const contentScrollRef = useRef<HTMLDivElement>(null);
-  const audioPlayerRef = useRef<AudioPlayerHandle>(null);
   const inkPulseTimeoutRef = useRef<number | null>(null);
   const hasRestoredProgressRef = useRef(false);
   const hasSubmittedRef = useRef(false);
@@ -424,16 +412,17 @@ function ListeningAttempt({
   const draftLoadedRef = useRef(false);
   const draftSaveTimerRef = useRef<number | null>(null);
   const draftSaveQueueRef = useRef<Promise<void>>(Promise.resolve());
-  const protectedAudioObjectUrlRef = useRef<string | null>(null);
   const fullscreenWasActiveRef = useRef(false);
-  const autoStartAttemptKeyRef = useRef<string | null>(null);
   // Keep the admitted attempt identity stable after submit consumes its token.
   const [sectionAttemptKey] = useState(() =>
     practiceMode
       ? `practice-${testId}`
       : overallTestTokenStore.getByTestId(testId) || testId,
   );
-  const progressStorageKey = `listening_progress_${sectionAttemptKey}`;
+  const practiceProgressScope = textAnnotationScope("listening-practice", testId, accessContextId || "study");
+  const progressStorageKey = practiceMode
+    ? practiceProgressScope ? `listening_progress_${practiceProgressScope}` : ""
+    : `listening_progress_${sectionAttemptKey}`;
   const audioProgressStorageKey = `listening_audio_progress_${sectionAttemptKey}`;
   // Removed exam-mode body lock for listening; keep state local if needed later
   
@@ -666,71 +655,6 @@ function ListeningAttempt({
     }
   }, [refetchSectionTimer, requiresAudioStart]);
 
-  const handleStartListeningExam = useCallback(async () => {
-    if (
-      !["ready", "error"].includes(listeningPreparationState) ||
-      !activeAudioUrl ||
-      !audioPlayerRef.current
-    ) {
-      return false;
-    }
-
-    setListeningPreparationState("starting");
-    const fullscreenPromise = requestExamFullscreen(false);
-    const playbackPromise = audioPlayerRef.current.start();
-    const [enteredFullscreen, playbackStarted] = await Promise.all([
-      fullscreenPromise,
-      playbackPromise,
-    ]);
-
-    if (!playbackStarted) {
-      setListeningPreparationState((current) =>
-        current === "error" ? current : "ready",
-      );
-      return false;
-    }
-
-    listeningPreparationStore.clear(testId);
-    if (!enteredFullscreen) {
-      setShowFullscreenPrompt(true);
-    }
-    return true;
-  }, [
-    activeAudioUrl,
-    listeningPreparationState,
-    requestExamFullscreen,
-    testId,
-  ]);
-
-  useLayoutEffect(() => {
-    if (
-      !shouldAutoStartPreparedListening ||
-      listeningPreparationState !== "ready" ||
-      !activeAudioUrl ||
-      !audioPlayerRef.current
-    ) {
-      return;
-    }
-
-    if (autoStartAttemptKeyRef.current === sectionAttemptKey) return;
-    autoStartAttemptKeyRef.current = sectionAttemptKey;
-
-    void handleStartListeningExam().then((started) => {
-      setShouldAutoStartPreparedListening(false);
-      if (!started) {
-        toast.error(
-          "Tarayıcı sesi otomatik başlatamadı. Devam etmek için düğmeye basın.",
-        );
-      }
-    });
-  }, [
-    activeAudioUrl,
-    handleStartListeningExam,
-    listeningPreparationState,
-    sectionAttemptKey,
-    shouldAutoStartPreparedListening,
-  ]);
-
   const normalizeRestoredAnswers = (value: unknown): UserAnswers => {
     if (!value || typeof value !== "object" || Array.isArray(value)) return {};
     const output: UserAnswers = {};
@@ -882,20 +806,11 @@ function ListeningAttempt({
   }, [testData?.audioUrl, testData?.id, testId]);
 
   useEffect(() => {
-    return () => {
-      if (protectedAudioObjectUrlRef.current) {
-        URL.revokeObjectURL(protectedAudioObjectUrlRef.current);
-        protectedAudioObjectUrlRef.current = null;
-      }
-    };
-  }, []);
-
-  useEffect(() => {
     hasRestoredProgressRef.current = false;
     setIsProgressReady(false);
     let parsed: Partial<ListeningProgressSnapshot> | null = null;
     try {
-      const raw = sessionStorage.getItem(progressStorageKey);
+      const raw = progressStorageKey ? sessionStorage.getItem(progressStorageKey) : null;
       if (raw) parsed = JSON.parse(raw) as Partial<ListeningProgressSnapshot>;
     } catch {}
 
@@ -944,7 +859,7 @@ function ListeningAttempt({
 
   useEffect(() => {
     let mounted = true;
-    let pendingObjectUrl = "";
+    let ownedPlayback: PreparedListeningAudioPlayback | null = null;
     autoSubmitRef.current = false;
     // Audio recovery must not reset an in-flight draft restore/save.
     setDraftStatus("idle");
@@ -954,7 +869,8 @@ function ListeningAttempt({
     backendTimerRef.current = null;
     setRequiresAudioStart(false);
     setCanRetryAudioPreparation(false);
-    setShouldAutoStartPreparedListening(false);
+    setPreparedStartAtMs(null);
+    setPreparedAudioElement(null);
     if (!hasOverallToken) {
       setListeningPreparationState("started");
       setSectionTimerError(null);
@@ -976,39 +892,51 @@ function ListeningAttempt({
     setSectionTimerError(null);
 
     const sessionToken = overallTestTokenStore.getByTestId(testId) || "";
-    const cachedPreparation = listeningPreparationStore.get(
-      testId,
-      sessionToken,
-    );
+    const cachedEntry = listeningPreparationStore.get(testId, sessionToken);
+    const cachedPreparation = cachedEntry?.startRequested && cachedEntry.playback
+      ? listeningPreparationStore.take(testId, sessionToken) : null;
+    ownedPlayback = cachedPreparation?.playback ?? null;
+
+    const returnToWarning = () => {
+      const queue = overallTestFlowStore.getQueue();
+      const totalCount = Math.max(overallTestFlowStore.getInitialCount(), queue.length, 1);
+      overallTestFlowStore.setPendingNextSection({
+        fromTestType: "LISTENING",
+        next: queue.find((item) => item.testType === "LISTENING" && item.testId === testId) ||
+          { testType: "LISTENING", testId, path: `/listening-test/${testId}` },
+        totalCount,
+        completedCount: Math.max(0, totalCount - queue.length),
+      });
+      navigate("/overall-section-ready", { replace: true });
+    };
 
     const loadPreparation = async () => {
       if (cachedPreparation) {
         return {
           preparedSection: cachedPreparation.preparedSection,
           audioBlob: cachedPreparation.audioBlob,
-          startRequested: cachedPreparation.startRequested,
-          audioVerified: true,
+          playback: cachedPreparation.playback,
+          startAtMs: cachedPreparation.startAtMs,
         };
       }
 
       const preparedSection = await overallTestService.prepareSectionForTest(testId);
-      const audioBlob = preparedSection?.phase === "REVIEW" && !preparedSection.requiresStart
+      if (!mounted) return null;
+      // Reloads and direct links must use the existing warning page. They must
+      // not reveal a second start screen or start an unadmitted audio element.
+      if (preparedSection?.requiresStart) {
+        returnToWarning();
+        return null;
+      }
+      const audioBlob = preparedSection?.phase === "REVIEW"
         ? null : await overallTestService.preloadListeningAudioForTest(testId);
-      return {
-        preparedSection,
-        audioBlob,
-        startRequested: false,
-        audioVerified: false,
-      };
+      return { preparedSection, audioBlob, playback: null, startAtMs: null };
     };
 
     void loadPreparation()
-      .then(async ({
-        preparedSection,
-        audioBlob,
-        startRequested,
-        audioVerified,
-      }) => {
+      .then(async (preparation) => {
+        if (!preparation) return;
+        const { preparedSection, audioBlob, playback, startAtMs } = preparation;
         if (!mounted || hasSubmittedRef.current) return;
         if (preparedSection?.phase === "REVIEW" && !preparedSection.requiresStart) {
           setActiveAudioUrl(null);
@@ -1020,17 +948,12 @@ function ListeningAttempt({
           throw new Error("Dinleme sesi hazırlanamadı.");
         }
 
-        pendingObjectUrl = URL.createObjectURL(audioBlob);
-        if (!audioVerified) {
-          await waitForAudioReady(pendingObjectUrl);
-        }
-        if (!mounted) return;
-
-        const previousObjectUrl = protectedAudioObjectUrlRef.current;
-        protectedAudioObjectUrlRef.current = pendingObjectUrl;
-        setActiveAudioUrl(pendingObjectUrl);
-        pendingObjectUrl = "";
-        if (previousObjectUrl) URL.revokeObjectURL(previousObjectUrl);
+        const nativePlayback = playback ?? await prepareListeningAudioPlayback(audioBlob);
+        if (!mounted) { nativePlayback.dispose(); return; }
+        ownedPlayback = nativePlayback;
+        setPreparedAudioElement(nativePlayback.audio);
+        setPreparedStartAtMs(startAtMs);
+        setActiveAudioUrl(nativePlayback.objectUrl);
 
         if (preparedSection.requiresStart) {
           const audioDuration = Math.max(
@@ -1047,7 +970,6 @@ function ListeningAttempt({
           setShowReviewNotice(false);
           setRequiresAudioStart(true);
           setListeningPreparationState("ready");
-          setShouldAutoStartPreparedListening(startRequested);
           return;
         }
 
@@ -1081,9 +1003,10 @@ function ListeningAttempt({
 
     return () => {
       mounted = false;
-      if (pendingObjectUrl) URL.revokeObjectURL(pendingObjectUrl);
+      ownedPlayback?.dispose();
     };
   }, [
+    navigate,
     applySectionTimer,
     audioPreparationAttempt,
     practiceMode,
@@ -1227,7 +1150,7 @@ function ListeningAttempt({
       updatedAt: Date.now(),
     };
     try {
-      sessionStorage.setItem(progressStorageKey, JSON.stringify(snapshot));
+      if (progressStorageKey) sessionStorage.setItem(progressStorageKey, JSON.stringify(snapshot));
     } catch {}
   }, [
     progressStorageKey,
@@ -1601,6 +1524,7 @@ function ListeningAttempt({
 
       return (
         <ListeningOption
+          annotationId={`question:${questionId}:option:${value}`}
           key={`${questionId}-${value}`}
           letter={value}
           text={displayText}
@@ -1647,7 +1571,7 @@ function ListeningAttempt({
           <ReadingQuestionNumber number={questionNumber} />
           {questionText ? (
             <div className="reading-question reading-primary-copy reading-text min-w-0 pt-px font-sans font-normal text-[#242424]">
-              <HighlightableTextSimple text={questionText} />
+              <HighlightableTextSimple annotationId={`question:${question.id}:prompt`} text={questionText} />
             </div>
           ) : null}
         </div>
@@ -1854,7 +1778,7 @@ const renderModernPart = (partNumber: number) => {
                       >
                         <ReadingQuestionNumber number={questionNumber} />
                         <span className="reading-question reading-primary-copy reading-text min-w-0 font-sans font-normal text-[#242424]">
-                          <HighlightableTextSimple text={questionText} />
+                          <HighlightableTextSimple annotationId={`question:${question.id}:prompt`} text={questionText} />
                         </span>
                       </div>
                       <span
@@ -1922,7 +1846,7 @@ const renderModernPart = (partNumber: number) => {
     );
     const questionIds = questions.map((question: any) => String(question.id));
     const questionList = (
-      <div className="ml-auto w-full max-w-[394px] space-y-0 px-4 lg:pt-6">
+      <div className="listening-matching-question-list ml-auto w-full max-w-[394px] space-y-0 px-4 lg:pt-6">
         {questions.map((question: any, index: number) => {
           const questionNumber = startNumber + index;
           const questionText = fixMojibake(
@@ -1933,12 +1857,12 @@ const renderModernPart = (partNumber: number) => {
             <div
               key={question.id}
               id={`listening-question-${questionNumber}`}
-              className="grid min-h-[64px] scroll-mt-4 grid-cols-[52px_190px_88px] items-center gap-x-2 border-b border-[#e5e5e2] py-3 last:border-b-0"
+              className="listening-matching-question-row grid min-h-[64px] scroll-mt-4 grid-cols-[52px_190px_88px] items-center gap-x-2 border-b border-[#e5e5e2] py-3 last:border-b-0"
             >
               <ReadingQuestionNumber number={questionNumber} />
               <div className="reading-question reading-primary-copy reading-text min-w-0 font-normal text-[#242424]">
                 {questionText ? (
-                  <HighlightableTextSimple text={questionText} />
+                  <HighlightableTextSimple annotationId={`question:${question.id}:prompt`} text={questionText} />
                 ) : (
                   <span className="text-[#787774]">Konuşmacı {index + 1}</span>
                 )}
@@ -1961,6 +1885,7 @@ const renderModernPart = (partNumber: number) => {
         <h3 className="reading-options-heading mb-3">Seçenekler</h3>
         {answerOptions.map((option: any) => (
           <ListeningOptionLegendRow
+            annotationId={`part:${partNumber}:option:${option.variantText}`}
             key={option.id || option.variantText}
             letter={String(option.variantText)}
             text={fixMojibake(
@@ -1977,6 +1902,11 @@ const renderModernPart = (partNumber: number) => {
     );
 
     return (
+      <ListeningMobileSplitPanels
+        className="listening-mobile-matching-panels"
+        upper={<div className="reading-scroll listening-matching-questions h-full overflow-y-auto">{questionList}</div>}
+        lower={optionList}
+      >
       <div className="h-full min-h-[420px]">
         <div className="grid grid-cols-1 lg:hidden">
           <div className="px-4 py-3">{questionList}</div>
@@ -1987,7 +1917,7 @@ const renderModernPart = (partNumber: number) => {
         <ResizablePanelGroup
           key="listening-part-3-panels-35-65"
           direction="horizontal"
-          className="hidden h-full min-h-[420px] overflow-hidden border-t border-[#e5e5e2] lg:flex"
+          className="listening-part3-desktop-panels hidden h-full min-h-[420px] overflow-hidden border-t border-[#e5e5e2] lg:flex"
         >
           <ResizablePanel defaultSize={35} minSize={34}>
             <div className="reading-scroll h-full overflow-y-auto px-6 py-4">
@@ -2002,6 +1932,7 @@ const renderModernPart = (partNumber: number) => {
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
+      </ListeningMobileSplitPanels>
     );
   }
 
@@ -2027,11 +1958,12 @@ const renderModernPart = (partNumber: number) => {
             <div
               key={question.id}
               id={`listening-question-${questionNumber}`}
-              className="flex scroll-mt-4 items-center gap-3 border-b border-[#e5e5e2] py-4 last:border-b-0"
+              className="listening-map-answer-row flex scroll-mt-4 items-center gap-3 border-b border-[#e5e5e2] py-4 last:border-b-0"
             >
               <ReadingQuestionNumber number={questionNumber} />
               <div className="reading-question reading-primary-copy reading-text min-w-0 max-w-[320px] font-normal text-[#242424]">
                 <HighlightableTextSimple
+                  annotationId={`question:${question.id}:prompt`}
                   text={fixMojibake(
                     String(question.text || question.content || ""),
                   )}
@@ -2055,7 +1987,7 @@ const renderModernPart = (partNumber: number) => {
 
       return (
         <div className="flex h-full min-h-0 flex-col">
-        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[#e5e5e2] px-5 py-3">
+        <div className="listening-map-toolbar flex shrink-0 items-center justify-between gap-3 border-b border-[#e5e5e2] px-5 py-3">
           <h3 className="reading-options-heading">Harita</h3>
           <div className="flex items-center gap-1">
             {allowZoom ? (
@@ -2124,7 +2056,8 @@ const renderModernPart = (partNumber: number) => {
           </div>
         </div>
         <div
-          className={`reading-scroll flex min-h-0 flex-1 items-center justify-center overflow-auto p-5 ${
+          data-map-zoomed={isPart4MapZoomed}
+          className={`listening-map-scroll reading-scroll flex min-h-0 flex-1 items-center justify-center overflow-auto p-5 ${
             part4MapTool === "none"
               ? allowZoom
                 ? isPart4MapZoomed
@@ -2140,8 +2073,9 @@ const renderModernPart = (partNumber: number) => {
           }}
         >
           {resolvedImageUrl ? (
-            <div className="w-full max-w-[760px]">
+            <div className="listening-map-image w-full max-w-[760px]">
               <MapWithDrawing
+                annotationId="part:4:map"
                 src={resolvedImageUrl}
                 alt="Sorular 19-23 için harita"
                 className="block h-auto w-full object-contain"
@@ -2158,6 +2092,11 @@ const renderModernPart = (partNumber: number) => {
     };
 
     return (
+      <ListeningMobileSplitPanels
+        className="listening-mobile-map-panels"
+        upper={renderMapPanel(false)}
+        lower={questions.length === 0 ? emptyState : questionList}
+      >
       <div className="h-full min-h-[440px]">
         <div className="grid lg:hidden">
           <div className="min-h-[360px] border-b border-[#e5e5e2]">
@@ -2183,6 +2122,7 @@ const renderModernPart = (partNumber: number) => {
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
+      </ListeningMobileSplitPanels>
     );
   }
 
@@ -2720,16 +2660,19 @@ const renderModernPart = (partNumber: number) => {
       className="notranslate reading-exam-page listening-exam-page h-screen-mobile flex flex-col overflow-hidden bg-white font-sans text-[#37352f]"
       translate="no"
       data-exam-translation="disabled"
+      data-listening-part={bolum}
+      data-practice={practiceMode || undefined}
       style={{ color: "#37352f", ...typographyPreset.style }}
     >
+        <span ref={preparedAudioHostRef} hidden aria-hidden="true" />
         <header className="z-50 w-full shrink-0 border-b border-[#e5e5e2] bg-white">
           {/* Match horizontal padding with description block below */}
           <div className="px-3 sm:px-4">
             <div className="flex h-auto items-center justify-between py-2 lg:h-[60px] lg:py-0">
               {/* Mobile Header - Single Line Layout */}
               <div className="block lg:hidden w-full">
-                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
+                <div className="listening-mobile-header-row grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+                  <div className="listening-mobile-brand flex items-center gap-2 min-w-0">
                     <img
                       src="/logo11.svg"
                       alt="TURKISHMOCK"
@@ -2738,7 +2681,7 @@ const renderModernPart = (partNumber: number) => {
                         (e.target as HTMLImageElement).style.display = "none";
                       }}
                     />
-                    <div className="min-w-0 leading-tight">
+                    <div className="listening-mobile-heading min-w-0 leading-tight">
                       <div className="truncate text-sm font-semibold text-[#37352f]">
                         Dinleme
                       </div>
@@ -2747,7 +2690,7 @@ const renderModernPart = (partNumber: number) => {
                       </div>
                     </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2 justify-self-end">
+                  <div className="listening-mobile-actions flex shrink-0 items-center gap-2 justify-self-end">
                     {!practiceMode && showReviewTimer ? (
                       <div
                         className={`shrink-0 rounded border px-2.5 py-1.5 text-[11px] font-semibold leading-none tabular-nums ${
@@ -2786,11 +2729,10 @@ const renderModernPart = (partNumber: number) => {
                   </div>
                 </div>
 
-                <div className="mt-2 flex items-center gap-2">
+                <div className="listening-mobile-audio-row mt-2 flex items-center gap-2">
                   {!isLg && activeAudioUrl && !isSubmitting && (
                     <div className="min-w-0 flex-1 overflow-hidden rounded-lg">
                       <AudioPlayer
-                        ref={audioPlayerRef}
                         src={
                           activeAudioUrl.startsWith("blob:") ||
                           activeAudioUrl.startsWith("http://") ||
@@ -2803,6 +2745,7 @@ const renderModernPart = (partNumber: number) => {
                           !practiceMode &&
                           isProgressReady &&
                           !sectionTimerLoading &&
+                          !sectionTimerError &&
                           (listeningPhase === "AUDIO" ||
                             (!hasOverallTimerRef.current &&
                               listeningPhase !== "REVIEW"))
@@ -2818,12 +2761,14 @@ const renderModernPart = (partNumber: number) => {
                         onMutedChange={setAudioMuted}
                         manualStartRequired={requiresAudioStart}
                         onBeforeManualStart={startPreparedListening}
-                        showManualStartControl={!showListeningPreparation}
+                        preparedAudioElement={preparedAudioElement}
+                        preparedAudioMountedExternally
+                        startAtMs={preparedStartAtMs}
                         compact
                       />
                     </div>
                   )}
-                  <div className="flex shrink-0 items-center gap-1">
+                  <div className="listening-mobile-font-controls flex shrink-0 items-center gap-1">
                     <button
                       type="button"
                       className="!h-5 !w-5 !min-h-0 rounded border border-gray-200 bg-white p-0 !text-[9px] font-medium leading-none text-gray-700"
@@ -2890,7 +2835,6 @@ const renderModernPart = (partNumber: number) => {
                 <div className="flex items-center gap-2 justify-self-end">
                   {isLg && activeAudioUrl && !isSubmitting && (
                     <AudioPlayer
-                      ref={audioPlayerRef}
                       src={
                         activeAudioUrl.startsWith("blob:") ||
                         activeAudioUrl.startsWith("http://") ||
@@ -2903,6 +2847,7 @@ const renderModernPart = (partNumber: number) => {
                         !practiceMode &&
                         isProgressReady &&
                         !sectionTimerLoading &&
+                        !sectionTimerError &&
                         (listeningPhase === "AUDIO" ||
                           (!hasOverallTimerRef.current &&
                             listeningPhase !== "REVIEW"))
@@ -2918,7 +2863,9 @@ const renderModernPart = (partNumber: number) => {
                       onMutedChange={setAudioMuted}
                       manualStartRequired={requiresAudioStart}
                       onBeforeManualStart={startPreparedListening}
-                      showManualStartControl={!showListeningPreparation}
+                      preparedAudioElement={preparedAudioElement}
+                      preparedAudioMountedExternally
+                      startAtMs={preparedStartAtMs}
                       compact
                     />
                   )}
@@ -2990,88 +2937,7 @@ const renderModernPart = (partNumber: number) => {
           </div>
         </header>
 
-        {showListeningPreparation ? (
-          <main
-            data-listening-preparation
-            className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto px-6 py-12"
-          >
-            <div className="w-full max-w-lg text-center">
-              <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-md bg-[#f1f1ef] text-[#37352f]">
-                <Play className="ml-0.5 h-5 w-5" aria-hidden="true" />
-              </span>
-              <h1 className="mt-5 text-[24px] font-semibold leading-8 text-[#242424]">
-                Dinleme sınavı hazır
-              </h1>
-              <p className="mx-auto mt-2 max-w-md text-[15px] leading-6 text-[#6f6d67]">
-                Başlattığınız anda ses ve sınav süresi birlikte başlayacak.
-                Sorular bundan sonra açılacak.
-              </p>
-
-              <div
-                className="mt-6 flex min-h-6 items-center justify-center gap-2 text-sm font-medium"
-                role="status"
-                aria-live="polite"
-              >
-                {listeningPreparationState === "loading" ||
-                listeningPreparationState === "starting" ? (
-                  <>
-                    <span
-                      className="h-2 w-2 animate-pulse rounded-full bg-[#8a8881]"
-                      aria-hidden="true"
-                    />
-                    <span className="text-[#5f5e5a]">
-                      {listeningPreparationState === "loading"
-                        ? "Ses hazırlanıyor"
-                        : "Sınav başlatılıyor"}
-                    </span>
-                  </>
-                ) : listeningPreparationState === "ready" ? (
-                  <>
-                    <Check className="h-4 w-4 text-[#438553]" aria-hidden="true" />
-                    <span className="text-[#37352f]">Ses hazır</span>
-                  </>
-                ) : (
-                  <span className="text-[#8a3f35]">
-                    {sectionTimerError || "Ses başlatılamadı."}
-                  </span>
-                )}
-              </div>
-
-              {activeAudioUrl &&
-              (listeningPreparationState === "ready" ||
-                listeningPreparationState === "error") ? (
-                <Button
-                  type="button"
-                  data-listening-start-exam
-                  onClick={() => void handleStartListeningExam()}
-                  className="mt-6 h-10 bg-[#37352f] px-5 text-sm font-semibold text-white hover:bg-[#242424] focus-visible:ring-[#8a8881]"
-                >
-                  <Play className="mr-2 h-4 w-4" aria-hidden="true" />
-                  {listeningPreparationState === "error"
-                    ? "Yeniden dene"
-                    : "Dinleme sınavını başlat"}
-                </Button>
-              ) : null}
-
-              {!activeAudioUrl &&
-              listeningPreparationState === "error" &&
-              canRetryAudioPreparation ? (
-                <Button
-                  type="button"
-                  onClick={() => {
-                    setListeningPreparationState("loading");
-                    setAudioPreparationAttempt((attempt) => attempt + 1);
-                  }}
-                  className="mt-6 h-10 border border-[#c9c9c4] bg-white px-5 text-sm font-semibold text-[#37352f] hover:bg-[#f7f7f5]"
-                >
-                  Yeniden dene
-                </Button>
-              ) : null}
-            </div>
-          </main>
-        ) : (
-          <>
-        <section className="mx-2 mt-2 shrink-0 border-b border-[#e5e5e2] bg-white px-3 py-3.5 sm:mx-4 sm:px-4">
+        <section className="practice-section-heading mx-2 mt-2 shrink-0 border-b border-[#e5e5e2] bg-white px-3 py-3.5 sm:mx-4 sm:px-4">
           <div className={`flex items-center justify-between gap-3 ${showDescription ? "mb-1.5" : ""}`}>
             <h2 className="reading-part-heading">Bölüm {bolum}</h2>
             <button
@@ -3119,7 +2985,7 @@ const renderModernPart = (partNumber: number) => {
               <p className="min-w-0 text-[13px] font-medium leading-5 sm:text-sm">
                 {sectionTimerError}
               </p>
-              <button
+              {canRetryAudioPreparation && !activeAudioUrl ? <button
                 type="button"
                 onClick={() => {
                   setAudioPreparationAttempt((attempt) => attempt + 1);
@@ -3127,7 +2993,7 @@ const renderModernPart = (partNumber: number) => {
                 className="h-8 shrink-0 rounded border border-[#d6b2b2] bg-white px-3 text-[12px] font-semibold text-[#6f3030] transition-colors hover:bg-[#fff1f1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a96b6b]"
               >
                 Yeniden dene
-              </button>
+              </button> : null}
             </div>
           ) : null}
           {audioMuted &&
@@ -3176,7 +3042,7 @@ const renderModernPart = (partNumber: number) => {
         {/* Internal scroll to keep content accessible while exam-mode locks body scroll */}
          <div ref={contentScrollRef} className="reading-scroll listening-test-container min-h-0 flex-1 overflow-y-auto overscroll-contain scroll-smooth pb-20 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-300/40 lg:!pb-0">
           <div
-            className={`${bolum === 3 ? "h-full" : ""} transition-all duration-200 ease-out ${isPartSwitchAnimating ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"}`}
+            className={`listening-part-content ${bolum === 3 ? "h-full" : ""} transition-all duration-200 ease-out ${isPartSwitchAnimating ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"}`}
           >
             <fieldset disabled={sectionTimerLoading || !!sectionTimerError || isSubmitting || hasSubmittedRef.current} style={{ display: "contents" }}>{renderModernPart(bolum)}</fieldset>
           </div>
@@ -3186,7 +3052,7 @@ const renderModernPart = (partNumber: number) => {
       {!practiceMode ? renderModernTabs() : null}
 
       {/* Mobile: compact prev/next with center progress */}
-      {!practiceMode ? <div className="lg:hidden fixed bottom-2 right-2 left-2 grid grid-cols-[auto_1fr_auto] items-center gap-2 px-2 py-2 bg-white/98 rounded-lg shadow-lg border border-gray-200 z-50">
+      {!practiceMode ? <div className="mock-mobile-navigation listening-mobile-navigation lg:hidden fixed bottom-2 right-2 left-2 grid grid-cols-[auto_1fr_auto] items-center gap-2 px-2 py-2 bg-white/98 rounded-lg shadow-lg border border-gray-200 z-50">
         <div className="justify-self-start">
           <Button
                   onClick={goToPrevBolum}
@@ -3205,7 +3071,7 @@ const renderModernPart = (partNumber: number) => {
           </div>
           <div className="mt-1 h-1.5 w-full rounded-full bg-gray-200 overflow-hidden">
             <div
-              className="h-full rounded-full bg-[#438553] transition-all duration-200 ease-out"
+              className="mock-mobile-progress-fill h-full rounded-full bg-[#438553] transition-all duration-200 ease-out"
               style={{ width: `${(currentPartNumber / 6) * 100}%` }}
             />
           </div>
@@ -3226,8 +3092,6 @@ const renderModernPart = (partNumber: number) => {
                 </Button>
         </div>
       </div> : null}
-          </>
-        )}
 
       {!practiceMode && listeningPreparationState === "started" &&
         (showFullscreenPrompt || !isFullscreen) && (

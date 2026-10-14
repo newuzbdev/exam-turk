@@ -33,6 +33,11 @@ import PracticeResumeDialog from "./PracticeResumeDialog";
 import PracticeCoverImage from "./PracticeCoverImage";
 import MembershipLockBadge from "@/components/subscription/MembershipLockBadge";
 import MembershipRequiredDialog from "@/components/subscription/MembershipRequiredDialog";
+import { useMobilePresentation } from "@/hooks/use-mobile-presentation";
+import {
+  sortNumberedPractices,
+  type PracticeNumberOrder,
+} from "./practice-number-order";
 
 const routeSegment: Record<PracticeDomain, string> = {
   LISTENING: "dinleme",
@@ -63,6 +68,19 @@ const sectionOptions: Record<PracticeDomain, readonly string[]> = {
 };
 
 type SortMode = "newest" | "oldest";
+
+const numberOrderStorageKey = (domain: PracticeDomain) =>
+  `practice-mobile-number-order:${domain.toLowerCase()}`;
+
+const readNumberOrder = (domain: PracticeDomain): PracticeNumberOrder => {
+  try {
+    return window.sessionStorage.getItem(numberOrderStorageKey(domain)) === "number-desc"
+      ? "number-desc"
+      : "number-asc";
+  } catch {
+    return "number-asc";
+  }
+};
 
 const filterStorageKey = (domain: PracticeDomain) =>
   `practice-filters:${domain.toLowerCase()}`;
@@ -111,6 +129,9 @@ export default function PracticeList({
 }) {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const mobile = useMobilePresentation();
+  const numberedSort = mobile && (domain === "SPEAKING" || domain === "WRITING");
+  const [numberOrder, setNumberOrder] = useState(() => readNumberOrder(domain));
   const [filters, setFilters] = useState(() => readSavedFilters(domain));
   const [continueDialogItem, setContinueDialogItem] =
     useState<PracticeListItem | null>(null);
@@ -139,23 +160,33 @@ export default function PracticeList({
     }
   }, [domain, filters]);
 
+  useEffect(() => {
+    if (!numberedSort) return;
+    try {
+      window.sessionStorage.setItem(numberOrderStorageKey(domain), numberOrder);
+    } catch {
+      // The selected order remains usable without browser storage.
+    }
+  }, [domain, numberedSort, numberOrder]);
+
   const filtered = useMemo(
-    () =>
-      items
-        .filter(
-          (item) =>
-            (section === "all" || item.sectionCode === section) &&
-            (level === "all" || item.level === level),
-        )
-        .sort((a, b) => {
-          if (access.enabled) return 0; // Keep the server public-first order.
-          const difference =
-            domain === "SPEAKING"
-              ? a.title.localeCompare(b.title, "tr", { numeric: true })
-              : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-          return sort === "newest" ? difference : -difference;
-        }),
-    [domain, items, level, section, sort, access.enabled],
+    () => {
+      const matchingItems = items.filter(
+        (item) =>
+          (section === "all" || item.sectionCode === section) &&
+          (level === "all" || item.level === level),
+      );
+      if (numberedSort) return sortNumberedPractices(matchingItems, numberOrder);
+      return matchingItems.sort((a, b) => {
+        if (access.enabled) return 0; // Keep the server public-first order.
+        const difference =
+          domain === "SPEAKING"
+            ? a.title.localeCompare(b.title, "tr", { numeric: true })
+            : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        return sort === "newest" ? difference : -difference;
+      });
+    },
+    [domain, items, level, section, sort, access.enabled, numberedSort, numberOrder],
   );
   const availableSections = new Set(items.map((item) => item.sectionCode));
   const sections = sectionOptions[domain].filter((value) =>
@@ -204,7 +235,7 @@ export default function PracticeList({
 
   return (
     <section aria-label="Beceri pratikleri">
-      <div className="mb-4 flex flex-wrap justify-end gap-1 md:absolute md:right-0 md:top-0 md:mb-0">
+      <div className="practice-filters mb-4 flex flex-wrap justify-end gap-1 md:absolute md:right-0 md:top-0 md:mb-0">
         <Select
           value={level}
           onValueChange={(value) =>
@@ -213,11 +244,11 @@ export default function PracticeList({
         >
           <SelectTrigger
             aria-label="Seviyeye göre filtrele"
-            className={`${selectTriggerClass} min-w-[124px]`}
+            className={`practice-filter-trigger ${selectTriggerClass} min-w-[124px]`}
           >
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="border-[var(--tm-border-subtle)] bg-white">
+          <SelectContent className="practice-filter-options border-[var(--tm-border-subtle)] bg-white">
             <SelectItem value="all" className={selectItemClass}>
               Tüm seviyeler
             </SelectItem>
@@ -236,11 +267,11 @@ export default function PracticeList({
         >
           <SelectTrigger
             aria-label="Bölüme göre filtrele"
-            className={`${selectTriggerClass} min-w-[128px]`}
+            className={`practice-filter-trigger ${selectTriggerClass} min-w-[128px]`}
           >
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="border-[var(--tm-border-subtle)] bg-white">
+          <SelectContent className="practice-filter-options border-[var(--tm-border-subtle)] bg-white">
             <SelectItem value="all" className={selectItemClass}>
               Tüm bölümler
             </SelectItem>
@@ -252,24 +283,41 @@ export default function PracticeList({
           </SelectContent>
         </Select>
         <Select
-          value={sort}
-          onValueChange={(value: SortMode) =>
-            setFilters((current) => ({ ...current, sort: value }))
-          }
+          value={numberedSort ? numberOrder : sort}
+          onValueChange={(value) => {
+            if (numberedSort) {
+              setNumberOrder(value as PracticeNumberOrder);
+            } else {
+              setFilters((current) => ({ ...current, sort: value as SortMode }));
+            }
+          }}
         >
           <SelectTrigger
             aria-label="Pratikleri sırala"
-            className={`${selectTriggerClass} min-w-[104px]`}
+            className={`practice-filter-trigger practice-filter-sort ${selectTriggerClass} min-w-[104px]`}
           >
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="border-[var(--tm-border-subtle)] bg-white">
-            <SelectItem value="newest" className={selectItemClass}>
-              {domain === "SPEAKING" ? "Numara: 1–7" : "En yeni"}
-            </SelectItem>
-            <SelectItem value="oldest" className={selectItemClass}>
-              {domain === "SPEAKING" ? "Numara: 7–1" : "En eski"}
-            </SelectItem>
+          <SelectContent className="practice-filter-options border-[var(--tm-border-subtle)] bg-white">
+            {numberedSort ? (
+              <>
+                <SelectItem value="number-asc" className={selectItemClass}>
+                  Numara: artan
+                </SelectItem>
+                <SelectItem value="number-desc" className={selectItemClass}>
+                  Numara: azalan
+                </SelectItem>
+              </>
+            ) : (
+              <>
+                <SelectItem value="newest" className={selectItemClass}>
+                  {domain === "SPEAKING" ? "Numara: 1–7" : "En yeni"}
+                </SelectItem>
+                <SelectItem value="oldest" className={selectItemClass}>
+                  {domain === "SPEAKING" ? "Numara: 7–1" : "En eski"}
+                </SelectItem>
+              </>
+            )}
           </SelectContent>
         </Select>
       </div>

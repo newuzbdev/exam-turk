@@ -494,12 +494,12 @@ export default function ReadingPracticeList({
 
       <section className={inlineToolbar ? '' : embedded ? "py-2 sm:py-4" : tm.section}>
         <div className={embedded ? 'w-full' : tm.container}>
-          <div className={inlineToolbar ? "mb-4 flex justify-end gap-1 md:absolute md:right-0 md:top-0 md:mb-0" : "mb-6 flex flex-wrap items-center justify-end gap-1"}>
+          <div className={`practice-filters ${inlineToolbar ? "mb-4 flex justify-end gap-1 md:absolute md:right-0 md:top-0 md:mb-0" : "mb-6 flex flex-wrap items-center justify-end gap-1"}`}>
             <Select value={levelFilter} onValueChange={(value: LevelFilter) => setFilters(previous => ({ ...previous, levelFilter: value }))}>
-              <SelectTrigger aria-label="Seviyeye göre filtrele" className="h-9 w-auto min-w-[124px] gap-2 border-0 bg-transparent px-3 text-[13px] font-medium shadow-none hover:bg-[var(--tm-bg-hover)] focus:ring-0 focus:ring-offset-0">
+              <SelectTrigger aria-label="Seviyeye göre filtrele" className="practice-filter-trigger h-9 w-auto min-w-[124px] gap-2 border-0 bg-transparent px-3 text-[13px] font-medium shadow-none hover:bg-[var(--tm-bg-hover)] focus:ring-0 focus:ring-offset-0">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="border-[var(--tm-border-subtle)] bg-white">
+              <SelectContent className="practice-filter-options border-[var(--tm-border-subtle)] bg-white">
                 {[
                   ['tum', 'Tüm seviyeler'],
                   ['A1', 'A1'],
@@ -521,10 +521,10 @@ export default function ReadingPracticeList({
                 setFilters(previous => ({ ...previous, sectionFilter: value === "tum" ? "tum" : (Number(value) as SectionFilter) }))
               }
             >
-              <SelectTrigger aria-label="Okuma bölümüne göre filtrele" className="h-9 w-auto min-w-[128px] gap-2 border-0 bg-transparent px-3 text-[13px] font-medium shadow-none hover:bg-[var(--tm-bg-hover)] focus:ring-0 focus:ring-offset-0">
+              <SelectTrigger aria-label="Okuma bölümüne göre filtrele" className="practice-filter-trigger h-9 w-auto min-w-[128px] gap-2 border-0 bg-transparent px-3 text-[13px] font-medium shadow-none hover:bg-[var(--tm-bg-hover)] focus:ring-0 focus:ring-offset-0">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="border-[var(--tm-border-subtle)] bg-white">
+              <SelectContent className="practice-filter-options border-[var(--tm-border-subtle)] bg-white">
                 {[
                   ['tum', 'Tüm bölümler'],
                   ['1', 'Bölüm 1'],
@@ -540,10 +540,10 @@ export default function ReadingPracticeList({
               </SelectContent>
             </Select>
             <Select value={sortMode} onValueChange={(value: SortMode) => setFilters(previous => ({ ...previous, sortMode: value }))}>
-              <SelectTrigger aria-label="Pratikleri sırala" className="h-9 w-auto min-w-[104px] gap-2 border-0 bg-transparent px-3 text-[13px] font-medium shadow-none hover:bg-[var(--tm-bg-hover)] focus:ring-0 focus:ring-offset-0">
+              <SelectTrigger aria-label="Pratikleri sırala" className="practice-filter-trigger practice-filter-sort h-9 w-auto min-w-[104px] gap-2 border-0 bg-transparent px-3 text-[13px] font-medium shadow-none hover:bg-[var(--tm-bg-hover)] focus:ring-0 focus:ring-offset-0">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="border-[var(--tm-border-subtle)] bg-white">
+              <SelectContent className="practice-filter-options border-[var(--tm-border-subtle)] bg-white">
                 <SelectItem value="yeni" className="focus:bg-[var(--tm-bg-hover)] focus:text-[var(--tm-text-primary)] data-[state=checked]:bg-[var(--tm-bg-muted)] data-[state=checked]:text-[var(--tm-text-primary)]">En yeni</SelectItem>
                 <SelectItem value="eski" className="focus:bg-[var(--tm-bg-hover)] focus:text-[var(--tm-text-primary)] data-[state=checked]:bg-[var(--tm-bg-muted)] data-[state=checked]:text-[var(--tm-text-primary)]">En eski</SelectItem>
                 {workspaceMode ? <SelectItem value="calisilmayanlar" className="focus:bg-[var(--tm-bg-hover)] focus:text-[var(--tm-text-primary)] data-[state=checked]:bg-[var(--tm-bg-muted)] data-[state=checked]:text-[var(--tm-text-primary)]">Çalışılmayanlar</SelectItem> : null}

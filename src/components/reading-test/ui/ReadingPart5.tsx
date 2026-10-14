@@ -143,13 +143,13 @@ export default function ReadingPart5({ testData, answers, onAnswerChange, partNu
    
 
       {/* Mobile Layout - Split */}
-      <div className="block lg:hidden h-[calc(100svh-14rem)]">
+      <div className="reading-mobile-layout block lg:hidden h-[calc(100svh-14rem)]">
         <ResizablePanelGroup direction="vertical" className="h-full reading-surface">
           <ResizablePanel defaultSize={50} minSize={25} maxSize={75} className="reading-surface min-h-0">
             <div className="h-full p-4 border-b border-gray-200 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent reading-scroll">
               {contentTitle && (
                 <div className="reading-passage-title mb-3">
-                  <HighlightableText text={contentTitle} partNumber={partNumber} />
+                  <HighlightableText text={contentTitle} annotationId="title" partNumber={partNumber} />
                 </div>
               )}
               <div className="space-y-4">
@@ -187,7 +187,8 @@ export default function ReadingPart5({ testData, answers, onAnswerChange, partNu
                       {`${para.letter}.`}
                     </span>
                     <div className="reading-text leading-relaxed flex-1">
-                      <HighlightableText text={fixMojibake(para.text)} partNumber={partNumber} />
+                      <HighlightableText annotationId={`paragraph:${para.letter}`}
+                        text={fixMojibake(para.text)} partNumber={partNumber} />
                     </div>
                   </div>
                 ))}
@@ -267,7 +268,8 @@ export default function ReadingPart5({ testData, answers, onAnswerChange, partNu
                       />
                       <div className="reading-text font-medium">
                         <HighlightableText
-                          text={fixMojibake(q.text || q.question || "Hangi paragrafta yer almaktadır?")}
+                          annotationId={`question:${q.id}:prompt`}
+                                text={fixMojibake(q.text || q.question || "Hangi paragrafta yer almaktadır?")}
                           partNumber={partNumber}
                         />
                       </div>
@@ -341,6 +343,7 @@ export default function ReadingPart5({ testData, answers, onAnswerChange, partNu
                               <span className="font-semibold">{opt.variantText}.</span>
                               <span className="font-normal">
                                 <HighlightableText
+                                  annotationId={`question:${q.id}:option:${opt.variantText}`}
                                   text={fixMojibake(String(opt.answer || ""))}
                                   partNumber={partNumber}
                                   onPlainClick={() =>
@@ -378,7 +381,7 @@ export default function ReadingPart5({ testData, answers, onAnswerChange, partNu
               <div className="space-y-6 leading-relaxed">
                 {contentTitle && (
                   <div className="reading-passage-title">
-                    <HighlightableText text={contentTitle} partNumber={partNumber} />
+                    <HighlightableText text={contentTitle} annotationId="title" partNumber={partNumber} />
                   </div>
                 )}
                 <div className="space-y-6">
@@ -406,6 +409,7 @@ export default function ReadingPart5({ testData, answers, onAnswerChange, partNu
                         {`${para.letter}.`}
                       </span>
                       <HighlightableText
+                        annotationId={`paragraph:${para.letter}`}
                         text={fixMojibake(para.text)}
                         partNumber={partNumber}
                         as="span"
@@ -509,6 +513,7 @@ export default function ReadingPart5({ testData, answers, onAnswerChange, partNu
                             </div>
                             <span className="reading-text reading-primary-copy min-w-0 !leading-6">
                               <HighlightableText
+                                annotationId={`question:${q.id}:prompt`}
                                 text={fixMojibake(q.text || q.question || "Hangi paragrafta yer almaktadır?")}
                                 partNumber={partNumber}
                                 as="span"
@@ -531,6 +536,7 @@ export default function ReadingPart5({ testData, answers, onAnswerChange, partNu
                             <ReadingQuestionNumber number={questionNumber} />
                             <span className="reading-primary-copy min-w-0 !leading-6">
                               <HighlightableText
+                                annotationId={`question:${q.id}:prompt`}
                                 text={fixMojibake(q.text || q.question || "")}
                                 partNumber={partNumber}
                                 as="span"
@@ -554,6 +560,7 @@ export default function ReadingPart5({ testData, answers, onAnswerChange, partNu
                             return (
                               <div key={opt.variantText}>
                                 <ReadingMultipleChoiceOption
+                                  annotationId={`question:${q.id}:option:${opt.variantText}`}
                                   letter={opt.variantText}
                                   text={String(opt.answer || "")}
                                   selected={selected}

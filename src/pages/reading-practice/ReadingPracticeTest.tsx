@@ -51,13 +51,17 @@ import {
 import ReadingQuestionNumber from "@/components/reading-test/ui/ReadingQuestionNumber";
 import ReadingSplitHandle from "@/components/reading-test/ui/ReadingSplitHandle";
 import NotesPanel from "@/components/reading-test/NotesPanel";
+import ReadingPracticeBlankSelect from "./ReadingPracticeBlankSelect";
 import {
   splitPracticeHighlights,
   type PracticeHighlight,
+  restorePracticeHighlights,
 } from "./reading-practice-highlights";
 import {
   ReadingNotesProvider,
   useReadingNotes,
+  useAnnotationState,
+  textAnnotationScope,
 } from "@/contexts/ReadingNotesContext";
 import {
   AlertDialog,
@@ -268,8 +272,11 @@ function PracticeOptionLegendRow({
 }
 
 export default function ReadingPracticeTest() {
+  const { id } = useParams<{ id: string }>();
+  const [params] = useSearchParams();
+  const attemptId = params.get("attemptId");
   return (
-    <ReadingNotesProvider>
+    <ReadingNotesProvider key={`${id}:${attemptId}`} scopeKey={textAnnotationScope("reading-practice", id, attemptId)}>
       <ReadingPracticeTestContent />
     </ReadingNotesProvider>
   );
@@ -1014,12 +1021,23 @@ function ReadingPracticeTestContent() {
     left: number;
     top: number;
   } | null>(null);
-  const [manualHighlights, setManualHighlights] = useState<
-    Record<string, PracticeHighlight[]>
-  >({});
+  const [manualHighlights, setManualHighlights] = useAnnotationState<Record<string, PracticeHighlight[]>>(
+    "practice-highlights", {}, restorePracticeHighlights,
+  );
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [focusedPresentation, setFocusedPresentation] = useState(true);
-  const [showSectionDescription, setShowSectionDescription] = useState(true);
+  const [showSectionDescription, setShowSectionDescription] = useState(() =>
+    typeof window === "undefined" || !window.matchMedia("(max-width: 767px)").matches,
+  );
+  const [mobileScreen, setMobileScreen] = useState(() =>
+    typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches,
+  );
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 767px)");
+    const update = () => setMobileScreen(media.matches);
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
   const mode = searchParams.get("mod") === "sinav" ? "sinav" : "calisma";
   const reviewAttemptId = searchParams.get("attemptId");
   const reviewRequested = searchParams.get("incele") === "1";
@@ -1028,8 +1046,9 @@ function ReadingPracticeTestContent() {
     ? searchParams.get("attemptId") || ""
     : "";
   const practiceToolsEnabled = mode === "calisma";
-  const bodyFontSize = `${17 * fontScale}px`;
-  const headingFontSize = `${17 * fontScale}px`;
+  const presentationFontScale = mobileScreen ? 1 : fontScale;
+  const bodyFontSize = `${17 * presentationFontScale}px`;
+  const headingFontSize = `${17 * presentationFontScale}px`;
   const reviewMode = Boolean(reviewResult);
   const selectionMenuStyle =
     selectionMenu && typeof window !== "undefined"
@@ -1102,6 +1121,7 @@ function ReadingPracticeTestContent() {
     mode === "calisma" && isSectionPractice && !reviewMode;
   const sectionMatchingMode =
     isSectionPractice && (sectionNumber === 2 || sectionNumber === 3);
+  const mobileSplit = mobileScreen && isSectionPractice && (sectionNumber === 4 || sectionNumber === 5);
   const leftPanelDefaultSize =
     sectionNumber === 1 || sectionNumber === 2
       ? 65
@@ -2470,7 +2490,7 @@ function ReadingPracticeTestContent() {
               void openDictionaryEntry(fragment, entries, occurrenceIndex)
             }
             aria-label={`${fragment}: ${shortMeaning}`}
-            className={`relative cursor-pointer rounded-[3px] transition hover:underline hover:decoration-black hover:underline-offset-2 focus-visible:underline focus-visible:underline-offset-2 ${
+            className={`reading-dictionary-word relative cursor-pointer rounded-[3px] transition hover:underline hover:decoration-black hover:underline-offset-2 focus-visible:underline focus-visible:underline-offset-2 ${
               isSelected ? "bg-[#dff2c5] text-[#242424]" : "text-inherit"
             }`}
             style={{
@@ -2626,50 +2646,69 @@ function ReadingPracticeTestContent() {
         replaced = true;
         return [
           node.slice(0, match.index),
-          <BlankSlot
+          <ReadingPracticeBlankSelect
             key={`${paragraphLabel}-${question.id}-${nodeIndex}`}
             number={blankNumber}
             value={value}
-            readOnly={reviewMode}
-            locked={locked}
-            selected={selectedBlankQuestionId === question.id && !locked}
-            highlighted={
-              Boolean(selectedBlankWord) && !dictionaryMode && !locked
-            }
-            questionId={question.id}
-            feedback={
-              revealedPlaced
-                ? "revealed"
-                : learningResult?.isCorrect
-                  ? "correct"
-                  : learningResult?.answered
-                    ? "incorrect"
-                    : undefined
-            }
-            onActivate={
-              !reviewMode &&
-              ((practiceToolsEnabled && dictionaryMode) || !locked)
-                ? () => activateBlank(question.id, value)
-                : undefined
-            }
-            onClear={() => clearAnswer(question.id)}
-            onDrop={(event) => {
-              event.preventDefault();
-              if (
-                locked ||
-                !dragItem ||
-                dragItem.type !== "word" ||
-                dragItem.scope !== "bosluk"
-              )
-                return;
-              assignWord(
-                fillBlankGroup?.questions || [],
-                question.id,
-                dragItem.value,
-              );
-              setDragItem(null);
+            keepLegacyInteraction={reviewMode || locked || (dictionaryMode && Boolean(value))}
+            choices={blankPool.map((word) => {
+              const usedQuestion = (fillBlankGroup?.questions || []).find((item) => answers[item.id] === word);
+              return {
+                value: word,
+                disabled: Boolean(usedQuestion && usedQuestion.id !== question.id && isQuestionLocked(usedQuestion.id, word)),
+                usedInBlank: usedQuestion ? Number(metaOf(usedQuestion).blankNumber || usedQuestion.order) : undefined,
+              };
+            })}
+            onSelect={(word) => {
+              if (word) assignWord(fillBlankGroup?.questions || [], question.id, word);
+              else clearAnswer(question.id);
             }}
-          />,
+          >
+            <BlankSlot
+              key={`${paragraphLabel}-${question.id}-${nodeIndex}`}
+              number={blankNumber}
+              value={value}
+              readOnly={reviewMode}
+              locked={locked}
+              selected={selectedBlankQuestionId === question.id && !locked}
+              highlighted={
+                Boolean(selectedBlankWord) && !dictionaryMode && !locked
+              }
+              questionId={question.id}
+              feedback={
+                revealedPlaced
+                  ? "revealed"
+                  : learningResult?.isCorrect
+                    ? "correct"
+                    : learningResult?.answered
+                      ? "incorrect"
+                      : undefined
+              }
+              onActivate={
+                !reviewMode &&
+                ((practiceToolsEnabled && dictionaryMode) || !locked)
+                  ? () => activateBlank(question.id, value)
+                  : undefined
+              }
+              onClear={() => clearAnswer(question.id)}
+              onDrop={(event) => {
+                event.preventDefault();
+                if (
+                  locked ||
+                  !dragItem ||
+                  dragItem.type !== "word" ||
+                  dragItem.scope !== "bosluk"
+                )
+                  return;
+                assignWord(
+                  fillBlankGroup?.questions || [],
+                  question.id,
+                  dragItem.value,
+                );
+                setDragItem(null);
+              }}
+            />
+          </ReadingPracticeBlankSelect>,
           reviewMode && wrongValue ? (
             <span
               key={`${paragraphLabel}-${question.id}-${nodeIndex}-user`}
@@ -2766,16 +2805,18 @@ function ReadingPracticeTestContent() {
 
   return (
     <div
-      className="notranslate reading-exam-page min-h-screen bg-white font-sans text-[#37352f] lg:flex lg:h-[100dvh] lg:min-h-0 lg:flex-col lg:overflow-hidden"
+      className="notranslate reading-exam-page reading-practice-page min-h-screen bg-white font-sans text-[#37352f] lg:flex lg:h-[100dvh] lg:min-h-0 lg:flex-col lg:overflow-hidden"
       translate="no"
       data-exam-translation="disabled"
-      style={{ "--reading-font-scale": fontScale } as CSSProperties}
+      data-mobile-split={mobileSplit || undefined}
+      data-focused-presentation={focusedPresentation}
+      style={{ "--reading-font-scale": presentationFontScale } as CSSProperties}
     >
       <header
         className={`sticky w-full shrink-0 border-b border-[#e5e5e2] bg-white ${focusedPresentation ? "top-0 z-[100]" : "top-14 z-30 lg:top-0"}`}
       >
         <div className="px-2 sm:px-4">
-          <div className="relative grid min-h-[60px] grid-cols-[auto_1fr_auto] items-center gap-3 py-2 lg:h-[60px] lg:py-0">
+          <div className="reading-practice-header-row relative grid min-h-[60px] grid-cols-[auto_1fr_auto] items-center gap-3 py-2 lg:h-[60px] lg:py-0">
             <div className="flex items-center gap-3">
               {focusedPresentation ? (
                 <>
@@ -2790,17 +2831,18 @@ function ReadingPracticeTestContent() {
                     />
                   </div>
                   <span
+                    data-exam-section-divider
                     className="hidden h-5 w-px shrink-0 bg-[#dededb] sm:block"
                     aria-hidden="true"
                   />
                 </>
               ) : null}
-              <span className="hidden truncate text-[17px] font-semibold text-[#37352f] sm:inline">
+              <span data-exam-section-title className="hidden truncate text-[17px] font-semibold text-[#37352f] sm:inline">
                 Okuma
               </span>
             </div>
 
-            <div className="pointer-events-none absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center">
+            <div className="reading-practice-timer pointer-events-none absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center">
               {timerEnabled ? (
                 <span className="rounded-md border border-[#e5e5e2] bg-[#f7f7f5] px-3 py-1.5 text-sm font-semibold tabular-nums text-[#242424]">
                   {formatCountdown(timeLeft)}
@@ -2808,7 +2850,7 @@ function ReadingPracticeTestContent() {
               ) : null}
             </div>
 
-            <div className="flex items-center gap-2 justify-self-end">
+            <div className="reading-practice-tools flex items-center gap-2 justify-self-end">
               <div className="flex items-center gap-0.5 rounded-lg border border-[#e5e5e2] bg-[#f7f7f5] p-1">
                 {practiceToolsEnabled ? (
                   <>
@@ -2845,7 +2887,7 @@ function ReadingPracticeTestContent() {
                         <Clock3 className="h-5 w-5" strokeWidth={1.75} />
                       </ToolbarIconButton>
                       {timerMenuOpen ? (
-                        <div className="isolate absolute right-0 top-[calc(100%+12px)] z-50 w-[228px] overflow-hidden rounded-xl border border-[#d8d8d4] bg-[#ffffff] p-4 shadow-[0_18px_50px_rgba(15,23,42,0.22)]">
+                        <div className="reading-practice-timer-menu isolate absolute right-0 top-[calc(100%+12px)] z-50 w-[228px] overflow-hidden rounded-xl border border-[#d8d8d4] bg-[#ffffff] p-4 shadow-[0_18px_50px_rgba(15,23,42,0.22)]">
                           <div>
                             <p className="text-sm font-semibold text-[#242424]">
                               Süre
@@ -2990,7 +3032,7 @@ function ReadingPracticeTestContent() {
       </header>
 
       {isSectionPractice ? (
-        <section className="mx-2 mt-2 shrink-0 border-b border-[#e5e5e2] bg-white px-3 py-3.5 sm:mx-4 sm:px-4">
+        <section className="practice-section-heading mx-2 mt-2 shrink-0 border-b border-[#e5e5e2] bg-white px-3 py-3.5 sm:mx-4 sm:px-4">
           <div
             className={`flex items-center justify-between gap-3 ${showSectionDescription ? "mb-1.5" : ""}`}
           >
@@ -3000,6 +3042,7 @@ function ReadingPracticeTestContent() {
             <button
               type="button"
               onClick={() => setShowSectionDescription((current) => !current)}
+              aria-expanded={showSectionDescription}
               className="inline-flex h-8 w-8 items-center justify-center rounded text-[#777570] transition-colors hover:bg-[#f7f7f5] hover:text-[#37352f]"
               aria-label={
                 showSectionDescription
@@ -3056,16 +3099,17 @@ function ReadingPracticeTestContent() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className={practiceGridHeight}>
+      <div className={`reading-practice-panel-space ${practiceGridHeight}`}>
         <ResizablePanelGroup
-          direction="horizontal"
-          className="!grid h-full grid-cols-1 overflow-hidden lg:!flex"
+          key={mobileSplit ? "mobile-vertical" : "standard-horizontal"}
+          direction={mobileSplit ? "vertical" : "horizontal"}
+          className={mobileSplit ? "reading-practice-vertical !flex h-full overflow-hidden" : "!grid h-full grid-cols-1 overflow-hidden lg:!flex"}
         >
           <ResizablePanel
-            defaultSize={leftPanelDefaultSize}
-            minSize={sectionNumber === 2 ? 30 : 25}
+            defaultSize={mobileSplit ? 45 : leftPanelDefaultSize}
+            minSize={mobileSplit ? 25 : sectionNumber === 2 ? 30 : 25}
             maxSize={
-              sectionNumber === 1 ? undefined : sectionNumber >= 4 ? 70 : 75
+              mobileSplit ? 75 : sectionNumber === 1 ? undefined : sectionNumber >= 4 ? 70 : 75
             }
             className={`reading-surface min-w-0 ${
               sectionNumber === 2 ? "reading-part2-panel" : ""
@@ -3212,8 +3256,8 @@ function ReadingPracticeTestContent() {
                           <div
                             className={
                               sectionNumber === 2
-                                ? "reading-part2-ad-header"
-                                : "flex items-start justify-start gap-3"
+                                ? "reading-matching-select-header reading-part2-ad-header"
+                                : "reading-matching-select-header flex items-start justify-start gap-3"
                             }
                           >
                             <div
@@ -3249,11 +3293,11 @@ function ReadingPracticeTestContent() {
                               }}
                             >
                               <SelectTrigger
-                                className={`reading-select-trigger ${
+                                className={`reading-matching-answer-trigger reading-select-trigger ${
                                   sectionNumber === 2
                                     ? "reading-part2-compact-select"
                                     : "reading-part3-compact-select"
-                                } !h-9 !min-h-9 w-[88px] shrink-0 ${
+                                } ${mobileScreen ? "" : "!h-9 !min-h-9"} w-[88px] shrink-0 ${
                                   sectionMatchingValue
                                     ? "reading-select-trigger-selected"
                                     : ""
@@ -3275,12 +3319,17 @@ function ReadingPracticeTestContent() {
                                         )
                                       : "Seç"}
                                   </span>
+                                  {sectionMatchingValue ? (
+                                    <span className="reading-matching-answer-label" style={{ display: "none" }}>
+                                      {" · "}{sectionMatchingDisplayOptions.find(option => option.value === sectionMatchingValue)?.label}
+                                    </span>
+                                  ) : null}
                                 </SelectValue>
                               </SelectTrigger>
                               <SelectContent
                                 position="popper"
                                 sideOffset={6}
-                                className="reading-select-content z-50 max-h-[60vh] w-[88px] min-w-[88px] max-w-[88px] overflow-y-auto overscroll-contain rounded-md border border-gray-200 bg-white shadow-sm"
+                                className="reading-matching-answer-menu reading-select-content z-50 max-h-[60vh] w-[88px] min-w-[88px] max-w-[88px] overflow-y-auto overscroll-contain rounded-md border border-gray-200 bg-white shadow-sm"
                               >
                                 <SelectItem
                                   value="__none__"
@@ -3298,6 +3347,9 @@ function ReadingPracticeTestContent() {
                                       <span className="font-semibold">
                                         {option.displayLetter}
                                       </span>
+                                      <span className="reading-matching-answer-label" style={{ display: "none" }}>
+                                        {" · "}{option.label}
+                                      </span>
                                     </SelectItem>
                                   );
                                 })}
@@ -3307,7 +3359,7 @@ function ReadingPracticeTestContent() {
                         ) : (showParagraphLabel && !showInlineParagraphLabel) ||
                           showParagraphTitle ||
                           headingGroup ? (
-                          <div className="flex items-center gap-3">
+                          <div className="reading-matching-select-header flex items-center gap-3">
                             {showParagraphLabel || headingGroup ? (
                               <div className="reading-strong-title">
                                 {headingGroup
@@ -3332,7 +3384,7 @@ function ReadingPracticeTestContent() {
                                 }
                               >
                                 <SelectTrigger
-                                  className={`reading-select-trigger reading-part3-compact-select !h-9 !min-h-9 w-[88px] shrink-0 ${
+                                  className={`reading-matching-answer-trigger reading-select-trigger reading-part3-compact-select ${mobileScreen ? "" : "!h-9 !min-h-9"} w-[88px] shrink-0 ${
                                     matchedHeading
                                       ? "reading-select-trigger-selected"
                                       : ""
@@ -3344,7 +3396,7 @@ function ReadingPracticeTestContent() {
                                 <SelectContent
                                   position="popper"
                                   sideOffset={6}
-                                  className="reading-select-content reading-part3-letter-menu z-50 max-h-[60vh] w-[88px] min-w-[88px] max-w-[88px] overflow-y-auto overscroll-contain rounded-md border border-gray-200 bg-white shadow-sm"
+                                  className="reading-matching-answer-menu reading-select-content reading-part3-letter-menu z-50 max-h-[60vh] w-[88px] min-w-[88px] max-w-[88px] overflow-y-auto overscroll-contain rounded-md border border-gray-200 bg-white shadow-sm"
                                 >
                                   <SelectItem
                                     value="__none__"
@@ -3371,6 +3423,9 @@ function ReadingPracticeTestContent() {
                                         >
                                           <span className="font-semibold">
                                             {letter}
+                                          </span>
+                                          <span className="reading-matching-answer-label" style={{ display: "none" }}>
+                                            {" · "}{question.prompt}
                                           </span>
                                         </SelectItem>
                                       );
@@ -3559,12 +3614,12 @@ function ReadingPracticeTestContent() {
               </div>
             </div>
           </ResizablePanel>
-          <ReadingSplitHandle className="hidden lg:flex" />
+          <ReadingSplitHandle direction={mobileSplit ? "vertical" : "horizontal"} className={mobileSplit ? "" : "hidden lg:flex"} />
           <ResizablePanel
-            defaultSize={rightPanelDefaultSize}
-            minSize={sectionNumber >= 4 ? 20 : 25}
+            defaultSize={mobileSplit ? 55 : rightPanelDefaultSize}
+            minSize={mobileSplit ? 25 : sectionNumber >= 4 ? 20 : 25}
             maxSize={
-              sectionNumber === 1 ? undefined : sectionNumber >= 4 ? 50 : 75
+              mobileSplit ? 75 : sectionNumber === 1 ? undefined : sectionNumber >= 4 ? 50 : 75
             }
             className="reading-surface-alt min-w-0"
           >
@@ -4927,7 +4982,7 @@ function ReadingPracticeTestContent() {
                                 {item.questions.map((question) => (
                                   <div
                                     key={question.id}
-                                    className="grid grid-cols-[minmax(180px,220px)_1fr] items-center border-b border-[#e5e5e2] px-4 py-3 last:border-b-0"
+                                    className="reading-matching-row grid grid-cols-[minmax(180px,220px)_1fr] items-center border-b border-[#e5e5e2] px-4 py-3 last:border-b-0"
                                     onDragOver={(event) =>
                                       event.preventDefault()
                                     }

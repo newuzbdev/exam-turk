@@ -1,3 +1,4 @@
+import { clearSpeakingPracticeDrafts } from "./speakingPracticeDraft.store";
 import axiosPrivate from "@/config/api";
 import { authEndPoint } from "@/config/endpoint";
 import { API_BASE_URL } from "@/config/runtime";
@@ -375,6 +376,9 @@ export const authService = {
 
   // Helper function to clear stored tokens
   clearStoredTokens: (): void => {
+    let draftOwner: string | null = null;
+    try { draftOwner = sessionStorage.getItem("userId"); } catch { /* Browser storage may be disabled. */ }
+    void clearSpeakingPracticeDrafts(draftOwner);
     clearPendingShare();
     clearOwnedAccess();
     SecureStorage.removeSessionItem("accessToken");
@@ -405,7 +409,9 @@ export const authService = {
         if (key.includes('overall.sessionToken') || 
             key.includes('test_data_') || 
             key.includes('_answers_') ||
-            key.includes('overall.flow')) {
+            key.includes('overall.flow') ||
+            key.startsWith('listening_progress_') ||
+            key.startsWith('listening_audio_progress_')) {
           sessionStorage.removeItem(key);
         }
       });

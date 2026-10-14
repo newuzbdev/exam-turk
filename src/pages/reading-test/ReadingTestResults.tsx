@@ -160,7 +160,7 @@ export default function ReadingTestResults() {
             Doğru Sayısı: {resolvedCorrect} / {resolvedTotal}
           </div>
           <div className="overflow-x-auto">
-            <div className="grid grid-cols-2 gap-4 min-w-[1080px]">
+            <div className="section-results-grid grid grid-cols-2 gap-4 min-w-[1080px]">
               {renderColumn(firstColumnRows)}
               {renderColumn(secondColumnRows)}
             </div>
@@ -304,8 +304,8 @@ export default function ReadingTestResults() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 p-6">
-      <div className="flex items-center justify-between">
+    <div className="section-results-page max-w-6xl mx-auto space-y-6 p-6">
+      <div className="section-results-toolbar flex items-center justify-between">
         <h1 className="text-3xl font-bold text-foreground">Sınav Sonuçları</h1>
         <div className="flex items-center gap-3">
           <Input
@@ -324,7 +324,7 @@ export default function ReadingTestResults() {
       </div>
 
 
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
+      <div className="section-results-info flex items-center justify-between text-sm text-muted-foreground">
         <div className="flex items-center gap-6">
           <span>Report ID: {reportId}</span>
           <span>Name: {userName}</span>

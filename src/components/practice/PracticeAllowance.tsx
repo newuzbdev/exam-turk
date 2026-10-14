@@ -1,63 +1,52 @@
-import { readOwnedAccess } from '@/utils/access-link-context';
-import { useAuth } from '@/contexts/AuthContext';
-import { useContentAccessDecisions } from '@/hooks/use-content-access';
-import type { AccessTarget } from '@/services/access.service';
-import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
-import { isSubscriptionBillingEnabled } from "@/config/billing";
-import {
-  subscriptionService,
-  subscriptionStatusQueryKey,
-} from "@/services/subscription.service";
+import { useEffect, useId, useRef, useState } from "react";
+import { Info } from "lucide-react";
 
-export default function PracticeAllowance({ target }: { target?: AccessTarget }) {
-  const { user } = useAuth();
-  const redemptionId = user?.id && target ? readOwnedAccess(user.id, target)?.redemptionId : undefined;
-  const access = useContentAccessDecisions(target ? [target] : [], redemptionId);
-  const decision = target ? access.decisionFor(target) : undefined;
-  const status = useQuery({
-    queryKey: user?.id ? [...subscriptionStatusQueryKey, user.id] : subscriptionStatusQueryKey,
-    queryFn: subscriptionService.getStatus,
-    enabled: isSubscriptionBillingEnabled,
-    retry: 1,
-  });
-  if (!isSubscriptionBillingEnabled) return null;
+export default function PracticeAllowance({ remaining }: { remaining: number }) {
+  const [open, setOpen] = useState(false);
+  const container = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const descriptionId = useId();
+
+  useEffect(() => {
+    if (!open) return;
+    const dismissOutside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !container.current?.contains(event.target)) {
+        setOpen(false);
+      }
+    };
+    const dismissOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setOpen(false);
+      trigger.current?.focus();
+    };
+    document.addEventListener("pointerdown", dismissOutside);
+    document.addEventListener("keydown", dismissOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", dismissOutside);
+      document.removeEventListener("keydown", dismissOnEscape);
+    };
+  }, [open]);
+
   return (
-    <div
-      className="shrink-0 border-b border-[#e5e5e2] px-4 py-2 text-xs text-[#777570]"
-      role="status"
-    >
-      {access.enabled && decision?.canOpen && (decision.sourceKind === 'PUBLIC' || decision.sourceKind === 'ADMIN' || decision.sourceKind === 'SHARE') ? (
-        <>Bu içeriğe özel {decision.remaining.PRACTICE_AI ?? 0} değerlendirme hakkı{decision.endsAt ? ` · ${new Date(decision.endsAt).toLocaleString('tr-TR')} tarihine kadar` : ''}. Değerlendirmede tekrar kontrol edilir.</>
-      ) : status.isPending ? (
-        "Pratik haklarınız yükleniyor…"
-      ) : status.isError ? (
-        "Pratik haklarınız alınamadı."
-      ) : status.data?.isActive ? (
-        <>
-          Ücretli üyeliğinizde yazma ve konuşma için ortak{" "}
-          <strong className="text-[#37352f]">
-            {status.data.practiceRemaining}
-          </strong>{" "}
-          değerlendirme kaldı.
-          {status.data.practiceRemaining === 0 && (
-            <>
-              {" "}
-              <Link className="underline" to="/app/fiyatlar">
-                Üyeliği yenile
-              </Link>
-            </>
-          )}
-        </>
-      ) : (
-        <>
-          İçeriğe özel bir değerlendirme hakkınız yoksa{" "}
-          <Link className="underline" to="/app/fiyatlar">
-            aktif üyelik
-          </Link>{" "}
-          gerekir.
-        </>
-      )}
+    <div ref={container} className="relative flex shrink-0 items-center">
+      <button
+        ref={trigger}
+        type="button"
+        onClick={() => setOpen(value => !value)}
+        aria-expanded={open}
+        aria-controls={descriptionId}
+        className="inline-flex min-h-9 items-center gap-2 rounded-full border border-[#e5e5e2] bg-white px-3 text-xs text-[#5f5e5a] transition-colors hover:bg-[#f7f7f5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9b9b96] focus-visible:ring-offset-2"
+      >
+        <span className="[text-box:trim-both_cap_alphabetic]"><strong className="font-semibold tabular-nums text-[#37352f]">{remaining}</strong> değerlendirme hakkı</span>
+        <Info className="h-4 w-4 shrink-0 text-[#777570]" aria-hidden="true" />
+      </button>
+      <div
+        id={descriptionId}
+        hidden={!open}
+        className="absolute right-0 top-full z-40 mt-2 w-64 max-w-[calc(100vw-32px)] rounded-lg border border-[#e5e5e2] bg-white p-3 text-[13px] leading-5 text-[#5f5e5a] shadow-[0_6px_24px_rgba(55,53,47,0.1)]"
+      >
+        Yazma ve konuşma pratiklerinde ortak kullanılır. Her değerlendirme 1 hak kullanır.
+      </div>
     </div>
   );
 }

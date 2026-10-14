@@ -17,10 +17,11 @@ import {
 import { useOverallSectionHeartbeat } from "@/hooks/use-overall-section-heartbeat";
 import {
   listeningPreparationStore,
-  verifyListeningAudioBlob,
+  prepareListeningAudioPlayback,
 } from "@/services/listeningPreparation.store";
 import WritingCharacterPractice from "./components/WritingCharacterPractice";
-import { useWritingInputMode } from "@/components/writing-test/use-writing-input-mode";
+import { getWritingPresentationInputMode, useWritingInputMode } from "@/components/writing-test/use-writing-input-mode";
+import { useMobilePresentation } from "@/hooks/use-mobile-presentation";
 import ListeningSoundCheck from "./components/ListeningSoundCheck";
 import {
   activateExamPresentation,
@@ -111,6 +112,7 @@ type PreparationPresentationState = "checking" | "ready" | "blocked";
 
 export default function OverallSectionReadyPage() {
   const navigate = useNavigate();
+  const mobile = useMobilePresentation();
   const pending = overallTestFlowStore.getPendingNextSection();
   useOverallSectionHeartbeat(pending?.next?.testId);
   const nextType = pending?.next?.testType as TestType | undefined;
@@ -120,6 +122,7 @@ export default function OverallSectionReadyPage() {
     writingTestId,
     writingTestId ? overallTestTokenStore.getByTestId(writingTestId) : null,
   );
+  const presentationInputMode = getWritingPresentationInputMode(writingInputMode, mobile);
 
   const speakingMicStorageKey =
     pending?.next?.testType === "SPEAKING" && pending?.next?.testId
@@ -248,11 +251,13 @@ export default function OverallSectionReadyPage() {
       testId,
       sessionToken,
     );
-    if (cachedPreparation) {
+    if (cachedPreparation?.playback) {
       setListeningDuration(formatListeningPreparationDuration(cachedPreparation.preparedSection));
       setListeningPreparationState("ready");
       setListeningPreparationError(null);
-      return;
+      return () => {
+        if (!isStartingSectionRef.current) listeningPreparationStore.clear(testId);
+      };
     }
 
     let mounted = true;
@@ -268,14 +273,16 @@ export default function OverallSectionReadyPage() {
           throw new Error("Dinleme sesi hazırlanamadı.");
         }
 
-        await verifyListeningAudioBlob(audioBlob);
         if (!mounted) return;
+        const playback = await prepareListeningAudioPlayback(audioBlob);
+        if (!mounted) { playback.dispose(); return; }
 
         listeningPreparationStore.set(
           testId,
           sessionToken,
           preparedSection,
           audioBlob,
+          playback,
         );
         setListeningDuration(formatListeningPreparationDuration(preparedSection));
         setListeningPreparationState("ready");
@@ -291,6 +298,7 @@ export default function OverallSectionReadyPage() {
 
     return () => {
       mounted = false;
+      if (!isStartingSectionRef.current) listeningPreparationStore.clear(testId);
     };
   }, [
     listeningPreparationAttempt,
@@ -333,7 +341,7 @@ export default function OverallSectionReadyPage() {
   };
 
   const handleStart = async () => {
-    if (isStartingSection) return;
+    if (isStartingSectionRef.current) return;
     const nextPath = pending?.next?.path;
     if (!nextPath) {
       navigate("/app/test", { replace: true });
@@ -350,7 +358,7 @@ export default function OverallSectionReadyPage() {
       return;
     }
 
-    if (nextType === "WRITING" && !writingInputMode) {
+    if (nextType === "WRITING" && !presentationInputMode) {
       toast.error("Önce yazma yönteminizi seçin.");
       return;
     }
@@ -361,54 +369,54 @@ export default function OverallSectionReadyPage() {
         : null;
 
     const nextTestId = String(pending?.next?.testId || "");
-    if (nextType === "LISTENING") {
-      const sessionToken = overallTestTokenStore.getByTestId(nextTestId);
-      const listeningReady =
-        listeningPreparationState === "ready" &&
-        !!sessionToken &&
-        listeningPreparationStore.markStartRequested(
-          nextTestId,
-          sessionToken,
-        );
-
-      if (!listeningReady) {
-        toast.error(
-          listeningPreparationError ||
-            "Dinleme sesi henüz hazır değil. Lütfen bekleyin.",
-        );
-        return;
-      }
+    const listeningToken = nextType === "LISTENING"
+      ? overallTestTokenStore.getByTestId(nextTestId) : null;
+    const listeningPrepared = listeningToken
+      ? listeningPreparationStore.get(nextTestId, listeningToken) : null;
+    if (nextType === "LISTENING" &&
+      (listeningPreparationState !== "ready" || !listeningPrepared?.playback)) {
+      toast.error(listeningPreparationError || "Dinleme sesi henüz hazır değil. Lütfen bekleyin.");
+      return;
     }
 
+    // Retain this exact media element's user-gesture permission across navigation.
+    const listeningAudioUnlock = listeningPrepared?.playback
+      ?.unlockFromUserGesture().then(() => true, () => false);
     isStartingSectionRef.current = true;
     setIsStartingSection(true);
 
-    // Safari accepts fullscreen only while the start button click is still the
-    // active user gesture, so this must happen before the timer API call.
-    if (nextType !== "LISTENING") {
-      const enteredFullscreen = await requestExamFullscreen();
-      if (!enteredFullscreen) {
-        await clearExamPresentation();
-        toast.error(
-          "Tam ekran açılamadı. Tarayıcı iznini kontrol edip tekrar deneyin.",
-        );
-        isStartingSectionRef.current = false;
-        setIsStartingSection(false);
-        return;
-      }
+    const enteredFullscreen = await requestExamFullscreen();
+    if (!enteredFullscreen) {
+      await listeningAudioUnlock;
+      await clearExamPresentation();
+      toast.error("Tam ekran açılamadı. Tarayıcı iznini kontrol edip tekrar deneyin.");
+      isStartingSectionRef.current = false;
+      setIsStartingSection(false);
+      return;
     }
 
-    const speakingAudioReady = await speakingAudioUnlock;
-    if (nextType === "SPEAKING" && !speakingAudioReady) {
+    const [speakingAudioReady, listeningAudioReady] = await Promise.all([
+      speakingAudioUnlock, listeningAudioUnlock,
+    ]);
+    if ((nextType === "SPEAKING" && !speakingAudioReady) ||
+      (nextType === "LISTENING" && !listeningAudioReady)) {
       await clearExamPresentation();
-      toast.error("Ses başlatılamadı. Bölümü başlat düğmesine tekrar basın.");
+      toast.error("Ses başlatılamadı. Sınava başla düğmesine tekrar basın.");
       isStartingSectionRef.current = false;
       setIsStartingSection(false);
       return;
     }
 
     try {
-      await overallTestService.startSectionTimerForTest(nextTestId);
+      if (nextType === "LISTENING") {
+        if (!listeningToken || !listeningPreparationStore.markStartRequested(nextTestId, listeningToken)) {
+          throw new Error("Dinleme sesi yeniden hazırlanmalı.");
+        }
+        // The existing timer endpoint runs when playback starts after the 3s
+        // countdown. Neither audio time nor the 10-minute review is spent here.
+      } else {
+        await overallTestService.startSectionTimerForTest(nextTestId);
+      }
       if (nextType === "SPEAKING") {
         try {
           sessionStorage.setItem(`speaking_exam_started_${nextTestId}`, "1");
@@ -509,6 +517,7 @@ export default function OverallSectionReadyPage() {
         <header className="section-ready-header">
           <div className="section-ready-heading">
             <div className="min-w-0">
+              <img src="/logo11.svg" alt="TURKISHMOCK" className="mock-ready-logo hidden" />
               <h1 id="section-ready-title">{section.title}</h1>
               <dl className="section-ready-meta">
                 <div>
@@ -553,7 +562,7 @@ export default function OverallSectionReadyPage() {
               ))}
             </dl>
           )}
-          {nextType === "WRITING" && (
+          {nextType === "WRITING" && !mobile && (
             <section className="section-ready-control section-ready-writing" aria-label="Klavye kontrolü">
               <WritingCharacterPractice
                 key={writingTestId}
@@ -571,7 +580,7 @@ export default function OverallSectionReadyPage() {
                 onReadyChange={setIsListeningSoundReady}
                 disabled={isStartingSection || isExiting}
               />
-              {(listeningPreparationState === "loading" || listeningPreparationState === "error") && <div
+              <div
                 className="section-ready-audio-status"
                 role="status"
                 aria-live="polite"
@@ -600,8 +609,10 @@ export default function OverallSectionReadyPage() {
                       Tekrar dene
                     </Button>
                   </div>
+                ) : listeningPreparationState === "ready" ? (
+                  <div className="section-ready-status"><CheckCircle2 className="h-4 w-4" aria-hidden="true" /><span>Sınav sesi hazır · Başlatınca 3 saniye sonra çalacak.</span></div>
                 ) : null}
-              </div>}
+              </div>
             </section>
           )}
 
@@ -654,7 +665,7 @@ export default function OverallSectionReadyPage() {
             disabled={
               !isPresentationReady ||
               isStartingSection ||
-              (nextType === "WRITING" && !writingInputMode) ||
+              (nextType === "WRITING" && !presentationInputMode) ||
               (section.needsMicCheck && !isSpeakingMicReady) ||
               (section.needsSoundTest && !isListeningSoundReady) ||
               (nextType === "LISTENING" &&

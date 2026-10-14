@@ -113,7 +113,7 @@ export function ProfileDetails({ user, onSaved, className }: {
   };
 
   return (
-    <Card className={className}>
+    <Card className={`profile-details ${className || ""}`}>
       <CardContent className="p-6">
         <form id={formId} onSubmit={save} className="space-y-3">
           <div className="grid grid-cols-1 items-center gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-5">

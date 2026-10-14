@@ -2,6 +2,9 @@ import { useCallback, useSyncExternalStore } from "react";
 
 export type WritingInputMode = "turkish-keyboard" | "long-press";
 
+export const getWritingPresentationInputMode = (mode: WritingInputMode | null, mobile: boolean) =>
+  mobile ? "turkish-keyboard" : mode;
+
 const listeners = new Set<() => void>();
 const memoryFallback = new Map<string, WritingInputMode>();
 const storageKey = (testId: string | null, sessionToken: string | null) =>

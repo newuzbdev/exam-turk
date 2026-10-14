@@ -47,18 +47,18 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
   return (
     <div className="mx-2 reading-body pr-2 text-slate-800">
       {/* Mobile Layout - Split */}
-      <div className="block lg:hidden h-[calc(100svh-14rem)]">
+      <div className="reading-mobile-layout block lg:hidden h-[calc(100svh-14rem)]">
         <ResizablePanelGroup direction="vertical" className="h-full reading-surface">
           <ResizablePanel defaultSize={45} minSize={25} maxSize={75} className="reading-surface min-h-0">
             <div className="h-full p-4 border-b border-gray-200 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent reading-scroll">
               {contentTitle && (
                 <div className="reading-passage-title mb-3">
-                  <HighlightableText text={contentTitle} partNumber={partNumber} />
+                  <HighlightableText text={contentTitle} annotationId="title" partNumber={partNumber} />
                 </div>
               )}
               <div className="space-y-4 leading-relaxed">
                 <div className="reading-text reading-primary-copy font-sans leading-relaxed">
-                  {contentBody && <HighlightableText text={contentBody} partNumber={partNumber} />}
+                  {contentBody && <HighlightableText text={contentBody} annotationId="body" partNumber={partNumber} />}
                 </div>
               </div>
             </div>
@@ -138,7 +138,8 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
                       <span className="font-bold">S{questionNumber}.</span>{" "}
                       <span className="font-normal">
                         <HighlightableText
-                          text={fixMojibake(q.text || q.question || "")}
+                          annotationId={`question:${q.id}:prompt`}
+                                text={fixMojibake(q.text || q.question || "")}
                           partNumber={partNumber}
                           as="span"
                           wrapperAs="span"
@@ -208,6 +209,7 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
                               <span className="font-semibold">{opt.variantText}.</span>
                               <span className="font-normal">
                                 <HighlightableText
+                                  annotationId={`question:${q.id}:option:${opt.variantText}`}
                                   text={fixMojibake(String(opt.answer || ""))}
                                   partNumber={partNumber}
                                   onPlainClick={() =>
@@ -246,10 +248,10 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
                 <div className="reading-text reading-passage-copy font-sans leading-relaxed">
                   {contentTitle && (
                     <div className="reading-passage-title mb-3">
-                      <HighlightableText text={contentTitle} partNumber={partNumber} />
+                      <HighlightableText text={contentTitle} annotationId="title" partNumber={partNumber} />
                     </div>
                   )}
-                  {contentBody && <HighlightableText text={contentBody} partNumber={partNumber} />}
+                  {contentBody && <HighlightableText text={contentBody} annotationId="body" partNumber={partNumber} />}
                 </div>
               </div>
             </div>
@@ -313,7 +315,8 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
                           <ReadingQuestionNumber number={questionNumber} />
                           <span className="reading-primary-copy min-w-0 !leading-6">
                             <HighlightableText
-                              text={fixMojibake(q.text || q.question || "")}
+                              annotationId={`question:${q.id}:prompt`}
+                                text={fixMojibake(q.text || q.question || "")}
                               partNumber={partNumber}
                               as="span"
                               wrapperAs="span"
@@ -336,6 +339,7 @@ export default function ReadingPart4({ testData, answers, onAnswerChange, partNu
                             return (
                               <div key={opt.variantText}>
                                 <ReadingMultipleChoiceOption
+                                  annotationId={`question:${q.id}:option:${opt.variantText}`}
                                   letter={opt.variantText}
                                   text={String(opt.answer || "")}
                                   selected={selected}

@@ -50,7 +50,6 @@ const WritingPracticeTest = lazy(
 const SpeakingPracticeTest = lazy(
   () => import("@/pages/speaking-practice/SpeakingPracticeTest"),
 );
-const SpeakingDemo = lazy(() => import("@/pages/speaking-demo"));
 const TestPage = lazy(() => import("@/pages/test/test"));
 const WritingTest = lazy(() => import("@/pages/writing-test/WritingTest"));
 const WritingTestResults = lazy(
@@ -59,17 +58,8 @@ const WritingTestResults = lazy(
 const SpeakingTestResults = lazy(
   () => import("@/pages/speaking-test/SpeakingTestResults"),
 );
-const UnifiedTestResults = lazy(
-  () => import("@/pages/test/UnifiedTestResults"),
-);
-const TestUnifiedResults = lazy(
-  () => import("@/pages/test/TestUnifiedResults"),
-);
 const OverallResults = lazy(
   () => import("@/pages/test/components/OverallResults"),
-);
-const HowItWorksPage = lazy(
-  () => import("@/pages/how-it-works/HowItWorksPage"),
 );
 const OverallSectionReadyPage = lazy(
   () => import("@/pages/test/OverallSectionReadyPage"),
@@ -116,7 +106,7 @@ export const router = createBrowserRouter([
     path: "/", element: <GuestOnly><Layout /></GuestOnly>, children: [
       { index: true, element: <Home /> },
       { path: "price", element: <Price /> },
-      { path: "how-it-works", element: <HowItWorksPage /> },
+      { path: "how-it-works", element: <Navigate to="/" replace /> },
     ],
   },
   {
@@ -141,7 +131,7 @@ export const router = createBrowserRouter([
         { path: "profil", element: <Profile embedded /> },
         { path: "fiyatlar", element: <Price /> },
         { path: "odeme-sonucu", element: <SubscriptionPaymentReturn /> },
-        { path: "nasil-calisir", element: <HowItWorksPage /> },
+        { path: "nasil-calisir", element: <Navigate to="/app" replace /> },
         { path: "telaffuz-kalibrasyonu", element: <PronunciationCalibrationPage /> },
         { path: "speaking-test/:testId", element: <ImprovedSpeakingTest /> },
         { path: "speaking-test/results/:resultId", element: <SpeakingTestResults /> },
@@ -152,11 +142,12 @@ export const router = createBrowserRouter([
         { path: "listening-test/results/:resultId", element: <ListeningTestResults /> },
         { path: "reading-test/:testId", element: <ReadingTest /> },
         { path: "reading-test/results/:resultId", element: <ReadingTestResults /> },
-        { path: "speaking-demo", element: <SpeakingDemo /> },
+        { path: "speaking-demo", element: <LegacyStudentRedirect /> },
         { path: "overall-section-ready", element: <OverallSectionReadyPage /> },
         { path: "overall-results/:overallId", element: <OverallResults /> },
-        { path: "unified-results/:overallId", element: <UnifiedTestResults /> },
-        { path: "test-unified-results", element: <TestUnifiedResults /> },
+        { path: "unified-results", element: <LegacyStudentRedirect /> },
+        { path: "unified-results/:overallId", element: <LegacyStudentRedirect /> },
+        { path: "test-unified-results", element: <LegacyStudentRedirect /> },
         { path: "test-payme", element: <Navigate to="/app/fiyatlar" replace /> },
         { path: "*", element: <Navigate to="/app" replace /> },
       ],

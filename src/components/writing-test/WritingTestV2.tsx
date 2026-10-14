@@ -55,7 +55,7 @@ import WritingRichText from "./WritingRichText";
 import { getWritingTypographyPreset } from "./writing-typography";
 import { TURKISH_CHARACTER_SHORTCUTS } from "./writing-turkish-input";
 import { useWritingTurkishLongPressInput } from "./use-writing-turkish-long-press";
-import { useWritingInputMode } from "./use-writing-input-mode";
+import { getWritingPresentationInputMode, useWritingInputMode } from "./use-writing-input-mode";
 import {
   countWritingWords,
   getWritingAnswerLimits,
@@ -66,6 +66,12 @@ import {
   getWritingWordTargetLabel,
   limitWritingAnswer,
 } from "./writing-v2";
+
+import {
+  activateMobileExamPresentation,
+  clearMobileExamPresentation,
+  getMobileExamPresentationElement,
+} from "@/utils/examFullscreen";
 
 type FullscreenDocument = Document & {
   webkitFullscreenElement?: Element | null;
@@ -94,6 +100,7 @@ const getActiveFullscreenElement = () => {
     document.fullscreenElement ||
     fullscreenDocument.webkitFullscreenElement ||
     fullscreenDocument.msFullscreenElement ||
+    getMobileExamPresentationElement() ||
     null
   );
 };
@@ -119,10 +126,19 @@ export default function WritingTestV2({ testId }: { testId: string }) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
   const [fontScale, setFontScale] = useState(1);
+  const [compactLayout, setCompactLayout] = useState(() =>
+    typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches,
+  );
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 767px)");
+    const update = () => setCompactLayout(media.matches);
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
   const [characterCase, setCharacterCase] = useState<"lower" | "upper">(
     "lower",
   );
-  const [showDescription, setShowDescription] = useState(true);
+  const [showDescription, setShowDescription] = useState(() => !compactLayout);
   const [timeLeft, setTimeLeft] = useState(60 * 60);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -206,7 +222,7 @@ export default function WritingTestV2({ testId }: { testId: string }) {
         await root.msRequestFullscreen();
       } else throw new Error("Fullscreen API unavailable");
 
-      if (!getActiveFullscreenElement()) {
+      if (!getActiveFullscreenElement() && !activateMobileExamPresentation()) {
         if (notifyFailure) {
           toast.error(
             "Tam ekran açılamadı. Tarayıcı izinlerini kontrol edip tekrar deneyin.",
@@ -220,6 +236,12 @@ export default function WritingTestV2({ testId }: { testId: string }) {
       setShowFullscreenPrompt(false);
       return true;
     } catch {
+      if (activateMobileExamPresentation()) {
+        fullscreenWasActiveRef.current = true;
+        setIsFullscreen(true);
+        setShowFullscreenPrompt(false);
+        return true;
+      }
       if (notifyFailure) {
         toast.error(
           "Tam ekran açılamadı. Tarayıcı izinlerini kontrol edip tekrar deneyin.",
@@ -230,6 +252,12 @@ export default function WritingTestV2({ testId }: { testId: string }) {
   }, []);
 
   const exitExamFullscreen = useCallback(async () => {
+    if (getMobileExamPresentationElement()) {
+      clearMobileExamPresentation();
+      setIsFullscreen(false);
+      setShowFullscreenPrompt(true);
+      return;
+    }
     const fullscreenDocument = document as FullscreenDocument;
     try {
       if (document.exitFullscreen) await document.exitFullscreen();
@@ -952,7 +980,7 @@ export default function WritingTestV2({ testId }: { testId: string }) {
   } = useWritingTurkishLongPressInput({
     textareaRef,
     contextKey: currentQuestion?.id ?? null,
-    disabled: writingLocked || writingInputMode !== "long-press",
+    disabled: writingLocked || getWritingPresentationInputMode(writingInputMode, compactLayout) !== "long-press",
     onValueChange: updateCurrentAnswer,
   });
 
@@ -1007,13 +1035,13 @@ export default function WritingTestV2({ testId }: { testId: string }) {
     );
   }
 
-  const typographyPreset = getWritingTypographyPreset(fontScale);
+  const typographyPreset = getWritingTypographyPreset(compactLayout ? 1 : fontScale);
   const selectedFontScale = typographyPreset.menuValue;
   const taskSectionLabel = getWritingTaskSectionLabel(currentTask.taskCode);
 
   return (
     <div
-      className="notranslate flex h-dvh min-h-0 flex-col overflow-hidden bg-white font-sans text-[#37352f]"
+      className="notranslate writing-exam-page flex h-dvh min-h-0 flex-col overflow-hidden bg-white font-sans text-[#37352f]"
       translate="no"
       data-exam-translation="disabled"
       style={{
@@ -1030,8 +1058,8 @@ export default function WritingTestV2({ testId }: { testId: string }) {
               alt="TURKISHMOCK"
               className="h-10 w-auto shrink-0 object-contain"
             />
-            <span aria-hidden="true" className="h-5 w-px bg-[#dededb]" />
-            <span className="truncate text-[17px] font-semibold">Yazma</span>
+            <span data-exam-section-divider aria-hidden="true" className="h-5 w-px bg-[#dededb]" />
+            <span data-exam-section-title className="truncate text-[17px] font-semibold">Yazma</span>
           </div>
 
           <div
@@ -1127,7 +1155,7 @@ export default function WritingTestV2({ testId }: { testId: string }) {
         </div>
       )}
 
-      <section className="shrink-0 border-b border-[#e5e5e2] bg-white px-5 py-3.5">
+      <section className="mock-section-heading shrink-0 border-b border-[#e5e5e2] bg-white px-5 py-3.5">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
             <h1 className="reading-part-heading">{taskSectionLabel}</h1>
@@ -1145,6 +1173,7 @@ export default function WritingTestV2({ testId }: { testId: string }) {
             onClick={() => setShowDescription((visible) => !visible)}
             className="flex h-8 w-8 items-center justify-center rounded-md text-[#6f6d67] hover:bg-[#f1f1ef] hover:text-[#37352f]"
             aria-label={showDescription ? "Anlatımı gizle" : "Anlatımı göster"}
+            aria-expanded={showDescription}
             title={showDescription ? "Anlatımı gizle" : "Anlatımı göster"}
           >
             {showDescription ? (
@@ -1176,16 +1205,17 @@ export default function WritingTestV2({ testId }: { testId: string }) {
         </div>
       ) : (
         <ResizablePanelGroup
-          direction="horizontal"
-          className="min-h-0 flex-1 overflow-hidden"
+          key={compactLayout ? "compact" : "wide"}
+          direction={compactLayout ? "vertical" : "horizontal"}
+          className="writing-exam-panels min-h-0 flex-1 overflow-hidden"
         >
           <ResizablePanel
-            defaultSize={47}
-            minSize={35}
+            defaultSize={compactLayout ? 35 : 47}
+            minSize={compactLayout ? 20 : 35}
             maxSize={62}
             className="min-h-0 bg-white"
           >
-            <div className="h-full overflow-y-auto px-8 py-7">
+            <div className="writing-prompt-scroll h-full overflow-y-auto px-8 py-7">
               <div className="mx-auto max-w-3xl">
                 {currentTask.taskCode !== "TASK_2" && (
                   <>
@@ -1247,15 +1277,15 @@ export default function WritingTestV2({ testId }: { testId: string }) {
             </div>
           </ResizablePanel>
 
-          <ReadingSplitHandle />
+          <ReadingSplitHandle direction={compactLayout ? "vertical" : "horizontal"} />
 
           <ResizablePanel
-            defaultSize={53}
-            minSize={38}
+            defaultSize={compactLayout ? 65 : 53}
+            minSize={compactLayout ? 30 : 38}
             className="min-h-0 bg-[#fbfbfa]"
           >
             <div className="flex h-full min-h-0 flex-col">
-              <div className="flex shrink-0 items-center justify-between border-b border-[#e5e5e2] px-6 py-3">
+              <div className="writing-answer-heading flex shrink-0 items-center justify-between border-b border-[#e5e5e2] px-6 py-3">
                 <div>
                   <h2
                     className="font-semibold text-[#242424]"
@@ -1289,7 +1319,7 @@ export default function WritingTestV2({ testId }: { testId: string }) {
                 </div>
 
                 <div
-                  className="flex items-center gap-1 rounded-md border border-[#dededb] bg-white p-0.5"
+                  className="writing-answer-toolbar flex items-center gap-1 rounded-md border border-[#dededb] bg-white p-0.5"
                   aria-label="Türkçe karakterler"
                 >
                   <button
@@ -1340,7 +1370,7 @@ export default function WritingTestV2({ testId }: { testId: string }) {
                 </div>
               </div>
 
-              <div className="min-h-0 flex-1 bg-[#f7f7f5] p-3">
+              <div className="writing-answer-editor min-h-0 flex-1 bg-[#f7f7f5] p-3">
                 <textarea
                   ref={textareaRef}
                   value={currentAnswer}
@@ -1366,8 +1396,8 @@ export default function WritingTestV2({ testId }: { testId: string }) {
         </ResizablePanelGroup>
       )}
 
-      <nav className="z-40 grid h-[64px] shrink-0 grid-cols-[1fr_auto] items-center border-t border-[#dededb] bg-white px-4">
-        <div className="flex min-w-0 items-center gap-2">
+      <nav className="writing-task-navigation z-40 grid h-[64px] shrink-0 grid-cols-[1fr_auto] items-center border-t border-[#dededb] bg-white px-4">
+        <div className="writing-task-tabs flex min-w-0 items-center gap-2">
           {tasks.map((task, index) => {
             const question = task.questions?.[0];
             const completed = Boolean(
@@ -1379,6 +1409,7 @@ export default function WritingTestV2({ testId }: { testId: string }) {
                 key={task.id}
                 type="button"
                 onClick={() => goToTask(index)}
+                aria-current={active ? "step" : undefined}
                 className={`flex h-9 items-center gap-2 rounded-md px-3 text-[13px] font-semibold transition-colors ${
                   active
                     ? "bg-[#eeeeec] text-[#242424]"
@@ -1399,7 +1430,7 @@ export default function WritingTestV2({ testId }: { testId: string }) {
           })}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="writing-task-arrows flex items-center gap-2">
           <button
             type="button"
             onClick={() => goToTask(currentTaskIndex - 1)}

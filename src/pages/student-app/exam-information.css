@@ -101,7 +101,7 @@
   .exam-skill-body { padding:0 0 20px; }
   .exam-scoring-row { grid-template-columns:1fr; gap:12px; }
   .exam-score-bands { grid-template-columns:repeat(4,minmax(0,1fr)); }
-  .exam-document-actions { width:100%; gap:16px; }
+  .exam-document-actions { width:100%; margin-left:0; gap:16px; }
   .exam-session-row { grid-template-columns:minmax(0,1fr); padding:20px 10px; }
   .exam-session-deadlines { gap:12px; }
   .exam-session-status > a { margin-left:0; }

@@ -1,0 +1,12 @@
+<!doctype html><html lang="tr"><meta charset="utf-8"><title>Yerel ses taslağı doğrulaması</title><body><h1>Yerel ses taslağı doğrulaması</h1><button id="save">Örnek kaydı sakla</button><button id="load">Kaydı geri yükle</button><button id="clear">Örnek kaydı temizle</button><output id="result" aria-live="polite"></output><script type="module">
+import {saveSpeakingPracticeDraft,loadSpeakingPracticeDraft,deleteSpeakingPracticeDraft,speakingPracticeDraftScope} from '/src/services/speakingPracticeDraft.store.ts';
+const scope=speakingPracticeDraftScope('synthetic-browser-audit','synthetic-speaking',undefined,['q1']);
+const result=document.querySelector('#result');
+document.querySelector('#save').onclick=async()=>{
+const saved=await saveSpeakingPracticeDraft(scope,{version:1,runId:'synthetic-browser-run',questionIndex:0,updatedAt:Date.now(),recordings:{q1:{blob:new Blob(['synthetic browser audio'],{type:'audio/webm'}),durationSeconds:12}}});
+const request=indexedDB.open('tm-speaking-practice-drafts',1);
+request.onsuccess=()=>{const db=request.result;const read=db.transaction('drafts','readonly').objectStore('drafts').get(scope);read.onsuccess=()=>{result.value=saved&&read.result?.recordings?.q1?.blob instanceof Blob?'IndexedDB kaydı doğrulandı':'Saklama başarısız';db.close();};};
+};
+document.querySelector('#load').onclick=async()=>{const draft=await loadSpeakingPracticeDraft(scope);result.value=draft?.runId==='synthetic-browser-run'&&await draft.recordings.q1.blob.text()==='synthetic browser audio'?'Ses ve çalışma kimliği geri yüklendi':'Taslak bulunamadı';};
+document.querySelector('#clear').onclick=async()=>{await deleteSpeakingPracticeDraft(scope);result.value=await loadSpeakingPracticeDraft(scope)===null?'Örnek temizlendi':'Temizleme başarısız';};
+</script></body></html>

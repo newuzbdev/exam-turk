@@ -19,7 +19,7 @@ export function safeAccessReturnTo(value: LocationInput): string | null {
     const parsed = new URL(raw, window.location.origin);
     if (parsed.origin !== window.location.origin) return null;
     const pathname = studentPath(parsed.pathname);
-    if (!pathname || !(pathname === '/app' || [...LEGACY_STUDENT_ROOTS, 'profil', 'fiyatlar', 'nasil-calisir'].some(root => pathname === `/app/${root}` || pathname.startsWith(`/app/${root}/`)))) return null;
+    if (!pathname || !(pathname === '/app' || [...LEGACY_STUDENT_ROOTS, 'profil', 'fiyatlar', 'sonuclar'].some(root => pathname === `/app/${root}` || pathname.startsWith(`/app/${root}/`)))) return null;
     parsed.searchParams.delete('share');
     const hash = /share[=%]/i.test(parsed.hash) ? '' : parsed.hash;
     return `${pathname}${parsed.search}${hash}`;

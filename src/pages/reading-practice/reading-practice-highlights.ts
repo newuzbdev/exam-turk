@@ -47,3 +47,12 @@ export function splitPracticeHighlights(
   });
   return segments;
 }
+
+/** Restore only locally saved text marks; malformed entries stay out of the renderer. */
+export function restorePracticeHighlights(value: unknown): Record<string, PracticeHighlight[]> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return Object.fromEntries(Object.entries(value).map(([label, items]) => [label,
+    Array.isArray(items) ? items.filter((item): item is PracticeHighlight =>
+      !!item && typeof item.text === "string" && (item.noteId === undefined || typeof item.noteId === "string")) : [],
+  ]));
+}

@@ -7,6 +7,8 @@ import '../lessons/lesson-catalog.css';
 import ReadingPracticeList from './ReadingPracticeList';
 import PracticeList from '@/components/practice/PracticeList';
 import PracticeDirectEntry from '@/components/practice/PracticeDirectEntry';
+import PracticeAllowance from '@/components/practice/PracticeAllowance';
+import { isSubscriptionBillingEnabled } from '@/config/billing';
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -102,6 +104,8 @@ export default function PracticeHome({
   }, [summary.data, params]);
   const selected = bolumler.find(item => item.category === params.get('bolum'))?.category ?? defaultDomain;
   const startPracticeId = params.get('start');
+  const showPracticeAllowance = isSubscriptionBillingEnabled && isAuthenticated && !startPracticeId &&
+    (selected === 'writing' || selected === 'speaking') && membership.data?.isActive;
   const [visited, setVisited] = useState({ ownerId: user?.id, categories: [selected] });
   useEffect(() => {
     setVisited(previous => previous.ownerId !== user?.id
@@ -113,6 +117,10 @@ export default function PracticeHome({
   return (
     <StudentPageShell
       title="Pratik"
+      headerAlignment={showPracticeAllowance ? 'center' : 'end'}
+      actions={showPracticeAllowance && membership.data
+        ? <PracticeAllowance key={selected} remaining={membership.data.practiceRemaining} />
+        : undefined}
     >
       {startPracticeId && workspaceMode ? <PracticeDirectEntry key={`${selected}:${startPracticeId}`} skill={selected as 'reading' | 'listening' | 'writing' | 'speaking'} id={startPracticeId} hasActiveMembership={hasActiveMembership} membershipPending={membershipPending} /> : <Tabs.Root className="relative" value={selected} onValueChange={value => setParams(previous => {
         const next = new URLSearchParams(previous);

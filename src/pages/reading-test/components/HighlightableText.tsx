@@ -19,7 +19,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useReadingNotes } from "@/contexts/ReadingNotesContext";
+import { useReadingNotes, useTextHighlights } from "@/contexts/ReadingNotesContext";
 import {
   ReadingReviewEvidenceText,
   useReadingReviewContext,
@@ -39,6 +39,7 @@ interface Highlight {
 
 interface HighlightableTextProps {
   text: string;
+  annotationId?: string;
   partNumber?: number;
   onPlainClick?: () => void;
   as?: "p" | "span";
@@ -50,6 +51,7 @@ interface HighlightableTextProps {
 
 export default function HighlightableText({
   text,
+  annotationId,
   partNumber,
   onPlainClick,
   as = "p",
@@ -61,7 +63,7 @@ export default function HighlightableText({
   const readingReview = useReadingReviewContext();
   const { notes, addNote, updateNote, deleteNote } = useReadingNotes();
   const [isMobileViewport, setIsMobileViewport] = useState(false);
-  const [highlights, setHighlights] = useState<Highlight[]>([]);
+  const [highlights, setHighlights, annotationKey] = useTextHighlights(text, `part-${partNumber ?? 0}:${annotationId || "text"}`);
   const [tooltip, setTooltip] = useState<{
     x: number;
     y: number;
@@ -94,6 +96,12 @@ export default function HighlightableText({
     left: number;
     top: number;
   } | null>(null);
+
+  useEffect(() => {
+    setTooltip(null);
+    setNotePreview(null);
+    setNoteDialog(null);
+  }, [annotationKey]);
 
   const containerRef = useRef<HTMLElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
@@ -151,7 +159,7 @@ export default function HighlightableText({
     if (!text || !partNumber) return;
 
     const notesWithHighlights = notes.filter(
-      (n) => n.highlightedText && n.partNumber === partNumber
+      (n) => n.highlightedText && n.partNumber === partNumber && (!n.annotationKey || n.annotationKey === annotationKey)
     );
 
     setHighlights((prev) => {
@@ -208,7 +216,7 @@ export default function HighlightableText({
 
       return hasChanges ? newHighlights : prev;
     });
-  }, [notes, text, partNumber]);
+  }, [notes, text, partNumber, annotationKey, setHighlights]);
 
   useEffect(() => {
     const handleNativeTouchSelection = () => {
@@ -548,6 +556,7 @@ export default function HighlightableText({
           
           // Create note with highlightedText
           const newNote = addNote({
+            annotationKey,
             text: noteText,
             partNumber,
             highlightedText: selectedText,
@@ -581,6 +590,7 @@ export default function HighlightableText({
             
             // Create note with highlightedText
             const newNote = addNote({
+            annotationKey,
               text: noteText,
               partNumber,
               highlightedText: selectedText,
@@ -598,6 +608,7 @@ export default function HighlightableText({
           } else {
             // Text not found in passage, but still save highlightedText
             addNote({
+            annotationKey,
               text: noteText,
               partNumber,
               highlightedText: selectedText, // Still save it even if not found
@@ -607,6 +618,7 @@ export default function HighlightableText({
       } else {
         // No selected text, create general note
         addNote({
+            annotationKey,
           text: noteText,
           partNumber,
         });
@@ -633,6 +645,7 @@ export default function HighlightableText({
           });
 
           const newNote = addNote({
+            annotationKey,
             text: noteText,
             partNumber,
             highlightId: highlight.id,

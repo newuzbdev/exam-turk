@@ -63,7 +63,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
     return src;
   };
 
-  const renderContent = (raw: string, qNum: number) => {
+  const renderContent = (raw: string, qNum: number, questionId: string) => {
     const normalizedRaw = fixMojibake(raw);
     if (!normalizedRaw) return null;
     const nodes: any[] = [];
@@ -76,7 +76,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
         const textChunk = normalizedRaw.slice(lastIndex, start).trim();
         if (textChunk) nodes.push(
           <div key={`t-${lastIndex}`} className="mb-2">
-            <HighlightableText text={textChunk} partNumber={partNumber} />
+            <HighlightableText text={textChunk} annotationId={`question:${questionId}:content:${lastIndex}`} partNumber={partNumber} />
           </div>
         );
       }
@@ -109,7 +109,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
       const tail = normalizedRaw.slice(lastIndex).trim();
       if (tail) nodes.push(
         <div key={`t-tail`} className="mb-2">
-          <HighlightableText text={tail} partNumber={partNumber} />
+          <HighlightableText text={tail} annotationId={`question:${questionId}:content:${lastIndex}`} partNumber={partNumber} />
         </div>
       );
     }
@@ -121,8 +121,8 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
       className="mx-2 reading-body overflow-hidden text-slate-800"
     >
       {/* Mobile Layout - Stacked */}
-      <div className="block lg:hidden h-[calc(100svh-14rem)]">
-        <div className="h-full flex flex-col">
+      <div className="reading-mobile-layout block lg:hidden h-[calc(100svh-14rem)]">
+        <div className="reading-mobile-frame h-full flex flex-col">
           {/* Questions Section - More scroll space for mobile */}
           <div className="bg-gray-50 flex-1 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent p-3 pb-[calc(9rem+env(safe-area-inset-bottom))] reading-scroll">
             <h4 className="text-[13px] font-bold text-slate-700 mb-2">Sorular</h4>
@@ -130,7 +130,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
               options={reviewOptions}
               className="mb-3"
             />
-            <div className="space-y-3">
+            <div className="reading-mobile-question-list space-y-3">
               {numbered.map((q: any, idx: number) => {
                 const qNum = q.number || (7 + idx);
                 const hasImage = typeof q.imageUrl === 'string' && q.imageUrl.length > 0;
@@ -142,7 +142,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                 return (
                     <div
                       key={q.id}
-                      className={`rounded-lg p-2.5 border border-gray-200 bg-white ${mobileCardWidthClass}`}
+                      className={`reading-mobile-question rounded-lg p-2.5 border border-gray-200 bg-white ${mobileCardWidthClass}`}
                   >
                     <Select
                       value={selectValue}
@@ -196,7 +196,8 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                         </div>
                         {q.text && (
                           <p className="reading-text bg-gray-50 px-2 py-1 rounded text-center text-slate-600">
-                            <HighlightableText text={fixMojibake(q.text || "")} partNumber={partNumber} />
+                            <HighlightableText annotationId={`question:${q.id}:prompt`}
+                                text={fixMojibake(q.text || "")} partNumber={partNumber} />
                           </p>
                         )}
                       </div>
@@ -204,11 +205,12 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                       <div className="space-y-2">
                         {q.text && (
                           <h3 className="font-medium italic leading-snug text-[14px] text-slate-700">
-                            <HighlightableText text={fixMojibake(q.text || "")} partNumber={partNumber} />
+                            <HighlightableText annotationId={`question:${q.id}:prompt`}
+                                text={fixMojibake(q.text || "")} partNumber={partNumber} />
                           </h3>
                         )}
                         <div className="reading-text">
-                          {renderContent(q.content || "", qNum)}
+                          {renderContent(q.content || "", qNum, q.id)}
                         </div>
                       </div>
                     )}
@@ -249,6 +251,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                           {q.text && (
                             <h3 className="reading-strong-title min-w-0 font-semibold italic leading-snug text-[#37352f]">
                               <HighlightableText
+                                annotationId={`question:${q.id}:prompt`}
                                 text={fixMojibake(q.text || "")}
                                 partNumber={partNumber}
                               />
@@ -307,7 +310,7 @@ export default function ReadingPart2({ testData, answers, onAnswerChange, partNu
                           />
                         </div>
                       ) : (
-                        renderContent(q.content || "", qNum)
+                        renderContent(q.content || "", qNum, q.id)
                       )}
                     </div>
                   );

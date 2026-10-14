@@ -1,5 +1,7 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext } from "react";
 import type { ReactNode } from "react";
+import { TextAnnotationsProvider, useAnnotationState } from "./TextAnnotationsContext";
+export { TextAnnotationsProvider, useAnnotationState, useTextHighlights, textAnnotationScope, annotationFingerprint } from "./TextAnnotationsContext";
 
 export interface Note {
   id: string;
@@ -8,6 +10,7 @@ export interface Note {
   createdAt: number;
   highlightId?: string; // If note is tied to a highlight
   highlightedText?: string; // The text that was highlighted
+  annotationKey?: string; // Exact text field; identical text elsewhere stays independent.
 }
 
 interface ReadingNotesContextType {
@@ -20,8 +23,14 @@ interface ReadingNotesContextType {
 
 const ReadingNotesContext = createContext<ReadingNotesContextType | undefined>(undefined);
 
-export function ReadingNotesProvider({ children }: { children: ReactNode }) {
-  const [notes, setNotes] = useState<Note[]>([]);
+export function ReadingNotesProvider({ children, scopeKey }: { children: ReactNode; scopeKey?: string | null }) {
+  return <TextAnnotationsProvider scopeKey={scopeKey}><ReadingNotesState>{children}</ReadingNotesState></TextAnnotationsProvider>;
+}
+
+function ReadingNotesState({ children }: { children: ReactNode }) {
+  const [notes, setNotes] = useAnnotationState<Note[]>("notes", [], (value) =>
+    Array.isArray(value) ? value.filter((note) => note && typeof note.id === "string" && typeof note.text === "string" && Number.isFinite(note.createdAt)) : [],
+  );
 
   const addNote = (note: Omit<Note, "id" | "createdAt">): Note => {
     const newNote: Note = {

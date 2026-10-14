@@ -67,8 +67,8 @@ export default function ReadingPart3({
   return (
     <div className="mx-2 reading-body overflow-hidden text-slate-800">
       {/* Mobile Layout - Stacked */}
-      <div className="block lg:hidden h-[calc(100svh-14rem)]">
-        <div className="reading-surface flex h-full flex-col overflow-hidden rounded-md border border-[#e5e5e2]">
+      <div className="reading-mobile-layout block lg:hidden h-[calc(100svh-14rem)]">
+        <div className="reading-mobile-frame reading-surface flex h-full flex-col overflow-hidden rounded-md border border-[#e5e5e2]">
           {/* Questions Section - More scroll space for mobile */}
           <div className="reading-surface-alt flex-1 overflow-y-auto overscroll-contain touch-pan-y scrollbar-thin scrollbar-thumb-gray-300/40 scrollbar-track-transparent p-4 pb-[calc(10rem+env(safe-area-inset-bottom))] reading-scroll">
             <h4 className="text-sm font-semibold text-slate-700 mb-3 tracking-wide">Paragraflar</h4>
@@ -76,7 +76,7 @@ export default function ReadingPart3({
               options={reviewOptions}
               className="mb-3"
             />
-            <div className="space-y-4">
+            <div className="reading-mobile-question-list space-y-4">
               {paragraphQuestions.map((q: any, idx: number) => {
                 const displayNum = q.number || (15 + idx); // Use actual question number from API
                 const displayText = fixMojibake(q.text || q.content || "");
@@ -87,7 +87,7 @@ export default function ReadingPart3({
                 return (
                   <div
                     key={q.id}
-                    className="p-3"
+                    className="reading-mobile-question p-3"
                   >
                     <div className="font-semibold text-slate-800 mb-2">{label}</div>
                     <div className="mt-2">
@@ -130,7 +130,7 @@ export default function ReadingPart3({
                       <div className="reading-text reading-primary-copy reading-passage-copy mt-3 text-left font-sans">
                         {renderParagraphText
                           ? renderParagraphText(displayText, String(q.paragraphLabel || romans[idx]))
-                          : <HighlightableText text={displayText} partNumber={partNumber} />}
+                          : <HighlightableText text={displayText} annotationId={`question:${q.id}:content`} partNumber={partNumber} />}
                       </div>
                     )}
                   </div>
@@ -208,7 +208,7 @@ export default function ReadingPart3({
                               <div className="reading-text reading-primary-copy reading-passage-copy px-1 text-left font-sans text-[#37352f]">
                                 {renderParagraphText
                                   ? renderParagraphText(displayText, String(q.paragraphLabel || romans[idx]))
-                                  : <HighlightableText text={displayText} partNumber={partNumber} />}
+                                  : <HighlightableText text={displayText} annotationId={`question:${q.id}:content`} partNumber={partNumber} />}
                               </div>
                             </div>
                           )}

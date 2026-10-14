@@ -7,6 +7,7 @@ interface ReadingOptionLegendRowProps {
   text: string;
   selectionCount: number;
   partNumber?: number;
+  annotationId?: string;
 }
 
 export default function ReadingOptionLegendRow({
@@ -14,6 +15,7 @@ export default function ReadingOptionLegendRow({
   text,
   selectionCount,
   partNumber,
+  annotationId,
 }: ReadingOptionLegendRowProps) {
   return (
     <div
@@ -29,6 +31,7 @@ export default function ReadingOptionLegendRow({
           <HighlightableText
             text={fixMojibake(text)}
             partNumber={partNumber}
+            annotationId={annotationId || `option:${letter}`}
             as="span"
             wrapperAs="span"
           />

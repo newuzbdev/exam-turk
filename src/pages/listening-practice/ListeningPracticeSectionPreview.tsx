@@ -205,7 +205,9 @@ export default function ListeningPracticeSectionPreview() {
   const { sectionSlug } = useParams();
   const sectionNumber = /^bolum-([1-6])$/.exec(sectionSlug || "")?.[1];
   const section = listeningPracticeSections.find((item) => item.number === Number(sectionNumber));
-  const [showDescription, setShowDescription] = useState(true);
+  const [showDescription, setShowDescription] = useState(() =>
+    typeof window === "undefined" || !window.matchMedia("(max-width: 767px)").matches,
+  );
 
   if (!section) {
     return (
@@ -243,7 +245,7 @@ export default function ListeningPracticeSectionPreview() {
         </div>
       </header>
 
-      <section className="mx-2 mt-2 shrink-0 border-b border-[#e5e5e2] bg-white px-3 py-3.5 sm:mx-4 sm:px-4">
+      <section className="practice-section-heading mx-2 mt-2 shrink-0 border-b border-[#e5e5e2] bg-white px-3 py-3.5 sm:mx-4 sm:px-4">
         <div className={`flex items-center justify-between gap-3 ${showDescription ? "mb-1.5" : ""}`}>
           <h1 className="reading-part-heading">Bölüm {section.number}</h1>
           <button

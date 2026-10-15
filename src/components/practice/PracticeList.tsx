@@ -31,6 +31,8 @@ import {
 } from "@/pages/writing-practice/writing-practice-storage";
 import PracticeResumeDialog from "./PracticeResumeDialog";
 import PracticeCoverImage from "./PracticeCoverImage";
+import PracticeLoadMore from './PracticeLoadMore';
+import { ROWS_PER_PAGE, useCatalogColumns } from '@/hooks/use-catalog-columns';
 import MembershipLockBadge from "@/components/subscription/MembershipLockBadge";
 import MembershipRequiredDialog from "@/components/subscription/MembershipRequiredDialog";
 import { useMobilePresentation } from "@/hooks/use-mobile-presentation";
@@ -133,6 +135,12 @@ export default function PracticeList({
   const numberedSort = mobile && (domain === "SPEAKING" || domain === "WRITING");
   const [numberOrder, setNumberOrder] = useState(() => readNumberOrder(domain));
   const [filters, setFilters] = useState(() => readSavedFilters(domain));
+  const columns = useCatalogColumns();
+  const [visibleRows, setVisibleRows] = useState(ROWS_PER_PAGE);
+  const updateFilters = (next: Partial<typeof filters>) => {
+    setVisibleRows(ROWS_PER_PAGE);
+    setFilters(previous => ({ ...previous, ...next }));
+  };
   const [continueDialogItem, setContinueDialogItem] =
     useState<PracticeListItem | null>(null);
   const [membershipRequiredOpen, setMembershipRequiredOpen] = useState(false);
@@ -188,6 +196,7 @@ export default function PracticeList({
     },
     [domain, items, level, section, sort, access.enabled, numberedSort, numberOrder],
   );
+  const visibleItems = filtered.slice(0, visibleRows * columns);
   const availableSections = new Set(items.map((item) => item.sectionCode));
   const sections = sectionOptions[domain].filter((value) =>
     availableSections.has(value),
@@ -242,7 +251,7 @@ export default function PracticeList({
         <Select
           value={level}
           onValueChange={(value) =>
-            setFilters((current) => ({ ...current, level: value }))
+            updateFilters({ level: value })
           }
         >
           <SelectTrigger
@@ -265,7 +274,7 @@ export default function PracticeList({
         <Select
           value={section}
           onValueChange={(value) =>
-            setFilters((current) => ({ ...current, section: value }))
+            updateFilters({ section: value })
           }
         >
           <SelectTrigger
@@ -288,10 +297,11 @@ export default function PracticeList({
         <Select
           value={numberedSort ? numberOrder : sort}
           onValueChange={(value) => {
+            setVisibleRows(ROWS_PER_PAGE);
             if (numberedSort) {
               setNumberOrder(value as PracticeNumberOrder);
             } else {
-              setFilters((current) => ({ ...current, sort: value as SortMode }));
+              updateFilters({ sort: value as SortMode });
             }
           }}
         >
@@ -330,8 +340,9 @@ export default function PracticeList({
           Bu bölüm için henüz yayınlanmış pratik yok.
         </div>
       ) : (
+        <>
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((item) => (
+          {visibleItems.map((item) => (
             <article
               key={item.id}
               role="button"
@@ -383,6 +394,13 @@ export default function PracticeList({
             </article>
           ))}
         </div>
+        <PracticeLoadMore
+          hasMore={visibleItems.length < filtered.length}
+          remainingItems={filtered.length - visibleItems.length}
+          columns={columns}
+          onLoadMore={() => setVisibleRows(previous => previous + ROWS_PER_PAGE)}
+        />
+        </>
       )}
       <PracticeResumeDialog
         open={Boolean(continueDialogItem)}

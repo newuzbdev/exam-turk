@@ -158,16 +158,22 @@ for(const domain of ['LISTENING','SPEAKING']) test(`${domain}: normal card binds
 });
 test('Reading normal card binds before attempt; failed ownerless recovery preserves answers and never starts replacement',async()=>{
  let starts=[];
+ async function ready(view){
+  for(let tries=0;tries<100&&(!view.container.querySelector('article')||view.container.querySelector('article[aria-busy="true"]'));tries++)await flush();
+  assert.ok(view.container.querySelector('article'));
+  assert.equal(view.container.querySelector('article[aria-busy="true"]'),null);
+ }
  const item={id:'reading-one',title:'Okuma',passageTitle:'Okuma',isFreeAccess:false,isPublished:true,isPublicFree:true,level:'B1',practiceType:'SECTION',sectionNumber:1,createdAt:'2026-10-01',estimatedMinutes:20};
  const {default:ReadingList}=await loadOfflineComponent('src/pages/reading-practice/ReadingPracticeList.tsx',{
   ...mocks,
   '@/contexts/AuthContext':{useAuth:()=>({user:{id:owner},isAuthenticated:true,refreshUser:async()=>{}})},
   '@/hooks/use-student-action':{useStudentAction:()=>()=>{}},
   '@/components/payme/PaymeCheckoutModal':{default:()=>null},
-  '@/services/readingPractice.service':{readingPracticeService:{getAll:async()=>[item],getCompletedPassageIds:async()=>[],start:async(id,input)=>{starts.push({id,input});return {attemptId:'attempt'};},getSolveDetail:async()=>null}},
+  '@/services/readingPractice.service':{readingPracticeService:{getAll:async()=>[item],getPage:async()=>({data:[item],total:1,page:1,limit:10}),getCompletedPassageIds:async()=>[],start:async(id,input)=>{starts.push({id,input});return {attemptId:'attempt'};},getSolveDetail:async()=>null}},
  });
  const view=await setup(ReadingList,{workspaceMode:true});
  try{
+  await ready(view);
   await act(async()=>view.container.querySelector('article').click());
   assert.deepEqual(starts,[{id:'reading-one',input:{accessContextId:'public-context'}}]);
  }finally{await view.unmount();}
@@ -180,6 +186,7 @@ test('Reading normal card binds before attempt; failed ownerless recovery preser
  const Harness=()=>React.createElement(QueryClientProvider,{client},React.createElement(ReadingList,{workspaceMode:true}));
  const view2=await mount(Harness);await flush();
  try{
+  await ready(view2);
   await act(async()=>view2.container.querySelector('article').click());
   await act(async()=>button('Devam et').click());
   assert.equal(starts.length,0);

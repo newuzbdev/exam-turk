@@ -16,7 +16,7 @@ const row = title => ({ id: title, title, level: 'B1', sectionCode: 'PART_1', cr
 const list = async () => { listCalls++; return listResponse ? await listResponse.promise : [row(owner + ' catalog')]; };
 const mocks = {
   '@/contexts/AuthContext': { useAuth: () => ({ isAuthenticated: true, user: { id: owner, name: 'Saved profile' }, refreshUser: async () => {} }) },
-  '@/hooks/use-content-access': { useContentAccessDecisions: () => ({ enabled: false, pending: false, decisionFor: () => undefined }), useAccessCatalogSummary: () => ({ data: undefined }) },
+  '@/hooks/use-content-access': { useAccessConfig: () => ({ data: { enabled: false }, isPending: false }), useContentAccessDecisions: () => ({ enabled: false, pending: false, decisionFor: () => undefined }), useAccessCatalogSummary: () => ({ data: undefined }) },
   '@/hooks/use-student-action': { useStudentAction: () => () => {} },
   '@/components/payme/PaymeCheckoutModal': { default: () => null },
   '@/services/readingPractice.service': { readingPracticeService: { getAll: list, getCompletedPassageIds: async () => completionResponse ? await completionResponse.promise : [] } },

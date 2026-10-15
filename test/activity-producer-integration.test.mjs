@@ -61,6 +61,11 @@ async function verifyRun(state, domain, runId) {
 }
 
 const flush = async () => act(async () => new Promise(resolve => setTimeout(resolve, 20)));
+async function readyReadingCards(view) {
+  for (let tries = 0; tries < 100 && (!view.container.querySelector('article') || view.container.querySelector('article[aria-busy="true"]')); tries++) await flush();
+  assert.ok(view.container.querySelector('article'));
+  assert.equal(view.container.querySelector('article[aria-busy="true"]'), null);
+}
 const button = text => [...document.querySelectorAll('button')].find(node => node.textContent === text);
 async function click(text) { const node = button(text); assert.ok(node, `Missing ${text}: ${document.body.textContent}`); await act(async () => node.click()); await flush(); }
 async function setup(Component, route = '/app/pratik', props = {}, prepare = () => {}) {
@@ -123,15 +128,18 @@ for (const shared of [false, true]) test(`real exact Mock ${shared ? 'share' : '
 for (const resume of [false, true]) test(`normal Reading ${resume ? 'verified resume' : 'successful repeat starts'} reaches real route reader`, async () => {
   let next = attempt, calls = 0;
   const draft = { attemptId: attempt, answeredCount: 1, answers: { q: 'B' }, timerMinutes: 30, timerEnabled: true, remainingSeconds: 421 };
+  const readingRows = [{ id, title: 'Okuma', isFreeAccess: true, isPublished: true, level: 'B1', practiceType: 'SECTION', sectionNumber: 1 }];
   const { default: List } = await loadOfflineComponent('src/pages/reading-practice/ReadingPracticeList.tsx', {
     ...base,
     '@/services/readingPractice.service': { readingPracticeService: {
-      getAll: async () => [{ id, title: 'Okuma', isFreeAccess: true, isPublished: true, level: 'B1', practiceType: 'SECTION', sectionNumber: 1 }],
+      getAll: async () => readingRows,
+      getPage: async () => ({ data: readingRows, total: 1, page: 1, limit: 10 }),
       getCompletedPassageIds: async () => [], start: async () => { calls++; return { attemptId: next }; }, getSolveDetail: async () => ({ id }),
     } },
   });
   const view = await setup(List, '/app/pratik', { workspaceMode: true }, () => { if (resume) localStorage.setItem(`reading-practice-progress:${id}`, JSON.stringify(draft)); });
   try {
+    await readyReadingCards(view);
     await act(async () => view.container.querySelector('article').click());
     if (resume) await click('Devam et');
     assert.equal(read(`/app/pratik/okuma/${id}`).readingPracticeAttemptId, attempt);
@@ -149,11 +157,12 @@ for (const resume of [false, true]) test(`normal Reading ${resume ? 'verified re
 });
 
 test('Reading free badge follows the enabled server decision once, with legacy fallback only off', async () => {
-  const { default: List } = await loadOfflineComponent('src/pages/reading-practice/ReadingPracticeList.tsx', { ...base, '@/services/readingPractice.service': { readingPracticeService: { getAll: async () => [{ id, title: 'Okuma', isFreeAccess: true, isPublished: true }], getCompletedPassageIds: async () => [] } } });
+  const readingRows = [{ id, title: 'Okuma', isFreeAccess: true, isPublished: true }];
+  const { default: List } = await loadOfflineComponent('src/pages/reading-practice/ReadingPracticeList.tsx', { ...base, '@/services/readingPractice.service': { readingPracticeService: { getAll: async () => readingRows, getPage: async () => ({ data: readingRows, total: 1, page: 1, limit: 10 }), getCompletedPassageIds: async () => [] } } });
   for (const [rollout, free, count] of [[true, true, 1], [true, false, 0], [false, false, 1]]) {
     enabled = rollout; publicFree = free;
     const view = await setup(List, '/app/pratik', { workspaceMode: true });
-    try { assert.equal((view.container.querySelector('article').textContent.match(/Ücretsiz/g) || []).length, count); }
+    try { await readyReadingCards(view); assert.equal((view.container.querySelector('article').textContent.match(/Ücretsiz/g) || []).length, count); }
     finally { await view.close(); enabled = true; publicFree = true; }
   }
 });

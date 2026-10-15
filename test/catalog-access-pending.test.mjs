@@ -37,6 +37,7 @@ const mocks = {
   '@/services/writingPractice.service': { default: service },
   '@/services/speakingPractice.service': { default: service },
   '@/services/readingPractice.service': { readingPracticeService: { getAll: service.list,
+    getPage: async () => ({ data: await service.list(), total: 1, page: 1, limit: 10 }),
     getCompletedPassageIds: async () => [], start: async () => { starts++; return { attemptId: 'unexpected-attempt' }; } } },
   '@/services/auth.service': { authService: { getStoredTokens: () => ({}) } },
   '@/services/overallTest.service': { overallTestService: { getCurrentSession: async () => null },

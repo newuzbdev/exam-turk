@@ -1,5 +1,5 @@
 import { publishCurrentActivity } from '@/utils/access-link-context';
-import { useContentAccessDecisions } from '@/hooks/use-content-access';
+import { useAccessConfig, useContentAccessDecisions } from '@/hooks/use-content-access';
 import { isContentLocked } from '@/utils/content-access';
 import { bindNormalAccess } from '@/utils/normal-access-entry';
 import { readAccessOwner } from '@/hooks/use-access-link';
@@ -32,7 +32,10 @@ import { useStudentAction } from "@/hooks/use-student-action";
 import MembershipLockBadge from "@/components/subscription/MembershipLockBadge";
 import MembershipRequiredDialog from "@/components/subscription/MembershipRequiredDialog";
 import PracticeCoverImage from "@/components/practice/PracticeCoverImage";
-import { usePageDataQuery } from '@/hooks/use-page-data-query';
+import { PAGE_DATA_FRESH_MS, PAGE_DATA_RETENTION_MS, pageDataKey, usePageDataQuery } from '@/hooks/use-page-data-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { ROWS_PER_PAGE, useCatalogColumns } from '@/hooks/use-catalog-columns';
+import PracticeLoadMore from '@/components/practice/PracticeLoadMore';
 
 const EMPTY_ITEMS: ReadingPracticeListItem[] = [];
 const EMPTY_COMPLETED_IDS: string[] = [];
@@ -163,11 +166,38 @@ export default function ReadingPracticeList({
   const [{ levelFilter, sectionFilter, sortMode }, setFilters] = useState(
     () => readSavedFilters(workspaceMode),
   );
+  const columns = useCatalogColumns();
+  const pageSize = ROWS_PER_PAGE * columns;
+  const [visibleRows, setVisibleRows] = useState(ROWS_PER_PAGE);
+  const updateFilters = (next: Partial<ListFilters>) => {
+    setVisibleRows(ROWS_PER_PAGE);
+    setFilters(previous => ({ ...previous, ...next }));
+  };
   const targetFor = (id: string) => ({ scope: 'PRACTICE_READING' as const, targetId: id });
   const order = sortMode === 'eski' ? 'oldest' : 'newest';
+  const accessConfig = useAccessConfig();
+  const catalogModeReady = !isAuthenticated || !user?.id || !accessConfig.isPending;
+  // Worked order includes local drafts, so it still needs the full metadata list.
+  // Legacy catalogs also need client sorting; the active server catalog pages
+  // globally ordered/filtered results before returning each ten-row group.
+  const paginated = accessConfig.data?.enabled === true && sortMode !== 'calisilmayanlar';
+  const pagedCatalog = useInfiniteQuery({
+    queryKey: pageDataKey(['practice', 'reading', 'catalog-pages', order, levelFilter, sectionFilter, pageSize], user?.id),
+    queryFn: ({ pageParam }) => readingPracticeService.getPage({
+      page: pageParam, limit: pageSize, order,
+      ...(levelFilter !== 'tum' ? { level: levelFilter } : {}),
+      ...(sectionFilter !== 'tum' ? { practiceType: 'SECTION' as const, sectionNumber: sectionFilter } : {}),
+    }),
+    initialPageParam: 1,
+    getNextPageParam: last => last.data.length > 0 && last.page * last.limit < last.total ? last.page + 1 : undefined,
+    enabled: active && paginated,
+    staleTime: PAGE_DATA_FRESH_MS,
+    gcTime: PAGE_DATA_RETENTION_MS,
+    meta: { persist: false, pageData: true, ownerId: user?.id ?? null },
+  });
   const catalog = usePageDataQuery({
     queryKey: ['practice', 'reading', 'catalog', order, initialStartId ?? null],
-    enabled: active,
+    enabled: active && catalogModeReady && !paginated,
     queryFn: async () => {
       const rows = await readingPracticeService.getAll({ order });
       if (initialStartId && !rows.some(item => item.id === initialStartId)) {
@@ -177,6 +207,12 @@ export default function ReadingPracticeList({
       return rows;
     },
   });
+  const initialPreview = usePageDataQuery({
+    queryKey: ['practice', 'reading', 'start-preview', initialStartId ?? null],
+    queryFn: () => readingPracticeService.getPreview(initialStartId!),
+    enabled: active && paginated && Boolean(initialStartId) && Boolean(pagedCatalog.data) &&
+      !pagedCatalog.data?.pages.some(page => page.data.some(item => item.id === initialStartId)),
+  });
   const completed = usePageDataQuery({
     queryKey: ['practice', 'reading', 'completed'],
     queryFn: readingPracticeService.getCompletedPassageIds,
@@ -184,10 +220,15 @@ export default function ReadingPracticeList({
     staleTime: 0,
     refetchOnMount: 'always',
   });
-  const items = catalog.data ?? EMPTY_ITEMS;
+  const items = useMemo(() => {
+    if (!paginated) return catalog.data ?? EMPTY_ITEMS;
+    const rows = pagedCatalog.data?.pages.flatMap(page => page.data) ?? EMPTY_ITEMS;
+    const preview = initialPreview.data;
+    return [...new Map((preview?.isPublished ? [preview, ...rows] : rows).map(item => [item.id, item])).values()];
+  }, [paginated, catalog.data, pagedCatalog.data, initialPreview.data]);
   const access = useContentAccessDecisions(active ? items.map(item => targetFor(item.id)) : []);
-  const loading = catalog.isPending;
-  const loadError = catalog.isError && !catalog.data;
+  const loading = !catalogModeReady || (paginated ? pagedCatalog.isPending : catalog.isPending);
+  const loadError = paginated ? pagedCatalog.isError && !pagedCatalog.data : catalog.isError && !catalog.data;
   const [paymeOpen, setPaymeOpen] = useState(false);
   const [continueDialogItem, setContinueDialogItem] = useState<ReadingPracticeListCard | null>(null);
   const [membershipRequiredOpen, setMembershipRequiredOpen] = useState(false);
@@ -242,8 +283,8 @@ export default function ReadingPracticeList({
 
     next.sort((left, right) => {
       if (access.enabled) {
-        // The complete server-ordered list is loaded; explicit worked sorting
-        // only rearranges within each public/other group, never across pages.
+        // Preserve server order across pages; local worked sorting only
+        // rearranges within each public/other group of the full metadata list.
         if (sortMode !== "calisilmayanlar" || left.isPublicFree !== right.isPublicFree) return 0;
         return left.isWorked === right.isWorked ? 0 : left.isWorked ? 1 : -1;
       }
@@ -269,6 +310,11 @@ export default function ReadingPracticeList({
       ),
     [sectionFilter, visibleItems],
   );
+  const renderedItems = paginated ? displayedItems : displayedItems.slice(0, visibleRows * columns);
+  const total = paginated ? pagedCatalog.data?.pages[0]?.total ?? 0 : displayedItems.length;
+  const hasMore = paginated ? pagedCatalog.hasNextPage : visibleRows * columns < displayedItems.length;
+  const loadingMore = paginated && pagedCatalog.isFetching;
+  const moreError = paginated && pagedCatalog.isFetchNextPageError;
 
   const startNavigation = (item: ReadingPracticeListCard, attemptId: string, resume = false) => {
     const progress = readSavedProgress(item.id);
@@ -498,7 +544,7 @@ export default function ReadingPracticeList({
       <section className={inlineToolbar ? '' : embedded ? "py-2 sm:py-4" : tm.section}>
         <div className={embedded ? 'w-full' : tm.container}>
           <div className={`practice-filters ${inlineToolbar ? "mb-4 flex justify-end gap-1 md:absolute md:right-0 md:top-0 md:mb-0" : "mb-6 flex flex-wrap items-center justify-end gap-1"}`}>
-            <Select value={levelFilter} onValueChange={(value: LevelFilter) => setFilters(previous => ({ ...previous, levelFilter: value }))}>
+            <Select value={levelFilter} onValueChange={(value: LevelFilter) => updateFilters({ levelFilter: value })}>
               <SelectTrigger aria-label="Seviyeye göre filtrele" className="practice-filter-trigger h-9 w-auto min-w-[124px] gap-2 border-0 bg-transparent px-3 text-[13px] font-medium shadow-none hover:bg-[var(--tm-bg-hover)] focus:ring-0 focus:ring-offset-0">
                 <SelectValue />
               </SelectTrigger>
@@ -521,7 +567,7 @@ export default function ReadingPracticeList({
             <Select
               value={String(sectionFilter)}
               onValueChange={(value) =>
-                setFilters(previous => ({ ...previous, sectionFilter: value === "tum" ? "tum" : (Number(value) as SectionFilter) }))
+                updateFilters({ sectionFilter: value === "tum" ? "tum" : (Number(value) as SectionFilter) })
               }
             >
               <SelectTrigger aria-label="Okuma bölümüne göre filtrele" className="practice-filter-trigger h-9 w-auto min-w-[128px] gap-2 border-0 bg-transparent px-3 text-[13px] font-medium shadow-none hover:bg-[var(--tm-bg-hover)] focus:ring-0 focus:ring-offset-0">
@@ -542,7 +588,7 @@ export default function ReadingPracticeList({
                 ))}
               </SelectContent>
             </Select>
-            <Select value={sortMode} onValueChange={(value: SortMode) => setFilters(previous => ({ ...previous, sortMode: value }))}>
+            <Select value={sortMode} onValueChange={(value: SortMode) => updateFilters({ sortMode: value })}>
               <SelectTrigger aria-label="Pratikleri sırala" className="practice-filter-trigger practice-filter-sort h-9 w-auto min-w-[104px] gap-2 border-0 bg-transparent px-3 text-[13px] font-medium shadow-none hover:bg-[var(--tm-bg-hover)] focus:ring-0 focus:ring-offset-0">
                 <SelectValue />
               </SelectTrigger>
@@ -566,7 +612,7 @@ export default function ReadingPracticeList({
               </p>
               <button
                 type="button"
-                onClick={() => void catalog.refetch()}
+                onClick={() => void (paginated ? pagedCatalog.refetch() : catalog.refetch())}
                 className={`${tm.subtleButton} mt-5 h-9 px-3 text-sm font-semibold`}
               >
                 Tekrar dene
@@ -581,8 +627,21 @@ export default function ReadingPracticeList({
               Filtrelere uygun çalışma bulunamadı.
             </Surface>
           ) : (
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {displayedItems.map(renderPracticeCard)}
+            <div>
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {renderedItems.map(renderPracticeCard)}
+              </div>
+              <PracticeLoadMore
+                hasMore={hasMore}
+                remainingItems={total - renderedItems.length}
+                columns={columns}
+                loading={loadingMore}
+                error={moreError}
+                onLoadMore={() => {
+                  if (paginated) void pagedCatalog.fetchNextPage({ cancelRefetch: false });
+                  else setVisibleRows(previous => previous + ROWS_PER_PAGE);
+                }}
+              />
             </div>
           )}
         </div>

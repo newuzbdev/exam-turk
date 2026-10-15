@@ -80,6 +80,13 @@ export interface ReadingPracticeListItem extends CatalogMetadata {
   updatedAt?: string;
 }
 
+export interface ReadingPracticeListPage {
+  data: ReadingPracticeListItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export interface ReadingPracticePassage {
   id: string;
   title: string;
@@ -213,6 +220,30 @@ function extractData<T>(response: any): T {
 }
 
 export const readingPracticeService = {
+  async getPage({ page = 1, limit = 10, ...filters }: {
+    page?: number;
+    limit?: number;
+    order?: 'newest' | 'oldest';
+    level?: string;
+    practiceType?: 'SECTION';
+    sectionNumber?: number;
+  } = {}): Promise<ReadingPracticeListPage> {
+    const response = await axiosPrivate.get(readingPracticeEndPoint.getAll, {
+      timeout: 12_000,
+      params: { page, limit, ...filters },
+    });
+    const payload = response?.data;
+    const rows: ReadingPracticeListItem[] = Array.isArray(payload) ? payload
+      : Array.isArray(payload?.data) ? payload.data : [];
+    return {
+      data: Array.isArray(payload) ? rows.slice((page - 1) * limit, page * limit) : rows,
+      total: Array.isArray(payload) ? rows.length : typeof payload?.total === 'number' ? payload.total
+        : (page - 1) * limit + rows.length + (rows.length === limit ? 1 : 0),
+      page,
+      limit,
+    };
+  },
+
   async getAll(params: { order?: "newest" | "oldest" } = {}): Promise<ReadingPracticeListItem[]> {
     try {
       const result: ReadingPracticeListItem[] = [];

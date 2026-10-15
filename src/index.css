@@ -62,7 +62,7 @@
   --tm-border-card: #dededb;
   --tm-accent: #dc2626;
   --tm-accent-hover: #b91c1c;
-  --tm-focus: rgba(0, 0, 0, 0.55);
+  --tm-focus: #69665e;
   --tm-radius-sm: 4px;
   --tm-radius-md: 6px;
   --tm-radius-lg: 8px;
@@ -116,11 +116,25 @@ body {
   background-image: none;
 }
 
-:where(button, a, input, textarea, select, summary, [tabindex]):focus-visible {
-  --tw-ring-color: rgba(0, 0, 0, 0.55) !important;
-  box-shadow: none !important;
-  outline: 1px solid rgba(0, 0, 0, 0.7) !important;
+:where(button, a, input, textarea, select, summary, [tabindex], [contenteditable]):focus-visible {
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+  outline: 2px solid var(--tm-focus) !important;
   outline-offset: 2px;
+}
+
+/* Keep editing focus visible. Pointer-opened menus and buttons need no ring,
+   even when their focus was moved programmatically by Radix. Preserve shadows. */
+html[data-focus-modality="pointer"]
+  :where(button, a, input, textarea, select, summary, [tabindex]):not(:where(
+    input:not([type="button"], [type="submit"], [type="reset"], [type="image"],
+      [type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"]),
+    textarea, [contenteditable]:not([contenteditable="false"]),
+    [contenteditable]:not([contenteditable="false"]) *
+  )):focus {
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+  outline: none !important;
 }
 
 .tm-testimonial-marquee {

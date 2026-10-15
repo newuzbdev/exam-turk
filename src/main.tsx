@@ -13,10 +13,13 @@ import { installMediaProtection } from "./utils/mediaProtection";
 import SignupOriginCapture from "./components/account-updates/signup-origin-capture";
 import { captureSignupAttribution } from "./utils/signup-attribution";
 import { captureAccessLink } from "./utils/access-link-context";
+import { installFocusModality } from "./utils/focusModality";
 
 captureSignupAttribution(window.location.href, document.referrer);
 captureAccessLink(window.location);
 installMediaProtection();
+const disposeFocusModality = installFocusModality();
+if (import.meta.hot) import.meta.hot.dispose(disposeFocusModality);
 
 createRoot(document.getElementById("root")!).render(
   isPublicLegalPath(window.location.pathname) ? (

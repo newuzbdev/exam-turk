@@ -199,6 +199,10 @@ const TestPage = ({ workspaceMode = false }: { workspaceMode?: boolean }) => {
   const requiresMembership = workspaceMode && isSubscriptionBillingEnabled;
   const membershipPending = requiresMembership && isAuthenticated && membership.isPending;
   const membershipLocked = requiresMembership && !membership.data?.isActive;
+  const isCardAccessPending = (test: TurkishTest) =>
+    access.pending || purchases.isPending ||
+    (access.enabled && !access.decisionFor({ scope: 'MOCK_PACKAGE', targetId: test.id })) ||
+    (!access.enabled && membershipPending);
   const sessionExpired =
     workspaceMode && searchParams.get("session") === "expired";
 
@@ -306,7 +310,7 @@ const TestPage = ({ workspaceMode = false }: { workspaceMode?: boolean }) => {
 
   const handleTestModalOpen = (test: TurkishTest) => {
     setModalAccessEntry(access.enabled ? { enabled: true, target: { scope: "MOCK_PACKAGE", targetId: test.id }, ownerId: user?.id } : null);
-    if (access.pending || purchases.isPending || (!access.enabled && membershipPending)) return;
+    if (isCardAccessPending(test)) return;
     const blocked = access.decisionFor({ scope: 'MOCK_PACKAGE', targetId: test.id })?.blockedReason;
     if (cardLocked(test) && blocked !== 'AI_LIMIT' && blocked !== 'EXPIRED') {
       setMembershipRequiredOpen(true);
@@ -431,10 +435,11 @@ const TestPage = ({ workspaceMode = false }: { workspaceMode?: boolean }) => {
                       onClick={() => hasTests && handleTestModalOpen(test)}
                       disabled={!hasTests}
                       className="mock-test-card"
-                      aria-busy={hasTests && (access.pending || (!access.enabled && membershipPending)) || undefined}
+                      aria-busy={hasTests && isCardAccessPending(test) || undefined}
+                      aria-label={hasTests && isCardAccessPending(test) ? `${test.title} — erişim kontrol ediliyor` : undefined}
                     >
-                      <h2 className={hasTests && cardLocked(test) && (access.pending || access.enabled || !membershipPending) ? "pr-8" : undefined}>{test.title}</h2>
-                      {hasTests && cardLocked(test) && (access.pending || access.enabled || !membershipPending) && <MembershipLockBadge />}
+                      <h2 className={hasTests && !isCardAccessPending(test) && cardLocked(test) ? "pr-8" : undefined}>{test.title}</h2>
+                      {hasTests && !isCardAccessPending(test) && cardLocked(test) && <MembershipLockBadge />}
 
                       {hasTests && getPackageTab(test) === "CEFR_MOCK" ? (
                         <div className="mock-test-sections">

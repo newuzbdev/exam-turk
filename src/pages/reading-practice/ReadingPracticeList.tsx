@@ -342,6 +342,9 @@ export default function ReadingPracticeList({
     !item.isFreeAccess && (isSubscriptionBillingEnabled || Boolean(item.isFreeAccessManaged));
   const isMembershipLocked = (item: ReadingPracticeListItem) =>
     access.pending ? true : access.enabled ? isContentLocked(access.decisionFor(targetFor(item.id))) : requiresMembership(item) && !hasActiveMembership;
+  const isAccessPending = (item: ReadingPracticeListItem) =>
+    access.pending || (access.enabled && !access.decisionFor(targetFor(item.id))) ||
+    (!access.enabled && requiresMembership(item) && membershipPending);
 
   const handleCardStart = (item: ReadingPracticeListCard) => {
     if (!workspaceMode) {
@@ -349,7 +352,7 @@ export default function ReadingPracticeList({
       return;
     }
 
-    if (access.pending || (!access.enabled && requiresMembership(item) && membershipPending)) return;
+    if (isAccessPending(item)) return;
     if (isMembershipLocked(item)) {
       setMembershipRequiredOpen(true);
       return;
@@ -381,7 +384,7 @@ export default function ReadingPracticeList({
 
     const item = itemsWithState.find((candidate) => candidate.id === initialStartId);
     if (!item) return;
-    if (access.pending || (!access.enabled && requiresMembership(item) && membershipPending)) return;
+    if (isAccessPending(item)) return;
 
     handledStartIntentRef.current = initialStartId;
     onStartIntentHandled?.();
@@ -409,8 +412,8 @@ export default function ReadingPracticeList({
       role="button"
       tabIndex={startingId === item.id ? -1 : 0}
       aria-disabled={startingId === item.id}
-      aria-label={`${item.passageTitle || item.title} — ${isMembershipLocked(item) ? "abonelik uyarısını aç" : workspaceMode && item.hasProgress ? "devam et" : "pratiği başlat"}`}
-      aria-busy={access.pending || (!access.enabled && requiresMembership(item) && membershipPending) || undefined}
+      aria-label={`${item.passageTitle || item.title} — ${isAccessPending(item) ? "erişim kontrol ediliyor" : isMembershipLocked(item) ? "abonelik uyarısını aç" : workspaceMode && item.hasProgress ? "devam et" : "pratiği başlat"}`}
+      aria-busy={isAccessPending(item) || undefined}
       onClick={() => {
         if (startingId !== item.id) handleCardStart(item);
       }}
@@ -442,7 +445,7 @@ export default function ReadingPracticeList({
             Ücretsiz
           </span>
         ) : null}
-        {(access.pending || access.enabled || !membershipPending) && isMembershipLocked(item) && <MembershipLockBadge />}
+        {!isAccessPending(item) && isMembershipLocked(item) && <MembershipLockBadge />}
       </div>
 
       <div className="min-h-[68px] min-w-0 flex-1 px-4 pt-4">

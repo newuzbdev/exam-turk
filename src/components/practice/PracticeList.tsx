@@ -194,6 +194,9 @@ export default function PracticeList({
   );
   const isMembershipLocked = (item: PracticeListItem) =>
     access.pending ? true : access.enabled ? isContentLocked(access.decisionFor(targetFor(item.id))) : !item.isFreeAccess && !hasActiveMembership;
+  const isAccessPending = (item: PracticeListItem) =>
+    access.pending || (access.enabled && !access.decisionFor(targetFor(item.id))) ||
+    (!access.enabled && !item.isFreeAccess && membershipPending);
   const enterPractice = async (item: PracticeListItem, restart = false) => {
     if (entering) return;
     setEntering(true);
@@ -211,7 +214,7 @@ export default function PracticeList({
     } catch { toast.error("Erişiminiz doğrulanamadı. Taslağınız korunuyor."); } finally { setEntering(false); }
   };
   const startPractice = (item: PracticeListItem) => {
-    if (access.pending || entering || (!access.enabled && !item.isFreeAccess && membershipPending)) return;
+    if (isAccessPending(item) || entering) return;
     if (isMembershipLocked(item)) {
       const reason = access.decisionFor(targetFor(item.id))?.blockedReason;
       if (access.enabled && (reason === 'AI_LIMIT' || reason === 'EXPIRED')) { setBlockedItem(item); return; }
@@ -333,8 +336,8 @@ export default function PracticeList({
               key={item.id}
               role="button"
               tabIndex={0}
-              aria-label={`${item.title} — ${isMembershipLocked(item) ? "abonelik uyarısını aç" : domain === "WRITING" && hasUnfinishedWritingPractice(item.id) ? "devam et" : "pratiği başlat"}`}
-              aria-busy={access.pending || entering || (!access.enabled && !item.isFreeAccess && membershipPending) || undefined}
+              aria-label={`${item.title} — ${isAccessPending(item) ? "erişim kontrol ediliyor" : isMembershipLocked(item) ? "abonelik uyarısını aç" : domain === "WRITING" && hasUnfinishedWritingPractice(item.id) ? "devam et" : "pratiği başlat"}`}
+              aria-busy={isAccessPending(item) || entering || undefined}
               onClick={() => startPractice(item)}
               onKeyDown={(event) => {
                 if (event.key !== "Enter" && event.key !== " ") return;
@@ -361,7 +364,7 @@ export default function PracticeList({
                 <span className="absolute left-2 top-2 rounded-md bg-white px-2 py-0.5 text-xs font-medium text-black shadow-sm">
                   {sectionLabel(item.sectionCode)}
                 </span>
-                {(access.pending || access.enabled || !membershipPending) && isMembershipLocked(item) && <MembershipLockBadge />}
+                {!isAccessPending(item) && isMembershipLocked(item) && <MembershipLockBadge />}
               </div>
               {access.enabled && access.decisionFor(targetFor(item.id))?.isPublicFree && <span className="px-4 pt-2 text-xs text-[#777570]">Ücretsiz</span>}
               <div className="min-h-[68px] min-w-0 flex-1 px-4 pt-4">

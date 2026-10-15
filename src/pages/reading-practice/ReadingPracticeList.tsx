@@ -477,14 +477,12 @@ export default function ReadingPracticeList({
           <div className="h-full w-full" style={{ background: DEFAULT_COVER }} />
         )}
         {item.level ? (
-          <div className="absolute left-2 top-2">
-            <span className="inline-flex rounded-md bg-white px-2 py-0.5 text-xs font-medium text-black shadow-sm">
-              {item.level}
-              {item.practiceType === "SECTION" && item.sectionNumber
-                ? ` · Bölüm ${item.sectionNumber}`
-                : ""}
-            </span>
-          </div>
+          <span className="absolute left-2 top-2 inline-flex rounded-md bg-white px-2 py-0.5 text-xs font-medium text-black shadow-sm">
+            {item.level}
+            {item.practiceType === "SECTION" && item.sectionNumber
+              ? ` · Bölüm ${item.sectionNumber}`
+              : ""}
+          </span>
         ) : null}
         {(!access.pending && (access.enabled ? access.decisionFor(targetFor(item.id))?.isPublicFree : item.isFreeAccess)) ? (
           <span className="absolute right-2 top-2 rounded-md bg-white px-2 py-0.5 text-xs font-medium text-[#236b42] shadow-sm">

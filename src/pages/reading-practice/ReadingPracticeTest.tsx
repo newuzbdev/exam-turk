@@ -31,8 +31,6 @@ import {
   Eraser,
   Highlighter,
   KeyRound,
-  Maximize2,
-  Minimize2,
   Pencil,
   X,
 } from "lucide-react";
@@ -84,8 +82,9 @@ import {
 } from "@/services/readingPractice.service";
 import {
   PRACTICE_NAVIGATION_REQUEST_EVENT,
-  setPracticePresentation,
 } from "./practice-presentation";
+import PracticeViewControl from '@/components/practice/PracticeViewControl';
+import { usePracticePresentation } from '@/hooks/use-practice-presentation';
 import {
   buildStableDisplayOptions,
   displayLetterForValue,
@@ -1025,7 +1024,8 @@ function ReadingPracticeTestContent() {
     "practice-highlights", {}, restorePracticeHighlights,
   );
   const [showExitDialog, setShowExitDialog] = useState(false);
-  const [focusedPresentation, setFocusedPresentation] = useState(true);
+  const presentation = usePracticePresentation();
+  const focusedPresentation = presentation.focused;
   const [showSectionDescription, setShowSectionDescription] = useState(() =>
     typeof window === "undefined" || !window.matchMedia("(max-width: 767px)").matches,
   );
@@ -1146,19 +1146,6 @@ function ReadingPracticeTestContent() {
   const hasUnsavedProgress =
     mode === "calisma" && !reviewMode && answeredCount > 0;
   const shouldWarnOnExit = mode === "calisma" && !reviewMode;
-
-  useEffect(() => {
-    setPracticePresentation(true);
-    return () => setPracticePresentation(false);
-  }, []);
-
-  const toggleFocusedPresentation = () => {
-    setFocusedPresentation((current) => {
-      const next = !current;
-      setPracticePresentation(next);
-      return next;
-    });
-  };
 
   useEffect(() => {
     const body = document.body;
@@ -2810,6 +2797,7 @@ function ReadingPracticeTestContent() {
       data-exam-translation="disabled"
       data-mobile-split={mobileSplit || undefined}
       data-focused-presentation={focusedPresentation}
+      data-practice-view={presentation.mode}
       style={{ "--reading-font-scale": presentationFontScale } as CSSProperties}
     >
       <header
@@ -2975,20 +2963,7 @@ function ReadingPracticeTestContent() {
                     </ToolbarIconButton>
                   </>
                 ) : null}
-                <ToolbarIconButton
-                  label={
-                    focusedPresentation
-                      ? "Pratiği küçült"
-                      : "Pratiği tam sayfa aç"
-                  }
-                  onClick={toggleFocusedPresentation}
-                >
-                  {focusedPresentation ? (
-                    <Minimize2 className="h-4 w-4" strokeWidth={1.75} />
-                  ) : (
-                    <Maximize2 className="h-4 w-4" strokeWidth={1.75} />
-                  )}
-                </ToolbarIconButton>
+                <PracticeViewControl presentation={presentation} />
               </div>
               <button
                 type="button"

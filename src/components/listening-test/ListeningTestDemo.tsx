@@ -11,6 +11,8 @@ import {
 } from "@/services/listeningTest.service";
 import type { ListeningTestItem } from "@/services/listeningTest.service";
 import { Button } from "../ui/button";
+import PracticeViewControl from '@/components/practice/PracticeViewControl';
+import { usePracticePresentation } from '@/hooks/use-practice-presentation';
 import {
   ALargeSmall,
   Check,
@@ -327,6 +329,7 @@ function ListeningAttempt({
   practiceMode: boolean;
   accessContextId?: string;
 }) {
+  const practicePresentation = usePracticePresentation(practiceMode);
   const [testData, setTestData] = useState<ListeningTestItem | null>(null);
   const [practiceResult, setPracticeResult] =
     useState<ListeningPracticeCheckResult | null>(null);
@@ -2662,6 +2665,7 @@ const renderModernPart = (partNumber: number) => {
       data-exam-translation="disabled"
       data-listening-part={bolum}
       data-practice={practiceMode || undefined}
+      data-practice-view={practiceMode ? practicePresentation.mode : undefined}
       style={{ color: "#37352f", ...typographyPreset.style }}
     >
         <span ref={preparedAudioHostRef} hidden aria-hidden="true" />
@@ -2705,6 +2709,7 @@ const renderModernPart = (partNumber: number) => {
                         {sectionTimerLoading ? "--:--" : formatTime(timeLeft)}
                       </div>
                     ) : null}
+                    {practiceMode ? <PracticeViewControl presentation={practicePresentation} /> : null}
                     {practiceMode ? (
                       <button
                         type="button"
@@ -2910,6 +2915,7 @@ const renderModernPart = (partNumber: number) => {
                   >
                     <Minimize2 className="h-4 w-4" />
                   </button> : null}
+                  {practiceMode ? <PracticeViewControl presentation={practicePresentation} /> : null}
                   {practiceMode ? (
                     <button
                       type="button"

@@ -21,6 +21,8 @@ import { toast } from "sonner";
 
 import { WRITING_PRACTICE_HELP_ENABLED } from "@/config/practiceFeatures";
 import PracticeDurationControl from "@/components/practice/PracticeDurationControl";
+import PracticeViewControl from '@/components/practice/PracticeViewControl';
+import { usePracticePresentation } from '@/hooks/use-practice-presentation';
 import WritingPracticeCorrections from "./WritingPracticeCorrections";
 import WritingPracticeHelp from "./WritingPracticeHelp";
 import ReadingSplitHandle from "@/components/reading-test/ui/ReadingSplitHandle";
@@ -65,6 +67,7 @@ const feedbackContext = (content: WritingPracticeContent) =>
   JSON.stringify({ version: WRITING_PRACTICE_FEEDBACK_VERSION, content });
 
 export default function WritingPracticeTest() {
+  const presentation = usePracticePresentation();
   const queryClient = useQueryClient();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -399,6 +402,7 @@ export default function WritingPracticeTest() {
     <div
       className="notranslate writing-practice-page flex h-dvh min-h-0 flex-col overflow-hidden bg-white font-sans text-[#37352f]"
       translate="no"
+      data-practice-view={presentation.mode}
       style={{ color: "#37352f", ...typography.style }}
     >
       <header className="z-50 shrink-0 border-b border-[#e5e5e2] bg-white">
@@ -411,6 +415,7 @@ export default function WritingPracticeTest() {
             />
             <span data-exam-section-divider className="hidden h-5 w-px bg-[#dededb] sm:block" />
             <span data-exam-section-title className="truncate text-[17px] font-semibold">Yazma</span>
+            <span className="ml-auto inline-flex"><PracticeViewControl presentation={presentation} /></span>
           </div>
           <PracticeDurationControl
             className="writing-practice-duration"

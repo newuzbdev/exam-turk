@@ -183,7 +183,10 @@ export default function StudentAppLayout() {
               : "lg:pl-60",
         )}
       >
-        <main className="min-h-[calc(100dvh-3.5rem)] min-w-0 lg:min-h-screen">
+        <main className={cn(
+          "min-w-0 lg:min-h-screen",
+          isReadingPracticeSessionPath(location.pathname) ? "min-h-0" : "min-h-[calc(100dvh-3.5rem)]",
+        )}>
           <Outlet />
         </main>
       </div>

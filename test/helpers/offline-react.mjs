@@ -37,7 +37,6 @@ export const deferred = () => {
 
 // Bundle local TS/TSX in memory. No Vite listener, app bootstrap or API client loads.
 export async function loadOfflineComponent(entryPoint, mocks = {}, { env = {} } = {}) {
-  globalThis.__writingTestDependencies = mocks;
   const result = await build({
     entryPoints: [entryPoint], bundle: true, write: false, platform: 'node', format: 'cjs',
     packages: 'external', jsx: 'automatic', tsconfig: 'tsconfig.app.json',
@@ -45,13 +44,13 @@ export async function loadOfflineComponent(entryPoint, mocks = {}, { env = {} } 
     plugins: [{ name: 'offline-boundaries', setup(builder) {
       builder.onResolve({ filter: /.*/ }, (args) => Object.hasOwn(mocks, args.path) ? { path: args.path, namespace: 'offline' } : undefined);
       builder.onLoad({ filter: /.*/, namespace: 'offline' }, (args) => ({
-        contents: `const dependency = globalThis.__writingTestDependencies[${JSON.stringify(args.path)}]; ${Object.keys(mocks[args.path]).map((key) => key === 'default' ? 'export default dependency.default;' : `export const ${key} = dependency.${key};`).join('\n')}`,
+        contents: `const dependency = __offlineTestDependencies[${JSON.stringify(args.path)}]; ${Object.keys(mocks[args.path]).map((key) => key === 'default' ? 'export default dependency.default;' : `export const ${key} = dependency.${key};`).join('\n')}`,
       }));
       builder.onLoad({ filter: /\.css$/ }, () => ({ contents: '', loader: 'js' }));
     } }],
   });
   const module = { exports: {} };
-  new Function('require', 'module', 'exports', result.outputFiles[0].text)(require, module, module.exports);
+  new Function('require', 'module', 'exports', '__offlineTestDependencies', result.outputFiles[0].text)(require, module, module.exports, mocks);
   return module.exports;
 }
 

@@ -124,6 +124,25 @@ const waitForFullscreenState = (
     });
   });
 
+// Practice offers native fullscreen separately from its ordinary wide layout.
+// Never report the mobile presentation fallback as browser fullscreen here.
+export const requestNativeFullscreen = async (): Promise<boolean> => {
+  if (typeof document === "undefined") return false;
+  if (getExamFullscreenElement()) return true;
+  const root = document.documentElement as VendorFullscreenElement;
+  const request = root.requestFullscreen?.bind(root) ||
+    root.webkitRequestFullscreen?.bind(root) ||
+    root.webkitRequestFullScreen?.bind(root) ||
+    root.msRequestFullscreen?.bind(root);
+  if (!request) return false;
+  try {
+    await Promise.resolve(request());
+    return waitForFullscreenState(true);
+  } catch {
+    return false;
+  }
+};
+
 export const requestExamFullscreen = async (): Promise<boolean> => {
   if (typeof document === "undefined") return false;
   if (getExamPresentationElement()) return true;

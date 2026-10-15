@@ -24,6 +24,8 @@ import { protectedImageProps } from "@/utils/mediaProtection";
 import { normalizeDisplayText } from "@/utils/text";
 import { SpeakingPracticeAudioPlayer } from "./SpeakingPracticeAudioPlayer";
 import SpeakingMobileDiscussionCard from "@/components/speaking-test/SpeakingMobileDiscussionCard";
+import PracticeViewControl from '@/components/practice/PracticeViewControl';
+import { usePracticePresentation } from '@/hooks/use-practice-presentation';
 
 type SpeakingQuestion = {
   id: string;
@@ -118,6 +120,7 @@ const pointText = (value: unknown): string => {
 };
 
 export default function SpeakingPracticeTest() {
+  const presentation = usePracticePresentation();
   const queryClient = useQueryClient();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -442,7 +445,7 @@ export default function SpeakingPracticeTest() {
   const currentRecording = recordings[recordingKey];
 
   return (
-    <div className="speaking-practice-page flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-white text-[#242424]" data-section-code={practice.sectionCode}>
+    <div className="speaking-practice-page flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-white text-[#242424]" data-section-code={practice.sectionCode} data-practice-view={presentation.mode}>
       <header className="z-50 flex min-h-[60px] shrink-0 items-center justify-between gap-2 border-b border-[#e5e5e2] bg-white px-3 sm:px-4">
         <div className="flex min-w-0 items-center gap-3">
           <img src="/logo11.svg" alt="TURKISHMOCK" className="h-10 w-[115px] object-contain sm:w-[150px]" />
@@ -450,6 +453,7 @@ export default function SpeakingPracticeTest() {
           <span data-exam-section-title className="hidden truncate text-[17px] font-semibold sm:block">Konuşma</span>
         </div>
         <div className="flex items-center justify-end gap-2">
+          <PracticeViewControl presentation={presentation} />
           <button
             type="button"
             onClick={() => setShowExit(true)}

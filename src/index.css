@@ -1336,6 +1336,12 @@ button, a, .interactive {
 }
 
 /* Lock overall page scroll during exam screens */
+@media (max-width: 1023px) {
+  :is(.writing-practice-page, .speaking-practice-page, .listening-exam-page[data-practice])[data-practice-view="menu"] {
+    height: calc(100dvh - 7.5rem - env(safe-area-inset-bottom));
+  }
+}
+
 html.exam-mode,
 body.exam-mode {
   overflow: hidden;

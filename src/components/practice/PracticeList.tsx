@@ -35,7 +35,6 @@ import PracticeLoadMore from './PracticeLoadMore';
 import { ROWS_PER_PAGE, useCatalogColumns } from '@/hooks/use-catalog-columns';
 import MembershipLockBadge from "@/components/subscription/MembershipLockBadge";
 import MembershipRequiredDialog from "@/components/subscription/MembershipRequiredDialog";
-import { useMobilePresentation } from "@/hooks/use-mobile-presentation";
 import {
   sortNumberedPractices,
   type PracticeNumberOrder,
@@ -131,8 +130,7 @@ export default function PracticeList({
 }) {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const mobile = useMobilePresentation();
-  const numberedSort = mobile && (domain === "SPEAKING" || domain === "WRITING");
+  const numberedSort = domain === "SPEAKING" || domain === "WRITING";
   const [numberOrder, setNumberOrder] = useState(() => readNumberOrder(domain));
   const [filters, setFilters] = useState(() => readSavedFilters(domain));
   const columns = useCatalogColumns();
@@ -187,14 +185,11 @@ export default function PracticeList({
       if (numberedSort) return sortNumberedPractices(matchingItems, numberOrder);
       return matchingItems.sort((a, b) => {
         if (access.enabled) return 0; // Keep the server public-first order.
-        const difference =
-          domain === "SPEAKING"
-            ? a.title.localeCompare(b.title, "tr", { numeric: true })
-            : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        const difference = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         return sort === "newest" ? difference : -difference;
       });
     },
-    [domain, items, level, section, sort, access.enabled, numberedSort, numberOrder],
+    [items, level, section, sort, access.enabled, numberedSort, numberOrder],
   );
   const visibleItems = filtered.slice(0, visibleRows * columns);
   const availableSections = new Set(items.map((item) => item.sectionCode));
@@ -324,10 +319,10 @@ export default function PracticeList({
             ) : (
               <>
                 <SelectItem value="newest" className={selectItemClass}>
-                  {domain === "SPEAKING" ? "Numara: 1–7" : "En yeni"}
+                  En yeni
                 </SelectItem>
                 <SelectItem value="oldest" className={selectItemClass}>
-                  {domain === "SPEAKING" ? "Numara: 7–1" : "En eski"}
+                  En eski
                 </SelectItem>
               </>
             )}

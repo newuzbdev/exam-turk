@@ -135,6 +135,16 @@
     display: inline !important;
   }
 
+  .speaking-practice-page > header {
+    flex-wrap: wrap;
+    padding-block: 8px;
+  }
+  .speaking-practice-page > header > div:first-child {
+    flex: 1 0 115px;
+  }
+  .speaking-practice-page > header > div:last-child {
+    margin-left: auto;
+  }
   .speaking-practice-page[data-section-code="TASK_1_1"] > main {
     padding: 20px 16px 32px;
   }

@@ -88,14 +88,17 @@ for (const domain of Object.keys(definitions)) {
   });
 }
 
-for (const domain of ['WRITING', 'SPEAKING']) test(`${domain} mobile number sorting includes titles outside the visible rows`, async () => {
-  const view = await setup(domain, 390);
+for (const domain of ['WRITING', 'SPEAKING']) for (const [width, initial, lastNumber] of [[390, 10, 56], [800, 20, 46], [1280, 30, 36]]) test(`${domain} at ${width}px number sorting includes titles outside the visible rows`, async () => {
+  const view = await setup(domain, width);
   try {
     assert.ok(more(view));
     await act(async () => more(view).click());
     await select(view, 'Pratikleri sırala', 'Numara: azalan');
-    assert.equal(cards(view).length, 10);
+    assert.equal(cards(view).length, initial);
     assert.equal(cards(view)[0].querySelector('h3').textContent, `${definitions[domain][0]} 65`);
-    assert.equal(cards(view)[9].querySelector('h3').textContent, `${definitions[domain][0]} 56`);
+    assert.equal(cards(view).at(-1).querySelector('h3').textContent, `${definitions[domain][0]} ${lastNumber}`);
+    await select(view, 'Pratikleri sırala', 'Numara: artan');
+    assert.equal(cards(view).length, initial);
+    assert.equal(cards(view)[0].querySelector('h3').textContent, `${definitions[domain][0]} 1`);
   } finally { await view.close(); }
 });

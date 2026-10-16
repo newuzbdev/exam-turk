@@ -1,3 +1,7 @@
+import PracticeViewControl from "@/components/practice/PracticeViewControl";
+import type { PracticePresentation } from "@/hooks/use-practice-presentation";
+import { PracticeDictionaryCard, PracticeDictionaryText } from "@/components/practice/PracticeDictionary";
+import type { DictionaryCard, PracticeDictionaryEntry } from "@/components/practice/practice-dictionary";
 import {
   Fragment,
   useCallback,
@@ -13,6 +17,7 @@ import {
 import { createPortal } from "react-dom";
 import {
   ALargeSmall,
+  BookOpen,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -38,6 +43,7 @@ import { toApiUrl } from "@/config/runtime";
 import { overallTestService } from "@/services/overallTest.service";
 import { protectedImageProps } from "@/utils/mediaProtection";
 import ReadingEvidenceExplanation from "./ReadingEvidenceExplanation";
+import ListeningPracticeAudioPlayer from "@/components/listening-test/ListeningPracticeAudioPlayer";
 import {
   answerValues,
   formatCorrectAnswers,
@@ -50,6 +56,7 @@ import {
 
 type ListeningTranscriptEvidenceViewProps = {
   resultId?: string;
+  practice?: { audioUrl: string | null; correct: number; total: number; presentation?: PracticePresentation; glossarySections?: Array<{ sectionId: string; entries: PracticeDictionaryEntry[] }> };
   review: MockReviewV1;
   onClose: () => void;
 };
@@ -287,13 +294,14 @@ const evidenceSpansForQuestion = (question: MockReviewQuestion) => {
 
 const buildTranscriptDocuments = (
   part: ListeningReviewPart,
+  practice = false,
 ): TranscriptDocument[] =>
   part.sections.map((section) => {
     const formatted = parseFormattedListeningTranscript(
       section.sourceText,
       section.formattedSourceText,
     );
-    const ranges = ([1, 5].includes(part.number) ? [] : section.questions || []).flatMap((question) =>
+    const ranges = (!practice && [1, 5].includes(part.number) ? [] : section.questions || []).flatMap((question) =>
       evidenceSpansForQuestion(question).flatMap((span) => {
         const exact =
           span.end <= formatted.text.length &&
@@ -654,7 +662,7 @@ function TranscriptEvidenceMark({
   };
 
   return (
-    <span ref={anchorRef} className="relative inline">
+    <span ref={anchorRef} data-evidence-question={evidence.questionId} className="relative inline">
       {startsEvidence ? (
         <>
           <span className="whitespace-nowrap">
@@ -664,7 +672,7 @@ function TranscriptEvidenceMark({
               className={`reading-review-evidence listening-transcript-evidence-label -mr-px inline-flex h-[22px] min-w-[34px] items-center justify-center rounded-l-[3px] rounded-r-none bg-[#256b2b] px-1.5 align-[2px] text-[13px] font-bold leading-5 text-white transition-colors ${
                 active ? "bg-[#174d20]" : ""
               }`}
-              aria-label={`${evidenceLabel} kanıtını dinle ve açıkla`}
+              aria-label={`${evidenceLabel} cevap cümlesi`}
               aria-pressed={open}
             >
               {evidenceLabel}
@@ -770,9 +778,13 @@ function useDesktopLayout() {
 
 export default function ListeningTranscriptEvidenceView({
   resultId,
+  practice,
   review,
   onClose,
 }: ListeningTranscriptEvidenceViewProps) {
+  const isPractice = Boolean(practice);
+  const hasDictionary = Boolean(practice?.glossarySections?.some(section => section.entries.length > 0));
+  const practiceAudioUrl = practice?.audioUrl;
   const parts = useMemo(() => groupReviewParts(review), [review]);
   const [currentPartNumber, setCurrentPartNumber] = useState(
     parts[0]?.number || 1,
@@ -784,12 +796,17 @@ export default function ListeningTranscriptEvidenceView({
   const [openEvidenceSegmentKey, setOpenEvidenceSegmentKey] = useState("");
   const [openQuestionExplanationId, setOpenQuestionExplanationId] =
     useState("");
-  const [showDescription, setShowDescription] = useState(true);
+  const [showDescription, setShowDescription] = useState(!practice);
+  const [dictionaryMode, setDictionaryMode] = useState(false);
+  const [dictionaryPanelVisible, setDictionaryPanelVisible] = useState(false);
+  const [selectedDictionary, setSelectedDictionary] = useState<DictionaryCard | null>(null);
+  const [mobileReviewTab, setMobileReviewTab] = useState<"transcript" | "answers">("transcript");
   const [fontScale, setFontScale] = useState(1);
   const [audioUrl, setAudioUrl] = useState("");
   const [audioLoading, setAudioLoading] = useState(false);
   const [audioError, setAudioError] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const reviewRef = useRef<HTMLElement>(null);
   const sentenceEndMsRef = useRef<number | null>(null);
   const sentenceFrameRef = useRef<number | null>(null);
   const startSentenceWatchRef = useRef<(() => void) | null>(null);
@@ -803,8 +820,8 @@ export default function ListeningTranscriptEvidenceView({
     parts.findIndex((part) => part.number === currentPart?.number),
   );
   const transcriptDocuments = useMemo(
-    () => (currentPart ? buildTranscriptDocuments(currentPart) : []),
-    [currentPart],
+    () => (currentPart ? buildTranscriptDocuments(currentPart, isPractice) : []),
+    [currentPart, isPractice],
   );
   const typographyPreset = getReadingTypographyPreset(fontScale);
 
@@ -820,6 +837,20 @@ export default function ListeningTranscriptEvidenceView({
   );
 
   useEffect(() => {
+    if (!isPractice || !reviewRef.current) return;
+    const panel = reviewRef.current;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const siblings = Array.from(panel.parentElement?.children ?? []).filter((node): node is HTMLElement => node instanceof HTMLElement && node !== panel);
+    const previousInert = siblings.map(node => node.inert);
+    siblings.forEach(node => { node.inert = true; });
+    panel.focus();
+    return () => {
+      siblings.forEach((node, index) => { node.inert = previousInert[index]; });
+      if (previouslyFocused?.isConnected) previouslyFocused.focus();
+    };
+  }, [isPractice]);
+
+  useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -833,6 +864,12 @@ export default function ListeningTranscriptEvidenceView({
   }, [onClose]);
 
   useEffect(() => {
+    if (isPractice) {
+      setAudioUrl(practiceAudioUrl ? toApiUrl(practiceAudioUrl) : "");
+      setAudioLoading(false);
+      setAudioError(!practiceAudioUrl);
+      return;
+    }
     if (!resultId || !firstAudioQuestion) {
       setAudioError(true);
       return;
@@ -864,7 +901,7 @@ export default function ListeningTranscriptEvidenceView({
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [firstAudioQuestion, resultId]);
+  }, [firstAudioQuestion, resultId, isPractice, practiceAudioUrl]);
 
   useEffect(() => {
     if (
@@ -969,6 +1006,12 @@ export default function ListeningTranscriptEvidenceView({
     setActiveEvidenceKey(matchingEvidence?.key || "");
     setOpenEvidenceSegmentKey("");
     setOpenQuestionExplanationId("");
+    if (practice) window.requestAnimationFrame(() => {
+      const target = !isDesktopLayout && mobileReviewTab === "answers"
+        ? document.getElementById(`listening-review-question-${question.number}`)
+        : Array.from(document.querySelectorAll<HTMLElement>("[data-evidence-question]")).find((element) => element.dataset.evidenceQuestion === question.questionId);
+      target?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    });
   };
 
   const toggleQuestionExplanation = (question: MockReviewQuestion) => {
@@ -993,12 +1036,12 @@ export default function ListeningTranscriptEvidenceView({
     setOpenQuestionExplanationId("");
     const displayKey = `${segmentKey}:${evidence.key}`;
     setOpenEvidenceSegmentKey((current) =>
-      current === displayKey ? "" : displayKey,
+      practice ? "" : current === displayKey ? "" : displayKey,
     );
     if (evidence.audioStartMs != null) {
       seekToMs(evidence.audioStartMs, evidence.audioEndMs);
     }
-    window.requestAnimationFrame(() => {
+    if (!practice || isDesktopLayout) window.requestAnimationFrame(() => {
       document
         .getElementById(
           `listening-review-question-${evidence.questionNumber}`,
@@ -1049,7 +1092,7 @@ export default function ListeningTranscriptEvidenceView({
         </button>
 
         {matching ? (
-          <div className="ml-12 mt-3 grid gap-2 sm:grid-cols-2">
+          <div className={`ml-12 mt-3 grid gap-2 ${practice ? "grid-cols-2" : "sm:grid-cols-2"}`}>
             <div className="rounded-[6px] border border-[#dededb] bg-white px-3 py-2">
               <span className="block text-[11px] font-semibold uppercase tracking-[0.04em] text-[#787774]">
                 Cevabınız
@@ -1142,9 +1185,9 @@ export default function ListeningTranscriptEvidenceView({
             data-listening-question-explanation
             onClick={() => toggleQuestionExplanation(question)}
             aria-expanded={explanationOpen}
-            className="inline-flex min-h-8 items-center rounded-[6px] border border-[#d8d8d4] bg-white px-3 text-[12px] font-semibold text-[#37352f] transition-colors hover:bg-[#f1f1ef] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8a8881] focus-visible:ring-offset-1"
+            className="inline-flex min-h-9 items-center rounded-[6px] border border-[#d8d8d4] bg-white px-3 text-[12px] font-semibold text-[#37352f] transition-colors hover:bg-[#f1f1ef] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8a8881] focus-visible:ring-offset-1"
           >
-            Neden doğru?
+            {practice ? "Neden?" : "Neden doğru?"}
           </button>
 
           {explanationOpen ? (
@@ -1165,10 +1208,30 @@ export default function ListeningTranscriptEvidenceView({
 
   return (
     <section
-      className="reading-exam-page fixed inset-0 z-[120] flex h-[100dvh] flex-col overflow-hidden bg-white font-sans text-[#242424]"
+      className={`reading-exam-page ${practice ? "absolute h-full" : "fixed h-[100dvh]"} inset-0 z-[120] flex flex-col overflow-hidden bg-white font-sans text-[#242424]`}
       style={typographyPreset.style}
+      ref={reviewRef}
+      role={practice ? "dialog" : undefined}
+      aria-modal={practice ? practice.presentation?.mode !== "menu" : undefined}
+      tabIndex={practice ? -1 : undefined}
       aria-label="Dinleme sonuç incelemesi"
     >
+      {practice ? (
+        <header className="shrink-0 border-b border-[#e5e5e2] bg-white px-3 py-2 sm:px-4">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:gap-x-5">
+            <img src="/logo11.svg" alt="TURKISHMOCK" className="h-8 w-[110px] shrink-0 object-contain sm:h-10 sm:w-[150px]" />
+            <div className="order-3 col-span-2 min-w-0 lg:order-2 lg:col-span-1 lg:mx-auto lg:w-full lg:max-w-[560px]">
+              {audioUrl && !audioError ? <ListeningPracticeAudioPlayer src={audioUrl} audioRef={audioRef} onError={() => setAudioError(true)} className="w-full" /> : <p className="text-xs text-[#787774]">{audioLoading ? "Ses yükleniyor" : "Ses kaydı şu anda oynatılamıyor."}</p>}
+            </div>
+            <div className="order-2 flex items-center justify-end gap-1 lg:order-3">
+              <span className="mr-1 whitespace-nowrap text-xs font-semibold tabular-nums text-[#5f5e5a]" aria-label={`${practice.correct} / ${practice.total} doğru`}>{practice.correct}/{practice.total}</span>
+              <button type="button" aria-label="Sözlük" title={hasDictionary ? "Sözlük" : "Bu pratiğe henüz sözlük eklenmemiş"} disabled={!hasDictionary} aria-pressed={dictionaryMode} className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-[#64645f] hover:bg-[#f1f1ef] disabled:opacity-40 ${dictionaryMode ? "bg-[#eeeeeb] text-[#242424]" : ""}`} onClick={() => { const next = !dictionaryMode; audioRef.current?.pause(); setDictionaryMode(next); if (next) setMobileReviewTab("transcript"); setDictionaryPanelVisible(next); setSelectedDictionary(null); }}><BookOpen className="h-4 w-4" /></button>
+              {practice.presentation ? <PracticeViewControl presentation={practice.presentation} /> : null}
+              <button type="button" onClick={onClose} aria-label="İncelemeyi kapat" title="Soru listesine dön" className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-[#64645f] hover:bg-[#f1f1ef]"><X className="h-4 w-4" /></button>
+            </div>
+          </div>
+        </header>
+      ) : (
       <header className="shrink-0 border-b border-[#e5e5e2] bg-white">
         <div className="px-2 sm:px-4">
           <div className="grid h-[60px] grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 lg:grid-cols-[auto_1fr_auto] lg:gap-4">
@@ -1176,13 +1239,13 @@ export default function ListeningTranscriptEvidenceView({
               <img
                 src="/logo11.svg"
                 alt="TURKISHMOCK"
-                className="hidden h-10 w-auto shrink-0 object-contain sm:block"
+                className={practice ? "h-7 w-[138px] shrink-0 object-contain sm:h-10 sm:w-auto" : "hidden h-10 w-auto shrink-0 object-contain sm:block"}
               />
               <span
                 aria-hidden="true"
                 className="hidden h-5 w-px shrink-0 bg-[#dededb] sm:block"
               />
-              <span className="truncate text-[17px] font-semibold text-[#37352f]">
+              <span className={`${practice ? "hidden sm:block" : ""} truncate text-[17px] font-semibold text-[#37352f]`}>
                 Dinleme
               </span>
             </div>
@@ -1196,7 +1259,7 @@ export default function ListeningTranscriptEvidenceView({
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="flex h-8 w-8 items-center justify-center rounded border border-[#dededb] bg-white text-[#5f5e5a] transition-colors hover:bg-[#f7f7f5] hover:text-[#37352f]"
+                    className="hidden h-8 w-8 items-center justify-center rounded border border-[#dededb] bg-white text-[#5f5e5a] transition-colors hover:bg-[#f7f7f5] hover:text-[#37352f] sm:flex"
                     aria-label="Yazı boyutu"
                     title="Yazı boyutu"
                   >
@@ -1236,10 +1299,12 @@ export default function ListeningTranscriptEvidenceView({
           </div>
         </div>
       </header>
+      )}
 
-      <section className="mx-2 mt-2 shrink-0 border-b border-[#e5e5e2] bg-white px-3 py-3 sm:mx-4 sm:px-4">
+      {!practice ? (
+      <section className={`mx-2 mt-2 shrink-0 border-b border-[#e5e5e2] bg-white px-3 sm:mx-4 sm:px-4 ${practice ? "py-2" : "py-3"}`}>
         <div
-          className={`flex items-center justify-between gap-3 ${
+          className={`${practice ? "hidden sm:flex" : "flex"} items-center justify-between gap-3 ${
             showDescription ? "mb-1.5" : ""
           }`}
         >
@@ -1267,7 +1332,7 @@ export default function ListeningTranscriptEvidenceView({
           </p>
         ) : null}
 
-        <div className="mt-3 flex min-h-11 items-center rounded-[8px] border border-[#d6e3d6] bg-[#f7faf7] px-3 py-2">
+        <div className={practice ? "flex min-h-10 items-center sm:mt-2" : "mt-3 flex min-h-11 items-center rounded-[8px] border border-[#d6e3d6] bg-[#f7faf7] px-3 py-2"}>
           {audioLoading ? (
             <div className="flex items-center gap-2 text-[13px] font-medium text-[#526b57]">
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -1277,6 +1342,8 @@ export default function ListeningTranscriptEvidenceView({
             <p className="text-[13px] font-medium text-[#7c4545]">
               Ses kaydı şu anda oynatılamıyor.
             </p>
+          ) : practice ? (
+            <ListeningPracticeAudioPlayer src={audioUrl} audioRef={audioRef} onError={() => setAudioError(true)} className="w-full" />
           ) : (
             <audio
               ref={audioRef}
@@ -1289,7 +1356,15 @@ export default function ListeningTranscriptEvidenceView({
           )}
         </div>
       </section>
+      ) : null}
 
+      {practice && !isDesktopLayout ? (
+        <div className="flex shrink-0 border-b border-[#e5e5e2] px-4" role="tablist" aria-label="Pratik incelemesi">
+          {([['transcript', 'Transkript'], ['answers', 'Cevaplar']] as const).map(([tab, label]) => (
+            <button type="button" key={tab} role="tab" aria-selected={mobileReviewTab === tab} aria-controls={`practice-review-${tab}`} id={`practice-review-tab-${tab}`} className={`min-h-11 flex-1 border-b-2 text-sm font-semibold ${mobileReviewTab === tab ? "border-[#ed0014] text-[#37352f]" : "border-transparent text-[#787774]"}`} onClick={() => setMobileReviewTab(tab)}>{label}</button>
+          ))}
+        </div>
+      ) : null}
       <main className="min-h-0 flex-1 overflow-y-auto bg-white lg:overflow-hidden">
         {isDesktopLayout ? (
           <ResizablePanelGroup
@@ -1302,6 +1377,7 @@ export default function ListeningTranscriptEvidenceView({
                 aria-label="Tam transkript"
               >
                 <TranscriptPanel
+                  dictionary={dictionaryMode && practice ? { sections: practice.glossarySections || [], selectedTerm: selectedDictionary?.term, onSelect: (entry) => { setSelectedDictionary(entry); setDictionaryPanelVisible(true); } } : undefined}
                   documents={transcriptDocuments}
                   activeEvidenceKey={activeEvidenceKey}
                   openEvidenceSegmentKey={openEvidenceSegmentKey}
@@ -1329,7 +1405,7 @@ export default function ListeningTranscriptEvidenceView({
                           (section) => section.imageUrl,
                         )?.imageUrl,
                       )}
-                      alt="Sorular 19-23 için harita"
+                      alt="Dinleme sorularının haritası"
                       className="mx-auto block max-h-[380px] w-full object-contain"
                     />
                   </div>
@@ -1341,10 +1417,14 @@ export default function ListeningTranscriptEvidenceView({
         ) : (
           <div className="grid min-h-full">
             <section
-              className="border-b border-[#e5e5e2] bg-white px-4 py-5"
+              className={`${practice && mobileReviewTab !== "transcript" ? "hidden" : ""} border-b border-[#e5e5e2] bg-white px-4 py-5`}
+              id="practice-review-transcript"
+              role={practice ? "tabpanel" : undefined}
+              aria-labelledby={practice ? "practice-review-tab-transcript" : undefined}
               aria-label="Tam transkript"
             >
               <TranscriptPanel
+                dictionary={dictionaryMode && practice ? { sections: practice.glossarySections || [], selectedTerm: selectedDictionary?.term, onSelect: (entry) => { setSelectedDictionary(entry); setDictionaryPanelVisible(true); } } : undefined}
                 documents={transcriptDocuments}
                 activeEvidenceKey={activeEvidenceKey}
                 openEvidenceSegmentKey={openEvidenceSegmentKey}
@@ -1355,7 +1435,10 @@ export default function ListeningTranscriptEvidenceView({
               />
             </section>
             <section
-              className="bg-white"
+              className={practice && mobileReviewTab !== "answers" ? "hidden" : "bg-white"}
+              id="practice-review-answers"
+              role={practice ? "tabpanel" : undefined}
+              aria-labelledby={practice ? "practice-review-tab-answers" : undefined}
               aria-label="Sorular ve cevaplar"
             >
               {currentPart.number === 4 &&
@@ -1367,7 +1450,7 @@ export default function ListeningTranscriptEvidenceView({
                     currentPart.sections.find((section) => section.imageUrl)
                       ?.imageUrl,
                   )}
-                  alt="Sorular 19-23 için harita"
+                  alt="Dinleme sorularının haritası"
                   className="mx-auto max-h-[360px] w-full object-contain p-4"
                 />
               ) : null}
@@ -1380,7 +1463,7 @@ export default function ListeningTranscriptEvidenceView({
       <footer className="z-50 shrink-0 border-t border-[#e5e5e2] bg-white">
         <div className="mx-auto flex max-w-[1440px] items-center gap-3 px-4 py-2">
           <nav
-            className="flex shrink-0 items-center gap-1"
+            className={`${practice ? "hidden" : "flex"} shrink-0 items-center gap-1`}
             aria-label="Dinleme bölümleri"
           >
             {parts.map((part) => {
@@ -1402,7 +1485,7 @@ export default function ListeningTranscriptEvidenceView({
             })}
           </nav>
 
-          <div className="h-6 w-px shrink-0 bg-[#e5e5e2]" />
+          {!practice ? <div className="h-6 w-px shrink-0 bg-[#e5e5e2]" /> : null}
 
           <nav
             className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto"
@@ -1430,7 +1513,7 @@ export default function ListeningTranscriptEvidenceView({
             })}
           </nav>
 
-          <div className="flex shrink-0 items-center gap-1">
+          <div className={`${practice ? "hidden" : "flex"} shrink-0 items-center gap-1`}>
             <button
               type="button"
               onClick={() => selectPartByOffset(-1)}
@@ -1454,11 +1537,13 @@ export default function ListeningTranscriptEvidenceView({
           </div>
         </div>
       </footer>
+      {practice && dictionaryMode && dictionaryPanelVisible ? <PracticeDictionaryCard selected={selectedDictionary} onClose={() => { setDictionaryPanelVisible(false); setSelectedDictionary(null); }} className="bottom-16 z-[180]" /> : null}
     </section>
   );
 }
 
 function TranscriptPanel({
+  dictionary,
   documents,
   activeEvidenceKey,
   openEvidenceSegmentKey,
@@ -1467,6 +1552,7 @@ function TranscriptPanel({
   onActivateEvidence,
   onActivateSentence,
 }: {
+  dictionary?: { sections: Array<{ sectionId: string; entries: PracticeDictionaryEntry[] }>; selectedTerm?: string; onSelect: (entry: DictionaryCard) => void };
   documents: TranscriptDocument[];
   activeEvidenceKey: string;
   openEvidenceSegmentKey: string;
@@ -1484,13 +1570,8 @@ function TranscriptPanel({
 
   return (
     <div className="mx-auto w-full max-w-[880px]">
-      <div className="mb-4 flex items-baseline justify-between gap-4 border-b border-[#e5e5e2] pb-3">
-        <h3 className="reading-part-heading">
-          Transkript
-        </h3>
-        <span className="text-[12px] font-medium text-[#787774]">
-          Bir cümleye tıklayarak o noktadan dinleyin
-        </span>
+      <div className="mb-3 border-b border-[#e5e5e2] pb-2">
+        <h3 className="text-sm font-semibold text-[#37352f]">Transkript</h3>
       </div>
 
       {hasTranscript ? (
@@ -1507,10 +1588,28 @@ function TranscriptPanel({
               {groupTranscriptSegments(document.segments).map((group) => (
                 <TranscriptSentenceGroupMark
                   key={group.key}
-                  group={group}
+                  group={dictionary ? { ...group, timingRef: undefined } : group}
                   onActivate={onActivateSentence}
                 >
                   {group.segments.map((segment) => {
+                    if (dictionary) {
+                      const entries = dictionary.sections.find(section => section.sectionId === document.sectionId)?.entries || [];
+                      const source = document.segments.map(piece => piece.text).join("");
+                      const firstWord = segment.text.match(/^\S+/u)?.[0] || "";
+                      const prefixLength = segment.startingEvidenceRefs.length ? firstWord.length : 0;
+                      const textProps = { source, entries, selectedTerm: dictionary.selectedTerm, onSelect: dictionary.onSelect };
+                      return (
+                        <span key={segment.key} className={segment.evidenceRefs.length ? "bg-[#e5f1dc]" : ""} style={{ fontWeight: segment.bold ? 600 : undefined, fontStyle: segment.italic ? "italic" : undefined }}>
+                          {prefixLength > 0 ? (
+                            <span className="whitespace-nowrap">
+                              {segment.startingEvidenceRefs.map(ref => <span key={ref.key} className="listening-transcript-evidence-label mr-0.5 inline-flex items-center justify-center rounded-sm bg-[#426c3b] text-white">S{ref.questionNumber}</span>)}
+                              <PracticeDictionaryText {...textProps} text={firstWord} offset={segment.start} />
+                            </span>
+                          ) : null}
+                          <PracticeDictionaryText {...textProps} text={segment.text.slice(prefixLength)} offset={segment.start + prefixLength} />
+                        </span>
+                      );
+                    }
                     if (segment.evidenceRefs.length === 0) {
                       return (
                         <span

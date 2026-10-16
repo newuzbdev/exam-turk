@@ -1155,6 +1155,33 @@ button, a, .interactive {
   line-height: calc(var(--reading-heading-line-height, 24px) * var(--reading-font-scale, 1));
 }
 
+.practice-part-heading {
+  color: #37352f;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+/* Inline transcript markers share the whole sentence's touch target. */
+.listening-transcript-evidence-label {
+  min-width: 25px;
+  min-height: 0;
+  height: 20px;
+  padding: 0 4px;
+  font-size: 11px;
+  line-height: 20px;
+  vertical-align: 1px;
+}
+
+.practice-dictionary-word {
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  font: inherit;
+  line-height: inherit;
+  vertical-align: baseline;
+}
+
 .reading-part-description {
   color: var(--reading-color-muted, #5f5e5a);
   font-size: calc(16px * var(--reading-font-scale, 1));

@@ -73,6 +73,9 @@ export type WritingPracticeContent = {
 };
 
 export type ListeningPracticeCheckResult = {
+  glossarySections?: Array<{ sectionId: string; entries: import("@/components/practice/practice-dictionary").PracticeDictionaryEntry[] }>;
+  review?: import("@/components/results/evidence-review-utils").MockReviewV1;
+  audioUrl?: string | null;
   total: number;
   answered: number;
   correct: number;

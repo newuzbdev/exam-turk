@@ -1,4 +1,6 @@
-﻿import {
+import ListeningPracticeAudioPlayer from "./ListeningPracticeAudioPlayer";
+import ListeningTranscriptEvidenceView from "@/components/results/ListeningTranscriptEvidenceView";
+import {
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -333,6 +335,8 @@ function ListeningAttempt({
   const [testData, setTestData] = useState<ListeningTestItem | null>(null);
   const [practiceResult, setPracticeResult] =
     useState<ListeningPracticeCheckResult | null>(null);
+  const [showPracticeReview, setShowPracticeReview] = useState(false);
+  const closePracticeReview = useCallback(() => setShowPracticeReview(false), []);
   const [userAnswers, setUserAnswers] = useState<UserAnswers>({});
   const [currentPartNumber, setCurrentPartNumber] = useState<number>(1);
   const [loading, setLoading] = useState(true);
@@ -340,7 +344,7 @@ function ListeningAttempt({
   const [contentRetryKey, setContentRetryKey] = useState(0);
   const [timeLeft, setTimeLeft] = useState<number>(600); // 10 minutes in seconds
   const [timerActive, setTimerActive] = useState<boolean>(false);
-  const [showDescription, setShowDescription] = useState(() => !isMobilePresentation());
+  const [showDescription, setShowDescription] = useState(() => !practiceMode && !isMobilePresentation());
   const [showReviewNotice, setShowReviewNotice] = useState(false);
   const [audioMuted, setAudioMuted] = useState(false);
   const [activeAudioUrl, setActiveAudioUrl] = useState<string | null>(null);
@@ -2112,7 +2116,7 @@ const renderModernPart = (partNumber: number) => {
         <ResizablePanelGroup
           key="listening-part-4-panels"
           direction="horizontal"
-          className="hidden h-full min-h-[520px] overflow-hidden border-y border-[#e5e5e2] lg:flex"
+          className={`hidden h-full min-h-[520px] overflow-hidden ${practiceMode ? "border-b" : "border-y"} border-[#e5e5e2] lg:flex`}
         >
           <ResizablePanel defaultSize={52} minSize={40}>
             {renderMapPanel(false)}
@@ -2402,6 +2406,8 @@ const renderModernPart = (partNumber: number) => {
           { accessContextId },
         );
         setPracticeResult(result);
+        stopAllMediaPlayback();
+        setShowPracticeReview(true);
         setTimerActive(false);
         toast.success(`${result.correct} / ${result.total} doğru cevap`);
         return;
@@ -2562,6 +2568,7 @@ const renderModernPart = (partNumber: number) => {
 
 
   const handleSubmitClick = () => {
+    if (practiceMode && practiceResult?.review) { stopAllMediaPlayback(); setShowPracticeReview(true); return; }
     setShowConfirmModal(true);
   };
 
@@ -2589,7 +2596,7 @@ const renderModernPart = (partNumber: number) => {
   const submitLabel = sectionTimerLoading
     ? "Yükleniyor"
     : practiceMode
-      ? "Kontrol Et"
+      ? practiceResult?.review ? `Sonuçlar · ${practiceResult.correct}/${practiceResult.total}` : "Kontrol Et"
       : "GÖNDER";
   const submitConfirmationMessage = practiceMode
     ? "Cevaplarınızı kontrol etmek istiyor musunuz? Kontrolden sonra cevaplarınızı değiştirmeye devam edebilirsiniz."
@@ -2660,7 +2667,7 @@ const renderModernPart = (partNumber: number) => {
 
   return (
     <div
-      className="notranslate reading-exam-page listening-exam-page h-screen-mobile flex flex-col overflow-hidden bg-white font-sans text-[#37352f]"
+      className="relative notranslate reading-exam-page listening-exam-page h-screen-mobile flex flex-col overflow-hidden bg-white font-sans text-[#37352f]"
       translate="no"
       data-exam-translation="disabled"
       data-listening-part={bolum}
@@ -2735,7 +2742,13 @@ const renderModernPart = (partNumber: number) => {
                 </div>
 
                 <div className="listening-mobile-audio-row mt-2 flex items-center gap-2">
-                  {!isLg && activeAudioUrl && !isSubmitting && (
+                  {practiceMode && activeAudioUrl && !isSubmitting ? (
+                    <ListeningPracticeAudioPlayer
+                      className="flex-1"
+                      src={activeAudioUrl.startsWith("blob:") || activeAudioUrl.startsWith("http://") || activeAudioUrl.startsWith("https://") ? activeAudioUrl : toApiUrl(activeAudioUrl)}
+                    />
+                  ) : null}
+                  {!practiceMode && !isLg && activeAudioUrl && !isSubmitting && (
                     <div className="min-w-0 flex-1 overflow-hidden rounded-lg">
                       <AudioPlayer
                         src={
@@ -2803,7 +2816,7 @@ const renderModernPart = (partNumber: number) => {
               </div>
 
               {/* Desktop Header - Horizontal Layout */}
-              <div className="hidden w-full items-center gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+              <div className={`hidden w-full items-center gap-4 lg:grid ${practiceMode ? "lg:grid-cols-[auto_minmax(0,1fr)]" : "lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]"}`}>
                 <div className="flex min-w-0 items-center gap-3">
                   <img 
                     src="/logo11.svg" 
@@ -2819,7 +2832,7 @@ const renderModernPart = (partNumber: number) => {
                     Dinleme
                   </div>
                 </div>
-                <div className="flex min-w-[92px] justify-center justify-self-center">
+                <div className={`${practiceMode ? "hidden" : "flex"} min-w-[92px] justify-center justify-self-center`}>
                   {!practiceMode && showReviewTimer ? (
                     <div
                       className={`flex items-center gap-2 rounded border px-3 py-1.5 leading-none ${
@@ -2837,8 +2850,14 @@ const renderModernPart = (partNumber: number) => {
                     </div>
                   ) : null}
                 </div>
-                <div className="flex items-center gap-2 justify-self-end">
-                  {isLg && activeAudioUrl && !isSubmitting && (
+                <div className="flex min-w-0 items-center gap-2 justify-self-end">
+                  {practiceMode && activeAudioUrl && !isSubmitting ? (
+                    <ListeningPracticeAudioPlayer
+                      className="w-[420px] xl:w-[520px]"
+                      src={activeAudioUrl.startsWith("blob:") || activeAudioUrl.startsWith("http://") || activeAudioUrl.startsWith("https://") ? activeAudioUrl : toApiUrl(activeAudioUrl)}
+                    />
+                  ) : null}
+                  {!practiceMode && isLg && activeAudioUrl && !isSubmitting && (
                     <AudioPlayer
                       src={
                         activeAudioUrl.startsWith("blob:") ||
@@ -2943,9 +2962,9 @@ const renderModernPart = (partNumber: number) => {
           </div>
         </header>
 
-        <section className="practice-section-heading mx-2 mt-2 shrink-0 border-b border-[#e5e5e2] bg-white px-3 py-3.5 sm:mx-4 sm:px-4">
+        <section className={practiceMode ? "practice-section-heading shrink-0 border-b border-[#e5e5e2] bg-white px-5 py-0 sm:py-1.5 sm:px-8" : "practice-section-heading mx-2 mt-2 shrink-0 border-b border-[#e5e5e2] bg-white px-3 py-3.5 sm:mx-4 sm:px-4"}>
           <div className={`flex items-center justify-between gap-3 ${showDescription ? "mb-1.5" : ""}`}>
-            <h2 className="reading-part-heading">Bölüm {bolum}</h2>
+            <h2 className={practiceMode ? "practice-part-heading" : "reading-part-heading"}>Bölüm {bolum}</h2>
             <button
               type="button"
               onClick={() => setShowDescription((value) => !value)}
@@ -2968,19 +2987,6 @@ const renderModernPart = (partNumber: number) => {
           )}
         </section>
         <div className="shrink-0 px-2 sm:px-4">
-          {practiceResult ? (
-            <div
-              role="status"
-              className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-[#cfd8cf] bg-[#f5faf5] px-4 py-3 text-[#31513a]"
-            >
-              <span className="text-sm font-semibold">
-                {practiceResult.correct} / {practiceResult.total} doğru cevap
-              </span>
-              <span className="text-xs">
-                {practiceResult.answered} soru cevaplandı
-              </span>
-            </div>
-          ) : null}
           {draftLoadError && <div role="alert" className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-[#e7c8c8] bg-[#fff7f7] px-4 py-3 text-sm text-[#7c3434]"><span>Kayıtlı cevaplarınız yüklenemedi. Cevaplarınız korunuyor.</span> <button className="rounded border border-[#d6b2b2] bg-white px-3 py-1.5 font-semibold" onClick={() => setDraftRetryKey((key) => key + 1)}>Cevapları tekrar yükle</button></div>}
           {submitError && <div role="alert" className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-[#e7c8c8] bg-[#fff7f7] px-4 py-3 text-sm text-[#7c3434]"><span>{submitError}</span> <button className="rounded border border-[#d6b2b2] bg-white px-3 py-1.5 font-semibold" disabled={isSubmitting} onClick={() => void handleSubmit()}>Göndermeyi tekrar dene</button></div>}
           {sectionTimerError ? (
@@ -3130,6 +3136,13 @@ const renderModernPart = (partNumber: number) => {
       )}
 
       {/* Confirmation Modal */}
+      {practiceMode && showPracticeReview && practiceResult?.review ? (
+        <ListeningTranscriptEvidenceView
+          review={practiceResult.review}
+          practice={{ audioUrl: practiceResult.audioUrl ?? null, correct: practiceResult.correct, total: practiceResult.total, presentation: practicePresentation, glossarySections: practiceResult.glossarySections }}
+          onClose={closePracticeReview}
+        />
+      ) : null}
       <ConfirmationModal
         isOpen={showConfirmModal}
         onClose={() => setShowConfirmModal(false)}

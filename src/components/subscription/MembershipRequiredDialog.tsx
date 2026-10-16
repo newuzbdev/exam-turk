@@ -1,5 +1,5 @@
 import { LockKeyhole } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -23,6 +23,8 @@ export default function MembershipRequiredDialog({
   title?: string; description?: string; actionLabel?: string; catalogPath?: string; onContinuePaid?: () => void; busy?: boolean;
 }) {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const showCatalogLink = catalogPath && pathname !== catalogPath.split("?")[0];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -43,7 +45,7 @@ export default function MembershipRequiredDialog({
         </DialogHeader>
         <DialogFooter className="flex-col gap-2.5 sm:flex-col sm:space-x-0">
           {onContinuePaid && <Button disabled={busy} onClick={onContinuePaid}>Üyeliğimle devam et</Button>}
-          {catalogPath && <Button variant="outline" disabled={busy} onClick={() => navigate(catalogPath)}>Kataloğa dön</Button>}
+          {showCatalogLink && <Button variant="outline" disabled={busy} onClick={() => { onOpenChange(false); navigate(catalogPath); }}>Kataloğa dön</Button>}
           <Button
             disabled={busy}
             className="h-11 w-full rounded-[8px] bg-red-600 text-[14px] font-semibold text-white hover:bg-red-700"

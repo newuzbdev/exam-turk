@@ -6,36 +6,15 @@ function clearSelection() {
   window.getSelection()?.removeAllRanges();
 }
 
-function restoreAttribute(
-  element: HTMLElement,
-  name: string,
-  previousValue: string | null,
-) {
-  if (previousValue === null) {
-    element.removeAttribute(name);
-    return;
-  }
-
-  element.setAttribute(name, previousValue);
-}
-
 export function useResultScreenProtection() {
   useEffect(() => {
     const root = document.documentElement;
     const body = document.body;
-    const rootTranslate = root.getAttribute("translate");
-    const bodyTranslate = body.getAttribute("translate");
-    const rootHadNoTranslate = root.classList.contains("notranslate");
-    const bodyHadNoTranslate = body.classList.contains("notranslate");
     const rootUserSelect = root.style.getPropertyValue("user-select");
     const bodyUserSelect = body.style.getPropertyValue("user-select");
     const rootWebkitUserSelect = root.style.getPropertyValue("-webkit-user-select");
     const bodyWebkitUserSelect = body.style.getPropertyValue("-webkit-user-select");
 
-    root.setAttribute("translate", "no");
-    body.setAttribute("translate", "no");
-    root.classList.add("notranslate");
-    body.classList.add("notranslate");
     root.style.setProperty("user-select", "none");
     body.style.setProperty("user-select", "none");
     root.style.setProperty("-webkit-user-select", "none");
@@ -74,12 +53,6 @@ export function useResultScreenProtection() {
       document.removeEventListener("cut", preventInteraction, true);
       document.removeEventListener("dragstart", preventInteraction, true);
       document.removeEventListener("keydown", preventProtectedShortcut, true);
-
-      restoreAttribute(root, "translate", rootTranslate);
-      restoreAttribute(body, "translate", bodyTranslate);
-
-      if (!rootHadNoTranslate) root.classList.remove("notranslate");
-      if (!bodyHadNoTranslate) body.classList.remove("notranslate");
 
       root.style.setProperty("user-select", rootUserSelect);
       body.style.setProperty("user-select", bodyUserSelect);

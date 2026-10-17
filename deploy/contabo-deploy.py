@@ -2,6 +2,7 @@
 """Command-restricted, per-application GitHub deployment receiver."""
 from pathlib import Path, PurePosixPath
 import fcntl, hashlib, io, json, os, re, shutil, socket, subprocess, sys, tarfile, time
+import importlib.util
 
 BASE = Path('/opt/eduway/deploy/github-autodeploy')
 DEPLOY = BASE.parent
@@ -161,6 +162,13 @@ def main(role, command):
         config_before = CONFIG.read_text()
         if before['backend']['health'] != 'healthy':
             raise RuntimeError('Existing backend must be healthy before a release')
+        asset_retention, previous_assets, asset_proof = None, {}, {}
+        helper = source / 'deploy/retain-frontend-assets.py'
+        if role == 'frontend' and helper.is_file():
+            spec = importlib.util.spec_from_file_location('frontend_assets', helper)
+            asset_retention = importlib.util.module_from_spec(spec); spec.loader.exec_module(asset_retention)
+            for service in SERVICES[role]:
+                previous_assets[service] = asset_retention.capture_previous_assets(service, before[service]['container'], release)
         if shutil.disk_usage('/opt').free < 6 * 1024**3:
             raise RuntimeError('At least 6 GiB free disk is required before a build')
         images = {}
@@ -181,6 +189,8 @@ def main(role, command):
             print('Building ' + service, flush=True)
             with (release / (service + '-build.log')).open('w') as log:
                 run([*arguments, str(source)], stdout=log, stderr=subprocess.STDOUT)
+            if asset_retention:
+                asset_proof[service] = asset_retention.layer_image(service, tag, release, previous_assets[service])
             if role != 'backend':
                 run(['docker', 'run', '--rm', '--network', 'none', tag, 'nginx', '-t'], capture_output=True)
             images[service] = tag
@@ -188,7 +198,7 @@ def main(role, command):
             raise RuntimeError('Server configuration changed during the build')
         if action == 'check':
             write_atomic(release / 'proof.json', json.dumps({'status': 'BUILT_NOT_DEPLOYED', 'application': role,
-                                                          'commit': revision, 'images': images}, indent=2) + '\n')
+                                                          'commit': revision, 'images': images, 'assetRetention': asset_proof}, indent=2) + '\n')
             print('BUILD_CHECK_PASSED_LIVE_UNCHANGED', flush=True)
             return
         write_atomic(release / 'application.before.yml', config_before)
@@ -213,7 +223,7 @@ def main(role, command):
         proof = {'status': 'PUBLISHED', 'application': role, 'commit': revision,
                  'images': {service: {'tag': tag, 'id': after[service]['imageId']} for service, tag in images.items()},
                  'protectedConfigurationUnchanged': True, 'otherServicesUnchanged': True,
-                 'noDatabaseMigration': True, 'source': str(source)}
+                 'noDatabaseMigration': True, 'source': str(source), 'assetRetention': asset_proof}
         write_atomic(release / 'proof.json', json.dumps(proof, indent=2) + '\n')
         print(json.dumps(proof), flush=True)
 

@@ -370,9 +370,13 @@ export default function PracticeList({
                 <span className="absolute left-2 top-2 rounded-md bg-white px-2 py-0.5 text-xs font-medium text-black shadow-sm">
                   {sectionLabel(item.sectionCode)}
                 </span>
+                {(!access.pending && (access.enabled ? access.decisionFor(targetFor(item.id))?.isPublicFree : item.isFreeAccess)) ? (
+                  <span className="absolute right-2 top-2 rounded-md bg-white px-2 py-0.5 text-xs font-medium text-[#236b42] shadow-sm">
+                    Ücretsiz
+                  </span>
+                ) : null}
                 {!isAccessPending(item) && isMembershipLocked(item) && <MembershipLockBadge />}
               </div>
-              {access.enabled && access.decisionFor(targetFor(item.id))?.isPublicFree && <span className="px-4 pt-2 text-xs text-[#777570]">Ücretsiz</span>}
               <div className="min-h-[68px] min-w-0 flex-1 px-4 pt-4">
                 <h3 className="text-base font-semibold text-[var(--tm-text-primary)]">
                   {item.title}

@@ -20,7 +20,12 @@ function protectElement(element: Element) {
   }
 
   if (element instanceof HTMLMediaElement) {
-    element.setAttribute("controlsList", "nodownload noremoteplayback");
+    const controls = new Set(
+      `${element.getAttribute("controlsList") || ""} nodownload noremoteplayback`
+        .trim()
+        .split(/\s+/),
+    );
+    element.setAttribute("controlsList", [...controls].join(" "));
     (
       element as HTMLMediaElement & { disableRemotePlayback?: boolean }
     ).disableRemotePlayback = true;

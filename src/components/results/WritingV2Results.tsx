@@ -12,6 +12,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SUPPORT_TELEGRAM_URL } from "@/config/support";
 import WritingRichText from "@/components/writing-test/WritingRichText";
 import { maskWritingReportText } from "./writing-language-mask";
 import RawScoreHelp from "./RawScoreHelp";
@@ -760,7 +761,7 @@ export default function WritingV2Results({
               <p className="mt-2 text-[13px] leading-5 text-[var(--tm-text-secondary)]">
                 Tekrar değerlendirme de tamamlanmazsa{" "}
                 <a
-                  href="https://t.me/turkishmock_admin"
+                  href={SUPPORT_TELEGRAM_URL}
                   target="_blank"
                   rel="noreferrer"
                   className="font-semibold text-[var(--tm-text-primary)] underline decoration-[var(--tm-border-default)] underline-offset-4 hover:decoration-[var(--tm-text-primary)]"

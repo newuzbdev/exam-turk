@@ -60,7 +60,7 @@ const HeroSection = () => {
               <Button
                 size="lg"
                 onClick={() => openStudentAction("/app/test")}
-                className="theme-important group rounded-md bg-[var(--tm-accent)] px-5 py-5 text-sm font-medium text-white shadow-none transition-colors hover:bg-[var(--tm-accent-hover)] sm:text-base"
+                className="theme-important group rounded-full bg-[var(--tm-accent)] px-5 py-5 text-sm font-medium text-white shadow-none transition-colors hover:bg-[var(--tm-accent-hover)] sm:text-base"
               >
                 Denemeye Başla
                 <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />

@@ -61,6 +61,7 @@ import { createSpeakingAudioReplayUrl } from "@/services/speakingAudioReplay";
 import writingSubmissionService from "@/services/writingSubmission.service";
 import { useResultScreenProtection } from "@/hooks/use-result-screen-protection";
 import { clearExamPresentation } from "@/utils/examFullscreen";
+import { SUPPORT_TELEGRAM_URL } from "@/config/support";
 
 const resolveOfficialSpeakingDisplay = (
   status: unknown,
@@ -2052,7 +2053,7 @@ export default function OverallResults() {
               <p className="mt-2 text-[13px] leading-5 text-[var(--tm-text-secondary)]">
                 Tekrar değerlendirme de tamamlanmazsa{" "}
                 <a
-                  href="https://t.me/turkishmock_admin"
+                  href={SUPPORT_TELEGRAM_URL}
                   target="_blank"
                   rel="noreferrer"
                   className="font-semibold text-[var(--tm-text-primary)] underline decoration-[var(--tm-border-default)] underline-offset-4 hover:decoration-[var(--tm-text-primary)]"

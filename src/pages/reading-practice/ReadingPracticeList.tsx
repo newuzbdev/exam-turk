@@ -452,7 +452,7 @@ export default function ReadingPracticeList({
     toast.success("Kredi hesabına eklendi.");
   };
 
-  const renderPracticeCard = (item: ReadingPracticeListCard) => (
+  const renderPracticeCard = (item: ReadingPracticeListCard, index: number) => (
     <article
       key={item.id}
       role="button"
@@ -472,7 +472,8 @@ export default function ReadingPracticeList({
     >
       <div className="relative aspect-[2/1] overflow-hidden bg-[var(--tm-bg-muted)]">
         {item.coverImageUrl ? (
-          <PracticeCoverImage practiceId={item.id} src={item.coverImageUrl} alt={item.passageTitle || item.title} />
+          <PracticeCoverImage practiceId={item.id} src={item.coverImageUrl} alt={item.passageTitle || item.title}
+            loading={index < columns ? 'eager' : 'lazy'} priority={index === 0} />
         ) : (
           <div className="h-full w-full" style={{ background: DEFAULT_COVER }} />
         )}

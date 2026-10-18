@@ -36,6 +36,20 @@ async function show(cache, domain = 'READING') {
 }
 const catalogQuery = query => query.queryKey.includes('catalog');
 
+test('returning after eleven minutes still shows the loaded catalog while refreshing', async t => {
+  reset(); const cache = client(); let view;
+  try {
+    view = await show(cache, 'LISTENING');
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    await view.unmount(); view = null;
+    t.mock.timers.tick(11 * 60_000);
+    t.mock.timers.reset();
+    listResponse = deferred(); view = await show(cache, 'LISTENING');
+    assert.match(view.container.textContent, /student-a catalog/);
+    assert.doesNotMatch(view.container.textContent, /yükleniyor/);
+  } finally { t.mock.timers.reset(); listResponse?.resolve([]); if (view) await view.unmount(); cache.clear(); }
+});
+
 for (const domain of ['READING', 'LISTENING', 'WRITING', 'SPEAKING']) {
   test(`${domain}: return navigation immediately reuses the same account's fresh catalog`, async () => {
     reset(); const cache = client(); let view;

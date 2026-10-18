@@ -8,6 +8,7 @@ import RequireStudentAuth from "@/components/auth/require-student-auth";
 import { useAuth } from "@/contexts/AuthContext";
 import { lazy, type ReactNode } from "react";
 import { useStudentLessonsEnabled } from "@/config/studentFeatures";
+import { studentPageLoaders } from './student-page-loaders';
 
 const Home = lazy(() => import("@/pages/home/Home"));
 const GrammarHome = lazy(() => import("@/pages/lessons/GrammarHome"));
@@ -29,9 +30,7 @@ const OAuthCallback = lazy(() => import("@/pages/auth/oauth-callback"));
 const Price = lazy(() => import("@/pages/price/price"));
 const SubscriptionPaymentReturn = lazy(() => import("@/pages/profile/SubscriptionPaymentReturn"));
 const Profile = lazy(() => import("@/pages/profile/profile"));
-const PracticeHome = lazy(
-  () => import("@/pages/reading-practice/PracticeHome"),
-);
+const PracticeHome = lazy(studentPageLoaders.practice);
 const ReadingTest = lazy(() => import("@/pages/reading-test/ReadingTest"));
 const ReadingTestResults = lazy(
   () => import("@/pages/reading-test/ReadingTestResults"),
@@ -51,7 +50,7 @@ const WritingPracticeTest = lazy(
 const SpeakingPracticeTest = lazy(
   () => import("@/pages/speaking-practice/SpeakingPracticeTest"),
 );
-const TestPage = lazy(() => import("@/pages/test/test"));
+const TestPage = lazy(studentPageLoaders.mock);
 const WritingTest = lazy(() => import("@/pages/writing-test/WritingTest"));
 const WritingTestResults = lazy(
   () => import("@/pages/writing-test/WritingTestResults"),
@@ -68,10 +67,8 @@ const OverallSectionReadyPage = lazy(
 const StudentWorkspaceLayout = lazy(
   () => import("@/components/student-app/student-workspace-layout"),
 );
-const StudentDashboard = lazy(
-  () => import("@/pages/dashboard/student-dashboard"),
-);
-const ReportsPage = lazy(() => import("@/pages/results/ReportsPage"));
+const StudentDashboard = lazy(studentPageLoaders.dashboard);
+const ReportsPage = lazy(studentPageLoaders.reports);
 const FocusPage = lazy(() => import("@/pages/focus/focus-page"));
 const ExamInformation = lazy(() => import("@/pages/student-app/exam-information"));
 const AppReadingPracticeList = lazy(

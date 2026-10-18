@@ -66,19 +66,20 @@ export function practiceCoverSources(practiceId: string, src: string) {
   };
 }
 
-export default function PracticeCoverImage({ practiceId, src, alt }: {
-  practiceId: string; src: string; alt: string;
+export default function PracticeCoverImage({ practiceId, src, alt, loading = 'lazy', priority = false }: {
+  practiceId: string; src: string; alt: string; loading?: 'eager' | 'lazy'; priority?: boolean;
 }) {
   const [failedSource, setFailedSource] = useState<string | null>(null);
   const sources = failedSource === src ? null : practiceCoverSources(practiceId, src);
   return <img
     src={sources?.src ?? src}
     srcSet={sources?.srcSet}
-    sizes={sources ? "auto, (min-width: 1024px) 340px, (min-width: 640px) calc((100vw - 68px) / 2), calc(100vw - 40px)" : undefined}
+    sizes={sources ? `${loading === 'lazy' && !priority ? 'auto, ' : ''}(min-width: 1024px) 340px, (min-width: 640px) calc((100vw - 68px) / 2), calc(100vw - 40px)` : undefined}
     width={sources?.width}
     height={sources?.height}
     alt={alt}
-    loading="lazy"
+    loading={priority ? 'eager' : loading}
+    fetchPriority={priority ? 'high' : undefined}
     decoding="async"
     className="h-full w-full object-cover"
     onError={sources ? () => setFailedSource(src) : undefined}

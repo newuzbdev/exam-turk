@@ -338,7 +338,7 @@ export default function PracticeList({
       ) : (
         <>
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {visibleItems.map((item) => (
+          {visibleItems.map((item, index) => (
             <article
               key={item.id}
               role="button"
@@ -361,6 +361,8 @@ export default function PracticeList({
                     practiceId={item.id}
                     src={item.coverImageUrl}
                     alt=""
+                    loading={index < columns ? 'eager' : 'lazy'}
+                    priority={index === 0}
                   />
                 ) : (
                   <div

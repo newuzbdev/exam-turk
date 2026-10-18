@@ -1,4 +1,5 @@
 import {useStudentLessonsEnabled} from "@/config/studentFeatures";
+import { preloadStudentPage } from '@/routes/student-page-loaders';
 import {
   useEffect,
   useLayoutEffect,
@@ -339,6 +340,9 @@ function StudentAppSidebar({
             const link = (
               <NavLink
                 to={item.to}
+                onMouseEnter={() => preloadStudentPage(item.to)}
+                onFocus={() => preloadStudentPage(item.to)}
+                onPointerDown={() => preloadStudentPage(item.to)}
                 end={item.to === "/app"}
                 className={cn(
                   "flex h-10 items-center gap-3 rounded-md text-sm font-medium transition-colors",
@@ -412,6 +416,8 @@ function StudentAppBottomNavigation() {
             <NavLink
               key={item.to}
               to={item.to}
+              onFocus={() => preloadStudentPage(item.to)}
+              onPointerDown={() => preloadStudentPage(item.to)}
               end={item.to === "/app"}
               className={cn(
                 "flex min-w-0 flex-col items-center justify-center gap-1 border-t-2 px-1 text-[10px] font-medium transition-colors sm:text-[11px]",

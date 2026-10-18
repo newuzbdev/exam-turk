@@ -26,6 +26,7 @@ export default function BillingPackageCard({
       ? t.validityDays
       : t.periodDays;
   const basic = membership && t.standardMockAccess;
+  const panelHeight = membership ? "lg:min-h-[280px]" : "";
   const fullMockScopes = ["MOCK_LISTENING", "MOCK_READING", "MOCK_WRITING", "MOCK_SPEAKING"];
   const singleFullMock = t.kind === "MOCK_PASS" && t.attemptLimit === 1 &&
     t.mockSelections.length > 0 && t.mockSelections.every((selection) =>
@@ -50,7 +51,7 @@ export default function BillingPackageCard({
               <span className="text-sm font-medium">so‘m</span>
             </p>
             <button type="button" disabled={busy || !connected} onClick={onBuy}
-              className="flex min-h-12 shrink-0 items-center justify-center rounded-lg bg-[#dc2626] px-6 py-3 text-base font-semibold text-white transition-colors hover:bg-[#b91c1c] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#dc2626] disabled:cursor-not-allowed">
+              className="flex min-h-12 shrink-0 items-center justify-center rounded-full bg-[#dc2626] px-6 py-3 text-base font-semibold text-white transition-colors hover:bg-[#b91c1c] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#dc2626] disabled:cursor-not-allowed">
               Satın Al
             </button>
           </div>
@@ -61,7 +62,7 @@ export default function BillingPackageCard({
   return (
     <article className={`${tm.card} overflow-hidden`} aria-label={t.name}>
       <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-3 lg:gap-5">
-        <div className="flex min-w-0 flex-col rounded-lg border border-[var(--tm-border-subtle)] bg-white p-5">
+        <div className={`flex min-w-0 flex-col rounded-lg border border-[var(--tm-border-subtle)] bg-white p-5 ${panelHeight}`}>
           <h3 className="text-base font-semibold">
             {basic ? "Okuma ve Dinleme" : t.name}
           </h3>
@@ -99,7 +100,7 @@ export default function BillingPackageCard({
             <p className="mt-4 text-sm leading-6">{t.description}</p>
           )}
         </div>
-        <div className="flex min-w-0 flex-col rounded-lg border border-transparent bg-[#f2f8fd] p-5">
+        <div className={`flex min-w-0 flex-col rounded-lg border border-transparent bg-[#f2f8fd] p-5 ${panelHeight}`}>
           <h3 className="text-base font-semibold">
             {membership ? "Yazma ve Konuşma" : t.kind === "PRACTICE_PASS" ? practiceHeading : "Pakete Dahil"}
           </h3>
@@ -111,7 +112,7 @@ export default function BillingPackageCard({
               <p className="mt-2 text-sm font-medium">Ortak Pratik Hakkı</p>
             </>
           )}
-          <dl className="mt-6 space-y-3 border-t border-[var(--tm-border-subtle)] pt-4">
+          <dl className={`mt-6 space-y-3 border-t border-[var(--tm-border-subtle)] pt-4 ${membership ? "lg:mt-auto" : ""}`}>
             {[
               ["Yazma Mock", t.quotas.MOCK_WRITING],
               ["Konuşma Mock", t.quotas.MOCK_SPEAKING],
@@ -138,7 +139,7 @@ export default function BillingPackageCard({
             </p>
           )}
         </div>
-        <div className="flex min-w-0 flex-col rounded-lg border border-transparent bg-[var(--tm-bg-sidebar)] p-5">
+        <div className={`flex min-w-0 flex-col rounded-lg border border-transparent bg-[var(--tm-bg-sidebar)] p-5 ${panelHeight}`}>
           <h3 className="text-base font-semibold">
             {t.name}
           </h3>
@@ -165,7 +166,7 @@ export default function BillingPackageCard({
             type="button"
             disabled={busy || !connected}
             onClick={onBuy}
-            className={`mt-auto flex min-h-12 w-full items-center justify-center ${membership ? "rounded-full" : "rounded-lg"} bg-[#dc2626] px-3 py-3 text-base font-semibold text-white transition-colors hover:bg-[#b91c1c] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#dc2626] disabled:cursor-not-allowed`}
+            className="mt-auto flex min-h-12 w-full items-center justify-center rounded-full bg-[#dc2626] px-3 py-3 text-base font-semibold text-white transition-colors hover:bg-[#b91c1c] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#dc2626] disabled:cursor-not-allowed"
           >
             {membership
               ? activeMembership

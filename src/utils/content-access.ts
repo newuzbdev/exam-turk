@@ -3,7 +3,9 @@ import type { AccessDecision, AccessDecisionItem, AccessTarget, CatalogGroup } f
 export const contentAccessKey = (target: AccessTarget) => `${target.scope}:${target.targetId || ''}`;
 export const isContentLocked = (decision?: AccessDecision) => !decision?.canOpen || decision.sourceKind === 'SHARE';
 export function canContinuePaid(decision: AccessDecision | undefined, bucket: keyof AccessDecision['remaining']) {
-  return decision?.canOpen === true && decision.sourceKind === 'PAID' && (decision.remaining[bucket] ?? 0) > 0;
+  const paidSource = decision?.sourceKind === 'PAID' ||
+    (bucket === 'PRACTICE_AI' && decision?.sourceKind === 'PURCHASED_PACKAGE' && Boolean(decision.purchaseId));
+  return decision?.canOpen === true && paidSource && (decision.remaining[bucket] ?? 0) > 0;
 }
 export function getContentStartIssue(targets: AccessTarget[], decisions: AccessDecisionItem[]) {
   for (const target of targets) {
@@ -19,6 +21,7 @@ export const initialFreeGroup = (groups: CatalogGroup[], explicitChoice: boolean
 export function accessErrorMessage(reason: unknown): string | null {
   const error = reason as { response?: { status?: number; data?: { code?: string; message?: string; error?: string } } };
   const code = error?.response?.data?.code || error?.response?.data?.message || error?.response?.data?.error || '';
+  if (/MEMBERSHIP_REQUIRED|Aktif üyelik gerekli/.test(code)) return 'Bu değerlendirme için abonelik veya tanımlı değerlendirme hakkı gerekiyor. Cevaplarınız korunuyor.';
   if (/EXPIRED/.test(code)) return 'Bu çalışma için erişiminiz sona ermiş. Cevaplarınız korunuyor.';
   if (/AI_LIMIT|ALLOWANCE|QUOTA/.test(code) || error?.response?.status === 402) return 'Bu çalışma için değerlendirme hakkınız kalmadı. Cevaplarınız korunuyor.';
   if (/EXPIRED|ACCESS_|MEMBERSHIP_REQUIRED/.test(code) || error?.response?.status === 403) return 'Bu çalışma için erişiminiz sona ermiş veya kapatılmış. Cevaplarınız korunuyor.';

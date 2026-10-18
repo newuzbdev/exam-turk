@@ -1,6 +1,9 @@
-import { loadSpeakingPracticeDraft, saveSpeakingPracticeDraft, deleteSpeakingPracticeDraft, speakingPracticeDraftScope } from "@/services/speakingPracticeDraft.store";
+import { reconcileSpeakingPracticeDraft } from './speaking-practice-run';
+import type { SpeakingAudioDraft } from '@/services/speakingPracticeDraft.store';
+import { recoverSpeakingPracticeDraft, saveSpeakingPracticeDraft, deleteSpeakingPracticeDraft, speakingPracticeDraftScope } from "@/services/speakingPracticeDraft.store";
 import { publishCurrentActivity } from '@/utils/access-link-context';
 import ContentAccessRecovery from '@/components/subscription/ContentAccessRecovery';
+import PracticeAssessmentNotice from '@/components/practice/PracticeAssessmentNotice';
 import { notifyAccessAllowanceChanged } from '@/utils/access-events';
 import { readAccessOwner, useOwnedAccessContext } from '@/hooks/use-access-link';
 import { useQueryClient } from "@tanstack/react-query";
@@ -141,6 +144,8 @@ export default function SpeakingPracticeTest() {
   const [evaluation, setEvaluation] = useState<SpeakingPracticeEvaluation | null>(null);
   const [evaluating, setEvaluating] = useState(false);
   const [runId, setRunId] = useState(createPracticeRunId);
+  const assessmentAttemptRef = useRef<SpeakingAudioDraft['assessmentAttempt']>({ state: 'UNSUBMITTED' });
+  const [attemptPending, setAttemptPending] = useState(false);
   const [restoredDraftScope, setRestoredDraftScope] = useState<string | null>(null);
   const [savingDraft, setSavingDraft] = useState(false);
   const [draftSaveFailed, setDraftSaveFailed] = useState(false);
@@ -229,8 +234,30 @@ export default function SpeakingPracticeTest() {
   useEffect(() => {
     if (!draftScope || !task) return;
     let active = true;
-    void loadSpeakingPracticeDraft(draftScope).then(draft => {
-      if (!active) return;
+    const owner = readAccessOwner();
+    void recoverSpeakingPracticeDraft(draftScope).then(async recovered => {
+      if (!active || readAccessOwner() !== owner) return;
+      let draft = recovered?.draft;
+      if (draft && recovered) {
+        const sourceContext = JSON.parse(recovered.sourceScope)[2];
+        const reconciled = await reconcileSpeakingPracticeDraft(draft,
+          sourceContext === 'study' ? undefined : sourceContext, ownedAccess.accessContextId,
+          recovered.sourceScope !== draftScope, () => speakingPracticeService.getEvaluation(id!, draft!.runId));
+        if (!active || readAccessOwner() !== owner) return;
+        draft = reconciled.draft;
+        if (reconciled.result) {
+          setEvaluation(reconciled.result);
+          await deleteSpeakingPracticeDraft(recovered.sourceScope);
+          if (recovered.sourceScope !== draftScope) await deleteSpeakingPracticeDraft(draftScope);
+        } else {
+          const saved = await saveSpeakingPracticeDraft(draftScope, draft);
+          if (saved && recovered.sourceScope !== draftScope) await deleteSpeakingPracticeDraft(recovered.sourceScope);
+          if (!active || readAccessOwner() !== owner) return;
+          draftSaveFailedRef.current = !saved;
+          setDraftSaveFailed(!saved);
+        }
+      }
+      if (!active || readAccessOwner() !== owner) return;
       Object.values(recordingsRef.current).forEach(item => URL.revokeObjectURL(item.url));
       const restored = Object.fromEntries(Object.entries(draft?.recordings || {}).map(([key, item]) =>
         [key, { ...item, url: URL.createObjectURL(item.blob) }]));
@@ -240,6 +267,8 @@ export default function SpeakingPracticeTest() {
         setRunId(draft.runId);
         setQuestionIndex(Math.min(draft.questionIndex, Math.max(0, responseQuestions.length - 1)));
         paidContextRef.current = draft.paidAccessContextId;
+        assessmentAttemptRef.current = draft.assessmentAttempt;
+        setAttemptPending(draft.assessmentAttempt?.state === 'UNKNOWN');
       }
       setRestoredDraftScope(draftScope);
     });
@@ -256,7 +285,7 @@ export default function SpeakingPracticeTest() {
   const persistRecordings = (next: Record<string, RecordedAnswer>) => {
     setSavingDraft(true);
     const save = saveSpeakingPracticeDraft(draftScope, {
-      version: 1, runId, questionIndex, updatedAt: Date.now(), paidAccessContextId: paidContextRef.current,
+      version: 1, runId, questionIndex, updatedAt: Date.now(), paidAccessContextId: paidContextRef.current, assessmentAttempt: assessmentAttemptRef.current,
       recordings: Object.fromEntries(Object.entries(next).map(([key, item]) => [key, { blob: item.blob, durationSeconds: item.durationSeconds }])),
     }).then(saved => {
       draftSaveFailedRef.current = !saved;
@@ -271,7 +300,7 @@ export default function SpeakingPracticeTest() {
   };
 
   const startRecording = async () => {
-    if (!question || recording || startingRecordingRef.current || busy || resultLocked) return;
+    if (!question || recording || startingRecordingRef.current || busy || resultLocked || attemptPending) return;
     startingRecordingRef.current = true;
     setStartingRecording(true);
     let stream: MediaStream | undefined;
@@ -384,8 +413,19 @@ export default function SpeakingPracticeTest() {
     }
     setEvaluating(true);
     try {
-      const evaluationAccess = paidContextRef.current ? { accessContextId: paidContextRef.current } : ownedAccess.forRun(runId);
+      const evaluationAccess = assessmentAttemptRef.current && assessmentAttemptRef.current.state !== 'UNSUBMITTED'
+        ? { accessContextId: assessmentAttemptRef.current.accessContextId }
+        : paidContextRef.current ? { accessContextId: paidContextRef.current } : ownedAccess.forRun(runId);
       const activityOwner = readAccessOwner();
+      const previousAttempt = assessmentAttemptRef.current;
+      assessmentAttemptRef.current = { state: 'UNKNOWN', accessContextId: evaluationAccess.accessContextId };
+      setAttemptPending(true);
+      if (!await persistRecordings(recordings)) {
+        assessmentAttemptRef.current = previousAttempt;
+        setAttemptPending(previousAttempt?.state === 'UNKNOWN');
+        return;
+      }
+      if (!mountedRef.current || readAccessOwner() !== activityOwner) return;
       if (activityOwner && (paidContextRef.current || ownedAccess.accessContextId)) publishCurrentActivity(activityOwner, 'SPEAKING', { contentId: id, attemptId: runId, target: { scope: 'PRACTICE_SPEAKING', targetId: id } });
       const result = await speakingPracticeService.evaluate(
         id,
@@ -397,6 +437,15 @@ export default function SpeakingPracticeTest() {
       void deleteSpeakingPracticeDraft(draftScope);
       toast.success("Konuşmanız değerlendirildi.");
     } catch (reason) {
+      // A returned 402 is a known pre-accept entitlement rejection. Transport,
+      // server and in-flight failures remain tied to the original run/context.
+      if ((reason as { response?: { status?: number } })?.response?.status === 402) {
+        const rejection = reason as { response?: { data?: { code?: string; message?: string; error?: string } } };
+        const rejectionCode = rejection.response?.data?.code || rejection.response?.data?.message || rejection.response?.data?.error;
+        assessmentAttemptRef.current = { state: 'REJECTED', accessContextId: assessmentAttemptRef.current?.accessContextId, rejectionCode };
+        setAttemptPending(false);
+        await persistRecordings(recordings);
+      }
       setAccessError(reason);
       toast.error(getPracticeErrorMessage(reason, "Konuşmanız değerlendirilemedi. Lütfen yeniden deneyin."));
     } finally {
@@ -417,6 +466,8 @@ export default function SpeakingPracticeTest() {
     setQuestionIndex(0);
     setRecordingSecondsLeft(0);
     setRunId(createPracticeRunId());
+    assessmentAttemptRef.current = { state: 'UNSUBMITTED' };
+    setAttemptPending(false);
   };
 
   const confirmExit = async () => {
@@ -480,9 +531,28 @@ export default function SpeakingPracticeTest() {
           </Button>
         </div>
       </header>
-      <ContentAccessRecovery error={accessError} target={{ scope: 'PRACTICE_SPEAKING', targetId: id }} onClose={() => setAccessError(null)} onPaid={contextId => { paidContextRef.current = contextId; setRunId(createPracticeRunId()); }} />
+      <ContentAccessRecovery error={accessError} target={{ scope: 'PRACTICE_SPEAKING', targetId: id }} onClose={() => setAccessError(null)} onPaid={async contextId => {
+        const original: SpeakingAudioDraft = { version: 1, runId, questionIndex, updatedAt: Date.now(),
+          paidAccessContextId: paidContextRef.current, assessmentAttempt: assessmentAttemptRef.current,
+          recordings: Object.fromEntries(Object.entries(recordings).map(([key, item]) => [key, { blob: item.blob, durationSeconds: item.durationSeconds }])) };
+        const owner = readAccessOwner();
+        setEvaluating(true);
+        try {
+          const reconciled = await reconcileSpeakingPracticeDraft(original, ownedAccess.accessContextId, contextId, true,
+            () => speakingPracticeService.getEvaluation(id, runId), true);
+          if (!mountedRef.current || readAccessOwner() !== owner) return;
+          if (reconciled.result) { setEvaluation(reconciled.result); await deleteSpeakingPracticeDraft(draftScope); return; }
+          paidContextRef.current = reconciled.draft.paidAccessContextId;
+          assessmentAttemptRef.current = reconciled.draft.assessmentAttempt;
+          setAttemptPending(reconciled.draft.assessmentAttempt?.state === 'UNKNOWN');
+          setRunId(reconciled.draft.runId);
+          const saved = await saveSpeakingPracticeDraft(draftScope, reconciled.draft);
+          draftSaveFailedRef.current = !saved; setDraftSaveFailed(!saved);
+        } finally { if (mountedRef.current) setEvaluating(false); }
+      }} />
 
       <section className="practice-section-heading shrink-0 border-b border-[#e5e5e2] px-5 py-3.5">
+        <PracticeAssessmentNotice isPublicFree={practice.accessDecision?.isPublicFree ?? practice.isPublicFree ?? practice.isFreeAccess} decision={practice.accessDecision} className="mb-2 text-xs leading-5 text-[#5f5e5a]" />
         <button
           type="button"
           onClick={() => setShowInstructions((value) => !value)}
@@ -611,7 +681,7 @@ export default function SpeakingPracticeTest() {
               {!recording ? (
                 <button
                   type="button"
-                  disabled={resultLocked || busy}
+                  disabled={resultLocked || busy || attemptPending}
                   onClick={() => void startRecording()}
                   aria-label="Kaydı başlat"
                   title="Kaydı başlat"

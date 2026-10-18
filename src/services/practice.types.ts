@@ -1,5 +1,5 @@
 import { accessErrorMessage } from '@/utils/content-access';
-import type { CatalogMetadata } from './access.service';
+import type { AccessDecision, CatalogMetadata } from './access.service';
 export type PracticeDomain = "LISTENING" | "WRITING" | "SPEAKING";
 
 export type PracticeListItem = CatalogMetadata & {
@@ -17,6 +17,7 @@ export type PracticeListItem = CatalogMetadata & {
 export type PracticeSolve<T = unknown> = PracticeListItem & {
   content: T;
   accessContextId?: string;
+  accessDecision?: AccessDecision;
 };
 
 export type WritingPracticeTaskCode = "TASK_1_1" | "TASK_1_2" | "TASK_2";

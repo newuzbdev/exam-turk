@@ -10,6 +10,7 @@ export default function ContentAccessRecovery({ error, target, overallTestId, on
   const { user } = useAuth();
   const ownerId = user?.id;
   const [eligible, setEligible] = useState(false);
+  const [practicePass, setPracticePass] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState('');
   const message = error ? accessErrorMessage(error) : null;
@@ -18,12 +19,16 @@ export default function ContentAccessRecovery({ error, target, overallTestId, on
   useEffect(() => {
     let active = true;
     setEligible(false);
+    setPracticePass(false);
     setFailure('');
     if (!message || !ownerId) return;
     void accessService.getConfig().then(async config => {
       if (!config.enabled) return;
       const [decision] = await accessService.getDecisions([{ scope, targetId }], 'PAID');
-      if (active && readAccessOwner() === ownerId) setEligible(bucket ? canContinuePaid(decision, bucket) : decision?.canOpen === true && decision.sourceKind === 'PAID');
+      if (active && readAccessOwner() === ownerId) {
+        setEligible(bucket ? canContinuePaid(decision, bucket) : decision?.canOpen === true && decision.sourceKind === 'PAID');
+        setPracticePass(bucket === 'PRACTICE_AI' && decision?.sourceKind === 'PURCHASED_PACKAGE');
+      }
     }).catch(() => { /* A failed lookup never offers paid continuation. */ });
     return () => { active = false; };
   }, [message, ownerId, scope, targetId, bucket]);
@@ -34,7 +39,11 @@ export default function ContentAccessRecovery({ error, target, overallTestId, on
       // Check again on the explicit click; the displayed offer is not authority.
       const [decision] = await accessService.getDecisions([{ scope, targetId }], 'PAID');
       if (readAccessOwner() !== ownerId || !(bucket ? canContinuePaid(decision, bucket) : decision?.canOpen && decision.sourceKind === 'PAID')) throw new Error('Unavailable');
-      const session = await accessService.createSession({ scope, targetId }, { mode: 'PAID' });
+      const session = await accessService.createSession({ scope, targetId }, {
+        mode: 'PAID',
+        ...(bucket === 'PRACTICE_AI' && decision.sourceKind === 'PURCHASED_PACKAGE'
+          ? { paidPurchaseId: decision.purchaseId } : {}),
+      });
       if (readAccessOwner() !== ownerId) throw new Error('Account changed');
       const effective = overallTestId ? await accessService.continueMockPaid(overallTestId, { section: scope.slice(5) as AccessMockSection, accessContextId: session.contextId }) : session;
       if (readAccessOwner() !== ownerId) throw new Error('Account changed');
@@ -44,5 +53,5 @@ export default function ContentAccessRecovery({ error, target, overallTestId, on
     } catch { setEligible(false); setFailure('Üyelik hakkınız doğrulanamadı. Cevaplarınız korunuyor; yeniden deneyebilirsiniz.'); }
     finally { setBusy(false); }
   };
-  return <MembershipRequiredDialog open={Boolean(message)} onOpenChange={open => { if (!open && !busy) onClose(); }} title="Erişim / değerlendirme hakkı" description={failure || message || ''} catalogPath={scope.startsWith('MOCK_') ? '/app/test' : `/app/pratik?bolum=${scope.slice(9).toLowerCase()}`} onContinuePaid={eligible ? () => void continuePaid() : undefined} busy={busy} />;
+  return <MembershipRequiredDialog open={Boolean(message)} onOpenChange={open => { if (!open && !busy) onClose(); }} title="Erişim / değerlendirme hakkı" description={failure || message || ''} catalogPath={scope.startsWith('MOCK_') ? '/app/test' : `/app/pratik?bolum=${scope.slice(9).toLowerCase()}`} onContinuePaid={eligible ? () => void continuePaid() : undefined} continuePaidLabel={practicePass ? 'Paket hakkımla devam et' : undefined} busy={busy} />;
 }

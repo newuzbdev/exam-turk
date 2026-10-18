@@ -1,5 +1,21 @@
 import axiosPrivate from "@/config/api";
 import type { AccessTarget } from "./access.service";
+export type BillingCampaign = {
+  id: string;
+  enabled: boolean;
+  label: string;
+  userLimit: number | null;
+};
+export type BillingCampaignState = {
+  id: string;
+  label: string;
+  userLimit: number | null;
+  claimedUsers: number;
+  reservedUsers: number;
+  remainingUsers: number | null;
+  availableUsers: number | null;
+  status: "ACTIVE" | "PAUSED" | "SCHEDULED" | "ENDED" | "SOLD_OUT" | "RESERVED" | "ALREADY_USED";
+};
 export type PackageTerms = {
   kind: "MEMBERSHIP" | "MOCK_PASS" | "PRACTICE_PASS" | "LESSON_PACKAGE";
   saleMode: "STANDALONE" | "MEMBERSHIP_ADD_ON" | "BOTH";
@@ -21,6 +37,7 @@ export type PackageTerms = {
     startsAt: string;
     endsAt: string;
   };
+  campaign?: BillingCampaign | null;
 };
 export type PackageOffer = {
   packageId: string;
@@ -29,6 +46,7 @@ export type PackageOffer = {
   terms: PackageTerms;
   amountUzs: number;
   discountUzs: number;
+  campaign?: BillingCampaignState | null;
 };
 export type OwnedPackage = {
   purchaseId: string;
@@ -49,9 +67,12 @@ const unwrap = <T>(response: { data: T | { data: T } }): T => {
   const p = response.data;
   return p && typeof p === "object" && "data" in p ? p.data : (p as T);
 };
-export async function preparePackageCheckout(packageId: string) {
+export async function preparePackageCheckout(
+  packageId: string,
+  expected?: { expectedAmountUzs: number; expectedVersionId: string },
+) {
   return unwrap<{ intentId: string; checkoutUrl: string }>(
-    await axiosPrivate.post("/api/billing/checkout", { packageId }),
+    await axiosPrivate.post("/api/billing/checkout", { packageId, ...expected }),
   );
 }
 export const billingService = {
@@ -62,6 +83,11 @@ export const billingService = {
   },
   async getOwnPurchases() {
     return unwrap<OwnedPackage[]>(await axiosPrivate.get("/api/billing/me"));
+  },
+  async getOwnCatalog() {
+    return unwrap<PackageOffer[]>(
+      await axiosPrivate.get("/api/billing/catalog/me"),
+    );
   },
   async getFeatures() {
     return unwrap<{ lessonsVisible: boolean }>(

@@ -5,6 +5,7 @@ export type SpeakingAudioDraft = {
   questionIndex: number;
   updatedAt: number;
   paidAccessContextId?: string;
+  assessmentAttempt?: { state: 'UNSUBMITTED' | 'UNKNOWN' | 'REJECTED'; accessContextId?: string; rejectionCode?: string };
   recordings: Record<string, { blob: Blob; durationSeconds: number }>;
 };
 
@@ -102,6 +103,34 @@ export async function loadSpeakingPracticeDraft(scope: string | null): Promise<S
   if (validDraft(draft)) return draft;
   if (draft) await deleteSpeakingPracticeDraft(scope);
   return null;
+}
+
+// Draft content can follow a new admission; its old context never grants access.
+export async function recoverSpeakingPracticeDraft(scope: string | null): Promise<{ draft: SpeakingAudioDraft; sourceScope: string } | null> {
+  if (!scope) return null;
+  const current = await loadSpeakingPracticeDraft(scope);
+  if (current) return { draft: current, sourceScope: scope };
+  const workKey = (value: string) => {
+    try {
+      const [owner, contentId, , questions] = JSON.parse(value);
+      return typeof owner === 'string' && typeof contentId === 'string' && Array.isArray(questions)
+        ? JSON.stringify([owner, contentId, questions]) : null;
+    } catch { return null; }
+  };
+  const identity = workKey(scope);
+  if (!identity) return null;
+  const sameWork = (key: unknown): key is string => typeof key === 'string' && key !== scope && workKey(key) === identity;
+  await Promise.allSettled([...writes].filter(([key]) => sameWork(key)).map(([, write]) => write));
+  const keys = new Set<string>();
+  try {
+    for (const key of await operation('readonly', store => store.getAllKeys())) if (sameWork(key)) keys.add(key);
+  } catch { /* Session fallback remains available. */ }
+  try {
+    for (const key of Object.keys(sessionStorage)) if (key.startsWith(PREFIX) && sameWork(key.slice(PREFIX.length))) keys.add(key.slice(PREFIX.length));
+  } catch { /* Storage may be disabled. */ }
+  const candidates = await Promise.all([...keys].map(async sourceScope => ({ draft: await loadSpeakingPracticeDraft(sourceScope), sourceScope })));
+  return candidates.filter((candidate): candidate is { draft: SpeakingAudioDraft; sourceScope: string } => candidate.draft !== null)
+    .sort((a, b) => b.draft.updatedAt - a.draft.updatedAt || a.sourceScope.localeCompare(b.sourceScope))[0] ?? null;
 }
 
 export function saveSpeakingPracticeDraft(scope: string | null, draft: SpeakingAudioDraft): Promise<boolean> {

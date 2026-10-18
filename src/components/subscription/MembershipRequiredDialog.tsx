@@ -16,11 +16,11 @@ export default function MembershipRequiredDialog({
   title = "Abonelik gerekli",
   description = "Bu çalışmaya başlamak için önce abone olmanız gerekiyor.",
   actionLabel = "Abone Ol",
-  catalogPath, onContinuePaid, busy = false,
+  catalogPath, onContinuePaid, continuePaidLabel = 'Üyeliğimle devam et', busy = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  title?: string; description?: string; actionLabel?: string; catalogPath?: string; onContinuePaid?: () => void; busy?: boolean;
+  title?: string; description?: string; actionLabel?: string; catalogPath?: string; onContinuePaid?: () => void; continuePaidLabel?: string; busy?: boolean;
 }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -44,7 +44,7 @@ export default function MembershipRequiredDialog({
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="flex-col gap-2.5 sm:flex-col sm:space-x-0">
-          {onContinuePaid && <Button disabled={busy} onClick={onContinuePaid}>Üyeliğimle devam et</Button>}
+          {onContinuePaid && <Button disabled={busy} onClick={onContinuePaid}>{continuePaidLabel}</Button>}
           {showCatalogLink && <Button variant="outline" disabled={busy} onClick={() => { onOpenChange(false); navigate(catalogPath); }}>Kataloğa dön</Button>}
           <Button
             disabled={busy}

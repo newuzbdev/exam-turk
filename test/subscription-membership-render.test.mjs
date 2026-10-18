@@ -12,9 +12,9 @@ const { MemoryRouter } = require("react-router-dom");
 const { QueryClient, QueryClientProvider } = require("@tanstack/react-query");
 const fixtures = {
   "@/hooks/use-content-access": "export const useOwnAccess = () => ({data:[]});",
-  "@/contexts/AuthContext": "export const useAuth = () => ({isAuthenticated:globalThis.__membershipFixture.authenticated});",
+  "@/contexts/AuthContext": "export const useAuth = () => ({isAuthenticated:globalThis.__membershipFixture.authenticated,user:{id:'render-student'}});",
   "@/hooks/use-membership-language": "export const useMembershipLanguage = () => [globalThis.__membershipFixture.language,()=>{}];",
-  "@/services/billing.service": "export const billingService={getCatalog:()=>{throw Error('SSR must not fetch');}};",
+  "@/services/billing.service": "const forbidden=()=>{throw Error('SSR must not fetch');};export const billingService={getCatalog:forbidden,getOwnCatalog:forbidden};",
   "@/services/subscription.service": `
     export const subscriptionStatusQueryKey = ["subscription", "status"];
     const forbidden = () => { throw new Error("Rendering must not call the API"); };
@@ -64,11 +64,12 @@ function render(component, { status = activeStatus, authenticated = true, langua
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   client.setQueryData(["subscription", "status"], status);
   client.setQueryData(["subscription", "status",undefined], status);
+  client.setQueryData(["subscription", "status", "render-student"], status);
   client.setQueryData(["subscription", "config"], {
     paymentConnected: false,
     plan: { baseMonthlyPriceUzs: 59000, quotas: { PRACTICE_AI: 120, MOCK_WRITING: 10, MOCK_SPEAKING: 10 } },
   });
-  client.setQueryData(['billing','catalog'],[{packageId:'membership',versionId:'v',sortOrder:0,amountUzs:59000,discountUzs:0,terms:{kind:'MEMBERSHIP',name:'Üyelik',description:'',saleMode:'STANDALONE',periodDays:30,basePriceUzs:59000,quotas:{MOCK_WRITING:10,MOCK_SPEAKING:10,PRACTICE_AI:120},standardMockAccess:true,practiceScopes:['PRACTICE_READING','PRACTICE_LISTENING','PRACTICE_WRITING','PRACTICE_SPEAKING'],lessonIds:[],mockSelections:[],attemptLimit:0}}]);
+  client.setQueryData(authenticated ? ['billing','catalog','owner','render-student'] : ['billing','catalog','public'],[{packageId:'membership',versionId:'v',sortOrder:0,amountUzs:59000,discountUzs:0,terms:{kind:'MEMBERSHIP',name:'Üyelik',description:'',saleMode:'STANDALONE',periodDays:30,basePriceUzs:59000,quotas:{MOCK_WRITING:10,MOCK_SPEAKING:10,PRACTICE_AI:120},standardMockAccess:true,practiceScopes:['PRACTICE_READING','PRACTICE_LISTENING','PRACTICE_WRITING','PRACTICE_SPEAKING'],lessonIds:[],mockSelections:[],attemptLimit:0}}]);
   if(configError)client.getQueryCache().find({queryKey:["subscription","config"]}).setState({data:undefined,status:'error',error:new Error('Unavailable'),fetchStatus:'idle'});
   globalThis.__membershipFixture = { authenticated, language };
   try {

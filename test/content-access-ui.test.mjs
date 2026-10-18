@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadOfflineComponent } from './helpers/offline-react.mjs';
-const { contentAccessKey, isContentLocked, canContinuePaid, getContentStartIssue } = await loadOfflineComponent('src/utils/content-access.ts');
+const { contentAccessKey, isContentLocked, canContinuePaid, getContentStartIssue, accessErrorMessage } = await loadOfflineComponent('src/utils/content-access.ts');
 const open = { canOpen:true, sourceKind:'ADMIN', remaining:{}, blockedReason:null };
 test('only the matching server decision unlocks a card; unknown and SHARE catalog decisions stay locked', () => {
  assert.equal(isContentLocked(open), false);
@@ -30,14 +30,14 @@ const { QueryClient, QueryClientProvider } = createRequire(import.meta.url)('@ta
 const { Routes, Route, useLocation } = await import('react-router-dom');
 const { writingAnswer, writingPractice, writingEvaluation } = await import('./fixtures/writing-practice-fixture.mjs');
 globalThis.DocumentFragment = window.DocumentFragment;
-let owner='student-a', enabled=true, expired=false, paidRemaining=2;
+let owner='student-a', enabled=true, expired=false, paidRemaining=2, publicAiRemaining=1, blockedMessage='EXPIRED';
 let sessions=[], evaluations=[], decisionsCalls=[], solves=0, continuations=[];
 const target={scope:'PRACTICE_WRITING',targetId:'practice-1'};
 const api={
  getConfig:async()=>({enabled}),
  getDecisions:async(targets,mode,redemption)=>{
   decisionsCalls.push({owner,targets,mode,redemption});
-  return targets.map(target=>({...open,target,sourceKind:mode==='PAID'?'PAID':target.targetId==='locked'?'SHARE':'PUBLIC',canOpen:target.targetId!=='locked',isPublicFree:target.targetId!=='locked',remaining:{PRACTICE_AI:mode==='PAID'?paidRemaining:1}}));
+  return targets.map(target=>({...open,target,sourceKind:mode==='PAID'?'PAID':target.targetId==='locked'?'SHARE':'PUBLIC',canOpen:target.targetId!=='locked',isPublicFree:target.targetId!=='locked',remaining:{PRACTICE_AI:mode==='PAID'?paidRemaining:publicAiRemaining}}));
  },
  createSession:async(target,input={})=>{sessions.push({target,input,owner});return {contextId:input.mode==='PAID'?'paid-context':'public-context',decision:open};},
  continueMockPaid:async(overallTestId,input)=>{continuations.push({overallTestId,input});return{contextId:'effective-context',decision:open};},
@@ -49,7 +49,7 @@ const mocks={
  '@/services/writingPractice.service':{default:{
   list:async()=>[{...structuredClone(writingPractice),isPublicFree:true},{...structuredClone(writingPractice),id:'locked',title:'Kilitli',isFreeAccess:false}],
   solve:async(id,input)=>{solves++;assert.equal(input.accessContextId,'public-context');return structuredClone(writingPractice);},
-  evaluate:async(...args)=>{evaluations.push(args);if(expired && args[4]?.accessContextId!=='paid-context')throw{response:{status:403,data:{message:'EXPIRED'}}};return {...structuredClone(writingEvaluation),answerText:args[2]};},
+  evaluate:async(...args)=>{evaluations.push(args);if(expired && args[4]?.accessContextId!=='paid-context')throw{response:{status:403,data:{message:blockedMessage}}};return {...structuredClone(writingEvaluation),answerText:args[2]};},
   getEvaluation:async()=>({status:'FAILED',result:null}),
  }},
  '@/services/listeningPractice.service':{default:{list:async()=>[]}},
@@ -75,6 +75,38 @@ async function setup(Component=ContentHarness,props={},route='/app/pratik'){
 }
 const button=text=>[...document.querySelectorAll('button')].find(node=>node.textContent===text);
 async function submit(){await act(async()=>button('Değerlendir').click());await act(async()=>button('Onayla').click());await flush();}
+test('public writing without AI rights explains the subscription before writing and keeps the draft on assessment denial',async()=>{
+ owner='student-a';enabled=true;expired=false;paidRemaining=0;publicAiRemaining=0;
+ const view=await setup();
+ try {
+  assert.match(view.container.querySelector('article').textContent,/Ücretsiz çalış · Değerlendirme abonelikle/);
+  await act(async()=>view.container.querySelector('article').click());
+  assert.match(view.container.textContent,/Ücretsiz çalış · Değerlendirme abonelikle/);
+  await typeAnswer(view.container.querySelector('textarea'),writingAnswer);
+  expired=true;blockedMessage='MEMBERSHIP_REQUIRED';
+  await submit();
+  assert.match(document.querySelector('[role="dialog"]').textContent,/abonelik/);
+  assert.equal(view.container.querySelector('textarea').value,writingAnswer);
+  assert.equal(localStorage.getItem('writing_practice_practice-1'),writingAnswer);
+  assert.equal(button('Üyeliğimle devam et'),undefined);
+  await act(async()=>button('Vazgeç').click());
+  assert.equal(document.querySelector('[role="dialog"]'),null);
+  await typeAnswer(view.container.querySelector('textarea'),writingAnswer+' Yeni cümle.');
+  assert.equal(evaluations.length,1,'dismissing the prompt does not restart assessment');
+  assert.equal(localStorage.getItem('writing_practice_practice-1'),writingAnswer+' Yeni cümle.');
+ } finally {expired=false;paidRemaining=2;publicAiRemaining=1;blockedMessage='EXPIRED';await view.unmount();}
+});
+
+test('membership-required assessment errors explain subscription while preserving the answers',()=>{
+ assert.match(accessErrorMessage({response:{status:402,data:{message:'MEMBERSHIP_REQUIRED'}}}),/abonelik/);
+ assert.match(accessErrorMessage({response:{status:402,data:{message:'MEMBERSHIP_REQUIRED'}}}),/Cevaplarınız korunuyor/);
+});
+test('an explicit public AI allowance is described as a granted right before starting',async()=>{
+ publicAiRemaining=1;
+ const view=await setup();
+ try {assert.match(view.container.querySelector('article').textContent,/Tanımlı AI değerlendirme hakkı/);}
+ finally {await view.unmount();}
+});
 test('normal public card binds before draft; expiry with paid capacity preserves draft and explicit paid creates a new run without reloading content',async()=>{
  owner='student-a';enabled=true;expired=false;paidRemaining=2;
  const view=await setup();
@@ -127,6 +159,37 @@ test('no paid offer with irrelevant or exhausted allowance; account change rejec
   await act(async()=>button('Üyeliğimle devam et').click());
   assert.equal(sessions.length,0);
  }finally{await view.unmount();}
+});
+
+test('an owned paid practice assessment pass offers explicit continuation and rejects unavailable or changed-owner rights',async()=>{
+ const original=api.getDecisions;
+ let available=true, remaining=1, paidContext;
+ api.getDecisions=async targets=>targets.map(target=>({...open,target,sourceKind:'PURCHASED_PACKAGE',canOpen:available,remaining:{PRACTICE_AI:remaining},purchaseId:'owned-practice-pass'}));
+ const blocked={response:{status:402,data:{message:'AI_LIMIT'}}};
+ let view=await setup(Recovery,{error:blocked,target,onClose(){},onPaid:id=>{paidContext=id;}});
+ try{
+  assert.ok(button('Paket hakkımla devam et'));
+  assert.equal(sessions.length,0);
+  await act(async()=>button('Paket hakkımla devam et').click());
+  assert.deepEqual(sessions[0].input,{mode:'PAID',paidPurchaseId:'owned-practice-pass'});
+  assert.deepEqual(sessions[0].target,target);
+  assert.equal(paidContext,'paid-context');
+  await view.unmount();
+  for(const invalid of ['expired','exhausted']) {
+   available=invalid!=='expired';remaining=invalid==='exhausted'?0:1;
+   view=await setup(Recovery,{error:blocked,target,onClose(){}});
+   assert.equal(button('Paket hakkımla devam et'),undefined);
+   assert.equal(sessions.length,0);
+   await view.unmount();
+  }
+  available=true;remaining=1;
+  view=await setup(Recovery,{error:blocked,target,onClose(){}});
+  assert.ok(button('Paket hakkımla devam et'));
+  sessionStorage.setItem('userId','foreign-account');
+  await act(async()=>button('Paket hakkımla devam et').click());
+  assert.equal(sessions.length,0);
+  assert.equal(canContinuePaid({...open,sourceKind:'PURCHASED_PACKAGE',remaining:{MOCK_WRITING:1}},'MOCK_WRITING'),false);
+ }finally{api.getDecisions=original;await view.unmount();}
 });
 function QueryHarness(){const result=useContentAccessDecisions([{scope:'PRACTICE_WRITING',targetId:'same'}]);return React.createElement('output',null,result.data?.[0]?.sourceKind||'pending');}
 test('per-account decisions never reuse another user; disabled installation calls no feature endpoint',async()=>{
@@ -255,12 +318,13 @@ test('Speaking public rejection and explicit PAID continuation retain the exact 
   ...mocks,
   '@/utils/examAudio':{ExamAudioController:Audio},
   '@/hooks/use-access-link':{useOwnedAccessContext:()=>({accessContextId:'public-context',forRun:()=>({accessContextId:'public-context'})}),readAccessOwner:()=>sessionStorage.getItem('userId')},
-  '@/services/speakingPractice.service':{default:{solve:async()=>{solveCalls++;return structuredClone(speakingPractice);},evaluate:async(...args)=>{calls.push(args);if(args[3].accessContextId==='public-context')throw{response:{status:402,data:{message:'AI_LIMIT'}}};return structuredClone(speakingEvaluation);}}},
+  '@/services/speakingPractice.service':{default:{solve:async()=>{solveCalls++;return {...structuredClone(speakingPractice),isFreeAccess:true};},evaluate:async(...args)=>{calls.push(args);if(args[3].accessContextId==='public-context')throw{response:{status:402,data:{message:'AI_LIMIT'}}};return structuredClone(speakingEvaluation);}}},
  });
  function Harness(){return React.createElement(Routes,null,React.createElement(Route,{path:'/app/pratik/konusma/:id',element:React.createElement(Speaking)}));}
  const view=await setup(Harness,{},'/app/pratik/konusma/speaking-practice-1');
  const click=async label=>act(async()=>view.container.querySelector(`button[aria-label="${label}"]`).click());
  try{
+  assert.match(view.container.textContent,/Ücretsiz çalış · Değerlendirme abonelikle/);
   for(let i=0;i<2;i++){await click('Kaydı başlat');await click('Kaydı bitir');if(!i)await click('Sonraki soru');}
   const heading=view.container.querySelector('h2').textContent;
   await act(async()=>button('Değerlendir').click());await flush();

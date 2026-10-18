@@ -2,6 +2,7 @@ import { Infinity as InfinityIcon } from "lucide-react";
 import { tm } from "@/components/tm";
 import type { PackageOffer } from "@/services/billing.service";
 import { offerBenefits } from "@/services/billing-view";
+import BillingCampaignStatus from "./billing-campaign-status";
 export default function BillingPackageCard({
   offer,
   activeMembership,
@@ -17,6 +18,8 @@ export default function BillingPackageCard({
 }) {
   const t = offer.terms,
     membership = t.kind === "MEMBERSHIP";
+  const discounted = offer.discountUzs > 0 &&
+    (!membership || !offer.campaign || offer.campaign.status === "ACTIVE");
   const days = membership
     ? t.periodDays
     : t.kind === "MOCK_PASS"
@@ -139,23 +142,30 @@ export default function BillingPackageCard({
           <h3 className="text-base font-semibold">
             {t.name}
           </h3>
-          <p className="mt-4 flex flex-wrap items-baseline gap-x-2 text-3xl font-semibold">
-            {offer.amountUzs.toLocaleString("tr-TR")}
-            <span className="text-base font-medium">so‘m</span>
-          </p>
-          {offer.discountUzs > 0 && (
-            <p className="mt-2 text-sm">
-              <del>{t.basePriceUzs.toLocaleString("tr-TR")} so‘m</del>
+          <div className="mt-4">
+            {discounted && (
+              <del className={`mb-1 block text-[var(--tm-text-secondary)] no-underline ${membership ? "text-3xl font-semibold leading-9" : "text-sm font-normal leading-5"}`}>
+                <span className={membership
+                  ? "relative inline-block after:pointer-events-none after:absolute after:-inset-x-0.5 after:top-1/2 after:h-[3px] after:-translate-y-1/2 after:-rotate-[8deg] after:rounded-full after:bg-[#dc2626] after:content-['']"
+                  : "line-through decoration-1"}>
+                  {t.basePriceUzs.toLocaleString("tr-TR")} <span className={membership ? "align-top text-base font-medium" : undefined}>so‘m</span>
+                </span>
+              </del>
+            )}
+            <p className="flex flex-wrap items-baseline gap-x-2 text-3xl font-semibold">
+              {offer.amountUzs.toLocaleString("tr-TR")}
+              <span className="text-base font-medium">so‘m</span>
             </p>
-          )}
+          </div>
           {days && !membership && (
             <p className="mt-2 text-sm">{days} gün geçerli</p>
           )}
+          <BillingCampaignStatus offer={offer} />
           <button
             type="button"
             disabled={busy || !connected}
             onClick={onBuy}
-            className="mt-auto flex min-h-12 w-full items-center justify-center rounded-lg bg-[#dc2626] px-3 py-3 text-base font-semibold text-white transition-colors hover:bg-[#b91c1c] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#dc2626] disabled:cursor-not-allowed"
+            className={`mt-auto flex min-h-12 w-full items-center justify-center ${membership ? "rounded-full" : "rounded-lg"} bg-[#dc2626] px-3 py-3 text-base font-semibold text-white transition-colors hover:bg-[#b91c1c] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#dc2626] disabled:cursor-not-allowed`}
           >
             {membership
               ? activeMembership

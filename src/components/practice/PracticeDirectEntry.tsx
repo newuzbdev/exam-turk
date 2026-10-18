@@ -8,6 +8,7 @@ import listeningPracticeService from '@/services/listeningPractice.service';
 import writingPracticeService from '@/services/writingPractice.service';
 import speakingPracticeService from '@/services/speakingPractice.service';
 import { Button } from '@/components/ui/button';
+import PracticeAssessmentNotice from './PracticeAssessmentNotice';
 import { publishCurrentActivity, saveOwnedAccess } from '@/utils/access-link-context';
 
 const routeSegments = { reading: 'okuma', listening: 'dinleme', writing: 'yazma', speaking: 'konusma' } as const;
@@ -75,6 +76,10 @@ export default function PracticeDirectEntry({ skill, id, hasActiveMembership, me
     {access.error ? <p role="alert">{access.error}</p> : previewError ? <p role="alert">{previewError}</p> : preview ? <>
       <h2 className="text-lg font-semibold">{preview.title}</h2>
       <p className="mt-2 text-sm">Hazır olduğunuzda pratiğe başlayabilirsiniz.</p>
+      {(skill === 'writing' || skill === 'speaking') && <PracticeAssessmentNotice
+        isPublicFree={access.entry?.enabled ? access.entry.decision?.isPublicFree === true : preview.isFreeAccess === true}
+        decision={access.entry?.decision}
+      />}
       {!canOpen && !(membershipPending && !access.entry?.enabled) ? <p role="alert" className="mt-3">Bu çalışmaya başlamak için önce abone olmanız gerekiyor.</p> : null}
       <Button className="mt-4" disabled={!canOpen || starting || (!access.entry?.enabled && membershipPending)} onClick={() => void start()}>{starting ? 'Hazırlanıyor…' : 'Pratiğe başla / devam et'}</Button>
     </> : null}

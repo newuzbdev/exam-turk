@@ -24,6 +24,13 @@ export const speakingPracticeService = {
     return unwrapPracticeResponse(response.data);
   },
 
+  getEvaluation: async (id: string, runId: string) => {
+    const response = await axiosPrivate.get<{ status: 'PENDING' | 'COMPLETED' | 'FAILED'; accessContextId?: string | null; result: SpeakingPracticeEvaluation | null }>(
+      `/api/speaking-practice/${id}/evaluations/${runId}`,
+    );
+    return unwrapPracticeResponse(response.data);
+  },
+
   evaluate: async (
     id: string,
     runId: string,

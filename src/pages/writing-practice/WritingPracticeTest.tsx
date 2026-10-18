@@ -21,6 +21,7 @@ import { toast } from "sonner";
 
 import { WRITING_PRACTICE_HELP_ENABLED } from "@/config/practiceFeatures";
 import PracticeDurationControl from "@/components/practice/PracticeDurationControl";
+import PracticeAssessmentNotice from '@/components/practice/PracticeAssessmentNotice';
 import PracticeViewControl from '@/components/practice/PracticeViewControl';
 import { usePracticePresentation } from '@/hooks/use-practice-presentation';
 import WritingPracticeCorrections from "./WritingPracticeCorrections";
@@ -514,6 +515,7 @@ export default function WritingPracticeTest() {
       }} />
 
       <section className="practice-section-heading shrink-0 border-b border-[#e5e5e2] bg-white px-5 py-3.5">
+        <PracticeAssessmentNotice isPublicFree={practice.accessDecision?.isPublicFree ?? practice.isPublicFree ?? practice.isFreeAccess} decision={practice.accessDecision} className="mb-2 text-xs leading-5 text-[#5f5e5a]" />
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
             <h1 className="reading-part-heading">

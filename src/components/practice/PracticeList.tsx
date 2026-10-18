@@ -1,4 +1,5 @@
 import ContentAccessRecovery from '@/components/subscription/ContentAccessRecovery';
+import PracticeAssessmentNotice from './PracticeAssessmentNotice';
 import { readWritingPracticeAccess, saveWritingPracticeAccess, saveWritingPracticePaidContinuation } from '@/pages/writing-practice/writing-practice-storage';
 import { saveOwnedAccess } from '@/utils/access-link-context';
 import { useAuth } from '@/contexts/AuthContext';
@@ -381,6 +382,11 @@ export default function PracticeList({
                 <h3 className="text-base font-semibold text-[var(--tm-text-primary)]">
                   {item.title}
                 </h3>
+                {(domain === 'WRITING' || domain === 'SPEAKING') && !isAccessPending(item) && <PracticeAssessmentNotice
+                  isPublicFree={access.enabled ? access.decisionFor(targetFor(item.id))?.isPublicFree === true : item.isFreeAccess}
+                  decision={access.enabled ? access.decisionFor(targetFor(item.id)) : undefined}
+                  className="mt-2 text-xs leading-5 text-[var(--tm-text-secondary)]"
+                />}
               </div>
               <div className="mx-4 mb-2 mt-2 flex min-h-10 items-center justify-between text-sm font-medium text-[var(--tm-text-primary)]">
                 <span>

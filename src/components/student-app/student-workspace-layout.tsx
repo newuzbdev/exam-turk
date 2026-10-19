@@ -7,6 +7,7 @@ import { isActiveStudentExam } from "@/routes/student-route-paths";
 import { clearExamPresentation } from "@/utils/examFullscreen";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStudentPresence } from "@/hooks/use-student-presence";
+import StudentFirstRun from "@/components/first-run/student-first-run";
 
 export default function StudentWorkspaceLayout() {
   const { pathname } = useLocation();
@@ -21,7 +22,7 @@ export default function StudentWorkspaceLayout() {
   }, [activeExam, pathname]);
   return (
     <>
-      {activeExam ? <Outlet /> : <StudentAppLayout />}
+      <StudentFirstRun>{activeExam ? <Outlet /> : <StudentAppLayout />}</StudentFirstRun>
       <MockAccessRecovery />
       <StudentAccountUpdates
         userId={isAuthenticated && user?.role === "USER" ? user.id : undefined}

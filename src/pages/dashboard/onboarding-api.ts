@@ -70,10 +70,10 @@ const unwrapResponse = <T>(payload: T | ApiEnvelope<T>): T => {
 
 export const onboardingQueryKey = ["student", "me", "onboarding"] as const;
 
-export const useStudentOnboarding = () => {
+export const useStudentOnboarding = (enabled = true) => {
   const { user, isAuthenticated } = useAuth();
   return usePageDataQuery({
-    enabled: isAuthenticated && Boolean(user?.id),
+    enabled: enabled && isAuthenticated && Boolean(user?.id),
     queryKey: onboardingQueryKey,
     queryFn: async () => {
       const response = await axiosPrivate.get<

@@ -35,6 +35,8 @@ def check(config, output, image):
         (site / 'assets/index-1234abcd.js').write_text('/* public build */')
         (site / 'favicon-red.png').write_bytes(b'public-logo')
         (site / 'private-audio.mp3').write_bytes(b'test-media')
+        for name in ['hakan-birdal', 'muattar-mamatkarimova', 'timur-makarov', 'private-exam-photo']:
+            (site / 'assets' / (name + '-1234abcd.webp')).write_bytes(b'test-image')
         shutil.copyfile(FRONTEND / 'public/robots.txt', site / 'robots.txt')
         if (FRONTEND / 'public/sitemap.xml').exists():
             shutil.copyfile(FRONTEND / 'public/sitemap.xml', site / 'sitemap.xml')
@@ -45,7 +47,8 @@ def check(config, output, image):
         redirects = []
         image_redirects = FRONTEND / 'deploy/optimized-image-redirects.conf'
         if image_redirects.exists():
-            shutil.copyfile(image_redirects, snippets / image_redirects.name)
+            for snippet in sorted((FRONTEND / 'deploy').glob('optimized-image-redirects*.conf')):
+                shutil.copyfile(snippet, snippets / snippet.name)
             redirects = re.findall(r'location = (/\S+) \{ absolute_redirect off; return 301 (/\S+); \}', image_redirects.read_text())
             for _, target in redirects:
                 destination = site / target.lstrip('/')
@@ -110,7 +113,14 @@ def check(config, output, image):
                 expect('active pages remain reachable and are not canonicalized to home', path,
                        lambda s, h, b: s == 200 and not h.get('Link') and b'student-app' in b)
             expect('public JS remains loadable', '/assets/index-1234abcd.js', lambda s, h, b: s == 200)
-            expect('brand icon stays crawlable', '/favicon-red.png',
+            for name in ['hakan-birdal', 'muattar-mamatkarimova', 'timur-makarov']:
+                expect('approved versioned expert portrait is immutable and remains unindexed', '/assets/' + name + '-1234abcd.webp',
+                       lambda s, h, b: s == 200 and h.get('Cache-Control') == 'public, max-age=31536000, immutable'
+                       and 'noindex' in h.get('X-Robots-Tag', '') and 'noimageindex' in h.get('X-Robots-Tag', ''))
+            expect('unrelated image does not gain immutable public caching', '/assets/private-exam-photo-1234abcd.webp',
+                   lambda s, h, b: s == 200 and 'immutable' not in h.get('Cache-Control', '')
+                   and 'noindex' in h.get('X-Robots-Tag', ''))
+            expect('brand icon stays crawlable' , '/favicon-red.png',
                    lambda s, h, b: s == 200 and h.get('X-Robots-Tag') == 'index, follow')
             expect('media search protection stays in place', '/private-audio.mp3',
                    lambda s, h, b: s == 200 and 'noindex' in h.get('X-Robots-Tag', ''))

@@ -13,6 +13,7 @@ import HomeTestimonials from "./ui/home-testimonials";
 import HomePricing from "./ui/home-pricing";
 import HomeMembershipPricing from "./ui/home-membership-pricing";
 import HomeFAQ from "./ui/home-faq";
+import HomeExpertOpinions from "./ui/home-expert-opinions";
 import { BannerSection } from "@/components/banner";
 import { bannerService } from "@/services/banner.service";
 import { tm } from "@/components/tm";
@@ -99,7 +100,7 @@ export default function Home() {
     <div ref={homeRootRef} className={tm.page}>
       <HeroSection />
       <StatsSection />
-      {/* Expert opinions are temporarily hidden; the component is preserved. */}
+      <HomeExpertOpinions />
 
       <HomeScorePreview />
 

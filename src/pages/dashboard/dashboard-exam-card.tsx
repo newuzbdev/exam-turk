@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
 import {
   EXAM_SOURCES,
   type ExamSession,
@@ -49,6 +49,7 @@ export function DashboardExamCard({
       : undefined;
   const initialMonth =
     savedSession?.examStart.slice(0, 7) ??
+    profile?.examDate?.slice(0, 7) ??
     (profile?.targetExamYear &&
     profile.targetExamYear !== Number(today.slice(0, 4))
       ? `${profile.targetExamYear}-01`
@@ -81,13 +82,16 @@ export function DashboardExamCard({
       ? profile.examDate.slice(0, 10)
       : null;
   const personalDays = personalDate ? daysUntil(personalDate, today) : null;
+  const hasDate = Boolean(savedSession || personalDate);
   return (
     <aside className="student-home__exam" aria-labelledby="home-exam-title">
       <div className="student-home__section-heading">
         <h2 id="home-exam-title">Sınav takvimi</h2>
-        <button type="button" className="student-home__text-button dashboard-exam-edit"
+        <button type="button" className={`student-home__text-button dashboard-exam-edit${hasDate ? ' dashboard-edit-icon' : ''}`}
+          aria-label={hasDate ? 'Sınav tarihini değiştir' : undefined}
+          title={hasDate ? 'Sınav tarihini değiştir' : undefined}
           disabled={unavailable} onClick={() => onChoose(preview && state?.kind !== "past" ? preview : undefined)}>
-          {savedSession || personalDate ? "Tarihi değiştir" : "Tarih belirle"}
+          {hasDate ? <CalendarDays size={16} aria-hidden="true"/> : "Tarih belirle"}
         </button>
       </div>
       <div className="dashboard-exam-body">
@@ -177,7 +181,8 @@ export function DashboardExamCard({
         role="group"
         aria-label={monthLabel}
       >
-        {calendarDays(month).map((day) => {
+        {['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pa'].map(day => <span className="student-home__weekday" key={day} aria-hidden="true">{day}</span>)}
+        {calendarDays(month).map((day, index) => {
           const exam = day
             ? sessions.find(
                 (item) => day >= item.examStart && day <= item.examEnd,
@@ -202,13 +207,10 @@ export function DashboardExamCard({
               aria-label={`${dashboardDate(day)}${exam ? " · Sınav dönemi" : ""}${day === personalDate ? " · Planladığınız tarih" : ""}${day === today ? " · Bugün" : ""}`}
               onClick={() => setPreviewId(exam!.id)}
             >
-              <span className="dashboard-exam-day-name" aria-hidden="true">
-                {["Pa", "Pt", "Sa", "Ça", "Pe", "Cu", "Ct"][new Date(`${day}T00:00:00Z`).getUTCDay()]}
-              </span>
               <span aria-hidden="true">{Number(day.slice(-2))}</span>
             </button>
           ) : (
-            null
+            <span key={`empty-${index}`} data-calendar-empty aria-hidden="true"/>
           );
         })}
       </div>

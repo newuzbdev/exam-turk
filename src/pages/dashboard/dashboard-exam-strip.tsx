@@ -1,3 +1,4 @@
+import { CalendarDays } from 'lucide-react';
 import type { ExamSession } from '@/data/exam-information';
 import { daysUntil, deadlineState, examCountdownValue, examState } from '@/data/exam-calendar';
 import { dashboardDate } from './dashboard-home-data';
@@ -31,16 +32,22 @@ export function DashboardExamStrip({ profile, today, onEdit, unavailable, sessio
     }
   }
   const examName = profile?.examTarget === 'TYS' ? 'TYS' : profile?.examTarget === 'CEFR' ? 'Millî CEFR' : 'Sınav hedefi';
+  const hasTarget = Boolean(profile?.targetLevel || session || date);
   return <header className="dashboard-exam-strip">
     <h1 className="sr-only">Genel bakış</h1>
     <time dateTime={today}>{new Intl.DateTimeFormat('tr-TR', {day:'numeric', month:'long', year:'numeric', timeZone:'UTC'}).format(new Date(`${today}T12:00:00Z`))}</time>
     <div className="dashboard-exam-strip__target">
       <p>
         <strong>{session ? `${examName} · ${sessionLabel(session)}` : date ? `${examName} · ${dashboardDate(date)} ${date.slice(0,4)}` : profile?.targetExamYear ? `${examName} · ${profile.targetExamYear}` : 'Sınav hedefinizi seçin'}</strong>
-        {remaining !== null && <span className="dashboard-exam-strip__countdown" data-active={state?.kind === 'ongoing' || undefined} data-urgent={countdown?.urgent || undefined} data-critical={countdown?.critical || undefined}> · {state?.kind === 'ongoing' ? 'Sınav dönemi devam ediyor' : state?.kind === 'past' ? 'Sınav sona erdi' : countdown?.relativeDay === 'today' ? 'Bugün' : countdown?.relativeDay === 'tomorrow' ? (session ? 'Yarın başlıyor' : 'Yarın') : remaining > 0 ? `${countdown?.value} gün kaldı` : 'sınav tarihi geçti'}</span>}
-        {reminder && <span> · {reminder}</span>}
+        {remaining !== null && <span className="dashboard-exam-strip__countdown" data-active={state?.kind === 'ongoing' || undefined} data-urgent={countdown?.urgent || undefined} data-critical={countdown?.critical || undefined}>{state?.kind === 'ongoing' ? 'Sınav dönemi devam ediyor' : state?.kind === 'past' ? 'Sınav sona erdi' : countdown?.relativeDay === 'today' ? 'Bugün' : countdown?.relativeDay === 'tomorrow' ? (session ? 'Yarın başlıyor' : 'Yarın') : remaining > 0 ? `${countdown?.value} gün kaldı` : 'Sınav tarihi geçti'}</span>}
+        {reminder && <span>{reminder}</span>}
       </p>
-      <button type="button" disabled={unavailable} onClick={onEdit}>{profile?.targetLevel || session || date ? 'Düzenle' : 'Hedef seç'}</button>
+      <button type="button" disabled={unavailable} onClick={onEdit}
+        className={hasTarget ? 'dashboard-edit-icon' : undefined}
+        aria-label={hasTarget ? 'Sınav tarihini değiştir' : undefined}
+        title={hasTarget ? 'Sınav tarihini değiştir' : undefined}>
+        {hasTarget ? <CalendarDays size={16} aria-hidden="true"/> : 'Hedef seç'}
+      </button>
     </div>
   </header>;
 }

@@ -1,7 +1,8 @@
 import { Info } from 'lucide-react';
 import { useRef, type PointerEvent } from 'react';
 import { dashboardFullDate, dashboardNumber, type ProgressSkill } from './dashboard-home-data';
-import { dashboardAverageNumber, pointerTooltipPosition, scorePosition, targetScore } from './dashboard-level-data';
+import { dashboardAverageNumber, dashboardDeclaredLevel, declaredLevelPosition, pointerTooltipPosition, scorePosition, targetScore } from './dashboard-level-data';
+import type { StudentCurrentLevel } from './onboarding-api';
 
 function ScaleMarker({ kind, score, label, description }: {
   kind: 'target' | 'mark'; score: number; label: string; description: string;
@@ -30,33 +31,44 @@ function ScaleMarker({ kind, score, label, description }: {
   </span>;
 }
 
-export function DashboardLevelSummary({ average, level, skills, target, missingLabel, lowEvidence }: {
+export function DashboardLevelSummary({ average, level, skills, target, currentLevel, resultsStatus = 'ready', missingLabel, lowEvidence }: {
   average: number | null;
   level: string | null;
   skills: ProgressSkill[];
   target?: string | null;
+  currentLevel?: StudentCurrentLevel | null;
+  resultsStatus?: 'ready' | 'loading' | 'error';
   missingLabel: string;
   lowEvidence: boolean;
 }) {
   const coverage = skills.filter(skill => skill.average !== null).length;
   const hasStale = skills.some(skill => skill.isStale);
+  const declared = average === null ? dashboardDeclaredLevel(currentLevel) : null;
+  const displayLevel = average !== null ? level : declared ?? 'Henüz belirlenmedi';
 
   return <>
     <div className="dashboard-level__heading">
       <div>
-        <h2>Tahmini seviyeniz</h2>
-        <p className="dashboard-level__value">{average === null ? <>{coverage}<span> / 4 bölüm</span></> : level}</p>
+        <h2>{average !== null ? 'Tahmini seviyeniz' : 'Başlangıç seviyeniz'}</h2>
+        <p className="dashboard-level__value" data-unknown={average === null && !declared || undefined}>
+          {displayLevel === 'B1 altı' ? <>B1 <span className="dashboard-level__qualifier">altı</span></> : displayLevel}
+        </p>
       </div>
+      <div className="dashboard-level__aside">
+      {targetScore(target) !== null && <p className="dashboard-level__goal">Hedefiniz <strong>{target}</strong></p>}
       <div className="dashboard-level__explanation">
         {average !== null && level ? <p aria-label={`Ortalama puan: ${dashboardAverageNumber(average)} / 75`}>
           <strong>{dashboardAverageNumber(average)} / 75</strong> ortalama
           {hasStale && <small className="dashboard-stale-label">Eski sonuç içerir</small>}
-        </p> : <p>{`Genel seviye için ${missingLabel} gerekli.`}</p>}
+        </p> : <p>{declared ? 'Anketteki seçiminiz' : resultsStatus === 'ready' ? coverage ? `Genel seviye için ${missingLabel} gerekli.` : 'Henüz test sonucu yok' : null}
+          {resultsStatus !== 'ready' && <span className="dashboard-level__result-status" role="status">{resultsStatus === 'loading' ? 'Sonuçlar yükleniyor…' : 'Sonuçlar yüklenemedi.'}</span>}
+        </p>}
         <div className="dashboard-level__note">
           <details className="student-home__estimate-note">
             <summary aria-label="Seviye nasıl hesaplanıyor?"><Info size={15}/></summary>
             <div>
               <strong>Seviye nasıl hesaplanıyor?</strong>
+              {average === null && <p>Başlangıç seviyesi anketteki seçiminizdir; bir test puanı değildir.</p>}
               <p>Bu bir tahmindir, resmî sınav sonucu değildir.</p>
               <p>Her bölümün son 60 gündeki en yeni 3 testi alınır. 1 veya 2 test varsa yalnız bunlar kullanılır.</p>
               <p>Dört bölüm eşit ağırlıktadır. Eksik bölüm varsa genel seviye gösterilmez.</p>
@@ -77,25 +89,34 @@ export function DashboardLevelSummary({ average, level, skills, target, missingL
           </details>
         </div>
       </div>
+      </div>
     </div>
-    <DashboardLevelScale average={average} skills={skills} target={target} />
+    <DashboardLevelScale average={average} skills={skills} target={target} currentLevel={currentLevel} />
   </>;
 }
 
 
-export function DashboardLevelScale({ average, skills, target }: {
+export function DashboardLevelScale({ average, skills, target, currentLevel }: {
   average: number | null;
   skills: Pick<ProgressSkill, 'key' | 'label' | 'average' | 'isStale'>[];
   target?: string | null;
+  currentLevel?: StudentCurrentLevel | null;
 }) {
   const goal = targetScore(target);
   const hasStale = skills.some(skill => skill.isStale);
+  const declared = average === null ? dashboardDeclaredLevel(currentLevel) : null;
   return (
     <div className="dashboard-level__scale" role="group" aria-label="Seviye ve hedef göstergesi">
       <div className="dashboard-level__bands" aria-hidden="true">
-        {['B1 altı', 'B1', 'B2', 'C1'].map(name => <div className="dashboard-level__band" key={name}><span>{name}</span></div>)}
+        {['B1 altı', 'B1', 'B2', 'C1'].map(name => <div className="dashboard-level__band" key={name} data-declared={name === declared || undefined}><span>{name}</span></div>)}
       </div>
       {goal !== null && <ScaleMarker kind="target" score={goal} label={`Hedef ${target}: ${goal} / 75`} description={`Hedef ${target} · ${goal} / 75`}/>}
+      {declared && <span className="dashboard-level__marker dashboard-level__marker--declared" role="img" tabIndex={0}
+        aria-label={`Seçtiğiniz seviye: ${declared}`} data-align={declared === 'C1' ? 'end' : 'center'}
+        style={{left:`${declaredLevelPosition(declared)}%`}}>
+        <span className="dashboard-level__mark" aria-hidden="true"/>
+        <span className="dashboard-level__tooltip" aria-hidden="true">Seçiminiz · {declared}</span>
+      </span>}
       {skills.filter(skill => skill.average !== null).map(skill => <span key={skill.key}
         className="dashboard-level__dot" data-skill={skill.key} role="img"
         aria-label={`${skill.label}: ${dashboardNumber(skill.average!)} / 75`}

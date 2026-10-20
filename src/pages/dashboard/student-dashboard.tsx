@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { NavLink, useSearchParams } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import {
   ArrowUpRight,
-  ChartLine,
   Triangle,
   Minus,
   RefreshCw,
+  Target,
 } from "lucide-react";
 import type { ExamSession } from "@/data/exam-information";
 import { uzbekistanToday } from "@/data/exam-calendar";
@@ -19,33 +19,23 @@ import {
   dashboardNumber,
   dashboardReportPath,
 } from "./dashboard-home-data";
-import type { DashboardSectionKey } from "./dashboard-performance";
-import { DashboardProgressChart } from "./dashboard-progress-chart";
 import { DashboardExamCard } from "./dashboard-exam-card";
 import { DashboardGoalDialog } from "./dashboard-goal-dialog";
-import { DashboardStudyCalendar } from "./dashboard-study-calendar";
 import { DashboardLevelSummary } from "./dashboard-level-summary";
 import { DashboardExamStrip } from "./dashboard-exam-strip";
 import { dashboardAverageNumber } from "./dashboard-level-data";
 import "./student-dashboard.css";
 import "./dashboard-reference.css";
+import "./dashboard-personalized.css";
 
 export default function StudentDashboard() {
-  const [params, setParams] = useSearchParams();
-  const selectedSkill = params.get("bolum");
-  const skillKey: DashboardSectionKey =
-    selectedSkill === "listening" ||
-    selectedSkill === "reading" ||
-    selectedSkill === "writing"
-      ? selectedSkill
-      : "speaking";
   const [today, setToday] = useState(() => uzbekistanToday());
   const [goalOpen, setGoalOpen] = useState(false);
   const [dateOnly, setDateOnly] = useState(false);
   const [levelOnly, setLevelOnly] = useState(false);
   const [chosenSession, setChosenSession] = useState<ExamSession>();
-  const [graphOpen, setGraphOpen] = useState(false);
   const results = useDashboardResults();
+  const resultsStatus = results.data !== undefined ? 'ready' : results.isPending ? 'loading' : 'error';
   const onboarding = useStudentOnboarding();
   const officialExams = useOfficialExams();
   const examSessions = officialExams.data?.sessions ?? [];
@@ -56,16 +46,11 @@ export default function StudentDashboard() {
     () => buildProgressOverview(results.data ?? [], "all", today),
     [results.data, today],
   );
-  const skill = overview.skills.find((item) => item.key === skillKey)!;
-  const hasHistory = overview.reports.length > 0;
   const missingSkills = overview.skills.filter((item) => item.average === null);
   const missingLabel =
     missingSkills.length === 1
       ? missingSkills[0].label.toLocaleLowerCase("tr-TR") + " sonucu"
       : missingSkills.length + " bölüm daha";
-  const pendingReport = overview.reports.find(
-    (report) => report.evaluationState === "PENDING",
-  );
   const latestTest = overview.reports[0];
   const latestTestStatus = latestTest?.evaluationState === "PENDING"
     ? "Değerlendiriliyor"
@@ -77,12 +62,6 @@ export default function StudentDashboard() {
     setChosenSession(session);
     setDateOnly(datesOnly);
     setGoalOpen(true);
-  }
-  function selectSkill(value: DashboardSectionKey) {
-    setGraphOpen(open => value === skillKey ? !open : true);
-    const next = new URLSearchParams(params);
-    next.set("bolum", value);
-    setParams(next, { replace: true });
   }
   useEffect(() => {
     const refresh = () => setToday(uzbekistanToday());
@@ -115,54 +94,22 @@ export default function StudentDashboard() {
           aria-label="Seviye özeti"
           aria-busy={results.isPending}
         >
-          {results.isPending ? (
-            <p role="status">Sonuçlar yükleniyor…</p>
-          ) : !results.data ? (
-            <p>Sonuçlar yüklenemedi.</p>
-          ) : overview.coverage > 0 ? (
+          {onboarding.isPending && results.isPending ? <p role="status">Bilgileriniz yükleniyor…</p> :
             <DashboardLevelSummary average={overview.average} level={overview.level} skills={overview.skills}
-              target={onboarding.data?.targetLevel} missingLabel={missingLabel} lowEvidence={overview.lowEvidence}/>
-          ) : pendingReport ? (
-            <div className="student-home__start">
-              <h2>Sonucunuz hazırlanıyor</h2>
-              <p>Değerlendirme tamamlandığında burada görünecek.</p>
-              <NavLink
-                className="student-home__text-link"
-                to={dashboardReportPath(pendingReport.result.id)}
-              >
-                Raporu aç <ArrowUpRight size={16} />
-              </NavLink>
-            </div>
-          ) : hasHistory ? (
-            <div className="student-home__start">
-              <h2>Değerlendirme tamamlanamadı</h2>
-              <p>Ayrıntıları ilgili raporunuzdan görebilirsiniz.</p>
-              <NavLink
-                className="student-home__text-link"
-                to={dashboardReportPath(overview.reports[0].result.id)}
-              >
-                Raporu aç <ArrowUpRight size={16} />
-              </NavLink>
-            </div>
-          ) : (
-            <div className="student-home__start">
-              <h2>Gelişiminiz burada başlıyor</h2>
-              <p>
-                İlk testinizden sonra puanlarınızı ve gelişiminizi
-                görebilirsiniz.
-              </p>
-              <NavLink className="student-home__primary-link" to="/app/test">
-                İlk testinizi seçin <ArrowUpRight size={16} />
-              </NavLink>
-            </div>
-          )}
+              target={onboarding.data?.targetLevel} currentLevel={onboarding.data?.currentLevel}
+              resultsStatus={resultsStatus}
+              missingLabel={missingLabel} lowEvidence={overview.lowEvidence}/>}
           <div className="dashboard-target-action">
-            <button type="button" disabled={!onboarding.isSuccess} onClick={() => {
+            <button type="button" disabled={!onboarding.isSuccess}
+              className={onboarding.data?.targetLevel ? 'dashboard-edit-icon' : undefined}
+              aria-label={onboarding.data?.targetLevel ? 'Hedef seviyenizi değiştir' : undefined}
+              title={onboarding.data?.targetLevel ? 'Hedef seviyenizi değiştir' : undefined}
+              onClick={() => {
               setChosenSession(undefined);
               setDateOnly(false);
               setLevelOnly(true);
               setGoalOpen(true);
-            }}>{onboarding.data?.targetLevel ? 'Hedefi değiştir' : 'Hedef seç'}</button>
+            }}>{onboarding.data?.targetLevel ? <Target size={16} aria-hidden="true"/> : 'Hedef seç'}</button>
           </div>
         </section>
       </div>
@@ -188,20 +135,13 @@ export default function StudentDashboard() {
         </div>
       )}
 
-      {overview.coverage > 0 && (
         <section
           className="student-home__skill-section"
           aria-labelledby="home-skill-heading"
+          aria-busy={resultsStatus === 'loading'}
         >
           <div className="student-home__section-heading">
             <h2 id="home-skill-heading">Beceriler</h2>
-          </div>
-          <div className="dashboard-skill-scale" aria-hidden="true">
-            <div className="dashboard-skill-scale__track">
-              {[{label: 'B1', score: 38}, {label: 'B2', score: 51}, {label: 'C1', score: 65}].map(({label, score}) => (
-                <span key={label} style={{left: `${score / 75 * 100}%`}}>{label}</span>
-              ))}
-            </div>
           </div>
           <div className="student-home__skills">
             {overview.skills.map((item) => {
@@ -216,7 +156,6 @@ export default function StudentDashboard() {
                 <div
                   className="student-home__skill"
                   data-skill={item.key}
-                  data-selected={graphOpen && skillKey === item.key}
                   key={item.key}
                 >
                   <span className="student-home__skill-name">
@@ -224,16 +163,13 @@ export default function StudentDashboard() {
                     <span>{item.label}{item.isStale && <small className="dashboard-stale-label"
                       title={`Son test: ${dashboardFullDate(item.lastTestAt!)}`}>Eski sonuç</small>}</span>
                   </span>
-                  <span className="student-home__bar" aria-hidden="true">
-                    {[38,51,65].map(tick => <span className="dashboard-skill-tick" aria-hidden="true" key={tick} style={{left: `${tick / 75 * 100}%`}}/>)}
-                    <i style={{ width: ((item.average ?? 0) / 75) * 100 + "%" }}/>
-                  </span>
                   <span className="student-home__skill-value">
                     <strong>
                       {item.average === null
                         ? "—"
                         : dashboardAverageNumber(item.average)}
                     </strong>
+                    {item.average !== null && <small>/ 75</small>}
                     <span>{item.level}</span>
                     {change !== null && <span className="dashboard-skill-change" data-direction={unchanged ? 'same' : change > 0 ? 'up' : 'down'}
                       title={`${changeDescription} · ${dashboardNumber(item.previousAverage!)} → ${dashboardNumber(item.average!)}`}
@@ -241,48 +177,25 @@ export default function StudentDashboard() {
                       {unchanged ? <Minus size={12}/> : <Triangle size={9} fill="currentColor" strokeWidth={0}/>}{changeLabel}
                     </span>}
                   </span>
+                  <span className="student-home__bar" aria-hidden="true">
+                    {[38,51,65].map(tick => <span className="dashboard-skill-tick" aria-hidden="true" key={tick} style={{left: `${tick / 75 * 100}%`}}/>)}
+                    <i style={{ width: ((item.average ?? 0) / 75) * 100 + "%" }}/>
+                  </span>
                   <span className="student-home__skill-count">
-                    {item.sampleCount
+                    {resultsStatus === 'loading' ? 'Sonuçlar yükleniyor…' : resultsStatus === 'error' ? 'Sonuçlar yüklenemedi.' : item.sampleCount
                       ? item.sampleCount === 1
                         ? "1 test sonucu"
                         : item.sampleCount + " testin ortalaması"
                       : "Henüz sonuç yok"}
                   </span>
-                  <button
-                    type="button"
-                    className="dashboard-skill-action"
-                    aria-label={`${item.label} puan gelişimi grafiğini ${graphOpen && skillKey === item.key ? "gizle" : "göster"}`}
-                    aria-pressed={graphOpen && skillKey === item.key}
-                    aria-expanded={graphOpen && skillKey === item.key}
-                    aria-controls="home-progress"
-                    onClick={() => selectSkill(item.key)}
-                  >
-                    <ChartLine size={15}/> Grafik
-                  </button>
                 </div>
               );
             })}
           </div>
         </section>
-      )}
 
       <div className="student-home__layout">
           <div className="student-home__main">
-            {overview.coverage > 0 && (
-              <section
-                className="student-home__progress"
-                id="home-progress"
-                data-skill={skill.key}
-                aria-labelledby="home-progress-heading"
-                hidden={!graphOpen}
-              >
-                <div className="student-home__section-heading">
-                  <h2 id="home-progress-heading">Puan gelişimi</h2>
-                  <span>{skill.label} · Son 10 test</span>
-                </div>
-                {graphOpen && <DashboardProgressChart key={skillKey} skill={skill} />}
-              </section>
-            )}
             {latestTest && (
               <section className="dashboard-latest-test" aria-labelledby="home-latest-test-heading">
                 <h2 id="home-latest-test-heading">Son test</h2>
@@ -294,7 +207,6 @@ export default function StudentDashboard() {
                   aria-label="Son testin raporunu aç">Raporu aç <ArrowUpRight size={14}/></NavLink>
               </section>
             )}
-            <DashboardStudyCalendar today={today} latestTestHref={latestTest ? dashboardReportPath(latestTest.result.id) : undefined} />
           </div>
         {officialExams.isPending ? <p role="status">Sınav takvimi yükleniyor…</p>
         : officialExams.isError ? <p role="alert">Sınav takvimi yüklenemedi. <button onClick={() => void officialExams.refetch()}>Yeniden dene</button></p>

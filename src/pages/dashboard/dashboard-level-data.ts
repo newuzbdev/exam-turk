@@ -1,5 +1,16 @@
 import { dashboardNumber } from './dashboard-home-data.ts';
 import { getCefrLevelFromScore } from './dashboard-performance.ts';
+import type { StudentCurrentLevel } from './onboarding-api';
+
+export type DeclaredDashboardLevel = 'B1 altı' | 'B1' | 'B2' | 'C1';
+export function dashboardDeclaredLevel(level?: StudentCurrentLevel | null): DeclaredDashboardLevel | null {
+  if (level === 'NONE' || level === 'A1' || level === 'A2') return 'B1 altı';
+  return level === 'B1' || level === 'B2' || level === 'C1' ? level : null;
+}
+
+// A band centre is a display anchor for a named self assessment, never a score.
+export const declaredLevelPosition = (level: DeclaredDashboardLevel) =>
+  ({ 'B1 altı': 25.333, B1: 59.333, B2: 77.333, C1: 93.333 })[level];
 
 /** Round display only; a boundary exception must stay below the next level. */
 export function dashboardAverageNumber(score: number): string {

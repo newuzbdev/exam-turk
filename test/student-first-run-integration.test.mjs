@@ -16,10 +16,9 @@ const {useStudentOnboarding}=await loadOfflineComponent('src/pages/dashboard/onb
   '@/contexts/AuthContext':{useAuth:()=>React.useContext(Auth)}, '@/config/api':{default:api},
 });
 const profile={id:'p',userId:'a',goal:'EXAM_PREPARATION',currentLevel:'A2',supportLanguage:'TURKISH',examTarget:'CEFR',dailyStudyMinutes:20,examDate:null,targetLevel:'B2',targetExamYear:null,examSessionId:null,onboardingCompleted:true,createdAt:'2026-10-19',updatedAt:'2026-10-19'};
-const free={id:'free-map',title:'Yerel harita pratiği',level:'B1',sectionCode:'PART_4',estimatedMinutes:5,isFreeAccess:true,isPublicFree:true,createdAt:'2026-10-01'};
 const tick=()=>act(async()=>{await new Promise(r=>setTimeout(r,25));});
 
-async function setup({owner='a',route='/app',profiles={},getProfile,saveProfile,catalog=[free],Content}={}) {
+async function setup({owner='a',route='/app',profiles={},getProfile,saveProfile,Content}={}) {
   const writes=[]; const reads=[];
   let currentOwner=owner; let changeOwner; let changeRoute;
   request=async(method,url,input)=>{
@@ -27,7 +26,6 @@ async function setup({owner='a',route='/app',profiles={},getProfile,saveProfile,
       reads.push(url);
       if(url==='/api/me/onboarding') return {data:{success:true,data:getProfile ? await getProfile(currentOwner) : profiles[currentOwner]??null}};
       if(url==='/api/me/official-exams') return {data:{success:true,data:{sessions:[],selectedSession:null}}};
-      if(url==='/api/listening-practice') return {data:catalog};
     } else if(url==='/api/me/onboarding') {
       writes.push({method,input,owner:currentOwner});
       return {data:{success:true,data:saveProfile ? await saveProfile(input) : {...profile,...input,userId:currentOwner}}};
@@ -79,17 +77,22 @@ test('loading is not treated as an empty profile and profile failures leave the 
   } finally {await view.close();}
 });
 
-test('saving populates the dashboard cache then opens the free listening practice directly',async()=>{
-  const view=await setup({owner:'saved-student'});
+test('saving from every normal entry opens the dashboard directly without a practice step or catalogue request',async()=>{
+  for (const route of ['/app','/app/test','/app/pratik?bolum=listening']) {
+  const owner=`saved-${route}`;
+  const view=await setup({owner,route});
   try {
-    await complete(view); assert.match(view.container.textContent,/İlk pratiğiniz hazır/);
+    await complete(view);
+    assert.equal(Boolean(view.container.querySelector('form')),false);
+    assert.doesNotMatch(view.container.textContent,/İlk pratiğiniz hazır|Pratiğe başla|Platformu keşfet/);
+    assert.equal(view.container.querySelector('[data-dashboard]').parentElement.hidden,false);
     assert.equal(view.writes.length,1); assert.equal(view.writes[0].method,'post');
     assert.equal(view.writes[0].input.examTarget,'CEFR');
-    assert.equal(view.client.getQueryData(['student','me','onboarding','owner','saved-student']).targetLevel,'B1');
-    await click(view,'Pratiğe başla');
-    assert.match(view.container.textContent,/\/app\/pratik\/dinleme\/free-map/);
-    assert.match(view.container.textContent,/Hedef: B1/);
+    assert.equal(view.client.getQueryData(['student','me','onboarding','owner',owner]).targetLevel,'B1');
+    assert.equal(view.container.querySelector('[data-dashboard]').textContent,'Dashboard · Hedef: B1 · /app');
+    assert.equal(view.reads.includes('/api/listening-practice'),false);
   } finally {await view.close();}
+  }
 });
 
 test('skip is account-scoped, persists after remount, and makes no profile write',async()=>{
@@ -103,7 +106,7 @@ test('skip is account-scoped, persists after remount, and makes no profile write
   try {assert.equal(reopened.container.querySelector('form'),null);} finally {await reopened.close();}
 });
 
-test('a late save from a different account cannot replace the new account wizard with a starter',async()=>{
+test('a late save from a different account cannot dismiss the new account wizard',async()=>{
   const pending=deferred(); const view=await setup({owner:'late-a',saveProfile:()=>pending.promise});
   try {
     await complete(view); await view.owner('late-b');
@@ -113,12 +116,23 @@ test('a late save from a different account cannot replace the new account wizard
   } finally {await view.close();}
 });
 
-test('no free map gives an honest catalogue alternative, never a paid starter CTA',async()=>{
-  const view=await setup({owner:'no-free',catalog:[{...free,isPublicFree:false,isFreeAccess:false}]});
+test('a failed save keeps the answers on the current entry, and retry opens the dashboard only after success',async()=>{
+  let tries=0;
+  const view=await setup({owner:'retry-save',route:'/app/test',saveProfile:async input=>{
+    if(++tries===1)throw Error('offline');
+    return {...profile,...input,userId:'retry-save'};
+  }});
   try {
-    await complete(view); assert.match(view.container.textContent,/ücretsiz bir harita pratiği bulunmuyor/);
-    assert.equal([...view.container.querySelectorAll('button')].some(b=>b.textContent==='Pratiğe başla'),false);
-    await click(view,'Pratiklere göz at'); assert.match(view.container.textContent,/\/app\/pratik\?bolum=listening/);
+    await complete(view);
+    assert.ok(view.container.querySelector('[role="alert"]'));
+    assert.equal(view.container.querySelector('input[value="undecided"]').checked,true);
+    assert.match(view.container.querySelector('[data-dashboard]').textContent,/\/app\/test$/);
+    assert.equal(view.container.querySelector('[data-dashboard]').parentElement.hidden,true);
+    await click(view,'Kaydet ve devam et');await tick();
+    assert.equal(view.container.querySelector('form'),null);
+    assert.equal(view.container.querySelector('[data-dashboard]').textContent,'Dashboard · Hedef: B1 · /app');
+    assert.equal(view.writes.length,2);
+    assert.equal(view.reads.includes('/api/listening-practice'),false);
   } finally {await view.close();}
 });
 
@@ -157,11 +171,12 @@ test('external profile completion closes a mounted wizard without another save',
   } finally {await view.close();}
 });
 
-test('a save finishing after leaving setup does not reopen the wizard or starter on return',async()=>{
+test('a save finishing after leaving setup does not redirect the new route or reopen the wizard on return',async()=>{
   const pending=deferred(); const view=await setup({owner:'leave-during-save',saveProfile:()=>pending.promise});
   try {
     await complete(view); await view.go('/app/fiyatlar');
     await act(async()=>pending.resolve({...profile,userId:'leave-during-save',targetLevel:'B1'})); await tick();
+    assert.match(view.container.querySelector('[data-dashboard]').textContent,/\/app\/fiyatlar$/);
     await view.go('/app');
     assert.equal(Boolean(view.container.querySelector('form')),false);
     assert.doesNotMatch(view.container.textContent,/İlk pratiğiniz hazır/);

@@ -1,6 +1,5 @@
 import type { ExamSession } from '@/data/exam-information';
 import type { StudentCurrentLevel, StudentOnboarding, StudentOnboardingInput } from '@/pages/dashboard/onboarding-api';
-import type { PracticeListItem } from '@/services/practice.types';
 
 // Do not interrupt an attempt, an access link, or a payment return.
 export function isFirstRunEntry(pathname: string, search: string) {
@@ -32,16 +31,6 @@ export function firstRunInput(
     examDate: session?.examStart ?? null,
   };
 }
-
-// The student catalogue contains published items only. Current access metadata
-// takes precedence over the legacy flag; membership alone never makes a starter free.
-export function firstFreeMap(items: PracticeListItem[]) {
-  return items.filter(item => item.sectionCode === 'PART_4' && (item.isPublicFree ?? item.isFreeAccess) === true)
-    .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id))[0];
-}
-
-export const firstPracticePath = (id: string) =>
-  `/app/pratik/dinleme/${encodeURIComponent(id)}`;
 
 const dismissedThisTab = new Set<string>();
 const skipKey = (owner: string) => `tm:first-run:v1:${owner}`;

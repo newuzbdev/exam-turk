@@ -6,7 +6,6 @@ const model = await loadOfflineComponent('src/components/first-run/first-run-mod
 const { FirstRunSetup } = await loadOfflineComponent('src/components/first-run/first-run-setup.tsx');
 const session = { id: 'cefr-2026-nov', examStart: '2026-11-21', examEnd: '2026-11-22', registrationStart: '2026-10-01', registrationEnd: '2026-11-01', paymentEnd: '2026-11-02', sourceUrl: 'https://example.test/calendar', published: true, version: 1 };
 const profile = { id:'p1', userId:'student-a', goal:'GENERAL_TURKISH', currentLevel:'A2', supportLanguage:'UZBEK', examTarget:'UNDECIDED', dailyStudyMinutes:30, examDate:null, targetLevel:null, targetExamYear:null, examSessionId:null, onboardingCompleted:false, createdAt:'2026-10-19', updatedAt:'2026-10-19' };
-const practice = { id:'free-map', title:'Harita', level:'B1', sectionCode:'PART_4', estimatedMinutes:5, isFreeAccess:true, createdAt:'2026-10-01' };
 
 test('onboarding never intercepts active work, payment returns, or access deep links', () => {
   for (const [pathname, search, expected] of [
@@ -32,12 +31,6 @@ test('calendar uses only published upcoming official periods and saves canonical
   assert.equal(undecided.examDate, null);
   assert.equal(undecided.targetExamYear, null);
   assert.equal(undecided.examTarget, 'CEFR');
-});
-
-test('starter never selects a paid practice or trusts legacy free status over a current access decision', () => {
-  assert.equal(model.firstFreeMap([{...practice,id:'paid',isFreeAccess:false}, {...practice,id:'revoked',isPublicFree:false}, {...practice,id:'other-section',sectionCode:'PART_1'}]), undefined);
-  assert.equal(model.firstFreeMap([{...practice,id:'later',createdAt:'2026-10-02'},practice])?.id, 'free-map');
-  assert.equal(model.firstPracticePath('id &/1'), '/app/pratik/dinleme/id%20%26%2F1');
 });
 
 async function click(view, text) {

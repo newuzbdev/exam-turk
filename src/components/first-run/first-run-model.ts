@@ -41,7 +41,7 @@ export function firstFreeMap(items: PracticeListItem[]) {
 }
 
 export const firstPracticePath = (id: string) =>
-  `/app/pratik?${new URLSearchParams({ bolum: 'listening', start: id })}`;
+  `/app/pratik/dinleme/${encodeURIComponent(id)}`;
 
 const dismissedThisTab = new Set<string>();
 const skipKey = (owner: string) => `tm:first-run:v1:${owner}`;

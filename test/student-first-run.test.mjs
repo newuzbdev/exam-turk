@@ -37,7 +37,7 @@ test('calendar uses only published upcoming official periods and saves canonical
 test('starter never selects a paid practice or trusts legacy free status over a current access decision', () => {
   assert.equal(model.firstFreeMap([{...practice,id:'paid',isFreeAccess:false}, {...practice,id:'revoked',isPublicFree:false}, {...practice,id:'other-section',sectionCode:'PART_1'}]), undefined);
   assert.equal(model.firstFreeMap([{...practice,id:'later',createdAt:'2026-10-02'},practice])?.id, 'free-map');
-  assert.equal(model.firstPracticePath('id &/1'), '/app/pratik?bolum=listening&start=id+%26%2F1');
+  assert.equal(model.firstPracticePath('id &/1'), '/app/pratik/dinleme/id%20%26%2F1');
 });
 
 async function click(view, text) {

@@ -79,7 +79,7 @@ test('loading is not treated as an empty profile and profile failures leave the 
   } finally {await view.close();}
 });
 
-test('saving populates the dashboard cache then opens the normal free practice preparation route',async()=>{
+test('saving populates the dashboard cache then opens the free listening practice directly',async()=>{
   const view=await setup({owner:'saved-student'});
   try {
     await complete(view); assert.match(view.container.textContent,/İlk pratiğiniz hazır/);
@@ -87,7 +87,7 @@ test('saving populates the dashboard cache then opens the normal free practice p
     assert.equal(view.writes[0].input.examTarget,'CEFR');
     assert.equal(view.client.getQueryData(['student','me','onboarding','owner','saved-student']).targetLevel,'B1');
     await click(view,'Pratiğe başla');
-    assert.match(view.container.textContent,/\/app\/pratik\?bolum=listening&start=free-map/);
+    assert.match(view.container.textContent,/\/app\/pratik\/dinleme\/free-map/);
     assert.match(view.container.textContent,/Hedef: B1/);
   } finally {await view.close();}
 });

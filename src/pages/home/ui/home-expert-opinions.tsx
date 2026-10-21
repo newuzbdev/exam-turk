@@ -153,7 +153,7 @@ const HomeExpertOpinions = () => {
                           aria-label={`${expert.name} ${link.platform} ${link.channel ? "kanalı" : "hesabı"}`}
                           title="Yeni sekmede açılır"
                           onClick={() => trackExpertSocialClick(expert.mediaKey, link.platform === "Telegram" ? "TELEGRAM" : "INSTAGRAM")}
-                          className="inline-flex min-h-9 items-center gap-1.5 rounded-sm text-sm font-medium text-black underline decoration-[var(--tm-border-default)] underline-offset-4 hover:text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tm-accent)]"
+                          className="inline-flex min-h-9 items-center gap-1.5 rounded-sm text-sm font-medium text-black underline decoration-[var(--tm-border-default)] underline-offset-4 transition-colors hover:text-[var(--tm-accent)] focus-visible:text-[var(--tm-accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tm-accent)]"
                         >
                           {link.platform === "Telegram" ? <Send className="h-4 w-4" aria-hidden="true" /> : <Instagram className="h-4 w-4" aria-hidden="true" />}
                           {link.platform}

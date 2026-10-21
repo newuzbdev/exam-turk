@@ -148,6 +148,20 @@ test('social click tracking does not prevent opening the link and sends only the
   } finally { await view.close(); globalThis.fetch = originalFetch; }
 });
 
+test('social links stay black at rest and use the platform accent on hover and keyboard focus', async () => {
+  const view = await setup();
+  try {
+    const links = [...view.container.querySelectorAll('figcaption a')];
+    assert.equal(links.length, 2);
+    for (const link of links) {
+      assert.ok(link.classList.contains('text-black'));
+      assert.ok(link.classList.contains('hover:text-[var(--tm-accent)]'));
+      assert.ok(link.classList.contains('focus-visible:text-[var(--tm-accent)]'));
+      assert.equal(link.classList.contains('hover:text-black'), false);
+    }
+  } finally { await view.close(); }
+});
+
 
 test('local development does not send test clicks to the live metrics endpoint', async () => {
   const { trackExpertSocialClick } = await loadOfflineComponent('src/pages/home/ui/expert-social-clicks.ts', {}, {env:{DEV:true}});

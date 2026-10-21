@@ -12,6 +12,7 @@ type ExpertOpinion = {
   mediaKey: string;
   imageSrc: string;
   durationMs: number;
+  colors: { surface: string; accent: string };
   text: string;
   imageClassName?: string;
   socialLinks?: { platform: "Telegram" | "Instagram"; url: string; channel?: boolean }[];
@@ -24,7 +25,7 @@ const experts: ExpertOpinion[] = [
     mediaKey: "expert/hakan-birdal",
     imageSrc: hakanPortrait,
     durationMs: 10000,
-    imageClassName: "scale-[1.32] -translate-x-[3%] translate-y-[1%]",
+    colors: { surface: "#edf0eb", accent: "#59665b" },
     socialLinks: [
       { platform: "Telegram", url: "https://t.me/hakanhocaturk", channel: true },
       { platform: "Instagram", url: "https://www.instagram.com/hakanhocatr/" },
@@ -37,6 +38,7 @@ const experts: ExpertOpinion[] = [
     mediaKey: "expert/muattar-mamatkarimova",
     imageSrc: muattarPortrait,
     durationMs: 3000,
+    colors: { surface: "#f6e7e8", accent: "#934d60" },
     socialLinks: [
       { platform: "Telegram", url: "https://t.me/+wb_l3Fd6bIdiMWJi", channel: true },
     ],
@@ -48,6 +50,7 @@ const experts: ExpertOpinion[] = [
     mediaKey: "expert/timur-makarov",
     imageSrc: timurPortrait,
     durationMs: 3000,
+    colors: { surface: "#eef0f2", accent: "#62666c" },
     socialLinks: [
       { platform: "Telegram", url: "https://t.me/zargana_deus_ex_machina" },
       { platform: "Instagram", url: "https://www.instagram.com/deusexmachina.11/" },
@@ -103,11 +106,14 @@ const HomeExpertOpinions = () => {
           <h2 id="expert-opinions-title" className="mb-7 text-2xl font-semibold tracking-tight text-[var(--tm-text-primary)] sm:text-3xl">
             Uzmanlar ne diyor?
           </h2>
-          <div className="rounded-2xl bg-[#eef1f3] p-6 shadow-sm sm:p-10 md:px-12 md:py-11">
+          <div
+            className="rounded-2xl p-6 shadow-sm transition-colors duration-500 motion-reduce:transition-none [--tm-text-secondary:#625e58] sm:p-10 md:px-12 md:py-11"
+            style={{ backgroundColor: expert.colors.surface }}
+          >
             <div aria-live={isPaused ? "polite" : "off"} aria-atomic="true">
               <figure className="grid min-h-[544px] grid-cols-1 grid-rows-[144px_minmax(0,1fr)_auto] gap-y-6 md:min-h-[360px] md:grid-cols-[minmax(0,1fr)_208px] md:grid-rows-[minmax(0,1fr)_auto] md:gap-x-12 md:gap-y-0 lg:min-h-[288px]">
                 <blockquote key={expert.mediaKey} className="row-start-2 animate-in fade-in duration-300 motion-reduce:animate-none text-lg italic leading-7 text-[var(--tm-text-primary)] sm:text-xl sm:leading-8 md:col-start-1 md:row-start-1">
-                  <Quote className="mb-4 h-7 w-7 fill-current stroke-0" aria-hidden="true" />
+                  <Quote className="mb-4 h-7 w-7 fill-current stroke-0 text-black" aria-hidden="true" />
                   <p>“{expert.text}”</p>
                 </blockquote>
                 <div className="relative row-start-1 mx-auto h-36 w-36 self-center overflow-hidden rounded-full bg-[var(--tm-bg-hover)] md:col-start-2 md:row-span-2 md:row-start-1 md:h-52 md:w-52" data-protected-media="expert-photo" onContextMenu={(event) => event.preventDefault()} onDragStart={(event) => event.preventDefault()}>
@@ -147,7 +153,7 @@ const HomeExpertOpinions = () => {
                           aria-label={`${expert.name} ${link.platform} ${link.channel ? "kanalı" : "hesabı"}`}
                           title="Yeni sekmede açılır"
                           onClick={() => trackExpertSocialClick(expert.mediaKey, link.platform === "Telegram" ? "TELEGRAM" : "INSTAGRAM")}
-                          className="inline-flex min-h-9 items-center gap-1.5 rounded-sm text-sm font-medium text-[var(--tm-text-secondary)] underline decoration-[var(--tm-border-default)] underline-offset-4 hover:text-[var(--tm-accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tm-accent)]"
+                          className="inline-flex min-h-9 items-center gap-1.5 rounded-sm text-sm font-medium text-black underline decoration-[var(--tm-border-default)] underline-offset-4 hover:text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tm-accent)]"
                         >
                           {link.platform === "Telegram" ? <Send className="h-4 w-4" aria-hidden="true" /> : <Instagram className="h-4 w-4" aria-hidden="true" />}
                           {link.platform}
@@ -169,7 +175,10 @@ const HomeExpertOpinions = () => {
                 className="flex h-9 w-9 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tm-accent)]"
                 onClick={() => setActiveIndex(index)}
               >
-                <span className={`h-2 rounded-full transition-[width,background-color] motion-reduce:transition-none ${index === activeIndex ? "w-6 bg-[var(--tm-text-primary)]" : "w-2 bg-[var(--tm-border-default)]"}`} />
+                <span
+                  className={`h-2 rounded-full transition-[width,background-color] motion-reduce:transition-none ${index === activeIndex ? "w-6" : "w-2 bg-[var(--tm-border-default)]"}`}
+                  style={index === activeIndex ? { backgroundColor: expert.colors.accent } : undefined}
+                />
               </button>
             ))}
           </div>

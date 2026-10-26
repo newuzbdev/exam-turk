@@ -25,6 +25,30 @@ test('failed imports show a readable refresh option without exposing technical d
   } finally { await view.unmount(); }
 });
 
+test('a transient error cannot replace the public homepage search title', async () => {
+  const { PageLoadError } = await load();
+  document.title = 'TurkishMock | Türkçe CEFR Mock Test ve Pratik';
+  const view = await mount(PageLoadError, {
+    route: '/',
+    props: { error: new TypeError('Failed to fetch dynamically imported module'), onReload: () => {} },
+  });
+  try {
+    assert.equal(document.title, 'TurkishMock | Türkçe CEFR Mock Test ve Pratik');
+  } finally { await view.unmount(); }
+});
+
+test('application route errors still use a clear local title', async () => {
+  const { PageLoadError } = await load();
+  document.title = 'TurkishMock | Türkçe CEFR Mock Test ve Pratik';
+  const view = await mount(PageLoadError, {
+    route: '/app',
+    props: { error: new TypeError('Failed to fetch dynamically imported module'), onReload: () => {} },
+  });
+  try {
+    assert.equal(document.title, 'Sayfa yüklenemedi | TurkishMock');
+  } finally { await view.unmount(); }
+});
+
 test('Safari import failures and offline-like network failures receive the same safe recovery', async () => {
   const { PageLoadError } = await load();
   for (const message of ['Importing a module script failed.', 'error loading dynamically imported module', 'Unable to preload CSS for /assets/style-abcd1234.css']) {

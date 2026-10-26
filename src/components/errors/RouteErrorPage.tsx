@@ -12,13 +12,16 @@ export function PageLoadError({ error, onReload = () => window.location.reload()
   const isExam = isActiveStudentExam(path) || /^\/app\/pratik\/(okuma|dinleme|yazma|konusma)\/(?!sonuc(?:\/|$))[^/]+\/?$/.test(path);
   const moduleFailed = isModuleLoadError(error);
   const title = moduleFailed ? "Sayfa yüklenemedi" : "Bir sorun oluştu";
+  const isPublicHome = pathname === "/";
 
   useEffect(() => {
     const previousTitle = document.title;
-    document.title = `${title} | TurkishMock`;
+    // A transient stale-chunk failure must not replace the public homepage's
+    // search title when a crawler happens to render during a deployment.
+    if (!isPublicHome) document.title = `${title} | TurkishMock`;
     heading.current?.focus();
     return () => { document.title = previousTitle; };
-  }, [title]);
+  }, [isPublicHome, title]);
 
   return (
     <main className="flex min-h-svh items-center justify-center bg-[#fafaf9] px-6 py-12 text-[#37352f]" lang="tr">

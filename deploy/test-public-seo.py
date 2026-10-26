@@ -34,6 +34,8 @@ def check(config, output, image):
         (site / 'index.html').write_text('<!doctype html><html><body>student-app</body></html>')
         (site / 'assets/index-1234abcd.js').write_text('/* public build */')
         (site / 'favicon-red.png').write_bytes(b'public-logo')
+        (site / 'logo11.svg').write_text('<svg xmlns="http://www.w3.org/2000/svg"/>')
+        (site / 'turkishmock-hero-line-people.png').write_bytes(b'public-preview')
         (site / 'private-audio.mp3').write_bytes(b'test-media')
         for name in ['hakan-birdal', 'muattar-mamatkarimova', 'timur-makarov', 'private-exam-photo']:
             (site / 'assets' / (name + '-1234abcd.webp')).write_bytes(b'test-image')
@@ -101,7 +103,8 @@ def check(config, output, image):
                    lambda s, h, b: s == 301 and h.get('Location') == '/#sss')
             expect('home is served without redirect and declares only the real canonical', '/',
                    lambda s, h, b: s == 200 and h.get('Link') == '<https://turkishmock.uz/>; rel="canonical"'
-                   and b'student-app' in b)
+                   and 'max-image-preview:large' in h.get('X-Robots-Tag', '')
+                   and 'noimageindex' not in h.get('X-Robots-Tag', '') and b'student-app' in b)
             expect('sitemap is valid XML containing only the public home', '/sitemap.xml',
                    lambda s, h, b: s == 200 and 'xml' in h.get_content_type()
                    and [n.text for n in ET.fromstring(b).iter('{http://www.sitemaps.org/schemas/sitemap/0.9}loc')]
@@ -111,7 +114,8 @@ def check(config, output, image):
                    and b'Sitemap: https://turkishmock.uz/sitemap.xml' in b and b'Allow: /' in b)
             for path in ['/app/profil', '/app/fiyatlar', '/login', '/privacy-policy?lang=uz', '/terms-of-service']:
                 expect('active pages remain reachable and are not canonicalized to home', path,
-                       lambda s, h, b: s == 200 and not h.get('Link') and b'student-app' in b)
+                       lambda s, h, b: s == 200 and not h.get('Link')
+                       and 'noindex' in h.get('X-Robots-Tag', '') and b'student-app' in b)
             expect('public JS remains loadable', '/assets/index-1234abcd.js', lambda s, h, b: s == 200)
             for name in ['hakan-birdal', 'muattar-mamatkarimova', 'timur-makarov']:
                 expect('approved versioned expert portrait is immutable and remains unindexed', '/assets/' + name + '-1234abcd.webp',
@@ -122,6 +126,9 @@ def check(config, output, image):
                    and 'noindex' in h.get('X-Robots-Tag', ''))
             expect('brand icon stays crawlable' , '/favicon-red.png',
                    lambda s, h, b: s == 200 and h.get('X-Robots-Tag') == 'index, follow')
+            for path in ['/logo11.svg', '/turkishmock-hero-line-people.png']:
+                expect('homepage brand asset stays crawlable', path,
+                       lambda s, h, b: s == 200 and h.get('X-Robots-Tag') == 'index, follow')
             expect('media search protection stays in place', '/private-audio.mp3',
                    lambda s, h, b: s == 200 and 'noindex' in h.get('X-Robots-Tag', ''))
             expect('missing JS cannot return the HTML app', '/assets/missing-1234abcd.js',

@@ -96,11 +96,14 @@ def check(config, output, image):
 
             for old, new in [('/price', '/app/fiyatlar'), ('/test', '/app/test'), ('/signup', '/login')]:
                 expect('old URL gives a permanent redirect preserving the query', old + '?ref=sample',
-                       lambda s, h, b, new=new: s == 301 and h.get('Location') == new + '?ref=sample')
+                       lambda s, h, b, new=new: s == 301 and h.get('Location') == new + '?ref=sample'
+                       and not h.get('X-Robots-Tag'))
                 expect('trailing slash uses the same destination', old + '/',
-                       lambda s, h, b, new=new: s == 301 and h.get('Location') == new)
+                       lambda s, h, b, new=new: s == 301 and h.get('Location') == new
+                       and not h.get('X-Robots-Tag'))
             expect('obsolete guide links to the public FAQ', '/how-it-works',
-                   lambda s, h, b: s == 301 and h.get('Location') == '/#sss')
+                   lambda s, h, b: s == 301 and h.get('Location') == '/#sss'
+                   and not h.get('X-Robots-Tag'))
             expect('home is served without redirect and declares only the real canonical', '/',
                    lambda s, h, b: s == 200 and h.get('Link') == '<https://turkishmock.uz/>; rel="canonical"'
                    and 'max-image-preview:large' in h.get('X-Robots-Tag', '')

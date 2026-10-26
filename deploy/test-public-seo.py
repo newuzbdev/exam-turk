@@ -101,6 +101,10 @@ def check(config, output, image):
                 expect('trailing slash uses the same destination', old + '/',
                        lambda s, h, b, new=new: s == 301 and h.get('Location') == new
                        and not h.get('X-Robots-Tag'))
+            for old in ['/sonuclar', '/sonuclar/tam-liste']:
+                expect('retired reports listing redirects to the current reports screen', old + '?ref=sample',
+                       lambda s, h, b: s == 301 and h.get('Location') == '/app/sonuclar?ref=sample'
+                       and not h.get('X-Robots-Tag'))
             expect('obsolete guide links to the public FAQ', '/how-it-works',
                    lambda s, h, b: s == 301 and h.get('Location') == '/#sss'
                    and not h.get('X-Robots-Tag'))
